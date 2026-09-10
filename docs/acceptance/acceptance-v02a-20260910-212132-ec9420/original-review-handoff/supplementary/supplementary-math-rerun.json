@@ -1,0 +1,873 @@
+{
+  "scenario_count": 48,
+  "passed_count": 48,
+  "max_abs_error": 2.220446049250313e-16,
+  "elapsed_seconds": 0.23677009999983056,
+  "method": "additional scenarios against the SAME repository Fraction reference; not a newly authored oracle",
+  "scenarios": [
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        2
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        2
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        2
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 1.0408340855860843e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        2
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        6
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        6
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        6
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        6
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        5,
+        6
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 2.220446049250313e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        5,
+        6
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        5,
+        6
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        5,
+        6
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        6
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        6
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        6
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        6
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        1
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        1
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 1.249000902703301e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        1
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        1
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 1.3877787807814457e-17,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        2,
+        3
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        2,
+        3
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 2.220446049250313e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        2,
+        3
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        7,
+        8,
+        9,
+        10,
+        10,
+        10
+      ],
+      "hand": [
+        2,
+        3
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        2
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        2
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        2
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 1.6653345369377348e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        2
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        6
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 0.0,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        6
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        6
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        10,
+        6
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        5,
+        6
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        5,
+        6
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 2.220446049250313e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        5,
+        6
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        5,
+        6
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        6
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        6
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 2.220446049250313e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        6
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        6
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 2.220446049250313e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        1
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        1
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        1
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 2.220446049250313e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        1,
+        1
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        2,
+        3
+      ],
+      "up": 1,
+      "peek": true,
+      "max_abs_error": 5.551115123125783e-17,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        2,
+        3
+      ],
+      "up": 2,
+      "peek": false,
+      "max_abs_error": 2.220446049250313e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        2,
+        3
+      ],
+      "up": 6,
+      "peek": false,
+      "max_abs_error": 1.1102230246251565e-16,
+      "passed": true
+    },
+    {
+      "cards": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        10
+      ],
+      "hand": [
+        2,
+        3
+      ],
+      "up": 10,
+      "peek": true,
+      "max_abs_error": 2.220446049250313e-16,
+      "passed": true
+    }
+  ]
+}

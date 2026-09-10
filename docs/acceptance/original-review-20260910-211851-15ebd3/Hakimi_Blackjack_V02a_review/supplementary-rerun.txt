@@ -1,0 +1,7 @@
+{
+  "scenario_count": 48,
+  "passed_count": 48,
+  "max_abs_error": 2.220446049250313e-16,
+  "elapsed_seconds": 0.2405189620000101,
+  "method": "additional scenarios against the SAME repository Fraction reference; not a newly authored oracle"
+}

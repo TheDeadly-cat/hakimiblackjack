@@ -1,0 +1,28 @@
+{
+  "archive_path": "C:\\Users\\Administrator\\Downloads\\Hakimi_Blackjack_V02a_增量审查证据包_20260910.zip",
+  "archive_sha256": "fdc23029c392b1982a0dfea0944a46f7434069cde7375e7ce9573e6b774a2edc",
+  "manifest_entries_verified": 18,
+  "source_files": [
+    {
+      "path": "blackjack_lab/analysis/probability.py",
+      "sha256": "e08237a80407ae2284f4a4fc35c0d85446525080d86261b8d7724c3460c22659",
+      "current_matches_original": true
+    },
+    {
+      "path": "blackjack_lab/analysis/actions.py",
+      "sha256": "db62d08cfe4cfe7da52fd2bf2fdeb690e0b757ce6101501ec3eefeedeb160770",
+      "current_matches_original": true
+    },
+    {
+      "path": "tests/analysis_reference.py",
+      "sha256": "334fe6a65d109ae89de3816b872e450890ee72825026d9ac281e1700f2e8fffc",
+      "current_matches_original": true
+    },
+    {
+      "path": "tests/test_analysis_math.py",
+      "sha256": "fd1f1b6e9cb5251ea2995f07f7ee0fd33cf17b82769478cffc9dc508528c1428",
+      "current_matches_original": true
+    }
+  ],
+  "extract_directory": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a\\.local-evidence\\original-review-20260910-211851-15ebd3\\Hakimi_Blackjack_V02a_review"
+}
