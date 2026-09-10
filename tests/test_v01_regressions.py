@@ -19,6 +19,7 @@ from blackjack_lab.ui.controller import SessionController
 
 
 def table(**rules):
+    rules.setdefault("dealer_soft17", "S17")
     t = TableState(RuleProfile(**rules))
     t.start_round(["玩家1"])
     return t

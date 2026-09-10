@@ -1,0 +1,40 @@
+{
+  "source_identity": {
+    "commit": "e80ba6e99f7f68df3c8a7aa46db9d79f8269094e",
+    "dirty_worktree": true,
+    "kind": "git"
+  },
+  "data_source": "self-generated observations via real Tk actions; temporary SQLite",
+  "checks": {
+    "cross_round": [
+      {
+        "event_id": "1d2e5214b8774340aa4032f82d5dbbbb",
+        "round_id": "47675093de22429e9ea37710ca19d521-R1",
+        "round_no": 1,
+        "declared": "unknown",
+        "status": "incomplete",
+        "detected_missing": [
+          {
+            "code": "PLAYER_INITIAL_MISSING",
+            "seat": "玩家1",
+            "hand_id": "R1-玩家1-H2"
+          }
+        ],
+        "legacy_unspecified": false
+      }
+    ],
+    "refresh_failure": {
+      "committed_once": true,
+      "current_result_cleared": true,
+      "message": "数据已成功提交，但界面未同步。请刷新或重启，不要重复录牌。 synthetic render failure"
+    },
+    "cancel_auto": {
+      "auto_still_checked": true,
+      "no_pending_or_active_request": true
+    }
+  },
+  "expected_injected_errors": [
+    "数据已成功提交，但界面未同步。请刷新或重启，不要重复录牌。\nRuntimeError: synthetic render failure"
+  ],
+  "passed": true
+}

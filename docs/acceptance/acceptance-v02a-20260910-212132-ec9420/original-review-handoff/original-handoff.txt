@@ -1,0 +1,9 @@
+test_cancel_clears_scheduled_auto_request (test_v02a_review_regressions.TestAnalysisLifecycleReview.test_cancel_clears_scheduled_auto_request) ... ok
+test_committed_input_invalidates_inflight_request_even_if_render_fails (test_v02a_review_regressions.TestAnalysisLifecycleReview.test_committed_input_invalidates_inflight_request_even_if_render_fails) ... ok
+test_committed_input_removes_displayed_result_even_if_render_fails (test_v02a_review_regressions.TestAnalysisLifecycleReview.test_committed_input_removes_displayed_result_even_if_render_fails) ... ok
+test_missing_initial_card_in_unsettled_round_blocks_next_round_analysis (test_v02a_review_regressions.TestRoundIntegrityReview.test_missing_initial_card_in_unsettled_round_blocks_next_round_analysis) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.759s
+
+OK

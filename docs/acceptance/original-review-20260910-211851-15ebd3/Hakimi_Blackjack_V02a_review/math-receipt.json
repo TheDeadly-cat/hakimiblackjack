@@ -1,0 +1,46 @@
+{
+  "commit": "ee485dd22285ec14f83bf8fe81df4fad2f3ea005",
+  "timestamp_utc": "2026-09-10T11:01:21.807662+00:00",
+  "python": "3.13.5 (main, Jul 15 2026, 20:25:40) [GCC 14.2.0]",
+  "platform": "Linux-6.18.35-x86_64-with-glibc2.41",
+  "scope": "isolated unmodified math modules and their repository reference/tests; blank package initializers; not a full repository/Windows/UI rerun",
+  "hashes": [
+    {
+      "path": "blackjack_lab/analysis/probability.py",
+      "expected_git_blob": "52c4ff942a2d26aaab075d6ef4f76b1fe903bb5f",
+      "actual_git_blob": "52c4ff942a2d26aaab075d6ef4f76b1fe903bb5f",
+      "match": true,
+      "sha256": "e08237a80407ae2284f4a4fc35c0d85446525080d86261b8d7724c3460c22659"
+    },
+    {
+      "path": "blackjack_lab/analysis/actions.py",
+      "expected_git_blob": "39080b145b321c68e311098e37e2059228bb2197",
+      "actual_git_blob": "39080b145b321c68e311098e37e2059228bb2197",
+      "match": true,
+      "sha256": "db62d08cfe4cfe7da52fd2bf2fdeb690e0b757ce6101501ec3eefeedeb160770"
+    },
+    {
+      "path": "tests/analysis_reference.py",
+      "expected_git_blob": "438e0ad8da707e6a81fbf43d6bb0e824213965cd",
+      "actual_git_blob": "438e0ad8da707e6a81fbf43d6bb0e824213965cd",
+      "match": true,
+      "sha256": "334fe6a65d109ae89de3816b872e450890ee72825026d9ac281e1700f2e8fffc"
+    },
+    {
+      "path": "tests/test_analysis_math.py",
+      "expected_git_blob": "fe1d05b33359068231bb3b5bc7d193d6dad19e09",
+      "actual_git_blob": "fe1d05b33359068231bb3b5bc7d193d6dad19e09",
+      "match": true,
+      "sha256": "fd1f1b6e9cb5251ea2995f07f7ee0fd33cf17b82769478cffc9dc508528c1428"
+    }
+  ],
+  "command": [
+    "/opt/pyvenv/bin/python",
+    "-m",
+    "unittest",
+    "tests.test_analysis_math",
+    "-v"
+  ],
+  "exit_code": 0,
+  "output_sha256": "412ff401419acc5607693d27679e4273b75cb466a9e8cc85b9daa8fd67505da2"
+}

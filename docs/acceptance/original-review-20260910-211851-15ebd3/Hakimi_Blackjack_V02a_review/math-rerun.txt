@@ -1,0 +1,10 @@
+test_hidden_card_oracle_cannot_inflate_continuation_ev (tests.test_analysis_math.TestIndependentMath.test_hidden_card_oracle_cannot_inflate_continuation_ev) ... ok
+test_hit_includes_repeated_decisions_not_forced_stand (tests.test_analysis_math.TestIndependentMath.test_hit_includes_repeated_decisions_not_forced_stand) ... ok
+test_peek_changes_both_hole_and_next_card_distribution (tests.test_analysis_math.TestIndependentMath.test_peek_changes_both_hole_and_next_card_distribution) ... ok
+test_small_physical_worlds_match_all_outcomes (tests.test_analysis_math.TestIndependentMath.test_small_physical_worlds_match_all_outcomes) ... ok
+test_three_deck_counts_actually_change_probabilities_and_ev (tests.test_analysis_math.TestIndependentMath.test_three_deck_counts_actually_change_probabilities_and_ev) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.092s
+
+OK

@@ -1,0 +1,138 @@
+{
+  "schema": "hakimi-v02a-acceptance-v1",
+  "timestamp_utc": "2026-09-10T13:22:22.985927+00:00",
+  "commit": "202be3c26ba7429e3e9e2b95a592fe90398b6703",
+  "working_tree_dirty_before": false,
+  "source_identity_kind": "git",
+  "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "source_manifest_sha256": "0b4aa5329ff88f34ab78d359cbce3482f0be5ef9be126c170ba01118a2800e71",
+  "source_unchanged_during_checks": true,
+  "checks": [
+    {
+      "name": "tests",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a",
+      "exit_code": 0,
+      "elapsed_seconds": 17.799225100000058,
+      "output": "tests.txt",
+      "output_sha256": "3c3686254cd75a555c0459307f2b4aa5d37ceacd7a1f8037f6670f5b15522c18",
+      "test_count": 177
+    },
+    {
+      "name": "selfcheck",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "blackjack_lab.main",
+        "--check"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a",
+      "exit_code": 0,
+      "elapsed_seconds": 0.09429839999984324,
+      "output": "selfcheck.txt",
+      "output_sha256": "881dfa05ab1579446ec679eea2585c28f51ca057c7135ab992792577babd8d64"
+    },
+    {
+      "name": "compile",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "compileall",
+        "-q",
+        "blackjack_lab",
+        "tests",
+        "scripts"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a",
+      "exit_code": 0,
+      "elapsed_seconds": 0.09124939999992421,
+      "output": "compile.txt",
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "offline-workflows",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-c",
+        "import socket,sys,unittest; assert socket._hakimi_offline_guard; suite=unittest.defaultTestLoader.loadTestsFromNames(['tests.test_analysis_ui','tests.test_analysis_integration','tests.test_round_observation','tests.test_v02a_review_regressions']); r=unittest.TextTestRunner(verbosity=2).run(suite); sys.exit(0 if r.wasSuccessful() else 1)"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a",
+      "exit_code": 0,
+      "elapsed_seconds": 14.32818559999987,
+      "output": "offline-workflows.txt",
+      "output_sha256": "0d1fa824c4b0e214f431b9ee1b07aba19bb813412fce1b49de6d3cf048288cd0",
+      "test_count": 46
+    },
+    {
+      "name": "math-performance",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/analysis_checks.py",
+        "--output",
+        "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a\\.local-evidence\\acceptance-v02a-20260910-212132-ec9420\\math-performance"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a",
+      "exit_code": 0,
+      "elapsed_seconds": 11.666898700000274,
+      "output": "math-performance.txt",
+      "output_sha256": "e42a5477f90da3c39d1d902398bca4cab9d0f572b76409272b5fd70643208287"
+    },
+    {
+      "name": "ui-visual",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/ui_visual_check.py",
+        "--output",
+        "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a\\.local-evidence\\acceptance-v02a-20260910-212132-ec9420\\screens"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a",
+      "exit_code": 0,
+      "elapsed_seconds": 1.5814402000000882,
+      "output": "ui-visual.txt",
+      "output_sha256": "ab87de7abc0293d6f134e746f6e4936a77322605f9263882f2e0796d156eeac4"
+    },
+    {
+      "name": "review-visual",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/review_visual_check.py",
+        "--output",
+        "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a\\.local-evidence\\acceptance-v02a-20260910-212132-ec9420\\review-screens"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a",
+      "exit_code": 0,
+      "elapsed_seconds": 1.9982567000001836,
+      "output": "review-visual.txt",
+      "output_sha256": "86073122ca2be179754d16687118a4c9469b008c8b53e07d8d0296efc533713c"
+    },
+    {
+      "name": "original-review-handoff",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/verify_review_handoff.py",
+        "--output",
+        "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a\\.local-evidence\\acceptance-v02a-20260910-212132-ec9420\\original-review-handoff"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a",
+      "exit_code": 0,
+      "elapsed_seconds": 2.724510999999893,
+      "output": "original-review-handoff.txt",
+      "output_sha256": "2a0102862e54660059ae91740c6dac1ed426bb1646e95c694ad5190b94b46a06"
+    }
+  ],
+  "user_database_accessed": false,
+  "test_data": "temporary SQLite and self-generated observations only",
+  "offline_scope": "socket connect/connect_ex/create_connection/getaddrinfo blocked in separate Python processes including analysis workers; not an OS firewall test",
+  "offline_network_attempts": "",
+  "scope": "V0.2a selected single-player unsplit S17/3:2/US-peek/zero-burn template; no split EV, vision, capture or opening advantage",
+  "passed": true
+}

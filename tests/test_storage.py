@@ -14,7 +14,7 @@ def build_ledger(session_id="s-storage", n=7):
     led = EventLedger(session_id)
     led.start_session()
     led.create_shoe(RuleProfile(n_decks=n))
-    led.start_round()
+    led.start_round(["玩家1"])
     led.deal("庄家", "Q")
     led.deal("庄家", None, hidden=True)
     led.deal("玩家1", "A")

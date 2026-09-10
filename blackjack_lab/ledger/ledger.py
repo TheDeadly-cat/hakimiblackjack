@@ -24,7 +24,7 @@ from ..core.table import (
 )
 from .events import (
     BURN_CARDS, CANDIDATE, CARD_DEALT, CARD_REVEALED, CONFIRMED,
-    CORRECTION, FACE_HIDDEN, FACE_UNKNOWN, OBSERVATION_GAP, PEEK_NEGATIVE,
+    CORRECTION, FACE_HIDDEN, FACE_UNKNOWN, OBSERVATION_GAP, OBSERVATION_STATUSES, PEEK_NEGATIVE,
     PLAYER_ACTION, ROUND_ENDED, ROUND_STARTED, SESSION_STARTED, SHOE_CREATED,
     SHOE_ENDED, UNDO, Event, new_event_id,
 )
@@ -40,6 +40,7 @@ CORRECTABLE_FIELDS = {
     BURN_CARDS: {"count", "note"},
     OBSERVATION_GAP: {"reason", "resolved"},
     PEEK_NEGATIVE: {"invalidated"},
+    ROUND_ENDED: {"observation_status"},
 }
 
 
@@ -54,6 +55,7 @@ class ShoeSegment:
     settlements: List[dict] = field(default_factory=list)
     # 庄家信息不完整、只结束未结算的轮次号
     unsettled_rounds: List[int] = field(default_factory=list)
+    round_observations: List[dict] = field(default_factory=list)
     closed: bool = False
     round_id: Optional[str] = None
     unresolved: Dict[str, dict] = field(default_factory=dict)
@@ -216,6 +218,8 @@ class EventLedger:
                       extra: Optional[dict] = None) -> Event:
         payload = {"seat": seat, "hand_id": hand_id, "action": action}
         if extra:
+            if set(extra) - {"new_hand_id"}:
+                raise LedgerError("动作附加字段不能覆盖目标身份或动作")
             payload.update(extra)
         if action == ACTION_SPLIT and "new_hand_id" not in payload:
             # 预演一次以取得分牌产生的新手牌 id（事件落账前完成合法性校验）
@@ -238,8 +242,10 @@ class EventLedger:
     def gap(self, reason: str) -> Event:
         return self.append(Event(OBSERVATION_GAP, {"reason": reason}))
 
-    def end_round(self, *, settle: Optional[bool] = None, reason: str = "") -> Event:
-        return self.append(Event(ROUND_ENDED, {"settle": settle, "reason": reason}))
+    def end_round(self, *, settle: Optional[bool] = None, reason: str = "",
+                  observation_status: str = "unknown") -> Event:
+        return self.append(Event(ROUND_ENDED, {"settle": settle, "reason": reason,
+                                             "observation_status": observation_status}))
 
     def end_shoe(self) -> Event:
         return self.append(Event(SHOE_ENDED, {}))
@@ -283,16 +289,34 @@ class EventLedger:
         voided = self._voided_ids()
         corrections: Dict[str, dict] = {}
         seen = {}
-        for ev in self.events:
+        past_voided = set()
+        for index, ev in enumerate(self.events):
+            Event.from_dict(ev.to_dict())
+            if ev.etype == SESSION_STARTED and index != 0:
+                raise LedgerError("会话开始事件只能位于首条")
             if ev.etype in (UNDO, CORRECTION):
                 target = ev.payload.get("target_event_id")
                 if target not in seen or seen[target].etype in (UNDO, SESSION_STARTED):
                     raise LedgerError("控制事件必须引用此前可撤销/纠错的事件")
+                if target in past_voided:
+                    raise LedgerError("控制事件不可引用已撤销记录")
+                if ev.etype == UNDO:
+                    candidates = [e for e in seen.values() if e.etype not in (UNDO, SESSION_STARTED) and e.event_id not in past_voided]
+                    if not candidates or candidates[-1].event_id != target:
+                        raise LedgerError("只能逆序撤销最后有效事件，不能跳过后续记录")
+                    past_voided.add(target)
             if ev.etype == CORRECTION and ev.event_id not in voided:
                 original = seen[ev.payload["target_event_id"]]
                 fix = ev.payload.get("payload_fix")
                 if original.etype not in CORRECTABLE_FIELDS or not isinstance(fix, dict) or not fix or set(fix) - CORRECTABLE_FIELDS[original.etype]:
                     raise LedgerError("纠错包含不允许改写的身份、规则或操作字段")
+                for name in ("resolved", "invalidated"):
+                    if name in fix and type(fix[name]) is not bool:
+                        raise LedgerError("纠错状态必须为布尔值")
+                if "count" in fix and (type(fix["count"]) is not int or fix["count"] < 0):
+                    raise LedgerError("烧牌纠错数量必须为非负整数")
+                if "observation_status" in fix and fix["observation_status"] not in OBSERVATION_STATUSES:
+                    raise LedgerError("观察完整性纠错必须使用已定义状态")
                 corrections.setdefault(ev.payload["target_event_id"], {}).update(ev.payload["payload_fix"])
             seen[ev.event_id] = ev
         segments: List[ShoeSegment] = []
@@ -311,6 +335,8 @@ class EventLedger:
                 payload.update(corrections[ev.event_id])
 
             if ev.etype == SHOE_CREATED:
+                if ev.shoe_id != payload["shoe_id"] or ev.round_id is not None:
+                    raise LedgerError("建靴事件身份与负载不一致")
                 if cur and cur.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS):
                     raise LedgerError("当前轮尚未结束，不能换靴")
                 if any(s.shoe_id == payload["shoe_id"] for s in segments):
@@ -330,20 +356,24 @@ class EventLedger:
                 cur.events.append(ev)
                 if rules.start_from_new_shoe is False or rules.burn_cards_known is False:
                     cur.shoe.mark_gap("中途开始记录或烧牌数量未知")
+                if rules.initial_burn_count:
+                    cur.shoe.burn_known_count(rules.initial_burn_count)
                 continue
 
             if cur is None:
                 raise LedgerError(f"事件 {ev.etype} 出现在任何牌靴创建之前")
             if cur.closed:
                 raise LedgerError("牌靴已结束，请新建牌靴")
-            if ev.shoe_id not in (None, cur.shoe_id):
+            if ev.shoe_id != cur.shoe_id:
                 raise LedgerError("事件牌靴身份与重放上下文冲突")
-            if ev.etype in (CARD_DEALT, CARD_REVEALED, PLAYER_ACTION, PEEK_NEGATIVE, ROUND_ENDED) and ev.round_id not in (None, cur.round_id):
+            if ev.etype in (CARD_DEALT, CARD_REVEALED, PLAYER_ACTION, PEEK_NEGATIVE, ROUND_ENDED) and ev.round_id != cur.round_id:
                 raise LedgerError("事件轮次身份与当前上下文冲突")
             cur.events.append(ev)
             shoe, table = cur.shoe, cur.table
 
             if ev.etype == ROUND_STARTED:
+                if ev.round_id != payload["round_id"]:
+                    raise LedgerError("开轮事件身份与负载不一致")
                 table.start_round(payload.get("participants"))
                 cur.round_id = payload["round_id"]
                 if payload.get("round_no") != table.round_no:
@@ -369,6 +399,8 @@ class EventLedger:
                     dealt_tracks.add(track)
                 # 牌靴层
                 if face == FACE_HIDDEN:
+                    if ev.confirm_status != CONFIRMED:
+                        raise LedgerError("规则性底牌的存在必须已确认；不确定观察请记录未知牌")
                     if seat != DEALER or cur.rules.american_hole_card is False:
                         raise LedgerError("规则性暗牌只适用于有底牌庄家；漏牌请记录未知牌面")
                     shoe.place_unrevealed()
@@ -399,6 +431,8 @@ class EventLedger:
                 target = cur.unresolved.get(target_id)
                 if target is None or target["round_id"] != cur.round_id:
                     raise LedgerError("目标牌未处于本轮待揭示状态；历史牌请追加纠错")
+                if payload["seat"] != target["seat"] or any(payload.get(k) is not None and payload[k] != target[k] for k in ("hand_id", "track_id")):
+                    raise LedgerError("揭示事件身份与目标发牌不一致")
                 if payload["rank"] not in (*RANKS, TEN_BUCKET):
                     raise LedgerError("揭示需要有效已知牌面")
                 shoe.reveal_unrevealed(payload["rank"])
@@ -439,6 +473,16 @@ class EventLedger:
 
             elif ev.etype == ROUND_ENDED:
                 table.ensure_playing()
+                declared = payload.get("observation_status", "unknown")
+                missing = table.missing_observations()
+                observation = {"event_id": ev.event_id, "round_id": cur.round_id,
+                    "round_no": table.round_no, "declared": declared,
+                    "status": "incomplete" if missing else declared,
+                    "detected_missing": missing,
+                    "legacy_unspecified": "observation_status" not in payload}
+                cur.round_observations.append(observation)
+                if observation["status"] != "complete":
+                    shoe.mark_gap(f"第{table.round_no}轮观察完整性{observation['status']}；请核对结束事件 #{ev.seq}")
                 if table.phase == PHASE_DEALING:
                     table.enter_play_phase()
                 # 庄家信息完整才做确定性结算；否则只结束轮次并标注未结算

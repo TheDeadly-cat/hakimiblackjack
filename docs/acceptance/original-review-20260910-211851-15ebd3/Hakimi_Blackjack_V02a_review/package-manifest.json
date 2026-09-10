@@ -1,0 +1,20 @@
+{
+  "README_证据包.md": "2388f45279ad1d3c09f0dfa88bd4df8de80c1255905836c6fb3dd2ac84db9a09",
+  "demo-values.json": "d5a872370a16c6b9395cd71692946939de8c55d4592d0a01412f29114d750999",
+  "handoff/test_v02a_review_regressions.py": "d9fff919bee93658005dfd23b973f406b612addd6b435c3133726b87901a3a35",
+  "isolated/blackjack_lab/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "isolated/blackjack_lab/analysis/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "isolated/blackjack_lab/analysis/actions.py": "db62d08cfe4cfe7da52fd2bf2fdeb690e0b757ce6101501ec3eefeedeb160770",
+  "isolated/blackjack_lab/analysis/probability.py": "e08237a80407ae2284f4a4fc35c0d85446525080d86261b8d7724c3460c22659",
+  "isolated/run_supplementary_math.py": "f653faf54d1a30016952c86cd60bbd0ba165e5c7b400bfd58d364fe9bb57951d",
+  "isolated/supplementary-math-rerun.json": "e0d904d00e1eb5c3474d221cffafe9fb90a38c6d78394c35d9ebf13d23ce88b3",
+  "isolated/tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "isolated/tests/analysis_reference.py": "334fe6a65d109ae89de3816b872e450890ee72825026d9ac281e1700f2e8fffc",
+  "isolated/tests/test_analysis_math.py": "fd1f1b6e9cb5251ea2995f07f7ee0fd33cf17b82769478cffc9dc508528c1428",
+  "math-receipt.json": "28768a767f14c4014b7ac9c128e61e726b82b126cb2cf37fcfc355f06ceaeb8e",
+  "math-rerun.txt": "412ff401419acc5607693d27679e4273b75cb466a9e8cc85b9daa8fd67505da2",
+  "review-scope.json": "70e1f3de50cdbe323cf896b947bfb33d15a9373c12d08b5a37b4131f20dce15c",
+  "supplementary-math.json": "9f81621ae29a04fae0effde6f850f9581b2387f3827bd81374b28468a8b5dd19",
+  "supplementary-rerun.txt": "7d58c26ff8e9625c4645a8a47dfe758208f793c56eb4175f4c9ff6d5f8e101a1",
+  "增量审查与下一单.md": "6d7df74db39ffaafbeb911491f84f5a0028297d7dc5f43885c709567291aff39"
+}

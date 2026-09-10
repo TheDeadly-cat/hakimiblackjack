@@ -24,3 +24,6 @@ dist/
 venv/
 .coverage
 .DS_Store
+.local-evidence/
+*.analysis/
+/BUILD_INFO.json

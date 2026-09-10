@@ -115,7 +115,8 @@ class TestUIWorkflow(unittest.TestCase):
         self.app.rule_details = {"n_seats": 1}
         self.start()
         self.app.act_unknown_card()
-        with patch("blackjack_lab.ui.app.simpledialog.askstring", return_value="本轮玩家牌未能确认"):
+        with patch("blackjack_lab.ui.app.simpledialog.askstring", return_value="本轮玩家牌未能确认"), \
+                patch.object(self.app, "ask_observation_status", return_value="unknown"):
             self.app.act_end_unsettled()
         self.app.act_new_round()
         self.assertEqual(self.app.ctrl.state().current.table.round_no, 2)

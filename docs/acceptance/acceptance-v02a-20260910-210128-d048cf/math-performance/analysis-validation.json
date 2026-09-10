@@ -1,0 +1,375 @@
+{
+  "timestamp_utc": "2026-09-10T13:02:10.155738+00:00",
+  "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "commit": "a602222c88f302b16563fe20b2190425cf9195e7",
+  "source_identity_kind": "git",
+  "dirty_worktree": false,
+  "synthetic_only": true,
+  "monte_carlo": [
+    {
+      "n_decks": 6,
+      "seed": 20260916,
+      "samples": 20000,
+      "unit": "independent synthetic rounds; two actions reuse worlds, not independent extra samples",
+      "actions": {
+        "stand": {
+          "exact_ev": -0.5409544390190253,
+          "sample_mean": -0.5531,
+          "standard_error": 0.005891159036025032,
+          "normal_ci95": [
+            -0.5646466717106091,
+            -0.541553328289391
+          ],
+          "verification_bound": "predeclared abs(mean-exact) <= 6*SE + 1e-10",
+          "passed": true
+        },
+        "double": {
+          "exact_ev": -1.0693511249051264,
+          "sample_mean": -1.0613,
+          "standard_error": 0.011492550606195815,
+          "normal_ci95": [
+            -1.0838253991881437,
+            -1.0387746008118561
+          ],
+          "verification_bound": "predeclared abs(mean-exact) <= 6*SE + 1e-10",
+          "passed": true
+        }
+      }
+    },
+    {
+      "n_decks": 7,
+      "seed": 20260917,
+      "samples": 20000,
+      "unit": "independent synthetic rounds; two actions reuse worlds, not independent extra samples",
+      "actions": {
+        "stand": {
+          "exact_ev": -0.5408817440903413,
+          "sample_mean": -0.5344,
+          "standard_error": 0.005976840146005792,
+          "normal_ci95": [
+            -0.5461146066861713,
+            -0.5226853933138287
+          ],
+          "verification_bound": "predeclared abs(mean-exact) <= 6*SE + 1e-10",
+          "passed": true
+        },
+        "double": {
+          "exact_ev": -1.0708379299281787,
+          "sample_mean": -1.0875,
+          "standard_error": 0.011377330956027611,
+          "normal_ci95": [
+            -1.109799568673814,
+            -1.0652004313261858
+          ],
+          "verification_bound": "predeclared abs(mean-exact) <= 6*SE + 1e-10",
+          "passed": true
+        }
+      }
+    },
+    {
+      "n_decks": 8,
+      "seed": 20260918,
+      "samples": 20000,
+      "unit": "independent synthetic rounds; two actions reuse worlds, not independent extra samples",
+      "actions": {
+        "stand": {
+          "exact_ev": -0.540826736160998,
+          "sample_mean": -0.5416,
+          "standard_error": 0.005944345107910382,
+          "normal_ci95": [
+            -0.5532509164115044,
+            -0.5299490835884956
+          ],
+          "verification_bound": "predeclared abs(mean-exact) <= 6*SE + 1e-10",
+          "passed": true
+        },
+        "double": {
+          "exact_ev": -1.0719496863342277,
+          "sample_mean": -1.082,
+          "standard_error": 0.011384651093205522,
+          "normal_ci95": [
+            -1.104313916142683,
+            -1.0596860838573172
+          ],
+          "verification_bound": "predeclared abs(mean-exact) <= 6*SE + 1e-10",
+          "passed": true
+        }
+      }
+    }
+  ],
+  "performance": {
+    "cases": [
+      {
+        "n_decks": 6,
+        "player": [
+          "10",
+          "6"
+        ],
+        "dealer_up": "10",
+        "status": "available",
+        "input_seconds": 0.0006960000000617583,
+        "wall_seconds": 0.2329807000000983,
+        "compute_seconds": 0.0016359999999622232,
+        "worker_peak_working_set_bytes": 35942400,
+        "nodes": 433
+      },
+      {
+        "n_decks": 6,
+        "player": [
+          "5",
+          "6"
+        ],
+        "dealer_up": "6",
+        "status": "available",
+        "input_seconds": 0.0006095000001096196,
+        "wall_seconds": 0.2503114999999525,
+        "compute_seconds": 0.03383280000002742,
+        "worker_peak_working_set_bytes": 41889792,
+        "nodes": 9571
+      },
+      {
+        "n_decks": 6,
+        "player": [
+          "A",
+          "6"
+        ],
+        "dealer_up": "9",
+        "status": "available",
+        "input_seconds": 0.000575400000116133,
+        "wall_seconds": 0.27357680000000073,
+        "compute_seconds": 0.0492036000000553,
+        "worker_peak_working_set_bytes": 44163072,
+        "nodes": 12957
+      },
+      {
+        "n_decks": 6,
+        "player": [
+          "3",
+          "5"
+        ],
+        "dealer_up": "10",
+        "status": "available",
+        "input_seconds": 0.0006203000000368775,
+        "wall_seconds": 0.24193720000016583,
+        "compute_seconds": 0.02586220000011963,
+        "worker_peak_working_set_bytes": 40423424,
+        "nodes": 7074
+      },
+      {
+        "n_decks": 6,
+        "player": [
+          "A",
+          "2"
+        ],
+        "dealer_up": "2",
+        "status": "available",
+        "input_seconds": 0.000570200000083787,
+        "wall_seconds": 1.0901567000000796,
+        "compute_seconds": 0.8667350000000624,
+        "worker_peak_working_set_bytes": 164515840,
+        "nodes": 197138
+      },
+      {
+        "n_decks": 6,
+        "player": [
+          "2",
+          "3"
+        ],
+        "dealer_up": "2",
+        "status": "available",
+        "input_seconds": 0.0005763999999999214,
+        "wall_seconds": 0.7449437000000216,
+        "compute_seconds": 0.5238632000000507,
+        "worker_peak_working_set_bytes": 116334592,
+        "nodes": 126025
+      },
+      {
+        "n_decks": 7,
+        "player": [
+          "10",
+          "6"
+        ],
+        "dealer_up": "10",
+        "status": "available",
+        "input_seconds": 0.000602500000013606,
+        "wall_seconds": 0.21115080000004127,
+        "compute_seconds": 0.0018990999999459746,
+        "worker_peak_working_set_bytes": 36122624,
+        "nodes": 433
+      },
+      {
+        "n_decks": 7,
+        "player": [
+          "5",
+          "6"
+        ],
+        "dealer_up": "6",
+        "status": "available",
+        "input_seconds": 0.0005579000001034728,
+        "wall_seconds": 0.25254549999999654,
+        "compute_seconds": 0.03360279999992599,
+        "worker_peak_working_set_bytes": 41984000,
+        "nodes": 9571
+      },
+      {
+        "n_decks": 7,
+        "player": [
+          "A",
+          "6"
+        ],
+        "dealer_up": "9",
+        "status": "available",
+        "input_seconds": 0.0005654000001413806,
+        "wall_seconds": 0.25647479999997813,
+        "compute_seconds": 0.04379910000011478,
+        "worker_peak_working_set_bytes": 44384256,
+        "nodes": 12957
+      },
+      {
+        "n_decks": 7,
+        "player": [
+          "3",
+          "5"
+        ],
+        "dealer_up": "10",
+        "status": "available",
+        "input_seconds": 0.0005982000000130938,
+        "wall_seconds": 0.2394160000001193,
+        "compute_seconds": 0.02392950000012206,
+        "worker_peak_working_set_bytes": 40341504,
+        "nodes": 7074
+      },
+      {
+        "n_decks": 7,
+        "player": [
+          "A",
+          "2"
+        ],
+        "dealer_up": "2",
+        "status": "available",
+        "input_seconds": 0.0005991000000449276,
+        "wall_seconds": 1.0622860999999375,
+        "compute_seconds": 0.8403385999999955,
+        "worker_peak_working_set_bytes": 164564992,
+        "nodes": 197139
+      },
+      {
+        "n_decks": 7,
+        "player": [
+          "2",
+          "3"
+        ],
+        "dealer_up": "2",
+        "status": "available",
+        "input_seconds": 0.0005681000000095082,
+        "wall_seconds": 0.7354722999998557,
+        "compute_seconds": 0.5238311000000522,
+        "worker_peak_working_set_bytes": 116846592,
+        "nodes": 126025
+      },
+      {
+        "n_decks": 8,
+        "player": [
+          "10",
+          "6"
+        ],
+        "dealer_up": "10",
+        "status": "available",
+        "input_seconds": 0.0005962000000181433,
+        "wall_seconds": 0.22873189999995702,
+        "compute_seconds": 0.0017384000000220112,
+        "worker_peak_working_set_bytes": 35930112,
+        "nodes": 433
+      },
+      {
+        "n_decks": 8,
+        "player": [
+          "5",
+          "6"
+        ],
+        "dealer_up": "6",
+        "status": "available",
+        "input_seconds": 0.0005747000000155822,
+        "wall_seconds": 0.24479059999998753,
+        "compute_seconds": 0.033604200000127094,
+        "worker_peak_working_set_bytes": 41918464,
+        "nodes": 9571
+      },
+      {
+        "n_decks": 8,
+        "player": [
+          "A",
+          "6"
+        ],
+        "dealer_up": "9",
+        "status": "available",
+        "input_seconds": 0.0006565000001046428,
+        "wall_seconds": 0.26197769999998854,
+        "compute_seconds": 0.0448580000002039,
+        "worker_peak_working_set_bytes": 44457984,
+        "nodes": 12957
+      },
+      {
+        "n_decks": 8,
+        "player": [
+          "3",
+          "5"
+        ],
+        "dealer_up": "10",
+        "status": "available",
+        "input_seconds": 0.0005894000000807864,
+        "wall_seconds": 0.23297019999995427,
+        "compute_seconds": 0.024446300000136034,
+        "worker_peak_working_set_bytes": 40411136,
+        "nodes": 7074
+      },
+      {
+        "n_decks": 8,
+        "player": [
+          "A",
+          "2"
+        ],
+        "dealer_up": "2",
+        "status": "available",
+        "input_seconds": 0.0005570999999235937,
+        "wall_seconds": 1.0659650999998576,
+        "compute_seconds": 0.8427948000000924,
+        "worker_peak_working_set_bytes": 164356096,
+        "nodes": 197139
+      },
+      {
+        "n_decks": 8,
+        "player": [
+          "2",
+          "3"
+        ],
+        "dealer_up": "2",
+        "status": "available",
+        "input_seconds": 0.0005583000001934124,
+        "wall_seconds": 0.750214700000015,
+        "compute_seconds": 0.5297796999998354,
+        "worker_peak_working_set_bytes": 116682752,
+        "nodes": 126025
+      }
+    ],
+    "n": 18,
+    "p50_seconds": 0.25451014999998733,
+    "p95_seconds": 1.0901567000000796,
+    "max_seconds": 1.0901567000000796,
+    "p95_method": "nearest rank",
+    "target_p95_seconds": 2.0,
+    "target_met": true,
+    "all_completed": true
+  },
+  "recording": {
+    "rounds": 20,
+    "operations": 160,
+    "event_count": 162,
+    "p50_seconds": 0.012936650000028749,
+    "p95_seconds": 0.01803129999984776,
+    "max_seconds": 0.019390999999814085,
+    "scope": "single-session record validation and SQLite commit, no UI repaint"
+  },
+  "passed": true
+}

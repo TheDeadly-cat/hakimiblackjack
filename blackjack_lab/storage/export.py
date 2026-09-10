@@ -16,6 +16,7 @@ from typing import Optional
 from .. import __version__, ENGINE_VERSION
 from ..ledger.events import Event
 from ..ledger.ledger import EventLedger
+from .safe_files import atomic_write, spreadsheet_cell
 
 EXPORT_FORMAT = "hakimi-blackjack-lab-json"
 EXPORT_FORMAT_VERSION = 1
@@ -66,25 +67,21 @@ def build_export(ledger: EventLedger, session_name: str = "",
 def export_json(ledger: EventLedger, path: str | Path,
                 session_name: str = "", note: str = "") -> Path:
     data = build_export(ledger, session_name=session_name, note=note)
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    return path
+    return atomic_write(path, json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False).encode("utf-8"))
 
 
 def export_csv(ledger: EventLedger, path: str | Path) -> Path:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
     cols = ["seq", "event_id", "etype", "event_time", "shoe_id", "round_id",
             "source", "confirm_status", "payload", "event_json"]
-    with path.open("w", newline="", encoding="utf-8-sig") as f:
+    with io.StringIO(newline="") as f:
         w = csv.writer(f)
         w.writerow(cols)
         for ev in sorted(ledger.events, key=lambda e: e.seq):
-            w.writerow([ev.seq, ev.event_id, ev.etype, ev.event_time,
+            w.writerow([spreadsheet_cell(value) for value in [ev.seq, ev.event_id, ev.etype, ev.event_time,
                         ev.shoe_id, ev.round_id, ev.source, ev.confirm_status,
-                        json.dumps(ev.payload, ensure_ascii=False), ev.to_json()])
-    return path
+                        json.dumps(ev.payload, ensure_ascii=False), ev.to_json()]])
+        data = f.getvalue().encode("utf-8-sig")
+    return atomic_write(path, data)
 
 
 def import_json(path: str | Path) -> EventLedger:

@@ -1,0 +1,12 @@
+test_change_undo_and_target_cancel_current_worker (tests.test_analysis_ui.TestAnalysisUI.test_change_undo_and_target_cancel_current_worker) ... ok
+test_pair_shows_partial_comparison_without_recommendation (tests.test_analysis_ui.TestAnalysisUI.test_pair_shows_partial_comparison_without_recommendation) ... ok
+test_real_6_7_8_analysis_before_hole_reveal_and_saved_history (tests.test_analysis_ui.TestAnalysisUI.test_real_6_7_8_analysis_before_hole_reveal_and_saved_history) ... ok
+test_refresh_failure_says_committed_and_io_failure_says_not_committed (tests.test_analysis_ui.TestAnalysisUI.test_refresh_failure_says_committed_and_io_failure_says_not_committed) ... ok
+test_restart_read_original_and_recompute_to_new_snapshot (tests.test_analysis_ui.TestAnalysisUI.test_restart_read_original_and_recompute_to_new_snapshot) ... ok
+test_snapshot_write_failure_is_separate_from_event_commit (tests.test_analysis_ui.TestAnalysisUI.test_snapshot_write_failure_is_separate_from_event_commit) ... ok
+test_timeout_keeps_recording_responsive_without_old_values (tests.test_analysis_ui.TestAnalysisUI.test_timeout_keeps_recording_responsive_without_old_values) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 3.937s
+
+OK

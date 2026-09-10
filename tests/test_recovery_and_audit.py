@@ -248,7 +248,7 @@ os._exit(23)
     def test_end_round_returns_only_current_round_results(self):
         c = SessionController(self.path / "controller.db")
         self.addCleanup(c.close)
-        c.new_shoe(RuleProfile())
+        c.new_shoe(RuleProfile(dealer_soft17="S17"))
         for _ in range(2):
             c.start_round(["玩家1"])
             for seat, ranks in [("庄家", ["10", "8"]), ("玩家1", ["10", "9"])]:

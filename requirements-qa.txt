@@ -1,0 +1,2 @@
+# Optional development-only window capture used for the validated local QA run.
+Pillow==12.2.0

@@ -1,0 +1,40 @@
+test_actual_unsettled_dialog_cross_round_and_recovery (tests.test_round_observation.TestObservationWindows.test_actual_unsettled_dialog_cross_round_and_recovery) ... ok
+test_all_players_bust_does_not_require_unnecessary_dealer_draw (tests.test_round_observation.TestRoundObservation.test_all_players_bust_does_not_require_unnecessary_dealer_draw) ... ok
+test_append_only_observation_correction_preserves_historical_unknown_prefix (tests.test_round_observation.TestRoundObservation.test_append_only_observation_correction_preserves_historical_unknown_prefix) ... ok
+test_declaring_or_correcting_complete_cannot_hide_pending_draws (tests.test_round_observation.TestRoundObservation.test_declaring_or_correcting_complete_cannot_hide_pending_draws) ... ok
+test_explicit_complete_unsettled_round_keeps_analysis_eligible (tests.test_round_observation.TestRoundObservation.test_explicit_complete_unsettled_round_keeps_analysis_eligible) ... ok
+test_invalid_observation_values_rejected (tests.test_round_observation.TestRoundObservation.test_invalid_observation_values_rejected) ... ok
+test_legacy_missing_field_remains_unknown_and_original_rows_unchanged (tests.test_round_observation.TestRoundObservation.test_legacy_missing_field_remains_unknown_and_original_rows_unchanged) ... ok
+test_missing_initial_card_survives_round_boundary_without_parsing_reason (tests.test_round_observation.TestRoundObservation.test_missing_initial_card_survives_round_boundary_without_parsing_reason) ... ok
+test_recovery_import_and_replay_preserve_both_complete_and_missing (tests.test_round_observation.TestRoundObservation.test_recovery_import_and_replay_preserve_both_complete_and_missing) ... ok
+test_undo_reopens_round_and_recorded_missing_card_restores_completeness (tests.test_round_observation.TestRoundObservation.test_undo_reopens_round_and_recorded_missing_card_restores_completeness) ... ok
+test_burn_and_gap (tests.test_ledger.TestHiddenAndUnknown.test_burn_and_gap) ... ok
+test_hidden_reveal_flow (tests.test_ledger.TestHiddenAndUnknown.test_hidden_reveal_flow) ... ok
+test_unknown_card_pending (tests.test_ledger.TestHiddenAndUnknown.test_unknown_card_pending) ... ok
+test_same_event_id_only_once (tests.test_ledger.TestIdempotent.test_same_event_id_only_once) ... ok
+test_same_track_allowed_after_undo (tests.test_ledger.TestIdempotent.test_same_track_allowed_after_undo) ... ok
+test_same_track_dealt_once (tests.test_ledger.TestIdempotent.test_same_track_dealt_once) ... ok
+test_hidden_future_invisible (tests.test_ledger.TestInformationLeak.test_hidden_future_invisible) ... ok
+test_correction_equals_replay_from_correct_start (tests.test_ledger.TestUndoAndCorrection.test_correction_equals_replay_from_correct_start) ... ok
+test_new_round_keeps_shoe (tests.test_ledger.TestUndoAndCorrection.test_new_round_keeps_shoe) ... ok
+test_new_shoe_isolated (tests.test_ledger.TestUndoAndCorrection.test_new_shoe_isolated) ... ok
+test_undo_reverse_order (tests.test_ledger.TestUndoAndCorrection.test_undo_reverse_order) ... ok
+test_fewer_seats_and_unsettled_round (tests.test_ui_workflow.TestUIWorkflow.test_fewer_seats_and_unsettled_round) ... ok
+test_full_ui_round_for_6_7_8_decks (tests.test_ui_workflow.TestUIWorkflow.test_full_ui_round_for_6_7_8_decks) ... ok
+test_history_correction_import_export_and_resume (tests.test_ui_workflow.TestUIWorkflow.test_history_correction_import_export_and_resume) ... ok
+test_invalid_click_does_not_poison_next_record (tests.test_ui_workflow.TestUIWorkflow.test_invalid_click_does_not_poison_next_record) ... ok
+test_k_button_not_overlapped_and_entry_shortcut_does_not_deal (tests.test_ui_workflow.TestUIWorkflow.test_k_button_not_overlapped_and_entry_shortcut_does_not_deal) ... ok
+test_reveal_undo_and_reveal_again (tests.test_ui_workflow.TestUIWorkflow.test_reveal_undo_and_reveal_again) ... ok
+test_split_buttons_and_explicit_hand_selection (tests.test_ui_workflow.TestUIWorkflow.test_split_buttons_and_explicit_hand_selection) ... ok
+test_change_undo_and_target_cancel_current_worker (tests.test_analysis_ui.TestAnalysisUI.test_change_undo_and_target_cancel_current_worker) ... ok
+test_pair_shows_partial_comparison_without_recommendation (tests.test_analysis_ui.TestAnalysisUI.test_pair_shows_partial_comparison_without_recommendation) ... ok
+test_real_6_7_8_analysis_before_hole_reveal_and_saved_history (tests.test_analysis_ui.TestAnalysisUI.test_real_6_7_8_analysis_before_hole_reveal_and_saved_history) ... ok
+test_refresh_failure_says_committed_and_io_failure_says_not_committed (tests.test_analysis_ui.TestAnalysisUI.test_refresh_failure_says_committed_and_io_failure_says_not_committed) ... ok
+test_restart_read_original_and_recompute_to_new_snapshot (tests.test_analysis_ui.TestAnalysisUI.test_restart_read_original_and_recompute_to_new_snapshot) ... ok
+test_snapshot_write_failure_is_separate_from_event_commit (tests.test_analysis_ui.TestAnalysisUI.test_snapshot_write_failure_is_separate_from_event_commit) ... ok
+test_timeout_keeps_recording_responsive_without_old_values (tests.test_analysis_ui.TestAnalysisUI.test_timeout_keeps_recording_responsive_without_old_values) ... ok
+
+----------------------------------------------------------------------
+Ran 35 tests in 6.784s
+
+OK
