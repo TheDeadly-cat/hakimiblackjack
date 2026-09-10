@@ -1,7 +1,8 @@
-# Hakimi Blackjack Lab V0.2a 依赖清单
+# Hakimi Blackjack Lab V0.2b1 Python 依赖清单
 #
-# V0.2a运行仅使用 Python 标准库（tkinter / sqlite3 / json / csv / unittest），
-# 无需 pip 安装任何第三方包，核心功能可完全离线运行。
+# Python 主程序仅使用标准库（tkinter / sqlite3 / json / csv / unittest），
+# 无需 pip 安装第三方包。Windows 分牌数值程序另使用系统 .NET Framework 4
+# 编译器/运行时和 System.Web.Extensions；源码随项目提供，本地编译，无下载。
 #
 # 运行环境：Windows 优先，Python 3.10+（开发与验证环境为 Python 3.14.6，Windows）。
 # tkinter 在 Windows 官方 Python 安装包中默认自带；若使用精简发行版，

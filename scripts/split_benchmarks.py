@@ -59,6 +59,7 @@ def cases():
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--output',type=Path)
+    parser.add_argument('--compare-dir',type=Path,help='完整旧搜索的318项回执目录；按实际模型字段对齐并逐格差分')
     args=parser.parse_args()
     output=args.output or ROOT/'.local-evidence'/('split-cold-'+datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:6])
     output.mkdir(parents=True,exist_ok=False)
@@ -82,6 +83,30 @@ def main():
                      compute_seconds=result['elapsed_seconds'],reason=result['reason'],
                      peak_native_bytes=result.get('peak_memory'),peak_python_bytes=result.get('worker_peak_working_set_bytes'),
                      result_file=name+'.json')
+            if args.compare_dir:
+                baseline_path=args.compare_dir/row['result_file']
+                baseline=json.loads(baseline_path.read_text(encoding='utf-8'))
+                def model(info):
+                    return {**{k:info[k] for k in ('n_decks','rules_json','counts','dealer_up','peek_negative','legal_actions','uncertain_actions')},
+                            'hands':[{k:h[k] for k in ('ranks','origin_ranks','closed','forced_draw','split_ace','bet_units')} for h in info['hands']]}
+                # JSON-normalize tuple/list; opaque event IDs differ between runs.
+                same=json.loads(json.dumps(model(result['input'])))==model(baseline['input'])
+                differences=[]
+                compatible=same and result['status']==baseline['status']=='available' and set(result['actions'])==set(baseline['actions'])
+                if compatible:
+                    for action,item in result['actions'].items():
+                        previous=baseline['actions'][action]
+                        compatible=compatible and item['status']==previous['status']
+                        if item['status']=='available' and previous['status']=='available':
+                            differences.append(abs(item['ev']-previous['ev']))
+                            for field in ('net_distribution','joint_distribution'):
+                                if field not in item and field not in previous:
+                                    continue
+                                compatible=compatible and set(item.get(field,{}))==set(previous.get(field,{}))
+                                differences.extend(abs(p-previous[field][key]) for key,p in item.get(field,{}).items() if key in previous.get(field,{}))
+                row.update(reference_result_sha256=hashlib.sha256(baseline_path.read_bytes()).hexdigest(),
+                           same_model=same,comparison_passed=compatible and max(differences,default=1.)<=1e-10,
+                           max_abs_error=max(differences,default=None))
             (output/row['result_file']).write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
             rows.append(row)
             with (output/'progress.jsonl').open('a',encoding='utf-8') as stream:
@@ -103,6 +128,11 @@ def main():
         peak_combined_process_bytes=max((r['peak_native_bytes'] or 0)+(r['peak_python_bytes'] or 0) for r in rows),
         scope='Synthetic finite shared-shoe requests; artifact reuse only, no probability/policy cache between requests; no user data')
     receipt['passed']=receipt['target_met'] and receipt['all_completed'] and receipt['source_unchanged']
+    if args.compare_dir:
+        receipt['comparison_directory']=str(args.compare_dir.resolve())
+        receipt['comparison_passed']=all(r['comparison_passed'] for r in rows)
+        receipt['max_abs_error']=max((r['max_abs_error'] for r in rows if r['max_abs_error'] is not None),default=None)
+        receipt['passed']=receipt['passed'] and receipt['comparison_passed']
     (output/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps({k:receipt[k] for k in ('count','p50_seconds','p95_seconds','max_seconds','statuses','passed')}),flush=True)
     print(output,flush=True)

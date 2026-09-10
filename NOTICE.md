@@ -1,7 +1,7 @@
-# 第三方代码与许可说明（V0.1）
+# 第三方代码与许可说明
 
 - V0.1 全部代码为本项目原创，**未直接整包并入任何第三方项目**；
-- 运行仅依赖 Python 标准库（tkinter/sqlite3/json/csv/unittest 等），无第三方传递依赖；
+- Python 主程序依赖标准库。V0.2b1 数值加速器为本项目 C# 源码，调用现有 Windows .NET Framework 4 编译器/运行时和 System.Web.Extensions；不重新分发 Microsoft 运行时或编译器，不引入 NuGet/pip 传递依赖；
 - `possibly-wrong/blackjack`（GPL-3.0-or-later）仅列为 V0.2 的**候选交叉验证引擎**，
   在审查授权与分发安排前不并入产品；测试通过也不等于获得任何平台许可；
 - 本工具不接真实资金账户、不自动下注、不自动点击、不读取隐藏接口、

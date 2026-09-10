@@ -48,7 +48,7 @@ class SplitEngine {
     const double Epsilon=1e-12;
     readonly int up,excluded; bool aces; readonly double budget;
     readonly Stopwatch watch=Stopwatch.StartNew();
-    long nodes;
+    long nodes,informationBoundPrunes;
     int h2; bool a2,force2;
     readonly DealerMemo dealerCache=new DealerMemo();
     readonly Dictionary<ulong,D7> endCache=new Dictionary<ulong,D7>();
@@ -106,6 +106,24 @@ class SplitEngine {
         double hitting=0;for(int i=0;i<10;i++){double p=Draw(c,i,size,mass);if(p>0)hitting+=p*Second(Remove(c,i),h+i+1,a||i==0,false);}
         if(force||safe||hitting>value+Epsilon)value=hitting;secondCache[key]=value;return value;
     }
+    // Positive upper bounds are rounded outward, never toward an optimistic value.
+    // See docs/V0.2b1数学与性能契约.md: one-card coupling + stopped draw-count bound.
+    static double Up(double value) {return value==0?0:BitConverter.Int64BitsToDouble(BitConverter.DoubleToInt64Bits(value)+1);}
+    double FutureInformationGainBound(ulong c,int h,int size,int mass) {
+        int k=21-h;
+        int visible=Math.Max(0,21-h2)+Math.Max(0,16-up);
+        int removed=k+visible+1,denominator=size-removed;
+        if(k<=0)return 0;
+        if(size<64||denominator<=0||mass<=k)return 2;
+        int left=removed;double[] probability=new double[10];
+        for(int i=9;i>=0;i--){int n=Count(c,i),take=Math.Min(n,left);left-=take;probability[i]=Up((double)(n-take)/denominator);}
+        double[] player=new double[31],dealer=new double[27];
+        for(int t=20;t>=0;t--){player[t]=1;for(int i=0;i<10;i++)if(t+i+1<21&&probability[i]>0)player[t]=Up(player[t]+Up(probability[i]*player[t+i+1]));}
+        for(int t=16;t>=0;t--){dealer[t]=1;for(int i=0;i<10;i++)if(t+i+1<17&&probability[i]>0)dealer[t]=Up(dealer[t]+Up(probability[i]*dealer[t+i+1]));}
+        double expectedVisible=Up(player[h2]+dealer[up+1]);
+        double one=Up(2*Up(Up(1.0/(mass-k))+Up(expectedVisible/denominator)));
+        return Math.Min(2,Up(one*player[h]));
+    }
     double FirstStand(ulong c,int h,bool a) {return Stand(c,Score(h,a))+Second(c,h2,a2,force2);}
     double First(ulong c,int h,bool a,bool force) {
         Check();a=a&&h<=11;Key key=new Key(c,h*4+(a?2:0)+(force?1:0));double value;if(firstCache.TryGetValue(key,out value))return value;
@@ -113,7 +131,12 @@ class SplitEngine {
         bool safe=!aces&&SafeLow(size,h,a);
         if(!force&&!safe){value=FirstStand(c,h,a);if(aces||score>=21||size<2){firstCache[key]=value;return value;}
             double bust=0;for(int i=0;i<10;i++)if(Score(h+i+1,a||i==0)>21)bust+=Draw(c,i,size,mass);
-            if(2-2*bust<=value+Epsilon){firstCache[key]=value;return value;}}
+            if(2-2*bust<=value+Epsilon){firstCache[key]=value;return value;}
+            if(h>=12&&size>=64){double gain=FutureInformationGainBound(c,h,size,mass),own=Stand(c,score);
+                if(1-2*bust+gain<=own+Epsilon){informationBoundPrunes++;firstCache[key]=value;return value;}
+                double ownHit=0;for(int i=0;i<10;i++){double p=Draw(c,i,size,mass);if(p>0)ownHit+=p*Second(Remove(c,i),h+i+1,a||i==0,false);}
+                if(ownHit+gain<=own+Epsilon){informationBoundPrunes++;firstCache[key]=value;return value;}}
+}
         else value=0;
         if(size<2||mass<=0)throw new InvalidOperationException("INSUFFICIENT_CARDS");
         double hitting=0;for(int i=0;i<10;i++){double p=Draw(c,i,size,mass);if(p>0)hitting+=p*First(Remove(c,i),h+i+1,a||i==0,false);}
@@ -202,7 +225,7 @@ class SplitEngine {
         else {int s1=Math.Min(Score(h1,a1),22);if(force2)actions["deal"]=Result(SecondDist(c,s1,h2,a2,true));else{
             actions["stand"]=Result(Terminal(c,s1,Math.Min(Score(h2,a2),22)));
             if(!aces&&Score(h2,a2)<21){D9 d=new D9();int size=Size(c),mass=Mass(c,size);for(int i=0;i<10;i++){double p=Draw(c,i,size,mass);if(p>0)d.Add(SecondDist(Remove(c,i),s1,h2+i+1,a2||i==0,false),p);}actions["hit"]=Result(d);}}}
-        var output=new Dictionary<string,object>{{"status","available"},{"actions",actions},{"nodes",nodes},{"elapsed_seconds",watch.Elapsed.TotalSeconds},{"caches",new int[]{dealerCache.Count,endCache.Count,secondCache.Count,firstCache.Count,secondDistCache.Count,firstDistCache.Count}},{"peak_memory",Process.GetCurrentProcess().PeakWorkingSet64}};
+        var output=new Dictionary<string,object>{{"status","available"},{"actions",actions},{"nodes",nodes},{"information_bound_prunes",informationBoundPrunes},{"elapsed_seconds",watch.Elapsed.TotalSeconds},{"caches",new int[]{dealerCache.Count,endCache.Count,secondCache.Count,firstCache.Count,secondDistCache.Count,firstDistCache.Count}},{"peak_memory",Process.GetCurrentProcess().PeakWorkingSet64}};
         if(probabilities!=null)foreach(var item in probabilities)output[item.Key]=item.Value;
         return output;
     }
