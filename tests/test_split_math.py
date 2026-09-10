@@ -83,6 +83,8 @@ class TestSplitMath(unittest.TestCase):
             solve_split_counts((1,)*10,((8,),(8,9)),6,False)
         with self.assertRaises(InsufficientCards):
             solve_split_counts((0,)*9+(1,),((8,),(8,)),6,False)
+        with self.assertRaises(InsufficientCards):
+            solve_split_counts((0,)*9+(1,),((8,10),(10,10)),10,True,active=1)
 
     def test_timeout_does_not_return_partial_ev(self):
         with self.assertRaises(CalculationStopped):

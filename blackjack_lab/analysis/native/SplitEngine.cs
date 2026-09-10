@@ -212,6 +212,7 @@ class SplitEngine {
         object[] hs=(object[])input["hands"];int[] one=Ints(hs[0]),two=Ints(hs[1]);int h1=0;bool a1=false;h2=0;a2=false;
         foreach(int v in one){h1+=v;a1|=v==1;}foreach(int v in two){h2+=v;a2|=v==1;}force2=two.Length==1||(Convert.ToInt32(input["active"])==1&&input.ContainsKey("force_active")&&(bool)input["force_active"]);
         int active=Convert.ToInt32(input["active"]);var actions=new Dictionary<string,object>();
+        if(active<2&&Size(c)<2)throw new InvalidOperationException("INSUFFICIENT_CARDS");
         Dictionary<string,object> probabilities=null;
         if(input.ContainsKey("single_player")){
             object[] requested=(object[])input["single_actions"];

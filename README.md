@@ -14,7 +14,7 @@ Windows 64 位 / Python 3.10+（含 Tkinter）。Python 主程序使用标准库
 python -m blackjack_lab.main
 ```
 
-第一次可以导入 `fixtures/v02a/demo-7decks-16-vs-T.json`，然后点右侧“计算当前手牌”。该文件是明确标记的自建演示数据，底牌仍未知；它不是平台记录或投注建议。
+第一次可以导入 `fixtures/v02b1/split-eight-before.json`，然后点右侧“计算当前手牌”。还可导入 `split-eight-first-bust.json` 查看首手爆牌后继续第二手，或 `split-aces-ordinary-21.json` 查看分A的普通21结算期望。这些都是标记为自建模拟器的数据，底牌仍未知；不是平台记录或投注建议。原单手示例仍在 `fixtures/v02a/`。
 
 自己录入时：
 
