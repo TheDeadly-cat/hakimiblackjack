@@ -6,11 +6,15 @@ from tkinter import ttk, messagebox
 from ..analysis.contracts import RESULT_SCHEMA, STATUS_ZH, ACTION_ZH, AVAILABLE, STALE, InputUnavailable
 from ..analysis.service import AnalysisService
 from ..storage.analysis_snapshots import is_minimal_result
+from ..analysis.split_contracts import SPLIT_RESULT_SCHEMA
 
-DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA}
+DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA}
 
 
 def format_result(result, historical=False):
+    if result['schema'] == SPLIT_RESULT_SCHEMA:
+        from .split_display import format_split_result
+        return format_split_result(result, historical)
     info = result["input"]
     lines = [("历史分析 · " if historical else "当前 · ") +
              f"{info['seat']} · {' '.join(info['player_ranks'])} · 庄家 {info['dealer_up']} · {info['n_decks']}副"]

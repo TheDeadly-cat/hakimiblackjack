@@ -77,12 +77,7 @@ def _validate_result(result):
     _number(result.get("elapsed_seconds"), "result.elapsed_seconds")
     _require(type(result.get("partial_comparison")) is bool, "result.partial_comparison", "必须为布尔值")
     if result["schema"] != RESULT_SCHEMA:
-        # Split results share identity fields, but have hands instead of player_ranks.
-        _require(info.get("schema") == "hakimi-split-analysis-input-v1", "result.input.schema", "分牌输入格式不匹配")
-        _require(isinstance(info.get("hands"), (list, tuple)) and bool(info["hands"]), "result.input.hands", "必须为非空手牌数组")
-        for hand in info["hands"]:
-            _require(isinstance(hand, dict), "result.input.hands[]", "必须为JSON对象")
-            _text(hand.get("hand_id"), "result.input.hands[].hand_id")
+        _validate_split_result(result)
         return
     _require(info.get("schema") == "hakimi-analysis-input-v1", "result.input.schema", "单手输入格式不匹配")
     ranks = info.get("player_ranks")
@@ -114,6 +109,81 @@ def _validate_result(result):
             _number(value, "result.probabilities." + name)
     if "probability_status" in result:
         _require(isinstance(result["probability_status"], dict), "result.probability_status", "必须为JSON对象")
+
+
+def _validate_split_result(result):
+    from ..analysis.split_contracts import SplitAnalysisInput
+    from ..analysis.split_service import SPLIT_ACTION_ZH
+    try:
+        snapshot = SplitAnalysisInput.from_dict(result['input'])
+        snapshot.validate()
+    except (KeyError, TypeError, ValueError, AttributeError, RecursionError) as error:
+        raise SnapshotFormatError('result.input：无效分牌输入：'+str(error)) from error
+    _require(result['rules_digest'] == snapshot.rules_digest, 'rules_digest', '与规则快照不一致')
+    if result['status'] != 'available':
+        return
+    _require(type(result.get('current_investment')) is int and result['current_investment'] == (1 if snapshot.pre_split else 2),
+             'current_investment', '原注/分牌总投入不一致')
+    actions = result.get('actions')
+    _require(isinstance(actions, dict), 'actions', '必须为对象')
+    _require(set(snapshot.legal_actions).issubset(actions), 'actions', '缺少当前合法动作')
+    for action,item in actions.items():
+        _require(action in SPLIT_ACTION_ZH and isinstance(item, dict), 'actions', '动作格式无效')
+        status = item.get('status')
+        _require(isinstance(status, str) and status in STATUS_ZH, 'actions.status', '状态无效')
+        if status != 'available':
+            continue
+        for name in ('ev', 'additional_investment', 'total_investment'):
+            _number(item.get(name), 'actions.'+name)
+        added = 1 if snapshot.pre_split and action in ('split','double') else 0
+        _require(item['additional_investment']==added and item['total_investment']==result['current_investment']+added,
+                 'actions.total_investment','原注与追加注口径不一致')
+        distribution = item.get('net_distribution')
+        _require(isinstance(distribution, dict) and bool(distribution), 'net_distribution', '必须为收益对象')
+        total = expectation = 0.
+        for net,p in distribution.items():
+            _number(p,'net_distribution.probability')
+            try:
+                outcome = float(net)
+            except (ValueError, TypeError) as error:
+                raise SnapshotFormatError('net_distribution：收益键无效') from error
+            _number(outcome,'net_distribution.net')
+            _require(p>=0 and -2<=outcome<=2, 'net_distribution', '收益或概率越界')
+            if not snapshot.pre_split or action == 'split':
+                _require(outcome in (-2,-1,0,1,2), 'net_distribution', '两手净收益不能有半注或BJ收益')
+            total += p
+            expectation += outcome*p
+        _require(abs(total-1)<=1e-10 and abs(expectation-item['ev'])<=1e-10, 'net_distribution', '概率和或EV不一致')
+        if not snapshot.pre_split or action == 'split':
+            hand_evs = item.get('hand_evs')
+            _require(isinstance(hand_evs,(list,tuple)) and len(hand_evs)==2, 'hand_evs', '必须包含两手边际')
+            for value in hand_evs:
+                _number(value,'hand_evs[]')
+            _require(abs(sum(hand_evs)-item['ev'])<=1e-10, 'hand_evs', '与总EV不一致')
+            joint = item.get('joint_distribution')
+            _require(isinstance(joint,dict) and set(joint)=={f'{a},{b}' for a in (-1,0,1) for b in (-1,0,1)},
+                     'joint_distribution','必须包含九个共享结算格')
+            for value in joint.values():
+                _number(value,'joint_distribution[]')
+                _require(value>=0,'joint_distribution[]','概率不得为负')
+            _require(abs(sum(joint.values())-1)<=1e-10,'joint_distribution','概率和必须为1')
+            for index in (0,1):
+                marginal = sum(int(pair.split(',')[index])*p for pair,p in joint.items())
+                _require(abs(marginal-hand_evs[index])<=1e-10,'joint_distribution','边际EV不匹配')
+            totals = {float(k):p for k,p in distribution.items()}
+            _require(set(totals)=={-2.,-1.,0.,1.,2.},'net_distribution','需要完整的五个合计收益格')
+            for net,p in totals.items():
+                expected = sum(pj for pair,pj in joint.items() if sum(map(int,pair.split(',')))==net)
+                _require(abs(p-expected)<=1e-10,'joint_distribution','与合计收益分布不匹配')
+    highest = result.get('highest_ev_action')
+    _require(highest is None or isinstance(highest,str) and highest in actions, 'highest_ev_action', '动作无效')
+    probabilities = result.get('probabilities')
+    _require(isinstance(probabilities,dict), 'probabilities', '必须为对象')
+    if 'next_target_draw' in probabilities:
+        _require(isinstance(probabilities['next_target_draw'],dict),'next_target_draw','必须为对象')
+        for value in probabilities['next_target_draw'].values():
+            _number(value,'next_target_draw[]')
+        _number(probabilities.get('hit_bust'),'hit_bust')
 
 
 class AnalysisSnapshots:

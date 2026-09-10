@@ -39,6 +39,7 @@ from ..storage.database import LocalStore
 from .controller import SessionController
 from .analysis_panel import AnalysisPanel
 from ..analysis.contracts import research_rules
+from ..analysis.split_contracts import SPLIT_PROFILE, split_research_rules
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DB = PROJECT_ROOT / "data" / "blackjack_lab.db"
@@ -181,8 +182,12 @@ class BlackjackLabApp(tk.Tk):
                    command=self.act_new_shoe).grid(row=0, column=2, padx=6)
         ttk.Button(bar, text="规则详情 / 补充字段",
                    command=self.act_rule_details).grid(row=0, column=3, padx=6)
-        ttk.Button(bar, text="载入研究模板（新靴用）",
-                   command=self.act_research_template).grid(row=0, column=4, padx=6)
+        template_button = ttk.Menubutton(bar, text="研究模板（新靴用）")
+        template_menu = tk.Menu(template_button, tearoff=False)
+        template_menu.add_command(label="V0.2a 原单手分析模板（四手录牌规则）", command=self.act_research_template)
+        template_menu.add_command(label="V0.2b1 两手顺序分牌模板", command=lambda: self.act_research_template(split=True))
+        template_button.configure(menu=template_menu)
+        template_button.grid(row=0, column=4, padx=6)
 
         self.var_topinfo = tk.StringVar()
         ttk.Label(bar, textvariable=self.var_topinfo, foreground="#1a3c6e"
@@ -387,8 +392,8 @@ class BlackjackLabApp(tk.Tk):
     # 动作
     # ============================================================
     @tracked_operation
-    def act_research_template(self):
-        rules = research_rules(self.var_decks.get())
+    def act_research_template(self, split=False):
+        rules = (split_research_rules if split else research_rules)(self.var_decks.get())
         self.var_s17.set("S17")
         self.var_bjp.set("3:2")
         self.var_split_match.set("same_rank 同牌面")
@@ -397,7 +402,8 @@ class BlackjackLabApp(tk.Tk):
         self.var_confirm.set(CONFIRM_VERIFIED)
         excluded = {"n_decks", "dealer_soft17", "blackjack_payout", "split_match", "double_after_split", "surrender", "confirm_status"}
         self.rule_details = {k: v for k, v in asdict(rules).items() if k not in excluded}
-        self.set_status("已载入自建研究模板（非平台桌规）：完整新靴、零烧牌、S17/3:2/美式检查。请新建牌靴使用；当前规则快照不变。")
+        scope = "两手顺序分牌，首手完成后才给第二手补牌；无DAS/无再分/分A一张。" if split else "原单手分析，保留四手录牌规则。"
+        self.set_status("已载入自建研究模板（非平台桌规）：" + scope + "请新建牌靴使用；当前规则快照不变。")
 
     @tracked_operation
     def act_refresh(self):
@@ -447,6 +453,7 @@ class BlackjackLabApp(tk.Tk):
             ("max_split_hands", "最大分牌手数", [str(n) for n in range(1, 9)]),
             ("resplit_aces", "是否允许再分A", ["未知", "是", "否"]),
             ("split_ace_hit_once", "分A是否只补一张", ["未知", "是", "否"]),
+            ("split_deal_order", "分牌发牌顺序", ["未知", "首手完成后第二手", "先发两手第二张"]),
             ("start_from_new_shoe", "是否从新牌靴开始记录", ["未知", "是", "否"]),
             ("burn_cards_known", "是否已知烧牌数量（含零张）", ["未知", "是", "否"]),
             ("initial_burn_count", "初始烧牌数量（空为未知）", None),
@@ -456,6 +463,7 @@ class BlackjackLabApp(tk.Tk):
         enum_maps = {
             "shoe_model": {"有限不放回": "finite_no_replacement", "每轮重置（未支持）": "per_round_reset", "未知": "unknown"},
             "dealer_bj_extra_bet_rule": {"未知": None, "全部注损失": "all_bets_lost", "仅原注（未支持）": "original_bets_only"},
+            "split_deal_order": {"未知": None, "首手完成后第二手": "sequential_complete_first", "先发两手第二张": "both_second_cards_first"},
         }
         booleans = {"american_hole_card", "resplit_aces", "split_ace_hit_once", "start_from_new_shoe", "burn_cards_known"}
         variables = {}
@@ -500,9 +508,9 @@ class BlackjackLabApp(tk.Tk):
             except Exception as exc:
                 messagebox.showerror("规则无效", str(exc), parent=win)
 
-        ttk.Label(win, text="记录规则与分析支持范围分开：本版分析仅支持明确的单手研究模板；未知字段不自动套用。", wraplength=800).grid(row=11, column=0, columnspan=4, padx=8, pady=8)
-        ttk.Button(win, text="保存表单", command=save).grid(row=12, column=1, pady=8)
-        ttk.Button(win, text="取消", command=win.destroy).grid(row=12, column=2, pady=8)
+        ttk.Label(win, text="分析支持原单手及显式两手顺序研究模板；未知字段或其他顺序不自动套用。", wraplength=800).grid(row=12, column=0, columnspan=4, padx=8, pady=8)
+        ttk.Button(win, text="保存表单", command=save).grid(row=13, column=1, pady=8)
+        ttk.Button(win, text="取消", command=win.destroy).grid(row=13, column=2, pady=8)
 
     def _selected_event(self):
         selection = self.lst_timeline.curselection()
@@ -628,6 +636,9 @@ class BlackjackLabApp(tk.Tk):
         if seat_name != DEALER and seat_name not in seg.table.players:
             return None
         seat = seg.table.seat(seat_name)
+        if self.var_hand.get() == "（按顺序行动手）":
+            return next((h.hand_id for h in seat.hands if not seg.table.split_hand_closed(h)),
+                        seat.hands[-1].hand_id if seat.hands else None)
         if self.var_hand.get() in ("", "（最新一手）"):
             return seat.hands[-1].hand_id if seat.hands else None
         return self._hand_ids.get(self.var_hand.get())
@@ -852,19 +863,24 @@ class BlackjackLabApp(tk.Tk):
         shoe_no = len(replay.segments)
         if seg is None:
             self.var_topinfo.set(
-                f"牌靴 #0｜轮次 -｜完整性 -｜分析引擎：{ENGINE_VERSION}（V0.2a单手分析）")
+                "牌靴 #0｜轮次 -｜完整性 -｜分析：单手 / 显式两手顺序模板")
             return
         ok, note = seg.shoe.conservation_check()
         self.var_topinfo.set(
             f"锁定 {seg.rules.n_decks}副/{seg.rules.dealer_soft17 or '未知'}｜牌靴 #{shoe_no}｜第 {seg.table.round_no} 轮｜"
             f"阶段 {'牌靴已结束' if seg.closed else seg.table.phase}｜记录：{self._record_status(seg)}｜"
             f"守恒：{'正常' if ok else '异常'}｜"
-            f"规则确认：{seg.rules.confirm_status}｜分析：V0.2a受限单手模型")
+            f"规则确认：{seg.rules.confirm_status}｜分析：" + ("两手顺序模型" if seg.rules.profile_id == SPLIT_PROFILE else "原单手模型"))
 
     def refresh_hands(self, seg=None) -> None:
         if seg is None:
             seg = self._current_seg()
-        values = ["（最新一手）"]
+        values = ["（按顺序行动手）", "（最新一手）"]
+        special = self.var_hand.get() if self.var_hand.get() in values else "（最新一手）"
+        profile_id = seg.rules.profile_id if seg else None
+        if profile_id == SPLIT_PROFILE and getattr(self, "_hand_profile_id", None) != profile_id:
+            special = "（按顺序行动手）"
+        self._hand_profile_id = profile_id
         selected_id = self._hand_ids.get(self.var_hand.get())
         self._hand_ids = {}
         if seg and (self.var_target.get() == DEALER or self.var_target.get() in seg.table.players):
@@ -874,7 +890,7 @@ class BlackjackLabApp(tk.Tk):
                 values.append(label)
                 self._hand_ids[label] = h.hand_id
         self.cmb_hand.configure(values=values)
-        self.var_hand.set(next((label for label, hid in self._hand_ids.items() if hid == selected_id), "（最新一手）"))
+        self.var_hand.set(next((label for label, hid in self._hand_ids.items() if hid == selected_id), special))
 
     def refresh_table(self, seg) -> None:
         if seg is None:

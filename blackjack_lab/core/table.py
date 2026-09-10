@@ -130,6 +130,7 @@ class TableState:
         self.participants: List[str] = []
         self.dealer_hole_checked_negative = False  # 已检查且庄家不是 BJ
         self._hand_seq = 0
+        self.split_order_violations = []
 
     # ---------- 轮次 ----------
     def start_round(self, participants: Optional[List[str]] = None) -> int:
@@ -144,6 +145,7 @@ class TableState:
         for name in self.players:
             self.players[name] = SeatState(name)
         self.dealer_hole_checked_negative = False
+        self.split_order_violations = []
         if participants is None:
             participants = list(self.players.keys())
         for p in participants:
@@ -206,6 +208,7 @@ class TableState:
             hand.cards.pop()
             raise
         hand.awaiting_hit = False
+        self._observe_split_order(seat_name, hand, event_id or "card")
         # 加倍后只允许补一张，补完自动停牌
         if hand.doubled and len(hand.cards) >= 3:
             hand.stood = True
@@ -372,6 +375,7 @@ class TableState:
             h.hand_id == new_hand_id for s in [self.dealer, *self.players.values()] for h in s.hands
         ):
             raise TableError("分牌后的手牌ID必须唯一")
+        self._observe_split_order(seat_name, hand, action)
         hand.actions.append(action)
         self.phase = PHASE_IN_PROGRESS
         info: dict = {"action": action}
@@ -405,6 +409,21 @@ class TableState:
             hand.actions[-1] = f"{ACTION_SPLIT}->{new_hand.hand_id}"
             info["new_hand_id"] = new_hand.hand_id
         return info
+
+    @staticmethod
+    def split_hand_closed(hand):
+        # Existing custom resplit-A recording may keep A/A open. The two-hand
+        # template closes limited aces in add_card(), using its actual rules.
+        return hand.is_closed or hand.total()[0] == 21
+
+    def _observe_split_order(self, seat_name, hand, cause):
+        """Retain accepted recording; derive analysis incompatibility on replay."""
+        if seat_name == DEALER or not hand.from_split:
+            return
+        hands = self.seat(seat_name).hands
+        prior = hands[:hands.index(hand)]
+        if any(not self.split_hand_closed(h) for h in prior):
+            self.split_order_violations.append({"hand_id": hand.hand_id, "cause": cause})
 
     def mark_peek_negative(self) -> None:
         """庄家已检查底牌且确认不是 Blackjack（检查否定结果也是当时信息）。"""
