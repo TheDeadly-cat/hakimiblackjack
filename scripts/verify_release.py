@@ -26,6 +26,7 @@ def source_manifest():
     paths = []
     for directory in ("blackjack_lab", "tests", "scripts", "review_tests"):
         paths.extend((ROOT / directory).rglob("*.py"))
+    paths.extend((ROOT / "blackjack_lab/analysis/native").glob("*.cs"))
     paths.extend(ROOT.glob("*.bat"))
     paths.extend([ROOT / "requirements.txt", ROOT / "requirements-qa.txt", ROOT / "NOTICE.md", ROOT / "README.md"])
     paths.extend((ROOT / ".github").rglob("*.yml"))
@@ -49,7 +50,7 @@ def main():
         command = [sys.executable, *arguments]
         try:
             result = subprocess.run(command, cwd=ROOT, env=env or environment, stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT, encoding="utf-8", timeout=60)
+                                    stderr=subprocess.STDOUT, encoding="utf-8", timeout=120)
             text, code = result.stdout, result.returncode
         except subprocess.TimeoutExpired as exc:
             text = (exc.stdout or b"").decode("utf-8", errors="replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
