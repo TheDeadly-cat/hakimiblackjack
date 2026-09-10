@@ -11,6 +11,7 @@ from typing import Optional
 
 from ..ledger.events import Event
 from ..ledger.ledger import EventLedger
+from .safe_files import register_database, unregister_database
 
 SCHEMA_VERSION = 2
 _EVENTS = """CREATE TABLE events (
@@ -35,6 +36,7 @@ class LocalStore:
         self.migration_backup = None
         try:
             self._initialize()
+            register_database(self.db_path)
         except Exception:
             self.conn.close()
             raise
@@ -94,6 +96,7 @@ class LocalStore:
         return Event.from_dict(data)
 
     def _insert(self, ev):
+        Event.from_dict(ev.to_dict())
         if not ev.session_id or type(ev.seq) is not int or ev.seq <= 0:
             raise ValueError("事件缺少有效会话或序号")
         row = self.conn.execute("SELECT * FROM events WHERE event_id=?", (ev.event_id,)).fetchone()
@@ -123,15 +126,29 @@ class LocalStore:
             self.conn.execute("INSERT OR IGNORE INTO sessions(session_id,name,created_at,note) VALUES(?,?,?,?)", (ledger.session_id, "导入/恢复会话", time.time(), ""))
             return sum(self._insert(ev) for ev in ledger.events)
 
-    def load_events(self, session_id: Optional[str] = None):
+    def load_events(self, session_id: Optional[str] = None, through_seq=None):
+        if through_seq is not None:
+            rows = self.conn.execute("SELECT * FROM events WHERE session_id=? AND seq<=? ORDER BY seq", (session_id, through_seq)).fetchall()
+            return [self._decode(r) for r in rows]
         if session_id is not None:
             rows = self.conn.execute("SELECT * FROM events WHERE session_id=? ORDER BY seq", (session_id,)).fetchall()
         else:
             rows = self.conn.execute("SELECT * FROM events ORDER BY session_id,seq").fetchall()
         return [self._decode(r) for r in rows]
 
-    def load_ledger(self, session_id):
-        return EventLedger.from_list(session_id, [e.to_dict() for e in self.load_events(session_id)])
+    def load_ledger(self, session_id, through_seq=None):
+        return EventLedger.from_list(session_id, [e.to_dict() for e in self.load_events(session_id, through_seq)])
+
+    def diagnose_session(self, session_id):
+        rows = [dict(row) for row in self.conn.execute("SELECT * FROM events WHERE session_id=? ORDER BY seq", (session_id,))]
+        error = None
+        try:
+            self.load_ledger(session_id)
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+        return {"format": "hakimi-readonly-diagnostic-v1", "session_id": session_id,
+                "valid_for_recording": error is None and bool(rows), "error": error,
+                "raw_database_rows": rows, "note": "只读诊断，原始payload_json原样保留；此文件不能当已验证会话导入分析"}
 
     def event_count(self):
         return self.conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
@@ -148,4 +165,5 @@ class LocalStore:
     def close(self):
         if not self._closed:
             self.conn.close()
+            unregister_database(self.db_path)
             self._closed = True

@@ -15,10 +15,10 @@ def run_full_session(n_decks: int) -> EventLedger:
     led = EventLedger(f"s-{n_decks}")
     led.start_session()
     led.create_shoe(RuleProfile(
-        n_decks=n_decks, split_match="same_rank",
+        n_decks=n_decks, split_match="same_rank", dealer_soft17="S17",
         double_after_split=True, surrender="early", blackjack_payout=(3, 2)))
     # ---- 第 1 轮：玩家1 对 8 分牌，其中一手加倍 ----
-    led.start_round()
+    led.start_round(["玩家1"])
     led.deal("玩家1", "8"); led.deal("玩家1", "8")
     led.deal("庄家", "9"); led.deal("庄家", None, hidden=True)
     table = led.replay().current.table
@@ -39,7 +39,7 @@ def run_full_session(n_decks: int) -> EventLedger:
     assert len(r1) == 2, f"分牌后应有两手结算，实际 {len(r1)}"
 
     # ---- 第 2 轮：误记一张后纠错；新轮不重置牌靴 ----
-    led.start_round()
+    led.start_round(["玩家2"])
     wrong = led.deal("玩家2", "5")
     led.correct(wrong.event_id, {"rank": "6"}, reason="误录纠正")
     led.deal("玩家2", "K")

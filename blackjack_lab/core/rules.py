@@ -62,6 +62,7 @@ class RuleProfile:
     n_seats: int = 7                          # 玩家座位 1~7，庄家固定 1 位
 
     burn_cards_known: Optional[bool] = None   # 烧牌数量是否已知
+    initial_burn_count: Optional[int] = None  # 新靴初始烧牌数，未知不得默认为零
     start_from_new_shoe: Optional[bool] = None
     cut_shuffle_note: Optional[str] = None
 
@@ -107,6 +108,10 @@ class RuleProfile:
                      "split_ace_hit_once", "burn_cards_known", "start_from_new_shoe"):
             if getattr(self, name) is not None and type(getattr(self, name)) is not bool:
                 raise ValueError(f"{name} 必须为是/否/未知")
+        if self.initial_burn_count is not None and (type(self.initial_burn_count) is not int or not 0 <= self.initial_burn_count <= self.n_decks * 52):
+            raise ValueError("初始烧牌数必须为合法非负整数或未知")
+        if self.initial_burn_count is not None and self.burn_cards_known is not True:
+            raise ValueError("填写初始烧牌数时必须明确已知烧牌数量")
 
     # ---- 快照序列化（锁定后随牌靴一起保存）----
     def to_json(self) -> str:
@@ -121,7 +126,7 @@ class RuleProfile:
         return copy.deepcopy(self)
 
 
-# 规则能力矩阵：V0.1 只交付手动记录闭环，分析能力明确标注边界。
+# 规则能力矩阵：记录能力与V0.2a已验收分析模板分别声明。
 CAPABILITY_MATRIX = {
     "6/7/8副初始化与牌数守恒": (VERIFIED, "core.shoe，三种牌副数均有单元测试"),
     "有限不放回牌靴记录": (VERIFIED, "事件账本逐张扣减，幂等且可重放"),
@@ -131,20 +136,22 @@ CAPABILITY_MATRIX = {
     "SQLite保存与崩溃恢复/JSON、CSV导出": (VERIFIED, "storage 模块"),
     "手动录牌中文薄界面": (VERIFIED, "Tkinter 本地窗口，不启动网络服务"),
     "每轮重置牌靴模型": (UNSUPPORTED, "可保留规则字段，创建牌靴时拒绝未支持模型"),
-    "下一张牌分布/大小牌占比/天然BJ概率": (UNSUPPORTED, "V0.1.1 仅展示账面计数，未交付概率引擎"),
+    "目标下一张点值分布/补牌爆牌/庄家终局": (VERIFIED, "V0.2a研究模板，未知底牌条件化与非BJ检查"),
+    "下一轮开局天然BJ概率/开局优势": (UNSUPPORTED, "与当前手牌EV分开，后续实验模块实现"),
     "确定性结算": (VERIFIED, "已录终局、双方牌面完整；BJ追加注仅验证全部注损失；非EV"),
     "历史时点/人工纠错/导入恢复": (VERIFIED, "前缀重放不使用后续揭示或纠错；数据库事务写入"),
-    "规则纠错分支": (UNSUPPORTED, "V0.1.1 改规则请新建牌靴，不修改已锁定快照"),
-    "合法动作EV（要牌/停牌/加倍/分牌/投降）": (UNSUPPORTED, "V0.2 交付，界面不显示占位数值"),
-    "整轮净收益分布": (UNSUPPORTED, "V0.2 交付"),
-    "本地牌面识别/屏幕捕获": (UNSUPPORTED, "V0.3/V0.4，V0.1 不提供任何识别画面"),
+    "规则纠错分支": (UNSUPPORTED, "改规则请新建牌靴，不修改已锁定快照"),
+    "单手停/补/加倍/晚投降EV及净收益分布": (VERIFIED, "S17/3:2/美式检查/零烧牌/单玩家未分牌；补牌后按可见信息继续补或停"),
+    "分牌与多玩家整轮净收益分布": (UNSUPPORTED, "V0.2b；当前合法分牌缺少EV时只能部分比较"),
+    "分析快照/请求取消/超时/过期/历史复算": (VERIFIED, "独立请求进程、事件前缀身份、不可覆盖的JSON旁路快照"),
+    "本地牌面识别/屏幕捕获": (UNSUPPORTED, "V0.3/V0.4，本版仍为手动录入"),
     "实盘平台适配（含 Stake）": (UNSUPPORTED, "须单独核对平台条款与授权，默认禁用"),
 }
 
 
 def capability_report() -> str:
     """生成可读的能力矩阵文本（供界面与文档使用）。"""
-    lines = ["规则能力矩阵（V0.1）", "=" * 36]
+    lines = ["规则能力矩阵（V0.2a）", "=" * 36]
     for name, (status, note) in CAPABILITY_MATRIX.items():
         lines.append(f"[{status}] {name} —— {note}")
     return "\n".join(lines)

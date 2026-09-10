@@ -4,19 +4,26 @@ import copy
 import uuid
 from pathlib import Path
 from ..core.rules import RuleProfile
-from ..ledger.events import CANDIDATE, CONFIRMED
+from ..ledger.events import CANDIDATE, CONFIRMED, SOURCE_MANUAL
 from ..ledger.ledger import EventLedger, LedgerError
 from ..storage.database import LocalStore
 from ..storage.export import import_json, import_csv
+from ..storage.analysis_snapshots import AnalysisSnapshots
+from ..analysis.information import build_input
+from ..storage.safe_files import atomic_write
+import json
 
 
 class SessionController:
-    def __init__(self, db_path: str | Path):
+    def __init__(self, db_path: str | Path, recording_source=SOURCE_MANUAL):
         self.store = LocalStore(db_path)
+        self.commit_revision = 0
+        self.recording_source = recording_source
+        self.analysis_store = AnalysisSnapshots(str(Path(db_path).resolve()) + ".analysis")
         self.session_id = uuid.uuid4().hex
         self.session_name = "手动录牌会话"
         self.ledger = EventLedger(self.session_id)
-        self.ledger.start_session()
+        self.ledger.start_session().source = recording_source
         try:
             self.store.save_ledger(self.ledger)
         except Exception:
@@ -27,6 +34,9 @@ class SessionController:
     def recover(cls, db_path, session_id):
         obj = cls.__new__(cls)
         obj.store = LocalStore(db_path)
+        obj.commit_revision = 0
+        obj.recording_source = SOURCE_MANUAL
+        obj.analysis_store = AnalysisSnapshots(str(Path(db_path).resolve()) + ".analysis")
         try:
             obj.load_session(session_id)
         except Exception:
@@ -48,8 +58,11 @@ class SessionController:
     def _apply(self, method, *args, **kwargs):
         candidate = copy.deepcopy(self.ledger)
         event = getattr(candidate, method)(*args, **kwargs)
+        if event.event_id not in self.ledger._ids:
+            event.source = self.recording_source
         self.store.save_event(event)
         self.ledger = candidate
+        self.commit_revision += 1
         return event
 
     def new_shoe(self, rules: RuleProfile):
@@ -111,7 +124,22 @@ class SessionController:
         self.ledger = candidate
         self.session_id = candidate.session_id
         self.session_name = "导入会话"
+        self.commit_revision += 1
         return candidate
+
+    def analysis_input(self, seat, hand_id=None, through_seq=None):
+        return build_input(self.ledger, seat, hand_id, through_seq)
+
+    def recompute_input(self, saved):
+        original = saved["result"]["input"]
+        ledger = self.store.load_ledger(original["session_id"], original["through_seq"])
+        if not self.analysis_store.matches_prefix(saved, ledger):
+            raise LedgerError("原分析关联的事件前缀摘要不匹配，拒绝复算")
+        return build_input(ledger, original["seat"], original["hand_id"], original["through_seq"])
+
+    def export_diagnostic(self, session_id, path):
+        data = self.store.diagnose_session(session_id)
+        return atomic_write(path, json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False).encode("utf-8"))
 
     def state(self):
         return self.ledger.replay()

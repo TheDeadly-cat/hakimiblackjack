@@ -10,7 +10,7 @@ from blackjack_lab.core.table import (
 
 
 def rules(**kw) -> RuleProfile:
-    base = dict(n_decks=6, split_match="same_rank", max_split_hands=4,
+    base = dict(n_decks=6, split_match="same_rank", max_split_hands=4, dealer_soft17="S17",
                 double_after_split=True, surrender=None, blackjack_payout=(3, 2))
     base.update(kw)
     return RuleProfile(**base)

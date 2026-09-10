@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
+import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
@@ -72,10 +73,66 @@ class Event:
     rule_version: Optional[str] = None
 
     def __post_init__(self) -> None:
-        if self.etype not in _ALL_TYPES:
+        if not isinstance(self.etype, str) or self.etype not in _ALL_TYPES:
             raise ValueError(f"未知事件类型: {self.etype}")
         if self.observed_at is None:
             self.observed_at = self.event_time
+        if not isinstance(self.payload, dict):
+            raise ValueError("事件payload必须为对象")
+        if type(self.seq) is not int or self.seq < -1:
+            raise ValueError("事件序号必须为整数")
+        if self.confirm_status not in (CONFIRMED, CANDIDATE):
+            raise ValueError("未知事件确认状态")
+        for name in ("event_id", "source"):
+            if not isinstance(getattr(self, name), str) or not getattr(self, name).strip():
+                raise ValueError(f"事件{name}不能为空")
+        for name in ("event_time", "observed_at"):
+            value = getattr(self, name)
+            if type(value) not in (int, float) or not math.isfinite(value):
+                raise ValueError(f"事件{name}必须为有限时间戳")
+        for name in ("session_id", "shoe_id", "round_id", "evidence", "rule_version"):
+            if getattr(self, name) is not None and not isinstance(getattr(self, name), str):
+                raise ValueError(f"事件{name}必须为文本或空")
+        json.dumps(self.payload, allow_nan=False)
+        self.validate_payload()
+
+    def validate_payload(self):
+        schemas = {
+            SESSION_STARTED: (set(), {"note"}),
+            SHOE_CREATED: ({"shoe_id", "n_decks", "rules_snapshot"}, set()),
+            ROUND_STARTED: ({"round_id", "round_no", "participants"}, set()),
+            CARD_DEALT: ({"seat", "rank", "face_state"}, {"suit", "track_id", "hand_id"}),
+            CARD_REVEALED: ({"target_event_id", "seat", "rank"}, {"suit", "track_id", "hand_id"}),
+            PLAYER_ACTION: ({"seat", "hand_id", "action"}, {"new_hand_id"}),
+            PEEK_NEGATIVE: (set(), set()),
+            BURN_CARDS: ({"count"}, {"note"}), OBSERVATION_GAP: ({"reason"}, set()),
+            ROUND_ENDED: (set(), {"settle", "reason"}), SHOE_ENDED: (set(), set()),
+            UNDO: ({"target_event_id"}, {"reason", "target_etype"}),
+            CORRECTION: ({"target_event_id", "payload_fix"}, {"reason", "target_etype"}),
+        }
+        required, optional = schemas[self.etype]
+        if not required <= self.payload.keys() or self.payload.keys() - required - optional:
+            raise ValueError(f"{self.etype}事件负载缺少字段或含未支持字段")
+        for name in ("seat", "hand_id", "new_hand_id", "track_id", "target_event_id", "shoe_id", "round_id"):
+            value = self.payload.get(name)
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                raise ValueError(f"事件{name}必须为有效文本身份")
+        if "count" in self.payload and (type(self.payload["count"]) is not int or self.payload["count"] <= 0):
+            raise ValueError("烧牌事件数量必须为正整数")
+        if "settle" in self.payload and self.payload["settle"] is not None and type(self.payload["settle"]) is not bool:
+            raise ValueError("结算要求必须为布尔值")
+        if self.etype == ROUND_STARTED:
+            participants = self.payload["participants"]
+            if participants is not None and (not isinstance(participants, list) or any(not isinstance(p, str) for p in participants)):
+                raise ValueError("参与座位必须为文本列表")
+            if type(self.payload["round_no"]) is not int or self.payload["round_no"] < 1:
+                raise ValueError("轮次号必须为正整数")
+        if self.etype == SHOE_CREATED and (type(self.payload["n_decks"]) is not int or not isinstance(self.payload["rules_snapshot"], str)):
+            raise ValueError("牌靴副数或规则快照类型错误")
+        if self.etype == CORRECTION and not isinstance(self.payload["payload_fix"], dict):
+            raise ValueError("纠错负载必须为对象")
+        if self.etype != CARD_DEALT and self.confirm_status != CONFIRMED:
+            raise ValueError("未确认观察不能提交为操作/揭示/控制事件")
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -92,6 +149,10 @@ class Event:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "Event":
+        if not isinstance(d, dict) or set(d) != set(cls.__dataclass_fields__):
+            raise ValueError("导入事件字段缺失或含未知字段，不能自动补成已确认记录")
+        if d["observed_at"] is None:
+            raise ValueError("导入事件缺少观察时间")
         return cls(
             etype=d["etype"], payload=d.get("payload", {}),
             event_id=d["event_id"], seq=d.get("seq", -1),

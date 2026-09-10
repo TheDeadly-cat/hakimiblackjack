@@ -1,6 +1,6 @@
-# Hakimi Blackjack Lab V0.1 依赖清单
+# Hakimi Blackjack Lab V0.2a 依赖清单
 #
-# V0.1 仅使用 Python 标准库（tkinter / sqlite3 / json / csv / unittest），
+# V0.2a运行仅使用 Python 标准库（tkinter / sqlite3 / json / csv / unittest），
 # 无需 pip 安装任何第三方包，核心功能可完全离线运行。
 #
 # 运行环境：Windows 优先，Python 3.10+（开发与验证环境为 Python 3.14.6，Windows）。

@@ -33,6 +33,15 @@ def player_seat_name(i: int) -> str:
     return f"玩家{i}"
 
 
+@dataclass(frozen=True)
+class ActionState:
+    action: str
+    allowed: bool
+    status: str
+    reason_code: str
+    reason: str
+
+
 @dataclass
 class HandInstance:
     hand_id: str
@@ -181,12 +190,21 @@ class TableState:
         hand = seat.get_hand(hand_id) if hand_id else seat.hands[-1]
         if hand.is_closed:
             raise TableError(f"{seat_name} 的该手牌已结束，不能再收牌")
+        if hand.is_split_ace and self.rules.split_ace_hit_once and len(hand.cards) >= 2:
+            raise TableError("分A已补一张；若允许再分A，请先执行分牌，不能直接补第三张")
+        if seat_name != DEALER and len(hand.cards) >= 2 and self._needs_decision_peek():
+            raise TableError("该模板在玩家补牌前要求明确非BJ检查")
         if seat_name != DEALER and hand.total()[0] == 21:
             raise TableError("已达21点，不能继续收牌")
         # 同一物理牌（track_id）在同一手只能出现一次，防重复帧重复入账
         if track_id and any(c.track_id == track_id for c in hand.cards):
             raise TableError(f"同一物理牌 {track_id} 已在该手牌中，拒绝重复入账")
         hand.cards.append(card)
+        try:
+            self.validate_dealer_path()
+        except Exception:
+            hand.cards.pop()
+            raise
         hand.awaiting_hit = False
         # 加倍后只允许补一张，补完自动停牌
         if hand.doubled and len(hand.cards) >= 3:
@@ -213,6 +231,7 @@ class TableState:
                 hand.cards[idx] = new_card
                 try:
                     self.validate_peek()
+                    self.validate_dealer_path()
                 except Exception:
                     hand.cards[idx] = c
                     raise
@@ -230,6 +249,8 @@ class TableState:
         if UNKNOWN in (r1, r2):
             return False, "存在未揭示牌，不能判断能否分牌"
         if TEN_BUCKET in (r1, r2) and self.rules.split_match == "same_rank":
+            if not all(is_ten_value(r) for r in (r1, r2)):
+                return False, "规则要求相同牌面才能分牌"
             return False, "10点未细分无法判断配对规则，拒绝分牌，请先细分牌面"
         seat = None
         for s in [self.dealer, *self.players.values()]:
@@ -254,76 +275,84 @@ class TableState:
                 return False, "分A补牌限制未确认"
         return True, ""
 
-    def legal_actions(self, seat_name: str, hand_id: str) -> Dict[str, str]:
-        """返回 {动作: 说明}，不可用动作给出原因；界面右侧据此渲染。"""
-        result: Dict[str, str] = {}
-        if self.phase not in (PHASE_DEALING, PHASE_IN_PROGRESS):
-            return {a: "尚未进入玩家操作阶段" for a in
-                    (ACTION_HIT, ACTION_STAND, ACTION_DOUBLE, ACTION_SPLIT, ACTION_SURRENDER)}
-        seat = self.seat(seat_name)
-        hand = seat.get_hand(hand_id)
-        n = len(hand.cards)
+    def action_states(self, seat_name: str, hand_id: str):
+        """Structured legality shared by commands, analysis coverage, and UI."""
         actions = (ACTION_HIT, ACTION_STAND, ACTION_DOUBLE, ACTION_SPLIT, ACTION_SURRENDER)
+        def disabled(code, reason):
+            return {a: ActionState(a, False, "inapplicable", code, reason) for a in actions}
+        def state(action, allowed, reason, code="NOT_APPLICABLE", status="inapplicable"):
+            return ActionState(action, allowed, "available" if allowed else status,
+                               "LEGAL" if allowed else code, reason)
+        if self.phase not in (PHASE_DEALING, PHASE_IN_PROGRESS):
+            return disabled("ROUND_INACTIVE", "尚未进入玩家操作阶段")
         if seat_name == DEALER:
-            return {a: "玩家动作不适用于庄家；请直接录入庄家牌" for a in actions}
+            return disabled("DEALER_TARGET", "玩家动作不适用于庄家；请直接录入庄家牌")
+        hand = self.seat(seat_name).get_hand(hand_id)
         if self.dealer.hands and is_natural_blackjack([c.rank for c in self.dealer.hands[0].cards]):
-            return {a: "庄家已确认Blackjack，本轮停止玩家操作" for a in actions}
+            return disabled("DEALER_BLACKJACK", "庄家已确认Blackjack，本轮停止玩家操作")
+        if self._needs_decision_peek():
+            return disabled("PEEK_REQUIRED", "等待庄家A/十点明牌的非BJ检查")
         if hand.is_closed:
-            return {a: "该手牌已结束" for a in actions}
+            return disabled("HAND_CLOSED", "该手牌已结束")
+        if len(hand.cards) < 2 or hand.hidden_cards:
+            return disabled("PLAYER_INCOMPLETE", "初始两张牌未完整确认")
+        if hand.doubled or hand.awaiting_hit:
+            return disabled("DRAW_PENDING", "已选择补牌或加倍，请先录入该张牌")
+        result = {a: state(a, False, "不适用") for a in actions}
+        result[ACTION_STAND] = state(ACTION_STAND, True, "可停牌")
         if hand.total()[0] == 21:
-            return {a: "可停牌" if a == ACTION_STAND else "已达21点" for a in actions}
-        if n < 2 or any(c.rank == UNKNOWN for c in hand.cards):
-            return {a: "初始两张牌未完整确认" for a in actions}
-        if hand.doubled:
-            return {a: "已加倍，请录入唯一一张补牌" for a in actions}
-        if hand.awaiting_hit:
-            return {a: "已选择补牌，请先录入该张牌" for a in actions}
-        known = [c for c in hand.cards if c.rank != UNKNOWN]
-        # 补牌
-        if hand.is_closed:
-            result[ACTION_HIT] = "该手牌已结束"
-        elif any(c.rank == UNKNOWN for c in hand.cards):
-            result[ACTION_HIT] = "存在未揭示牌"
-        else:
-            result[ACTION_HIT] = "可补牌"
-        # 停牌
-        result[ACTION_STAND] = "该手牌已结束" if hand.is_closed else "可停牌"
-        # 加倍
-        dbl_ok, dbl_reason = True, ""
-        if n != 2:
-            dbl_ok, dbl_reason = False, "仅两张牌时可加倍"
+            for a in actions:
+                if a != ACTION_STAND:
+                    result[a] = state(a, False, "已达21点", "TOTAL_21")
+            return result
+        limited_ace = hand.is_split_ace and self.rules.split_ace_hit_once
+        result[ACTION_HIT] = state(ACTION_HIT, not limited_ace, "分A仅限一张补牌" if limited_ace else "可补牌", "SPLIT_ACE_LIMIT")
+        double_reason = "可加倍（加倍后只补一张）"
+        double_ok = True
+        if limited_ace:
+            double_ok, double_reason = False, "分A仅限一张补牌"
+        elif len(hand.cards) != 2:
+            double_ok, double_reason = False, "仅两张牌时可加倍"
         elif hand.from_split and self.rules.double_after_split is not True:
-            dbl_ok, dbl_reason = False, "分牌后加倍未获规则允许（禁止或未确认）"
-        elif self.rules.double_on_totals is not None:
-            t, _ = hand.total()
-            if t not in self.rules.double_on_totals:
-                dbl_ok, dbl_reason = False, f"仅允许在 {self.rules.double_on_totals} 点加倍"
-        result[ACTION_DOUBLE] = dbl_reason if not dbl_ok else "可加倍（加倍后只补一张）"
-        # 分牌
-        sp_ok, sp_reason = self._pair_split_eligible(hand)
-        result[ACTION_SPLIT] = sp_reason if not sp_ok else "可分牌"
-        # 投降
-        if not self.rules.surrender:
-            result[ACTION_SURRENDER] = "当前规则不支持投降"
-        elif n != 2 or hand.actions or hand.from_split:
-            result[ACTION_SURRENDER] = "仅初始两张牌、未采取动作前可投降"
-        elif self.rules.surrender == "late" and self.dealer.hands and is_natural_blackjack(self.dealer.hands[0].ranks):
-            result[ACTION_SURRENDER] = "庄家已确认BJ，不能晚投降"
-        elif (self.rules.surrender == "late" and (
-                not self.dealer.hands or (self._dealer_may_have_bj()
-                and not self.dealer_hole_checked_negative and not self._dealer_revealed()))):
-            result[ACTION_SURRENDER] = "晚投降需等庄家完成 Blackjack 检查"
-        else:
-            result[ACTION_SURRENDER] = "可投降（损失半注）"
-        if hand.is_split_ace and self.rules.split_ace_hit_once:
-            result[ACTION_HIT] = "分A仅限一张补牌"
-            result[ACTION_DOUBLE] = "分A仅限一张补牌"
+            double_ok, double_reason = False, "分牌后加倍未获规则允许（禁止或未确认）"
+        elif self.rules.double_on_totals is not None and hand.total()[0] not in self.rules.double_on_totals:
+            double_ok, double_reason = False, f"仅允许在 {self.rules.double_on_totals} 点加倍"
+        result[ACTION_DOUBLE] = state(ACTION_DOUBLE, double_ok, double_reason, "DOUBLE_RULE")
+        split_ok, split_reason = self._pair_split_eligible(hand)
+        ranks = tuple(c.rank for c in hand.cards)
+        room_to_split = len(self.seat(seat_name).hands) < self.rules.max_split_hands
+        uncertain_pair = (not split_ok and len(ranks) == 2 and room_to_split and (
+            (self.rules.split_match == "same_rank" and TEN_BUCKET in ranks and all(is_ten_value(r) for r in ranks))
+            or (ranks == ("A", "A") and (self.rules.split_ace_hit_once is None
+                or hand.from_split and self.rules.resplit_aces is None))))
+        result[ACTION_SPLIT] = state(ACTION_SPLIT, split_ok, "可分牌" if split_ok else split_reason,
+                                     "PAIR_UNKNOWN" if uncertain_pair else "SPLIT_RULE",
+                                     "pending" if uncertain_pair else "inapplicable")
+        surrender_ok, surrender_reason = True, "可投降（损失半注）"
+        if self.rules.surrender is None:
+            surrender_ok, surrender_reason = False, "当前规则不支持投降"
+        elif len(hand.cards) != 2 or hand.actions or hand.from_split:
+            surrender_ok, surrender_reason = False, "仅初始两张牌、未采取动作前可投降"
+        elif self.rules.surrender == "late" and (not self.dealer.hands or (
+            self._dealer_may_have_bj() and not self.dealer_hole_checked_negative and not self._dealer_revealed())):
+            surrender_ok, surrender_reason = False, "晚投降需等庄家完成 Blackjack 检查"
+        result[ACTION_SURRENDER] = state(ACTION_SURRENDER, surrender_ok, surrender_reason, "SURRENDER_RULE")
         return result
+
+    def legal_actions(self, seat_name: str, hand_id: str) -> Dict[str, str]:
+        # Compatibility presentation API. No consumer should infer legality from wording.
+        return {a: item.reason for a, item in self.action_states(seat_name, hand_id).items()}
 
     def _dealer_may_have_bj(self) -> bool:
         up = [c for c in self.dealer.hands[0].cards] if self.dealer.hands else []
         known = [c.rank for c in up if c.rank != UNKNOWN]
         return any(r == "A" or is_ten_value(r) for r in known)
+
+    def _needs_decision_peek(self):
+        return (self.rules.american_hole_card is True
+                and self.rules.check_bj_when == "before_player_actions_A_T"
+                and self._dealer_may_have_bj() and not self.dealer_hole_checked_negative
+                and not self._dealer_revealed())
 
     def _dealer_revealed(self) -> bool:
         return self.dealer.hands and len(self.dealer.hands[0].cards) >= 2 and not any(
@@ -332,12 +361,11 @@ class TableState:
     def apply_action(self, seat_name: str, hand_id: str, action: str,
                      new_hand_id: Optional[str] = None) -> dict:
         """执行动作并返回附带信息（如分牌产生的新手牌）。"""
-        legal = self.legal_actions(seat_name, hand_id)
+        legal = self.action_states(seat_name, hand_id)
         if action not in legal:
             raise TableError(f"未知动作: {action}")
-        reason = legal[action]
-        if reason not in ("可补牌", "可停牌", "可加倍（加倍后只补一张）", "可分牌", "可投降（损失半注）"):
-            raise TableError(f"{action} 不被允许：{reason}")
+        if not legal[action].allowed:
+            raise TableError(f"{action} 不被允许：{legal[action].reason}")
         seat = self.seat(seat_name)
         hand = seat.get_hand(hand_id)
         if action == ACTION_SPLIT and new_hand_id and any(
@@ -397,6 +425,19 @@ class TableState:
                 and is_natural_blackjack([c.rank for c in self.dealer.hands[0].cards])):
             raise TableError("庄家牌面与此前非BJ检查结果矛盾，请追加纠错")
 
+    def validate_dealer_path(self) -> None:
+        """Every visible dealer prefix must obey the declared stopping rule."""
+        if not self.dealer.hands:
+            return
+        cards = self.dealer.hands[0].cards
+        for length in range(2, len(cards)):
+            score, soft = hand_total([c.rank for c in cards[:length]])
+            if score is None:
+                continue
+            stops = score > 21 or score >= 18 or (score == 17 and (not soft or self.rules.dealer_soft17 == "S17"))
+            if stops:
+                raise TableError("庄家已达到桌规停牌终点，后续牌与规则矛盾")
+
     # ---------- 结算（确定性记账，非 EV）----------
     def settle(self) -> List[dict]:
         """本轮结束时逐手结算。庄家底牌必须已揭示。"""
@@ -408,6 +449,9 @@ class TableState:
         dealer_total, _ = hand_total(dealer_ranks)
         dealer_bj = is_natural_blackjack(dealer_ranks)
         self.validate_peek()
+        self.validate_dealer_path()
+        if not self.participants or any(not self.players[name].hands for name in self.participants):
+            raise TableError("已声明参与座位存在漏录手牌，不能省略该玩家结算")
         hands = [h for name in self.participants for h in self.players[name].hands]
         for h in hands:
             if h.awaiting_hit:
@@ -422,6 +466,8 @@ class TableState:
             raise TableError("庄家BJ追加注结算规则未知或未支持，不能计算净收益")
         comparing = any(not h.surrendered and not h.is_bust and not (
             is_natural_blackjack(h.ranks) and not h.from_split) for h in hands)
+        if comparing and not dealer_bj and self.rules.dealer_soft17 is None:
+            raise TableError("庄家S17/H17未确认，不能认定当前牌为终局")
         if comparing and self.rules.dealer_soft17 and (dealer_total < 17 or (
             dealer_total == 17 and hand_total(dealer_ranks)[1] and self.rules.dealer_soft17 == "H17")):
             raise TableError("按已声明桌规庄家仍需补牌，不能结算")

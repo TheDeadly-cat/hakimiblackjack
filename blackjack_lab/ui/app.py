@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Hakimi Blackjack Lab —— V0.1 手动录牌中文工作台（Tkinter）。
+"""Hakimi Blackjack Lab —— V0.2a 手动录牌与单手分析工作台（Tkinter）。
 
 界面结构遵循开发大纲第 5 节：
 - 顶部：模式、6/7/8 副、规则确认状态、牌靴/轮次、记录完整性、分析状态；
 - 左侧：手动录牌区（不做假实时动画）；
 - 中部：庄家与 7 座位、手牌与分牌关系；
-- 右侧：当前合法动作与确定性组成；EV 区域在 V0.1 明确标注未交付；
+- 右侧：当前合法动作、账面组成及真实的受限单手概率/EV分析；
 - 底部：事件时间线、待确认/缺口提醒、纠错入口。
 不使用颜色单独表达状态，不出现"必胜/稳赢"类措辞。
 """
@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import tkinter as tk
 import json
+from functools import wraps
+from dataclasses import asdict
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -35,6 +37,8 @@ from ..ledger.ledger import LedgerError
 from ..storage.export import export_csv, export_json
 from ..storage.database import LocalStore
 from .controller import SessionController
+from .analysis_panel import AnalysisPanel
+from ..analysis.contracts import research_rules
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DB = PROJECT_ROOT / "data" / "blackjack_lab.db"
@@ -43,9 +47,18 @@ CARD_BUTTONS = ("A", "2", "3", "4", "5", "6", "7", "8", "9", "10",
                 "J", "Q", "K")
 
 
+def tracked_operation(function):
+    @wraps(function)
+    def invoke(self, *args, **kwargs):
+        self._operation_start_revision = self.ctrl.commit_revision
+        return function(self, *args, **kwargs)
+    return invoke
+
+
 class BlackjackLabApp(tk.Tk):
-    def __init__(self, db_path: str | Path = DEFAULT_DB):
+    def __init__(self, db_path: str | Path = DEFAULT_DB, recording_source=SOURCE_MANUAL):
         super().__init__()
+        self.recording_source = recording_source
         self.title(f"Hakimi Blackjack Lab V{__version__} 手动记录工作台（本地离线）")
         self.geometry("1360x900")
         self.minsize(1180, 800)
@@ -54,6 +67,7 @@ class BlackjackLabApp(tk.Tk):
         ttk.Style(self).configure("Card.TButton", font=("Consolas", 12), padding=2)
 
         self._ask_recover_if_any(db_path)
+        self._operation_start_revision = self.ctrl.commit_revision
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # 变量
@@ -98,13 +112,13 @@ class BlackjackLabApp(tk.Tk):
                     return
                 except Exception as e:  # 恢复失败不允许假装成功
                     messagebox.showerror("恢复失败", str(e))
-        self.ctrl = SessionController(db_path)
+        self.ctrl = SessionController(db_path, recording_source=self.recording_source)
 
     def _build_top(self) -> None:
-        bar = ttk.LabelFrame(self, text="顶部：模式 / 牌副数 / 规则 / 状态")
+        bar = ttk.LabelFrame(self, text="下一牌靴设置（当前锁定快照见状态行）")
         bar.grid(row=0, column=0, sticky="ew", padx=6, pady=4)
 
-        ttk.Label(bar, text="模式：手动录牌（V0.1，无识别画面）").grid(
+        ttk.Label(bar, text=f"V0.2a 手动录牌 · {self.recording_source}").grid(
             row=0, column=0, sticky="w", padx=4, pady=2)
 
         deck_box = ttk.Frame(bar)
@@ -142,6 +156,8 @@ class BlackjackLabApp(tk.Tk):
                    command=self.act_new_shoe).grid(row=0, column=2, padx=6)
         ttk.Button(bar, text="规则详情 / 补充字段",
                    command=self.act_rule_details).grid(row=0, column=3, padx=6)
+        ttk.Button(bar, text="载入研究模板（新靴用）",
+                   command=self.act_research_template).grid(row=0, column=4, padx=6)
 
         self.var_topinfo = tk.StringVar()
         ttk.Label(bar, textvariable=self.var_topinfo, foreground="#1a3c6e"
@@ -235,10 +251,10 @@ class BlackjackLabApp(tk.Tk):
         f = ttk.LabelFrame(grid, text="能力边界")
         f.grid(row=3, column=1, sticky="nsew", padx=4, pady=3)
         ttk.Label(f, justify=tk.LEFT, text=(
-            "V0.1 已交付：录牌/分牌归属/撤销纠错\n"
+            "手动录牌 / 分牌归属 / 撤销纠错\n"
             "6·7·8副守恒/SQLite恢复/JSON导出\n"
-            "V0.2：概率与 EV（本版不显示数值）\n"
-            "V0.3/V0.4：离线识别 / 授权捕获"),
+            "V0.2a：概率 / 单手EV / 快照复盘\n"
+            "分牌EV / 识别 / 捕获尚未支持"),
             foreground="#555").pack(anchor="w", padx=4, pady=3)
 
         # ---------- 右侧：动作 + 组成 ----------
@@ -253,38 +269,36 @@ class BlackjackLabApp(tk.Tk):
         act_box.grid(row=0, column=0, sticky="ew", padx=4, pady=3)
         self.btn_stand = ttk.Button(act_box, text="停牌",
                                     command=lambda: self.act_action(ACTION_STAND))
-        self.btn_stand.pack(fill=tk.X, padx=4, pady=1)
+        act_box.columnconfigure(0, weight=1)
+        act_box.columnconfigure(1, weight=1)
+        self.btn_stand.grid(row=0, column=0, sticky="ew", padx=2, pady=2)
         self.btn_double = ttk.Button(act_box, text="加倍",
                                      command=lambda: self.act_action(ACTION_DOUBLE))
-        self.btn_double.pack(fill=tk.X, padx=4, pady=1)
+        self.btn_double.grid(row=0, column=1, sticky="ew", padx=2, pady=2)
         self.btn_split = ttk.Button(act_box, text="分牌",
                                     command=lambda: self.act_action(ACTION_SPLIT))
-        self.btn_split.pack(fill=tk.X, padx=4, pady=1)
+        self.btn_split.grid(row=1, column=0, sticky="ew", padx=2, pady=2)
         self.btn_surr = ttk.Button(act_box, text="投降",
                                    command=lambda: self.act_action(ACTION_SURRENDER))
-        self.btn_surr.pack(fill=tk.X, padx=4, pady=1)
+        self.btn_surr.grid(row=1, column=1, sticky="ew", padx=2, pady=2)
         ttk.Button(act_box, text="庄家检查底牌：确认非 BJ",
-                   command=self.act_peek_negative).pack(fill=tk.X, padx=4, pady=1)
+                   command=self.act_peek_negative).grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=2)
         self.var_legal = tk.StringVar(value="")
         ttk.Label(act_box, textvariable=self.var_legal, justify=tk.LEFT,
-                  foreground="#444").pack(anchor="w", padx=4, pady=2)
+                  foreground="#444", wraplength=295).grid(row=3, column=0, columnspan=2, sticky="w", padx=4, pady=2)
 
-        comp_box = ttk.LabelFrame(right, text="牌靴组成（确定信息，非概率预测）")
-        comp_box.grid(row=1, column=0, sticky="nsew", padx=4, pady=3)
+        self.analysis_tabs = ttk.Notebook(right)
+        self.analysis_tabs.grid(row=1, column=0, sticky="nsew", padx=3, pady=3)
+        self.analysis_panel = AnalysisPanel(self.analysis_tabs, self)
+        self.analysis_tabs.add(self.analysis_panel, text="概率 / 单手EV")
+        comp_box = ttk.Frame(self.analysis_tabs)
+        self.analysis_tabs.add(comp_box, text="牌靴组成")
         self.txt_comp = tk.Text(comp_box, width=38, height=16, wrap=tk.WORD,
                                 state=tk.DISABLED, font=("Consolas", 9))
         comp_scroll = ttk.Scrollbar(comp_box, command=self.txt_comp.yview)
         self.txt_comp.configure(yscrollcommand=comp_scroll.set)
         comp_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.txt_comp.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2, pady=2)
-
-        ev_box = ttk.LabelFrame(right, text="概率 / 期望净收益")
-        ev_box.grid(row=2, column=0, sticky="ew", padx=4, pady=3)
-        ttk.Label(ev_box, justify=tk.LEFT, text=(
-            "概率与 EV 引擎属于 V0.2。\n"
-            "本版本不输出任何胜率/EV 数值，\n"
-            "不以大牌比例线性换算收益。"),
-            foreground="#8a5a00").pack(anchor="w", padx=4, pady=3)
 
     def _build_bottom(self) -> None:
         bottom = ttk.LabelFrame(self, text="底部：轮次操作 / 事件时间线 / 纠错")
@@ -309,7 +323,8 @@ class BlackjackLabApp(tk.Tk):
             ("修正选中事件", self.act_correct), ("查看选中时点", self.act_history),
             ("结束本轮（未结算）", self.act_end_unsettled),
             ("导入 JSON / CSV", self.act_import), ("恢复历史会话", self.act_recover),
-            ("备份数据库", self.act_backup),
+            ("备份数据库", self.act_backup), ("旧会话诊断", self.act_diagnose),
+            ("刷新界面", self.act_refresh),
         ]:
             ttk.Button(more, text=text, command=cmd).pack(side=tk.LEFT, padx=3)
 
@@ -346,6 +361,48 @@ class BlackjackLabApp(tk.Tk):
     # ============================================================
     # 动作
     # ============================================================
+    @tracked_operation
+    def act_research_template(self):
+        rules = research_rules(self.var_decks.get())
+        self.var_s17.set("S17")
+        self.var_bjp.set("3:2")
+        self.var_split_match.set("same_rank 同牌面")
+        self.var_das.set("禁止")
+        self.var_surrender.set("late")
+        self.var_confirm.set(CONFIRM_VERIFIED)
+        excluded = {"n_decks", "dealer_soft17", "blackjack_payout", "split_match", "double_after_split", "surrender", "confirm_status"}
+        self.rule_details = {k: v for k, v in asdict(rules).items() if k not in excluded}
+        self.set_status("已载入自建研究模板（非平台桌规）：完整新靴、零烧牌、S17/3:2/美式检查。请新建牌靴使用；当前规则快照不变。")
+
+    @tracked_operation
+    def act_refresh(self):
+        try:
+            self.refresh_all()
+            self.set_status("已从账本刷新界面，请核对最新记录")
+        except Exception as error:
+            self.fail(error)
+
+    @tracked_operation
+    def act_diagnose(self):
+        sessions = self.ctrl.list_recoverable()
+        if not sessions:
+            return
+        lines = [f"{i + 1}. {s['session_id'][:12]} / {s['event_count']}条" for i, s in enumerate(sessions)]
+        choice = simpledialog.askinteger("只读诊断旧会话", "\n".join(lines) + "\n选择序号（不会更改记录）：", parent=self, minvalue=1, maxvalue=len(sessions))
+        if not choice:
+            return
+        session_id = sessions[choice - 1]["session_id"]
+        result = self.ctrl.store.diagnose_session(session_id)
+        messagebox.showinfo("只读诊断", result["error"] or "事件可重放；是否可分析仍需核对规则与信息条件。", parent=self)
+        path = filedialog.asksaveasfilename(parent=self, defaultextension=".json", initialfile="raw_session_diagnostic.json", filetypes=[("原始诊断", "*.json")])
+        if path:
+            try:
+                self.ctrl.export_diagnostic(session_id, path)
+                self.set_status("已原样导出数据库行供核对；未修改原会话，不将非法旧记录用于分析")
+            except Exception as error:
+                self.fail(error)
+
+    @tracked_operation
     def act_rule_details(self):
         """补充桌规用表单录入；当前牌靴继续使用其冻结快照。"""
         win = tk.Toplevel(self)
@@ -367,6 +424,7 @@ class BlackjackLabApp(tk.Tk):
             ("split_ace_hit_once", "分A是否只补一张", ["未知", "是", "否"]),
             ("start_from_new_shoe", "是否从新牌靴开始记录", ["未知", "是", "否"]),
             ("burn_cards_known", "是否已知烧牌数量（含零张）", ["未知", "是", "否"]),
+            ("initial_burn_count", "初始烧牌数量（空为未知）", None),
             ("cut_shuffle_note", "切牌 / 洗牌约定", None), ("remark", "备注 / 素材来源", None),
         ]
         profile = self._build_rules()
@@ -401,6 +459,8 @@ class BlackjackLabApp(tk.Tk):
                         value = enum_maps[key][value]
                     elif key in ("version", "n_seats", "max_split_hands"):
                         value = int(value)
+                    elif key == "initial_burn_count":
+                        value = int(value) if value else None
                     elif key == "double_on_totals":
                         value = tuple(int(n.strip()) for n in value.replace("，", ",").split(",")) if value else None
                     else:
@@ -415,9 +475,9 @@ class BlackjackLabApp(tk.Tk):
             except Exception as exc:
                 messagebox.showerror("规则无效", str(exc), parent=win)
 
-        ttk.Label(win, text="当前版本只记录有限不放回牌靴。庄家BJ仅验证全部注损失；其他追加注结算不输出收益。", wraplength=800).grid(row=10, column=0, columnspan=4, padx=8, pady=8)
-        ttk.Button(win, text="保存表单", command=save).grid(row=11, column=1, pady=8)
-        ttk.Button(win, text="取消", command=win.destroy).grid(row=11, column=2, pady=8)
+        ttk.Label(win, text="记录规则与分析支持范围分开：本版分析仅支持明确的单手研究模板；未知字段不自动套用。", wraplength=800).grid(row=11, column=0, columnspan=4, padx=8, pady=8)
+        ttk.Button(win, text="保存表单", command=save).grid(row=12, column=1, pady=8)
+        ttk.Button(win, text="取消", command=win.destroy).grid(row=12, column=2, pady=8)
 
     def _selected_event(self):
         selection = self.lst_timeline.curselection()
@@ -425,6 +485,7 @@ class BlackjackLabApp(tk.Tk):
             raise LedgerError("请先在时间线选中一条事件")
         return self.ctrl.ledger.events[selection[0]]
 
+    @tracked_operation
     def act_correct(self):
         try:
             event = self._selected_event()
@@ -461,6 +522,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as exc:
             self.fail(exc)
 
+    @tracked_operation
     def act_history(self):
         try:
             event = self._selected_event()
@@ -477,6 +539,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as exc:
             self.fail(exc)
 
+    @tracked_operation
     def act_end_unsettled(self):
         reason = simpledialog.askstring("结束本轮（不输出结算）", "信息不足或结算规则未支持的原因：", parent=self)
         if reason:
@@ -487,6 +550,7 @@ class BlackjackLabApp(tk.Tk):
             except Exception as exc:
                 self.fail(exc)
 
+    @tracked_operation
     def act_import(self):
         path = filedialog.askopenfilename(filetypes=[("会话文件", "*.json *.csv")], parent=self)
         if path:
@@ -497,6 +561,7 @@ class BlackjackLabApp(tk.Tk):
             except Exception as exc:
                 self.fail(exc)
 
+    @tracked_operation
     def act_recover(self):
         sessions = [s for s in self.ctrl.list_recoverable() if s["event_count"] > 0]
         labels = [f"{i + 1}. {s['session_id'][:12]} — {s['event_count']}条事件" for i, s in enumerate(sessions)]
@@ -509,6 +574,7 @@ class BlackjackLabApp(tk.Tk):
             except Exception as exc:
                 self.fail(exc)
 
+    @tracked_operation
     def act_backup(self):
         path = filedialog.asksaveasfilename(defaultextension=".db", initialfile="blackjack_backup.db", filetypes=[("SQLite", "*.db")], parent=self)
         if path:
@@ -550,6 +616,7 @@ class BlackjackLabApp(tk.Tk):
             **self.rule_details,
         )
 
+    @tracked_operation
     def act_new_shoe(self) -> None:
         seg = self._current_seg()
         if seg and seg.table.phase in ("发牌中", "进行中"):
@@ -562,6 +629,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_new_round(self) -> None:
         try:
             seg = self._current_seg()
@@ -572,6 +640,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_card(self, rank: str) -> None:
         try:
             seg = self._current_seg()
@@ -592,6 +661,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_hidden_card(self) -> None:
         try:
             seg = self._current_seg()
@@ -604,6 +674,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_unknown_card(self) -> None:
         try:
             seg = self._current_seg()
@@ -616,6 +687,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_action(self, action: str) -> None:
         try:
             seg = self._current_seg()
@@ -633,6 +705,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_peek_negative(self) -> None:
         try:
             self.ctrl.peek_negative()
@@ -641,6 +714,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_end_round(self) -> None:
         try:
             _, results = self.ctrl.end_round()
@@ -657,6 +731,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_end_shoe(self) -> None:
         try:
             self.ctrl.end_shoe()
@@ -665,6 +740,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_undo(self) -> None:
         try:
             self.ctrl.undo_last()
@@ -673,6 +749,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_burn(self) -> None:
         try:
             n = simpledialog.askinteger("登记烧牌", "烧牌数量（牌面未知、数量已知）：",
@@ -684,17 +761,19 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_gap(self) -> None:
         reason = simpledialog.askstring("标记观察缺口",
                                         "缺口原因（断流/漏牌/未知数量烧牌等）：", parent=self)
         if reason:
             try:
                 self.ctrl.mark_gap(reason)
-                self.set_status("已标记观察缺口：牌靴级精确分析暂停（V0.1 仅记录）")
+                self.set_status("已标记观察缺口：相应精确分析已停用，旧结果过期")
                 self.refresh_all()
             except Exception as e:
                 self.fail(e)
 
+    @tracked_operation
     def act_export_json(self) -> None:
         path = filedialog.asksaveasfilename(
             defaultextension=".json", initialfile="blackjack_session.json",
@@ -707,6 +786,7 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def act_export_csv(self) -> None:
         path = filedialog.asksaveasfilename(
             defaultextension=".csv", initialfile="blackjack_events.csv",
@@ -736,14 +816,14 @@ class BlackjackLabApp(tk.Tk):
         shoe_no = len(replay.segments)
         if seg is None:
             self.var_topinfo.set(
-                f"牌靴 #0｜轮次 -｜完整性 -｜分析引擎：{ENGINE_VERSION}（EV 属 V0.2，未交付）")
+                f"牌靴 #0｜轮次 -｜完整性 -｜分析引擎：{ENGINE_VERSION}（V0.2a单手分析）")
             return
         ok, note = seg.shoe.conservation_check()
         self.var_topinfo.set(
-            f"锁定 {seg.rules.n_decks}副｜牌靴 #{shoe_no}｜第 {seg.table.round_no} 轮｜"
+            f"锁定 {seg.rules.n_decks}副/{seg.rules.dealer_soft17 or '未知'}｜牌靴 #{shoe_no}｜第 {seg.table.round_no} 轮｜"
             f"阶段 {'牌靴已结束' if seg.closed else seg.table.phase}｜记录：{self._record_status(seg)}｜"
             f"守恒：{'正常' if ok else '异常'}｜"
-            f"规则确认：{seg.rules.confirm_status}｜分析：V0.2 交付，当前仅记录")
+            f"规则确认：{seg.rules.confirm_status}｜分析：V0.2a受限单手模型")
 
     def refresh_hands(self, seg=None) -> None:
         if seg is None:
@@ -786,6 +866,10 @@ class BlackjackLabApp(tk.Tk):
             lbl.configure(text=f"{target}\n{txt}")
 
     def refresh_actions(self, seg=None) -> None:
+        if seg is None:
+            seg = self._current_seg()
+        if hasattr(self, "analysis_panel"):
+            self.analysis_panel.on_context(seg)
         for button in (self.btn_stand, self.btn_double, self.btn_split, self.btn_surr):
             button.state(["disabled"])
         if seg is None:
@@ -798,13 +882,13 @@ class BlackjackLabApp(tk.Tk):
             self.var_legal.set("该座位尚无手牌")
             return
         try:
-            legal = seg.table.legal_actions(self.var_target.get(), hand_id)
-            lines = [f"{k}：{v}" for k, v in legal.items()]
+            states = seg.table.action_states(self.var_target.get(), hand_id)
+            lines = list(dict.fromkeys(item.reason for item in states.values() if not item.allowed))[:2]
             self.var_legal.set("\n".join(lines))
-            enabled = {self.btn_stand: legal.get("停牌") == "可停牌",
-                       self.btn_double: legal.get("加倍", "").startswith("可加倍"),
-                       self.btn_split: legal.get("分牌") == "可分牌",
-                       self.btn_surr: legal.get("投降", "").startswith("可投降")}
+            enabled = {self.btn_stand: states[ACTION_STAND].allowed,
+                       self.btn_double: states[ACTION_DOUBLE].allowed,
+                       self.btn_split: states[ACTION_SPLIT].allowed,
+                       self.btn_surr: states[ACTION_SURRENDER].allowed}
             for btn, ok in enabled.items():
                 btn.state(["!disabled"] if ok else ["disabled"])
         except TableError as e:
@@ -884,10 +968,11 @@ class BlackjackLabApp(tk.Tk):
     def _record_status(seg):
         status = seg.shoe.integrity_state()
         if status == "可分析":
-            return "记录无已知缺口（未运行分析）"
+            return "记录无已知缺口（分析资格另核对）"
         return status
 
     def on_close(self):
+        self.analysis_panel.close()
         self.ctrl.close()
         self.destroy()
 
@@ -898,8 +983,11 @@ class BlackjackLabApp(tk.Tk):
         self.var_status.set(msg)
 
     def fail(self, e: Exception) -> None:
-        messagebox.showerror("操作被拒绝", f"{type(e).__name__}: {e}")
-        self.set_status(f"操作未入账：{e}")
+        committed = self.ctrl.commit_revision > self._operation_start_revision
+        message = ("数据已成功提交，但界面未同步。请刷新或重启，不要重复录牌。" if committed
+                   else "操作未完成，未提交新的牌面事件。")
+        messagebox.showerror("已保存 / 界面错误" if committed else "操作被拒绝", f"{message}\n{type(e).__name__}: {e}")
+        self.var_status.set(f"{message} {e}")
 
 
 def main() -> None:
