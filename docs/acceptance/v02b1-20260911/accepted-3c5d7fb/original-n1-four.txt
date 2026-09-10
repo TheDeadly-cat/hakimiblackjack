@@ -1,0 +1,9 @@
+test_array_json_root_is_isolated (test_snapshot_shape.SnapshotShapeReview.test_array_json_root_is_isolated) ... ok
+test_invalid_json_syntax_is_isolated (test_snapshot_shape.SnapshotShapeReview.test_invalid_json_syntax_is_isolated) ... ok
+test_null_json_root_is_isolated (test_snapshot_shape.SnapshotShapeReview.test_null_json_root_is_isolated) ... ok
+test_valid_envelope_lists_without_damage (test_snapshot_shape.SnapshotShapeReview.test_valid_envelope_lists_without_damage) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.051s
+
+OK

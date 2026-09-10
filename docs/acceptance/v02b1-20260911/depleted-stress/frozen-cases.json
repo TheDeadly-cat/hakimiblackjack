@@ -1,0 +1,47 @@
+{
+  "cases": [
+    [
+      6,
+      "all-tens-removed"
+    ],
+    [
+      6,
+      "half-tens-removed"
+    ],
+    [
+      6,
+      "middle-ranks-removed"
+    ],
+    [
+      7,
+      "all-tens-removed"
+    ],
+    [
+      7,
+      "half-tens-removed"
+    ],
+    [
+      7,
+      "middle-ranks-removed"
+    ],
+    [
+      8,
+      "all-tens-removed"
+    ],
+    [
+      8,
+      "half-tens-removed"
+    ],
+    [
+      8,
+      "middle-ranks-removed"
+    ]
+  ],
+  "player": [
+    "2",
+    "2"
+  ],
+  "dealer_up": "A",
+  "budget_seconds": 5,
+  "purpose": "additional adversarial composition cohort; separate from the frozen 318-case matrix"
+}
