@@ -1,0 +1,13 @@
+{
+  "base_commit": "ee485dd22285ec14f83bf8fe81df4fad2f3ea005",
+  "changes": "only newly authored regression file; runtime equals base",
+  "test_sha256": "07c4b46030fc0cee7df1f48826b44429ffd411b49bfffa69837d1a0c1a9b2ddb",
+  "command": [
+    "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+    "-m",
+    "unittest",
+    "tests.test_v02a_review_regressions",
+    "-v"
+  ],
+  "exit_code": 1
+}

@@ -1,0 +1,35 @@
+test_cancel_after_failed_redraw_does_not_restart_on_next_poll (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_cancel_after_failed_redraw_does_not_restart_on_next_poll) ... FAIL
+test_cancel_removes_queued_automatic_calculation (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_cancel_removes_queued_automatic_calculation) ... ok
+test_displayed_result_invalidates_before_failed_refresh (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_displayed_result_invalidates_before_failed_refresh) ... ok
+test_each_early_redraw_failure_clears_result_then_new_prefix_can_compute (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_each_early_redraw_failure_clears_result_then_new_prefix_can_compute) ... ok
+test_failed_database_write_keeps_still_current_result (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_failed_database_write_keeps_still_current_result) ... ok
+test_history_recompute_remains_historical_when_current_input_changes (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_history_recompute_remains_historical_when_current_input_changes) ... ok
+test_import_invalidates_current_request_without_redraw (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_import_invalidates_current_request_without_redraw) ... ok
+test_inflight_result_cannot_publish_after_commit_and_failed_refresh (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_inflight_result_cannot_publish_after_commit_and_failed_refresh) ... ok
+test_publish_guard_reads_real_token_when_notifications_are_missing (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_publish_guard_reads_real_token_when_notifications_are_missing) ... ok
+test_target_and_session_changes_invalidate_without_redraw (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_target_and_session_changes_invalidate_without_redraw) ... ok
+test_turning_off_auto_removes_queued_callback_and_manual_still_works (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_turning_off_auto_removes_queued_callback_and_manual_still_works) ... FAIL
+test_missing_initial_card_survives_unsettled_end_and_next_round (tests.test_v02a_review_regressions.TestCrossRoundObservation.test_missing_initial_card_survives_unsettled_end_and_next_round) ... ok
+
+======================================================================
+FAIL: test_cancel_after_failed_redraw_does_not_restart_on_next_poll (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_cancel_after_failed_redraw_does_not_restart_on_next_poll)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_v02a_review_regressions.py", line 127, in test_cancel_after_failed_redraw_does_not_restart_on_next_poll
+    self.assertEqual(self.wait_result()["input"]["player"], [5, 6, 2, 3])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (5, 6, 2, 3) != [5, 6, 2, 3]
+
+======================================================================
+FAIL: test_turning_off_auto_removes_queued_callback_and_manual_still_works (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_turning_off_auto_removes_queued_callback_and_manual_still_works)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_v02a_review_regressions.py", line 114, in test_turning_off_auto_removes_queued_callback_and_manual_still_works
+    self.assertEqual(self.wait_result()["input"]["player"], [5, 6, 2])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (5, 6, 2) != [5, 6, 2]
+
+----------------------------------------------------------------------
+Ran 12 tests in 8.373s
+
+FAILED (failures=2)

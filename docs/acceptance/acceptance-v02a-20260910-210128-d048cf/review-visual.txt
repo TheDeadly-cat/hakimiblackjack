@@ -1,0 +1,1 @@
+{"output": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a\\.local-evidence\\acceptance-v02a-20260910-210128-d048cf\\review-screens", "passed": true}

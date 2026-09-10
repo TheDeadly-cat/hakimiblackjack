@@ -1,0 +1,22 @@
+test_deal_before_shoe_rejected (tests.test_integration.TestEmptyAndEdge.test_deal_before_shoe_rejected) ... ok
+test_double_display_consistency (tests.test_integration.TestEmptyAndEdge.test_double_display_consistency)
+分牌两手合并记账：结算条目数=子手数，EV 口径属 V0.2 不在此断言。 ... ok
+test_6_7_8_decks (tests.test_integration.TestFullSessionAllDecks.test_6_7_8_decks) ... ok
+test_persistence_roundtrip_of_full_session (tests.test_integration.TestFullSessionAllDecks.test_persistence_roundtrip_of_full_session) ... ok
+test_cancel_after_failed_redraw_does_not_restart_on_next_poll (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_cancel_after_failed_redraw_does_not_restart_on_next_poll) ... ok
+test_cancel_removes_queued_automatic_calculation (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_cancel_removes_queued_automatic_calculation) ... ok
+test_displayed_result_invalidates_before_failed_refresh (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_displayed_result_invalidates_before_failed_refresh) ... ok
+test_each_early_redraw_failure_clears_result_then_new_prefix_can_compute (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_each_early_redraw_failure_clears_result_then_new_prefix_can_compute) ... ok
+test_failed_database_write_keeps_still_current_result (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_failed_database_write_keeps_still_current_result) ... ok
+test_history_recompute_remains_historical_when_current_input_changes (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_history_recompute_remains_historical_when_current_input_changes) ... ok
+test_import_invalidates_current_request_without_redraw (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_import_invalidates_current_request_without_redraw) ... ok
+test_inflight_result_cannot_publish_after_commit_and_failed_refresh (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_inflight_result_cannot_publish_after_commit_and_failed_refresh) ... ok
+test_publish_guard_reads_real_token_when_notifications_are_missing (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_publish_guard_reads_real_token_when_notifications_are_missing) ... ok
+test_target_and_session_changes_invalidate_without_redraw (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_target_and_session_changes_invalidate_without_redraw) ... ok
+test_turning_off_auto_removes_queued_callback_and_manual_still_works (tests.test_v02a_review_regressions.TestAnalysisLifecycleReview.test_turning_off_auto_removes_queued_callback_and_manual_still_works) ... ok
+test_missing_initial_card_survives_unsettled_end_and_next_round (tests.test_v02a_review_regressions.TestCrossRoundObservation.test_missing_initial_card_survives_unsettled_end_and_next_round) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 8.433s
+
+OK
