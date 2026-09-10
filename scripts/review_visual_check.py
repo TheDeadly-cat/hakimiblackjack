@@ -26,7 +26,7 @@ def main():
     ctypes.windll.user32.GetAncestor.restype = ctypes.c_void_p
 
     def capture(widget, name):
-        widget.update_idletasks()
+        widget.update()
         hwnd = ctypes.windll.user32.GetAncestor(widget.winfo_id(), 2)
         ImageGrab.grab(window=hwnd).save(output / (name + ".png"))
 
@@ -49,6 +49,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp, patch("blackjack_lab.ui.app.messagebox.showerror", side_effect=lambda title, text, **kw: errors.append(text)):
         app = BlackjackLabApp(Path(tmp)/"cross-round.db", recording_source=SOURCE_SIMULATOR)
         try:
+            app.update()
             setup(app)
             deal(app, "庄家", ("9", "8"))
             deal(app, "玩家1", ("10",))
@@ -74,6 +75,7 @@ def main():
             app.on_close()
         app = BlackjackLabApp(Path(tmp)/"lifecycle.db", recording_source=SOURCE_SIMULATOR)
         try:
+            app.update()
             setup(app)
             deal(app, "庄家", ("2", None))
             deal(app, "玩家1", ("5", "6"))
