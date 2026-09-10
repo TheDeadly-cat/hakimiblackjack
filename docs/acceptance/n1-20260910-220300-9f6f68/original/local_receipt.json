@@ -1,0 +1,23 @@
+{
+  "run_at_utc": "2026-09-10T13:39:11.145960+00:00",
+  "commit": "09bb60c72c64363f02d3b27b818a49a254395af9",
+  "python": "3.13.5 (main, Jul 15 2026, 20:25:40) [GCC 14.2.0]",
+  "platform": "Linux-6.18.35-x86_64-with-glibc2.41",
+  "command": [
+    "/opt/pyvenv/bin/python",
+    "-m",
+    "unittest",
+    "-v",
+    "test_snapshot_shape"
+  ],
+  "cwd": "/mnt/data/hakimi_review_round3",
+  "exit_code": 1,
+  "scope": "Isolated snapshot storage regression, three Git-blob-verified source modules; package initializers empty. Not whole-repository or GUI execution.",
+  "tests": 4,
+  "passed": 2,
+  "errors": 2,
+  "failures": 0,
+  "output": "snapshot_shape_output.txt",
+  "output_sha256": "bf36cfe01588376debe0270c68c2314577f0ee7ca6d3aeea4404c7663357f8b4",
+  "source_identity": "source_identity.json"
+}

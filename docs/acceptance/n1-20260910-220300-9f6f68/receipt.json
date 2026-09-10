@@ -1,0 +1,50 @@
+{
+  "created_at": "2026-09-10T14:03:33.637029+00:00",
+  "commit": "33cbe9bf4b4ffb3da4d78e8c26c41f7db10697cb",
+  "dirty": false,
+  "source_manifest": {
+    "blackjack_lab/storage/analysis_snapshots.py": "e65719ba19ff0d53dbc265322c44f7a759d4b53bd731ace69fd2b3991e900bc5",
+    "blackjack_lab/ui/analysis_panel.py": "7480d60a6cf8349cc2d5412892151ca07e57110f5ea86a055f6165fcc1bc3b42",
+    "tests/test_snapshot_shape.py": "88148ad1815d2afcdde0a667f1aa0f80744e65fb18bbafadf0d6d5df6af33916"
+  },
+  "source_unchanged": true,
+  "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\snapshot-shape-fix",
+  "production_snapshot_module": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\snapshot-shape-fix\\blackjack_lab\\storage\\analysis_snapshots.py",
+  "original_test_sha256": "be3c30a66026992c900c269f3c5a8ed48b39f424987c7d019817caaa74bc614e",
+  "commands": [
+    {
+      "label": "original-four",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\snapshot-shape-fix\\.local-evidence\\n1-20260910-215556-b95a67\\original",
+        "-p",
+        "test_snapshot_shape.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.18172400000003108,
+      "output_sha256": "19f8ebc9beb250e82e9de42fbbc3e25eab7a24326013fc45abdd66c1360bef40"
+    },
+    {
+      "label": "full-regression",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 32.861769500000264,
+      "output_sha256": "4469cf9e61b8adde4940a0867efcf7555d1fa49c3bb2ebdd1d010df259b08895"
+    }
+  ]
+}

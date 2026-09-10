@@ -1,0 +1,27 @@
+{
+  "commit": "09bb60c72c64363f02d3b27b818a49a254395af9",
+  "scope": "Three exact source modules reconstructed from GitHub connector reads; empty package initializers; not a full checkout.",
+  "files": [
+    {
+      "path": "blackjack_lab/storage/analysis_snapshots.py",
+      "expected_git_blob": "b14a8ca844df521dcf32568cefb62e2a301bab46",
+      "actual_git_blob": "b14a8ca844df521dcf32568cefb62e2a301bab46",
+      "sha256": "8910944fc2c34d75089b5be32c9af888de9c523da9789858c359a4a96095fc7a",
+      "matched": true
+    },
+    {
+      "path": "blackjack_lab/storage/safe_files.py",
+      "expected_git_blob": "20161e7f11dbf90d78f1b05446abb7fd279e5552",
+      "actual_git_blob": "20161e7f11dbf90d78f1b05446abb7fd279e5552",
+      "sha256": "1c363f55f79e91a8e587ffe3edfec4194230354b01b0a0f61416b923ab5e8ccf",
+      "matched": true
+    },
+    {
+      "path": "blackjack_lab/analysis/contracts.py",
+      "expected_git_blob": "1d639704cfc8ffb30dc3d45dd547a8c7276f1c39",
+      "actual_git_blob": "1d639704cfc8ffb30dc3d45dd547a8c7276f1c39",
+      "sha256": "6d3a189891a6887139f5f5d783dd076953603a17c03d769f6163df67d9c24578",
+      "matched": true
+    }
+  ]
+}

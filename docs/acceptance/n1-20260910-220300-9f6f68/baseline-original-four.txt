@@ -1,0 +1,44 @@
+test_array_json_root_is_isolated (test_snapshot_shape.SnapshotShapeReview.test_array_json_root_is_isolated) ... ERROR
+test_invalid_json_syntax_is_isolated (test_snapshot_shape.SnapshotShapeReview.test_invalid_json_syntax_is_isolated) ... ok
+test_null_json_root_is_isolated (test_snapshot_shape.SnapshotShapeReview.test_null_json_root_is_isolated) ... ERROR
+test_valid_envelope_lists_without_damage (test_snapshot_shape.SnapshotShapeReview.test_valid_envelope_lists_without_damage) ... ok
+
+======================================================================
+ERROR: test_array_json_root_is_isolated (test_snapshot_shape.SnapshotShapeReview.test_array_json_root_is_isolated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\snapshot-shape-fix\.local-evidence\n1-20260910-215556-b95a67\original\test_snapshot_shape.py", line 47, in test_array_json_root_is_isolated
+    self.check_bad_file("[]")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\snapshot-shape-fix\.local-evidence\n1-20260910-215556-b95a67\original\test_snapshot_shape.py", line 31, in check_bad_file
+    entries, damaged = self.store.list()
+                       ~~~~~~~~~~~~~~~^^
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\snapshot-shape-fix\blackjack_lab\storage\analysis_snapshots.py", line 43, in list
+    entries.append(self.load(path.stem))
+                   ~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\snapshot-shape-fix\blackjack_lab\storage\analysis_snapshots.py", line 31, in load
+    signature = data.pop("content_digest")
+TypeError: 'str' object cannot be interpreted as an integer
+
+======================================================================
+ERROR: test_null_json_root_is_isolated (test_snapshot_shape.SnapshotShapeReview.test_null_json_root_is_isolated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\snapshot-shape-fix\.local-evidence\n1-20260910-215556-b95a67\original\test_snapshot_shape.py", line 50, in test_null_json_root_is_isolated
+    self.check_bad_file("null")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\snapshot-shape-fix\.local-evidence\n1-20260910-215556-b95a67\original\test_snapshot_shape.py", line 31, in check_bad_file
+    entries, damaged = self.store.list()
+                       ~~~~~~~~~~~~~~~^^
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\snapshot-shape-fix\blackjack_lab\storage\analysis_snapshots.py", line 43, in list
+    entries.append(self.load(path.stem))
+                   ~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\snapshot-shape-fix\blackjack_lab\storage\analysis_snapshots.py", line 31, in load
+    signature = data.pop("content_digest")
+                ^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'pop'
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.047s
+
+FAILED (errors=2)

@@ -1,0 +1,14 @@
+{
+  "baseline-original-four.txt": "57834499e92251d6f2f13b6808b241c56b1fe8732ff0e576b40bab8883777871",
+  "focused-first.txt": "e9fe06a3bc808387cf6e859c5b65106c29f41c3933a978e5aa63188f7a5435cd",
+  "full-regression.txt": "4469cf9e61b8adde4940a0867efcf7555d1fa49c3bb2ebdd1d010df259b08895",
+  "original-four-after-first.txt": "3cd6c230a055a4459adbf6357b86f064b6104e7f3a32113e19ef28f7be54f6cc",
+  "original-four.txt": "19f8ebc9beb250e82e9de42fbbc3e25eab7a24326013fc45abdd66c1360bef40",
+  "receipt.json": "cf4eed81d3aa8a36771011c5ff7ebf2ad8392093f22cdb8238f61ed60fcc45db",
+  "source-verification.json": "a108e36df1357137258b06d205e57d8fb3b8db7647fabdc8bba171d8ff64dc1e",
+  "original/local_receipt.json": "a6a7e946cd2a7a92a8ac9afc3c1060eaf14e433b045948d70c5cd84b5e0ee804",
+  "original/package_manifest.json": "8e6be3af3d84f701966cb89c766c8f5ea1258124abc7eed941b660c250a89ece",
+  "original/snapshot_shape_output.txt": "bf36cfe01588376debe0270c68c2314577f0ee7ca6d3aeea4404c7663357f8b4",
+  "original/source_identity.json": "6a416236bf6f04a1e9bc3be2b2bd0e36e7756854ee4f9b5ca8ce2e2468511fac",
+  "original/test_snapshot_shape.py": "be3c30a66026992c900c269f3c5a8ed48b39f424987c7d019817caaa74bc614e"
+}
