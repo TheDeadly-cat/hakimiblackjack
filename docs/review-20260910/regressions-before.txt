@@ -1,0 +1,439 @@
+test_ambiguous_import_sequence_rejected (tests.test_v01_regressions.TestLedgerRegressions.test_ambiguous_import_sequence_rejected) ... FAIL
+test_closed_shoe_rejects_new_round (tests.test_v01_regressions.TestLedgerRegressions.test_closed_shoe_rejects_new_round) ... FAIL
+test_corrections_compose_without_losing_previous_fix (tests.test_v01_regressions.TestLedgerRegressions.test_corrections_compose_without_losing_previous_fix) ... FAIL
+test_hidden_face_must_not_contain_future_rank (tests.test_v01_regressions.TestLedgerRegressions.test_hidden_face_must_not_contain_future_rank) ... FAIL
+test_inactive_player_cannot_receive_cards (tests.test_v01_regressions.TestLedgerRegressions.test_inactive_player_cannot_receive_cards) ... FAIL
+test_invalid_append_is_atomic (tests.test_v01_regressions.TestLedgerRegressions.test_invalid_append_is_atomic) ... FAIL
+test_invalid_history_correction_is_rejected_without_poisoning (tests.test_v01_regressions.TestLedgerRegressions.test_invalid_history_correction_is_rejected_without_poisoning) ... FAIL
+test_reveal_exact_target_when_multiple_unknowns_have_no_track (tests.test_v01_regressions.TestLedgerRegressions.test_reveal_exact_target_when_multiple_unknowns_have_no_track) ... FAIL
+test_revealing_hidden_does_not_clear_unrelated_pending (tests.test_v01_regressions.TestLedgerRegressions.test_revealing_hidden_does_not_clear_unrelated_pending) ... FAIL
+test_second_reveal_of_same_card_rejected (tests.test_v01_regressions.TestLedgerRegressions.test_second_reveal_of_same_card_rejected) ... FAIL
+test_undo_new_shoe_restores_context (tests.test_v01_regressions.TestLedgerRegressions.test_undo_new_shoe_restores_context) ... FAIL
+test_disk_failure_rolls_back_memory (tests.test_v01_regressions.TestPersistenceRegressions.test_disk_failure_rolls_back_memory) ... FAIL
+test_invalid_record_never_enters_memory_or_database (tests.test_v01_regressions.TestPersistenceRegressions.test_invalid_record_never_enters_memory_or_database) ... FAIL
+test_sequence_collision_raises_instead_of_silent_drop (tests.test_v01_regressions.TestPersistenceRegressions.test_sequence_collision_raises_instead_of_silent_drop) ... FAIL
+test_two_sessions_keep_every_event_after_reopen (tests.test_v01_regressions.TestPersistenceRegressions.test_two_sessions_keep_every_event_after_reopen) ... FAIL
+test_unknown_export_version_rejected (tests.test_v01_regressions.TestPersistenceRegressions.test_unknown_export_version_rejected) ... FAIL
+test_exact_ten_cannot_reuse_capacity_already_in_t_bucket (tests.test_v01_regressions.TestShoeRegressions.test_exact_ten_cannot_reuse_capacity_already_in_t_bucket) ... FAIL
+test_fractional_burn_is_rejected (tests.test_v01_regressions.TestShoeRegressions.test_fractional_burn_is_rejected) ... FAIL
+test_gap_does_not_disable_maximum_capacity_guard (tests.test_v01_regressions.TestShoeRegressions.test_gap_does_not_disable_maximum_capacity_guard) ... FAIL
+test_known_card_after_full_burn_rejected_for_each_deck_count (tests.test_v01_regressions.TestShoeRegressions.test_known_card_after_full_burn_rejected_for_each_deck_count) ... 
+  test_known_card_after_full_burn_rejected_for_each_deck_count (tests.test_v01_regressions.TestShoeRegressions.test_known_card_after_full_burn_rejected_for_each_deck_count) (decks=6) ... FAIL
+  test_known_card_after_full_burn_rejected_for_each_deck_count (tests.test_v01_regressions.TestShoeRegressions.test_known_card_after_full_burn_rejected_for_each_deck_count) (decks=7) ... FAIL
+  test_known_card_after_full_burn_rejected_for_each_deck_count (tests.test_v01_regressions.TestShoeRegressions.test_known_card_after_full_burn_rejected_for_each_deck_count) (decks=8) ... FAIL
+test_partial_unknown_hand_total_is_unknown (tests.test_v01_regressions.TestShoeRegressions.test_partial_unknown_hand_total_is_unknown) ... FAIL
+test_both_split_ace_hands_pay_normal_twenty_one (tests.test_v01_regressions.TestTableRegressions.test_both_split_ace_hands_pay_normal_twenty_one) ... FAIL
+test_dealer_cannot_split (tests.test_v01_regressions.TestTableRegressions.test_dealer_cannot_split) ... FAIL
+test_double_cannot_be_repeated_before_card_arrives (tests.test_v01_regressions.TestTableRegressions.test_double_cannot_be_repeated_before_card_arrives) ... FAIL
+test_invalid_rules_rejected (tests.test_v01_regressions.TestTableRegressions.test_invalid_rules_rejected) ... 
+  test_invalid_rules_rejected (tests.test_v01_regressions.TestTableRegressions.test_invalid_rules_rejected) (fields={'n_decks': 6.0}) ... FAIL
+  test_invalid_rules_rejected (tests.test_v01_regressions.TestTableRegressions.test_invalid_rules_rejected) (fields={'n_seats': True}) ... FAIL
+  test_invalid_rules_rejected (tests.test_v01_regressions.TestTableRegressions.test_invalid_rules_rejected) (fields={'blackjack_payout': (3, 0)}) ... FAIL
+  test_invalid_rules_rejected (tests.test_v01_regressions.TestTableRegressions.test_invalid_rules_rejected) (fields={'surrender': 'anything'}) ... FAIL
+  test_invalid_rules_rejected (tests.test_v01_regressions.TestTableRegressions.test_invalid_rules_rejected) (fields={'max_split_hands': 0}) ... FAIL
+test_negative_peek_rejects_contradictory_reveal (tests.test_v01_regressions.TestTableRegressions.test_negative_peek_rejects_contradictory_reveal) ... FAIL
+test_original_split_hand_also_obeys_no_das (tests.test_v01_regressions.TestTableRegressions.test_original_split_hand_also_obeys_no_das) ... FAIL
+test_stand_disables_double_and_split (tests.test_v01_regressions.TestTableRegressions.test_stand_disables_double_and_split) ... 
+  test_stand_disables_double_and_split (tests.test_v01_regressions.TestTableRegressions.test_stand_disables_double_and_split) (action='加倍') ... FAIL
+  test_stand_disables_double_and_split (tests.test_v01_regressions.TestTableRegressions.test_stand_disables_double_and_split) (action='分牌') ... FAIL
+test_unknown_bj_payout_never_defaults_to_three_to_two (tests.test_v01_regressions.TestTableRegressions.test_unknown_bj_payout_never_defaults_to_three_to_two) ... FAIL
+test_unknown_dealer_extra_bet_policy_cannot_settle_split (tests.test_v01_regressions.TestTableRegressions.test_unknown_dealer_extra_bet_policy_cannot_settle_split) ... FAIL
+test_unknown_player_hand_cannot_be_settled (tests.test_v01_regressions.TestTableRegressions.test_unknown_player_hand_cannot_be_settled) ... FAIL
+
+======================================================================
+FAIL: test_ambiguous_import_sequence_rejected (tests.test_v01_regressions.TestLedgerRegressions.test_ambiguous_import_sequence_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 200, in test_ambiguous_import_sequence_rejected
+    with self.assertRaises((ValueError, LedgerError)):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'ValueError'>, <class 'blackjack_lab.ledger.ledger.LedgerError'>) not raised
+
+======================================================================
+FAIL: test_closed_shoe_rejects_new_round (tests.test_v01_regressions.TestLedgerRegressions.test_closed_shoe_rejects_new_round)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 134, in test_closed_shoe_rejects_new_round
+    with self.assertRaises((TableError, LedgerError)):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'blackjack_lab.core.table.TableError'>, <class 'blackjack_lab.ledger.ledger.LedgerError'>) not raised
+
+======================================================================
+FAIL: test_corrections_compose_without_losing_previous_fix (tests.test_v01_regressions.TestLedgerRegressions.test_corrections_compose_without_losing_previous_fix)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 179, in test_corrections_compose_without_losing_previous_fix
+    self.assertEqual((c.rank, c.suit), ("Q", "H"))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: ('K', 'H') != ('Q', 'H')
+
+First differing element 0:
+'K'
+'Q'
+
+- ('K', 'H')
+?   ^
+
++ ('Q', 'H')
+?   ^
+
+
+======================================================================
+FAIL: test_hidden_face_must_not_contain_future_rank (tests.test_v01_regressions.TestLedgerRegressions.test_hidden_face_must_not_contain_future_rank)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 194, in test_hidden_face_must_not_contain_future_rank
+    with self.assertRaises((ValueError, LedgerError)):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'ValueError'>, <class 'blackjack_lab.ledger.ledger.LedgerError'>) not raised
+
+======================================================================
+FAIL: test_inactive_player_cannot_receive_cards (tests.test_v01_regressions.TestLedgerRegressions.test_inactive_player_cannot_receive_cards)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 205, in test_inactive_player_cannot_receive_cards
+    with self.assertRaises((ValueError, TableError, LedgerError)):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'ValueError'>, <class 'blackjack_lab.core.table.TableError'>, <class 'blackjack_lab.ledger.ledger.LedgerError'>) not raised
+
+======================================================================
+FAIL: test_invalid_append_is_atomic (tests.test_v01_regressions.TestLedgerRegressions.test_invalid_append_is_atomic)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 126, in test_invalid_append_is_atomic
+    with self.assertRaises((TableError, LedgerError)):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'blackjack_lab.core.table.TableError'>, <class 'blackjack_lab.ledger.ledger.LedgerError'>) not raised
+
+======================================================================
+FAIL: test_invalid_history_correction_is_rejected_without_poisoning (tests.test_v01_regressions.TestLedgerRegressions.test_invalid_history_correction_is_rejected_without_poisoning)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 188, in test_invalid_history_correction_is_rejected_without_poisoning
+    with self.assertRaises((LedgerError, TableError)):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'blackjack_lab.ledger.ledger.LedgerError'>, <class 'blackjack_lab.core.table.TableError'>) not raised
+
+======================================================================
+FAIL: test_reveal_exact_target_when_multiple_unknowns_have_no_track (tests.test_v01_regressions.TestLedgerRegressions.test_reveal_exact_target_when_multiple_unknowns_have_no_track)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 152, in test_reveal_exact_target_when_multiple_unknowns_have_no_track
+    self.assertEqual([c.rank for c in h.cards], ["?", "K"])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['K', '?'] != ['?', 'K']
+
+First differing element 0:
+'K'
+'?'
+
+- ['K', '?']
++ ['?', 'K']
+
+======================================================================
+FAIL: test_revealing_hidden_does_not_clear_unrelated_pending (tests.test_v01_regressions.TestLedgerRegressions.test_revealing_hidden_does_not_clear_unrelated_pending)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 161, in test_revealing_hidden_does_not_clear_unrelated_pending
+    self.assertEqual(l.replay().current.shoe.pending_candidates, 1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_second_reveal_of_same_card_rejected (tests.test_v01_regressions.TestLedgerRegressions.test_second_reveal_of_same_card_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 169, in test_second_reveal_of_same_card_rejected
+    with self.assertRaises((LedgerError, TableError)):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'blackjack_lab.ledger.ledger.LedgerError'>, <class 'blackjack_lab.core.table.TableError'>) not raised
+
+======================================================================
+FAIL: test_undo_new_shoe_restores_context (tests.test_v01_regressions.TestLedgerRegressions.test_undo_new_shoe_restores_context)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 144, in test_undo_new_shoe_restores_context
+    self.assertEqual(ev.shoe_id, old_shoe)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '72e8fd3304434f4796fc406189b386fe' != 'f0ee8362460244d7a021de12c8475ea7'
+- 72e8fd3304434f4796fc406189b386fe
++ f0ee8362460244d7a021de12c8475ea7
+
+
+======================================================================
+FAIL: test_disk_failure_rolls_back_memory (tests.test_v01_regressions.TestPersistenceRegressions.test_disk_failure_rolls_back_memory)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 70, in test_disk_failure_rolls_back_memory
+    self.assertEqual(c.ledger.to_list(), before)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [{'ev[341 chars]0.1'}, {'event_id': '08d3f4ab83cb4e1e8009eb871[1018 chars].1'}] != [{'ev[341 chars]0.1'}]
+
+First list contains 1 additional elements.
+First extra element 1:
+{'event_id': '08d3f4ab83cb4e1e8009eb8718f73edd', 'seq': 2, 'etype': 'SHOE_CREATED', 'payload': {'shoe_id': '801fd2f3113344dcad037680c8d42c0a', 'n_decks': 6, 'rules_snapshot': '{"american_hole_card": null, "blackjack_payout": [3, 2], "burn_cards_known": null, "check_bj_when": null, "confirm_status": "未确认", "dealer_bj_extra_bet_rule": null, "dealer_soft17": null, "double_after_split": null, "double_on_totals": null, "game_name": null, "max_split_hands": 4, "n_decks": 6, "n_seats": 7, "profile_id": "profile-default", "remark": "", "resplit_aces": false, "rule_source": null, "shoe_model": "finite_no_replacement", "split_ace_hit_once": true, "split_match": "same_rank", "start_from_new_shoe": null, "surrender": null, "table_id": null, "vendor": null, "verify_date": null, "version": 1}'}, 'event_time': 1789024345.1947374, 'observed_at': 1789024345.1947374, 'session_id': 'a503c5425a71474c8d795c1d9731e991', 'shoe_id': '801fd2f3113344dcad037680c8d42c0a', 'round_id': None, 'source': '手动录入', 'confirm_status': '已确认', 'evidence': None, 'rule_version': 'v0.1'}
+
+Diff is 2141 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_invalid_record_never_enters_memory_or_database (tests.test_v01_regressions.TestPersistenceRegressions.test_invalid_record_never_enters_memory_or_database)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 59, in test_invalid_record_never_enters_memory_or_database
+    with self.assertRaises((LedgerError, TableError)):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'blackjack_lab.ledger.ledger.LedgerError'>, <class 'blackjack_lab.core.table.TableError'>) not raised
+
+======================================================================
+FAIL: test_sequence_collision_raises_instead_of_silent_drop (tests.test_v01_regressions.TestPersistenceRegressions.test_sequence_collision_raises_instead_of_silent_drop)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 77, in test_sequence_collision_raises_instead_of_silent_drop
+    with self.assertRaises((ValueError, sqlite3.IntegrityError)):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'ValueError'>, <class 'sqlite3.IntegrityError'>) not raised
+
+======================================================================
+FAIL: test_two_sessions_keep_every_event_after_reopen (tests.test_v01_regressions.TestPersistenceRegressions.test_two_sessions_keep_every_event_after_reopen)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 53, in test_two_sessions_keep_every_event_after_reopen
+    self.assertEqual(c.store.load_ledger(c.session_id).to_list(), c.ledger.to_list())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [] != [{'event_id': '4f8edf62010b4fb69e6ae6ca811[2354 chars].1'}]
+
+Second list contains 4 additional elements.
+First extra element 0:
+{'event_id': '4f8edf62010b4fb69e6ae6ca8113c015', 'seq': 1, 'etype': 'SESSION_STARTED', 'payload': {'note': ''}, 'event_time': 1789024345.381425, 'observed_at': 1789024345.381425, 'session_id': '9eeddc74b44b4b15a59133dcdf667233', 'shoe_id': None, 'round_id': None, 'source': '手动录入', 'confirm_status': '已确认', 'evidence': None, 'rule_version': 'v0.1'}
+
+Diff is 3346 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_unknown_export_version_rejected (tests.test_v01_regressions.TestPersistenceRegressions.test_unknown_export_version_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 86, in test_unknown_export_version_rejected
+    with self.assertRaises(ValueError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_exact_ten_cannot_reuse_capacity_already_in_t_bucket (tests.test_v01_regressions.TestShoeRegressions.test_exact_ten_cannot_reuse_capacity_already_in_t_bucket)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 104, in test_exact_ten_cannot_reuse_capacity_already_in_t_bucket
+    with self.assertRaises(ConsistencyError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: ConsistencyError not raised
+
+======================================================================
+FAIL: test_fractional_burn_is_rejected (tests.test_v01_regressions.TestShoeRegressions.test_fractional_burn_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 115, in test_fractional_burn_is_rejected
+    with self.assertRaises(ValueError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_gap_does_not_disable_maximum_capacity_guard (tests.test_v01_regressions.TestShoeRegressions.test_gap_does_not_disable_maximum_capacity_guard)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 111, in test_gap_does_not_disable_maximum_capacity_guard
+    with self.assertRaises(ConsistencyError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: ConsistencyError not raised
+
+======================================================================
+FAIL: test_known_card_after_full_burn_rejected_for_each_deck_count (tests.test_v01_regressions.TestShoeRegressions.test_known_card_after_full_burn_rejected_for_each_deck_count) (decks=6)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 96, in test_known_card_after_full_burn_rejected_for_each_deck_count
+    with self.assertRaises(ConsistencyError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: ConsistencyError not raised
+
+======================================================================
+FAIL: test_known_card_after_full_burn_rejected_for_each_deck_count (tests.test_v01_regressions.TestShoeRegressions.test_known_card_after_full_burn_rejected_for_each_deck_count) (decks=7)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 96, in test_known_card_after_full_burn_rejected_for_each_deck_count
+    with self.assertRaises(ConsistencyError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: ConsistencyError not raised
+
+======================================================================
+FAIL: test_known_card_after_full_burn_rejected_for_each_deck_count (tests.test_v01_regressions.TestShoeRegressions.test_known_card_after_full_burn_rejected_for_each_deck_count) (decks=8)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 96, in test_known_card_after_full_burn_rejected_for_each_deck_count
+    with self.assertRaises(ConsistencyError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: ConsistencyError not raised
+
+======================================================================
+FAIL: test_partial_unknown_hand_total_is_unknown (tests.test_v01_regressions.TestShoeRegressions.test_partial_unknown_hand_total_is_unknown)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 119, in test_partial_unknown_hand_total_is_unknown
+    self.assertEqual(hand_total(["A", "?"]), (None, False))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (11, True) != (None, False)
+
+First differing element 0:
+11
+None
+
+- (11, True)
++ (None, False)
+
+======================================================================
+FAIL: test_both_split_ace_hands_pay_normal_twenty_one (tests.test_v01_regressions.TestTableRegressions.test_both_split_ace_hands_pay_normal_twenty_one)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 240, in test_both_split_ace_hands_pay_normal_twenty_one
+    self.assertEqual([r["net_units"] for r in t.settle()], [1.0, 1.0])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [1.5, 1.0] != [1.0, 1.0]
+
+First differing element 0:
+1.5
+1.0
+
+- [1.5, 1.0]
+?    ^
+
++ [1.0, 1.0]
+?    ^
+
+
+======================================================================
+FAIL: test_dealer_cannot_split (tests.test_v01_regressions.TestTableRegressions.test_dealer_cannot_split)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 275, in test_dealer_cannot_split
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+======================================================================
+FAIL: test_double_cannot_be_repeated_before_card_arrives (tests.test_v01_regressions.TestTableRegressions.test_double_cannot_be_repeated_before_card_arrives)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 227, in test_double_cannot_be_repeated_before_card_arrives
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+======================================================================
+FAIL: test_invalid_rules_rejected (tests.test_v01_regressions.TestTableRegressions.test_invalid_rules_rejected) (fields={'n_decks': 6.0})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 305, in test_invalid_rules_rejected
+    with self.subTest(fields=fields), self.assertRaises(ValueError):
+                                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_invalid_rules_rejected (tests.test_v01_regressions.TestTableRegressions.test_invalid_rules_rejected) (fields={'n_seats': True})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 305, in test_invalid_rules_rejected
+    with self.subTest(fields=fields), self.assertRaises(ValueError):
+                                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_invalid_rules_rejected (tests.test_v01_regressions.TestTableRegressions.test_invalid_rules_rejected) (fields={'blackjack_payout': (3, 0)})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 305, in test_invalid_rules_rejected
+    with self.subTest(fields=fields), self.assertRaises(ValueError):
+                                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_invalid_rules_rejected (tests.test_v01_regressions.TestTableRegressions.test_invalid_rules_rejected) (fields={'surrender': 'anything'})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 305, in test_invalid_rules_rejected
+    with self.subTest(fields=fields), self.assertRaises(ValueError):
+                                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_invalid_rules_rejected (tests.test_v01_regressions.TestTableRegressions.test_invalid_rules_rejected) (fields={'max_split_hands': 0})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 305, in test_invalid_rules_rejected
+    with self.subTest(fields=fields), self.assertRaises(ValueError):
+                                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_negative_peek_rejects_contradictory_reveal (tests.test_v01_regressions.TestTableRegressions.test_negative_peek_rejects_contradictory_reveal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 284, in test_negative_peek_rejects_contradictory_reveal
+    with self.assertRaises((LedgerError, TableError)):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'blackjack_lab.ledger.ledger.LedgerError'>, <class 'blackjack_lab.core.table.TableError'>) not raised
+
+======================================================================
+FAIL: test_original_split_hand_also_obeys_no_das (tests.test_v01_regressions.TestTableRegressions.test_original_split_hand_also_obeys_no_das)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 249, in test_original_split_hand_also_obeys_no_das
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+======================================================================
+FAIL: test_stand_disables_double_and_split (tests.test_v01_regressions.TestTableRegressions.test_stand_disables_double_and_split) (action='加倍')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 218, in test_stand_disables_double_and_split
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+======================================================================
+FAIL: test_stand_disables_double_and_split (tests.test_v01_regressions.TestTableRegressions.test_stand_disables_double_and_split) (action='分牌')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 218, in test_stand_disables_double_and_split
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+======================================================================
+FAIL: test_unknown_bj_payout_never_defaults_to_three_to_two (tests.test_v01_regressions.TestTableRegressions.test_unknown_bj_payout_never_defaults_to_three_to_two)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 267, in test_unknown_bj_payout_never_defaults_to_three_to_two
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+======================================================================
+FAIL: test_unknown_dealer_extra_bet_policy_cannot_settle_split (tests.test_v01_regressions.TestTableRegressions.test_unknown_dealer_extra_bet_policy_cannot_settle_split)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 298, in test_unknown_dealer_extra_bet_policy_cannot_settle_split
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+======================================================================
+FAIL: test_unknown_player_hand_cannot_be_settled (tests.test_v01_regressions.TestTableRegressions.test_unknown_player_hand_cannot_be_settled)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\Hakimi_Blackjack_Lab\tests\test_v01_regressions.py", line 258, in test_unknown_player_hand_cannot_be_settled
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+----------------------------------------------------------------------
+Ran 31 tests in 0.343s
+
+FAILED (failures=38)

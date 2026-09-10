@@ -1,0 +1,12 @@
+test_fewer_seats_and_unsettled_round (tests.test_ui_workflow.TestUIWorkflow.test_fewer_seats_and_unsettled_round) ... ok
+test_full_ui_round_for_6_7_8_decks (tests.test_ui_workflow.TestUIWorkflow.test_full_ui_round_for_6_7_8_decks) ... ok
+test_history_correction_import_export_and_resume (tests.test_ui_workflow.TestUIWorkflow.test_history_correction_import_export_and_resume) ... ok
+test_invalid_click_does_not_poison_next_record (tests.test_ui_workflow.TestUIWorkflow.test_invalid_click_does_not_poison_next_record) ... ok
+test_k_button_not_overlapped_and_entry_shortcut_does_not_deal (tests.test_ui_workflow.TestUIWorkflow.test_k_button_not_overlapped_and_entry_shortcut_does_not_deal) ... ok
+test_reveal_undo_and_reveal_again (tests.test_ui_workflow.TestUIWorkflow.test_reveal_undo_and_reveal_again) ... ok
+test_split_buttons_and_explicit_hand_selection (tests.test_ui_workflow.TestUIWorkflow.test_split_buttons_and_explicit_hand_selection) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 2.793s
+
+OK

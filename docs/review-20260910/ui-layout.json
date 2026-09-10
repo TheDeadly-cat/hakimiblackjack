@@ -1,0 +1,38 @@
+{
+  "source": "self-built synthetic UI; temporary SQLite",
+  "errors": [],
+  "sizes": [
+    {
+      "requested": [
+        1360,
+        900
+      ],
+      "actual": [
+        1360,
+        900
+      ],
+      "outside": [],
+      "unmapped": [],
+      "captured": [
+        1360,
+        900
+      ]
+    },
+    {
+      "requested": [
+        1180,
+        800
+      ],
+      "actual": [
+        1180,
+        800
+      ],
+      "outside": [],
+      "unmapped": [],
+      "captured": [
+        1180,
+        800
+      ]
+    }
+  ]
+}

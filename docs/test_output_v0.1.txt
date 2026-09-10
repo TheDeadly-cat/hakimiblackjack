@@ -1,0 +1,64 @@
+test_group (test_cards.TestCardAndGroup.test_group) ... ok
+test_invalid_rank_rejected (test_cards.TestCardAndGroup.test_invalid_rank_rejected) ... ok
+test_hard_total (test_cards.TestHandTotal.test_hard_total) ... ok
+test_multi_aces_demote (test_cards.TestHandTotal.test_multi_aces_demote) ... ok
+test_soft_single_ace (test_cards.TestHandTotal.test_soft_single_ace) ... ok
+test_ten_bucket_counts_as_ten (test_cards.TestHandTotal.test_ten_bucket_counts_as_ten) ... ok
+test_unknown (test_cards.TestHandTotal.test_unknown) ... ok
+test_natural (test_cards.TestNaturalBlackjack.test_natural) ... ok
+test_three_card_21_is_not_natural (test_cards.TestNaturalBlackjack.test_three_card_21_is_not_natural) ... ok
+test_two_card_non_bj (test_cards.TestNaturalBlackjack.test_two_card_non_bj) ... ok
+test_deal_before_shoe_rejected (test_integration.TestEmptyAndEdge.test_deal_before_shoe_rejected) ... ok
+test_double_display_consistency (test_integration.TestEmptyAndEdge.test_double_display_consistency)
+分牌两手合并记账：结算条目数=子手数，EV 口径属 V0.2 不在此断言。 ... ok
+test_6_7_8_decks (test_integration.TestFullSessionAllDecks.test_6_7_8_decks) ... ok
+test_persistence_roundtrip_of_full_session (test_integration.TestFullSessionAllDecks.test_persistence_roundtrip_of_full_session) ... ok
+test_burn_and_gap (test_ledger.TestHiddenAndUnknown.test_burn_and_gap) ... ok
+test_hidden_reveal_flow (test_ledger.TestHiddenAndUnknown.test_hidden_reveal_flow) ... ok
+test_unknown_card_pending (test_ledger.TestHiddenAndUnknown.test_unknown_card_pending) ... ok
+test_same_event_id_only_once (test_ledger.TestIdempotent.test_same_event_id_only_once) ... ok
+test_same_track_allowed_after_undo (test_ledger.TestIdempotent.test_same_track_allowed_after_undo) ... ok
+test_same_track_dealt_once (test_ledger.TestIdempotent.test_same_track_dealt_once) ... ok
+test_hidden_future_invisible (test_ledger.TestInformationLeak.test_hidden_future_invisible) ... ok
+test_correction_equals_replay_from_correct_start (test_ledger.TestUndoAndCorrection.test_correction_equals_replay_from_correct_start) ... ok
+test_new_round_keeps_shoe (test_ledger.TestUndoAndCorrection.test_new_round_keeps_shoe) ... ok
+test_new_shoe_isolated (test_ledger.TestUndoAndCorrection.test_new_shoe_isolated) ... ok
+test_undo_reverse_order (test_ledger.TestUndoAndCorrection.test_undo_reverse_order) ... ok
+test_exhaust_whole_shoe (test_shoe.TestConservation.test_exhaust_whole_shoe) ... ok
+test_never_negative (test_shoe.TestConservation.test_never_negative) ... ok
+test_remove_and_conservation (test_shoe.TestConservation.test_remove_and_conservation) ... ok
+test_ten_bucket_capacity (test_shoe.TestConservation.test_ten_bucket_capacity) ... ok
+test_counts_for_all_decks (test_shoe.TestInit.test_counts_for_all_decks) ... ok
+test_only_678 (test_shoe.TestInit.test_only_678) ... ok
+test_burn_known_count (test_shoe.TestUnknownRemoval.test_burn_known_count) ... ok
+test_burn_too_many_rejected (test_shoe.TestUnknownRemoval.test_burn_too_many_rejected) ... ok
+test_gap_makes_state_incomplete (test_shoe.TestUnknownRemoval.test_gap_makes_state_incomplete) ... ok
+test_hidden_then_reveal (test_shoe.TestUnknownRemoval.test_hidden_then_reveal) ... ok
+test_reveal_without_hidden_rejected (test_shoe.TestUnknownRemoval.test_reveal_without_hidden_rejected) ... ok
+test_csv_export (test_storage.TestExport.test_csv_export) ... ok
+test_json_roundtrip (test_storage.TestExport.test_json_roundtrip) ... ok
+test_save_and_recover_identical (test_storage.TestSQLite.test_save_and_recover_identical) ... ok
+test_save_event_idempotent (test_storage.TestSQLite.test_save_event_idempotent) ... ok
+test_double_after_split_disallowed (test_table.TestDouble.test_double_after_split_disallowed) ... ok
+test_double_only_two_cards (test_table.TestDouble.test_double_only_two_cards) ... ok
+test_double_total_restriction (test_table.TestDouble.test_double_total_restriction) ... ok
+test_dealer_bj_beats_player (test_table.TestSettlement.test_dealer_bj_beats_player) ... ok
+test_natural_bj_pays_3_2 (test_table.TestSettlement.test_natural_bj_pays_3_2) ... ok
+test_player_win (test_table.TestSettlement.test_player_win) ... ok
+test_push_and_bust (test_table.TestSettlement.test_push_and_bust) ... ok
+test_settle_requires_dealer_revealed (test_table.TestSettlement.test_settle_requires_dealer_revealed) ... ok
+test_split_ace_one_card_only (test_table.TestSettlement.test_split_ace_one_card_only) ... ok
+test_surrender_loses_half (test_table.TestSettlement.test_surrender_loses_half) ... ok
+test_max_split_hands (test_table.TestSplitLegality.test_max_split_hands) ... ok
+test_no_resplit_aces (test_table.TestSplitLegality.test_no_resplit_aces) ... ok
+test_same_rank_rejects_mixed_value (test_table.TestSplitLegality.test_same_rank_rejects_mixed_value) ... ok
+test_same_rank_split_ok (test_table.TestSplitLegality.test_same_rank_split_ok) ... ok
+test_same_value_allows_10_Q (test_table.TestSplitLegality.test_same_value_allows_10_Q) ... ok
+test_ten_bucket_pair_undecidable (test_table.TestSplitLegality.test_ten_bucket_pair_undecidable) ... ok
+test_late_surrender_waits_peek (test_table.TestSurrender.test_late_surrender_waits_peek) ... ok
+test_unsupported_refused (test_table.TestSurrender.test_unsupported_refused) ... ok
+
+----------------------------------------------------------------------
+Ran 58 tests in 0.499s
+
+OK

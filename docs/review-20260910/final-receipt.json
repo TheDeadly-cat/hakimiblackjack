@@ -1,0 +1,75 @@
+{
+  "created_at_utc": "2026-09-10T07:40:15Z",
+  "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "source_manifest": "source-manifest.json",
+  "source_manifest_sha256": "06640d36065d6c3da42b8af8a755eec55dff658e41e42dc545bcb9a5bd1bf12e",
+  "source_unchanged_during_checks": true,
+  "user_database_sha256_before": "ad3082b9411612de5c121681b29dc61d11833487683677d2f87c708107b7ef0b",
+  "user_database_sha256_after": "ad3082b9411612de5c121681b29dc61d11833487683677d2f87c708107b7ef0b",
+  "checks": [
+    {
+      "name": "final-tests",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Desktop\\Hakimi_Blackjack_Lab",
+      "exit_code": 0,
+      "elapsed_seconds": 3.59,
+      "output": "final-tests.txt",
+      "output_sha256": "4a0d2bf86a319405fdae66b8ade6a7b35b8bd88b57737bba55251f8c990e44e1",
+      "test_count": 116
+    },
+    {
+      "name": "final-selfcheck",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "blackjack_lab.main",
+        "--check"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Desktop\\Hakimi_Blackjack_Lab",
+      "exit_code": 0,
+      "elapsed_seconds": 0.094,
+      "output": "final-selfcheck.txt",
+      "output_sha256": "881dfa05ab1579446ec679eea2585c28f51ca057c7135ab992792577babd8d64"
+    },
+    {
+      "name": "final-compile",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "compileall",
+        "-q",
+        "blackjack_lab",
+        "tests",
+        "scripts"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Desktop\\Hakimi_Blackjack_Lab",
+      "exit_code": 0,
+      "elapsed_seconds": 0.097,
+      "output": "final-compile.txt",
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "final-ui-visual",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/ui_visual_check.py"
+      ],
+      "cwd": "C:\\Users\\Administrator\\Desktop\\Hakimi_Blackjack_Lab",
+      "exit_code": 0,
+      "elapsed_seconds": 0.693,
+      "output": "final-ui-visual.txt",
+      "output_sha256": "410b86a16fc561b0d26efe75d11f4320f6f4038b9e532cacec524c8f31bdddb5"
+    }
+  ],
+  "scope": "V0.1 manual recording only; temporary SQLite and synthetic events; no EV, vision, capture or live platform tests",
+  "passed": true
+}

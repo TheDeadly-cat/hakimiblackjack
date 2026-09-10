@@ -1,0 +1,4 @@
+# Preserve the accepted source and evidence bytes, including original line endings.
+* -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Historical test output is retained verbatim, including runner whitespace.
+docs/**/*.txt -whitespace

@@ -1,0 +1,15 @@
+# Hakimi Blackjack Lab V0.1 依赖清单
+#
+# V0.1 仅使用 Python 标准库（tkinter / sqlite3 / json / csv / unittest），
+# 无需 pip 安装任何第三方包，核心功能可完全离线运行。
+#
+# 运行环境：Windows 优先，Python 3.10+（开发与验证环境为 Python 3.14.6，Windows）。
+# tkinter 在 Windows 官方 Python 安装包中默认自带；若使用精简发行版，
+# 请改用包含 tcl/tk 的官方安装。
+#
+# 后续阶段才会引入（当前版本未使用、不要提前安装）：
+#   V0.3 离线识别：opencv-python（模板匹配候选）
+#   V0.4 授权捕获：Windows.Graphics.Capture 适配（方案待定）
+
+# 可选开发验收脚本 scripts/ui_visual_check.py 使用 Pillow 截取本进程测试窗口；
+# 不属于产品运行依赖，普通用户无需安装。

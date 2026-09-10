@@ -1,0 +1,26 @@
+__pycache__/
+*.pyc
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+*.tmp
+.pytest_cache/
+
+# Local state and generated bundles are never published.
+data/
+backups/
+dist/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.bak
+*.zip
+*.log
+.env
+.env.*
+.venv/
+venv/
+.coverage
+.DS_Store
