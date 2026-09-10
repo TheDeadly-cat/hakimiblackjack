@@ -1,0 +1,19 @@
+6 decks ('10', '6') vs 10: available 0.234s
+6 decks ('5', '6') vs 6: available 0.256s
+6 decks ('A', '6') vs 9: available 0.252s
+6 decks ('3', '5') vs 10: available 0.244s
+6 decks ('A', '2') vs 2: available 1.062s
+6 decks ('2', '3') vs 2: available 0.749s
+7 decks ('10', '6') vs 10: available 0.221s
+7 decks ('5', '6') vs 6: available 0.250s
+7 decks ('A', '6') vs 9: available 0.255s
+7 decks ('3', '5') vs 10: available 0.250s
+7 decks ('A', '2') vs 2: available 1.066s
+7 decks ('2', '3') vs 2: available 0.740s
+8 decks ('10', '6') vs 10: available 0.221s
+8 decks ('5', '6') vs 6: available 0.254s
+8 decks ('A', '6') vs 9: available 0.273s
+8 decks ('3', '5') vs 10: available 0.236s
+8 decks ('A', '2') vs 2: available 1.048s
+8 decks ('2', '3') vs 2: available 0.735s
+{"output": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2a\\.local-evidence\\acceptance-v02a-20260910-183141-7bf8a0\\math-performance", "passed": true, "p50": 0.2545113500000298, "p95": 1.0659080000004906, "max": 1.0659080000004906}

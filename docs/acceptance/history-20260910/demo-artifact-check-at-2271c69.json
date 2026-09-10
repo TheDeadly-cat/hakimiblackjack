@@ -1,0 +1,46 @@
+{
+  "commit": "2271c6928f1dc1e220fea5d048db3f7a91f31654",
+  "check": "Import shipped JSON samples through production import_json, build_input and calculate; verify simulator provenance and unrevealed hole",
+  "passed": true,
+  "examples": [
+    {
+      "path": "fixtures\\v02a\\demo-6decks-16-vs-T.json",
+      "sha256": "48681d4f743c568625268e2991e235d93fff56afcc80c830ad95d33c7c3f39d4",
+      "n_decks": 6,
+      "status": "available",
+      "ev": {
+        "stand": -0.5409544390190253,
+        "hit": -0.5346755624525632,
+        "double": -1.0693511249051264,
+        "surrender": -0.5
+      },
+      "unrevealed": 1
+    },
+    {
+      "path": "fixtures\\v02a\\demo-7decks-16-vs-T.json",
+      "sha256": "aaa6410d7a1fa33cb14dac2b96e6261f81b58f8fb9484bed9b4a5e6011307937",
+      "n_decks": 7,
+      "status": "available",
+      "ev": {
+        "stand": -0.5408817440903413,
+        "hit": -0.5354189649640894,
+        "double": -1.0708379299281787,
+        "surrender": -0.5
+      },
+      "unrevealed": 1
+    },
+    {
+      "path": "fixtures\\v02a\\demo-8decks-16-vs-T.json",
+      "sha256": "7b966391b67e87630f5c1599fcd2e2b30acc82f45b281c5d8a14d92efc4702cf",
+      "n_decks": 8,
+      "status": "available",
+      "ev": {
+        "stand": -0.540826736160998,
+        "hit": -0.5359748431671139,
+        "double": -1.0719496863342277,
+        "surrender": -0.5
+      },
+      "unrevealed": 1
+    }
+  ]
+}

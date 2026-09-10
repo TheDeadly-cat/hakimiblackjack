@@ -1,0 +1,198 @@
+test_csv_formula_cells_are_neutralized_but_raw_audit_survives (tests.test_analysis_prerequisites.TestDataProtectionPrerequisites.test_csv_formula_cells_are_neutralized_but_raw_audit_survives) ... FAIL
+test_export_rejects_active_database_even_with_json_name (tests.test_analysis_prerequisites.TestDataProtectionPrerequisites.test_export_rejects_active_database_even_with_json_name) ... 
+  test_export_rejects_active_database_even_with_json_name (tests.test_analysis_prerequisites.TestDataProtectionPrerequisites.test_export_rejects_active_database_even_with_json_name) (export='export_json') ... FAIL
+  test_export_rejects_active_database_even_with_json_name (tests.test_analysis_prerequisites.TestDataProtectionPrerequisites.test_export_rejects_active_database_even_with_json_name) (export='export_csv') ... FAIL
+test_export_rejects_active_database_even_with_json_name (tests.test_analysis_prerequisites.TestDataProtectionPrerequisites.test_export_rejects_active_database_even_with_json_name) ... FAIL
+test_dealer_cannot_draw_past_s17_terminal (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_dealer_cannot_draw_past_s17_terminal) ... FAIL
+test_dealer_h17_soft_hit_is_legal_but_hard17_stops (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_dealer_h17_soft_hit_is_legal_but_hard17_stops) ... FAIL
+test_dealer_reveal_checks_prior_stopping_point (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_dealer_reveal_checks_prior_stopping_point) ... FAIL
+test_declared_participant_without_cards_blocks_settlement (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_declared_participant_without_cards_blocks_settlement) ... FAIL
+test_event_required_fields_not_defaulted_on_import (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_event_required_fields_not_defaulted_on_import) ... 
+  test_event_required_fields_not_defaulted_on_import (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_event_required_fields_not_defaulted_on_import) (field='event_time') ... FAIL
+  test_event_required_fields_not_defaulted_on_import (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_event_required_fields_not_defaulted_on_import) (field='source') ... FAIL
+  test_event_required_fields_not_defaulted_on_import (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_event_required_fields_not_defaulted_on_import) (field='confirm_status') ... FAIL
+  test_event_required_fields_not_defaulted_on_import (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_event_required_fields_not_defaulted_on_import) (field='observed_at') ... FAIL
+test_invalid_event_values_rejected (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_invalid_event_values_rejected) ... 
+  test_invalid_event_values_rejected (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_invalid_event_values_rejected) (kwargs={'event_id': ''}) ... FAIL
+  test_invalid_event_values_rejected (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_invalid_event_values_rejected) (kwargs={'event_time': nan}) ... FAIL
+  test_invalid_event_values_rejected (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_invalid_event_values_rejected) (kwargs={'seq': True}) ... FAIL
+  test_invalid_event_values_rejected (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_invalid_event_values_rejected) (kwargs={'confirm_status': 'guess'}) ... FAIL
+  test_invalid_event_values_rejected (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_invalid_event_values_rejected) (kwargs={'payload': []}) ... FAIL
+test_non_last_undo_cannot_rewrite_state_from_import (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_non_last_undo_cannot_rewrite_state_from_import) ... FAIL
+test_split_ace_resplit_option_does_not_allow_third_card (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_split_ace_resplit_option_does_not_allow_third_card) ... FAIL
+
+======================================================================
+FAIL: test_csv_formula_cells_are_neutralized_but_raw_audit_survives (tests.test_analysis_prerequisites.TestDataProtectionPrerequisites.test_csv_formula_cells_are_neutralized_but_raw_audit_survives)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 124, in test_csv_formula_cells_are_neutralized_but_raw_audit_survives
+    self.assertTrue(row["source"].startswith("'="))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_export_rejects_active_database_even_with_json_name (tests.test_analysis_prerequisites.TestDataProtectionPrerequisites.test_export_rejects_active_database_even_with_json_name) (export='export_json')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 111, in test_export_rejects_active_database_even_with_json_name
+    with self.subTest(export=export.__name__), self.assertRaises(ValueError):
+                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_export_rejects_active_database_even_with_json_name (tests.test_analysis_prerequisites.TestDataProtectionPrerequisites.test_export_rejects_active_database_even_with_json_name) (export='export_csv')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 111, in test_export_rejects_active_database_even_with_json_name
+    with self.subTest(export=export.__name__), self.assertRaises(ValueError):
+                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_export_rejects_active_database_even_with_json_name (tests.test_analysis_prerequisites.TestDataProtectionPrerequisites.test_export_rejects_active_database_even_with_json_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 113, in test_export_rejects_active_database_even_with_json_name
+    self.assertEqual(db.read_bytes(), before)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'\xef\xbb\xbfseq,event_id,etype,event_time[710 chars]\r\n' != b'SQLite format 3\x00\x10\x00\x01\x01\x00@ [143986 chars]425b'
+
+======================================================================
+FAIL: test_dealer_cannot_draw_past_s17_terminal (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_dealer_cannot_draw_past_s17_terminal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 46, in test_dealer_cannot_draw_past_s17_terminal
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+======================================================================
+FAIL: test_dealer_h17_soft_hit_is_legal_but_hard17_stops (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_dealer_h17_soft_hit_is_legal_but_hard17_stops)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 56, in test_dealer_h17_soft_hit_is_legal_but_hard17_stops
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+======================================================================
+FAIL: test_dealer_reveal_checks_prior_stopping_point (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_dealer_reveal_checks_prior_stopping_point)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 65, in test_dealer_reveal_checks_prior_stopping_point
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+======================================================================
+FAIL: test_declared_participant_without_cards_blocks_settlement (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_declared_participant_without_cards_blocks_settlement)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 38, in test_declared_participant_without_cards_blocks_settlement
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+======================================================================
+FAIL: test_event_required_fields_not_defaulted_on_import (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_event_required_fields_not_defaulted_on_import) (field='event_time')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 75, in test_event_required_fields_not_defaulted_on_import
+    with self.subTest(field=field), self.assertRaises((ValueError, LedgerError)):
+                                    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'ValueError'>, <class 'blackjack_lab.ledger.ledger.LedgerError'>) not raised
+
+======================================================================
+FAIL: test_event_required_fields_not_defaulted_on_import (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_event_required_fields_not_defaulted_on_import) (field='source')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 75, in test_event_required_fields_not_defaulted_on_import
+    with self.subTest(field=field), self.assertRaises((ValueError, LedgerError)):
+                                    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'ValueError'>, <class 'blackjack_lab.ledger.ledger.LedgerError'>) not raised
+
+======================================================================
+FAIL: test_event_required_fields_not_defaulted_on_import (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_event_required_fields_not_defaulted_on_import) (field='confirm_status')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 75, in test_event_required_fields_not_defaulted_on_import
+    with self.subTest(field=field), self.assertRaises((ValueError, LedgerError)):
+                                    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'ValueError'>, <class 'blackjack_lab.ledger.ledger.LedgerError'>) not raised
+
+======================================================================
+FAIL: test_event_required_fields_not_defaulted_on_import (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_event_required_fields_not_defaulted_on_import) (field='observed_at')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 75, in test_event_required_fields_not_defaulted_on_import
+    with self.subTest(field=field), self.assertRaises((ValueError, LedgerError)):
+                                    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'ValueError'>, <class 'blackjack_lab.ledger.ledger.LedgerError'>) not raised
+
+======================================================================
+FAIL: test_invalid_event_values_rejected (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_invalid_event_values_rejected) (kwargs={'event_id': ''})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 81, in test_invalid_event_values_rejected
+    with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_invalid_event_values_rejected (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_invalid_event_values_rejected) (kwargs={'event_time': nan})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 81, in test_invalid_event_values_rejected
+    with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_invalid_event_values_rejected (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_invalid_event_values_rejected) (kwargs={'seq': True})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 81, in test_invalid_event_values_rejected
+    with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_invalid_event_values_rejected (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_invalid_event_values_rejected) (kwargs={'confirm_status': 'guess'})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 81, in test_invalid_event_values_rejected
+    with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_invalid_event_values_rejected (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_invalid_event_values_rejected) (kwargs={'payload': []})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 81, in test_invalid_event_values_rejected
+    with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_non_last_undo_cannot_rewrite_state_from_import (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_non_last_undo_cannot_rewrite_state_from_import)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 95, in test_non_last_undo_cannot_rewrite_state_from_import
+    with self.assertRaises((ValueError, LedgerError)):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'ValueError'>, <class 'blackjack_lab.ledger.ledger.LedgerError'>) not raised
+
+======================================================================
+FAIL: test_split_ace_resplit_option_does_not_allow_third_card (tests.test_analysis_prerequisites.TestRecordingPrerequisites.test_split_ace_resplit_option_does_not_allow_third_card)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2a\tests\test_analysis_prerequisites.py", line 26, in test_split_ace_resplit_option_does_not_allow_third_card
+    with self.assertRaises(TableError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: TableError not raised
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.083s
+
+FAILED (failures=19)
