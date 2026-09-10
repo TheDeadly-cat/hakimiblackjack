@@ -1,0 +1,102 @@
+{
+  "created_at": "2026-09-10T13:55:56.352603+00:00",
+  "archive": "C:\\Users\\Administrator\\Downloads\\Hakimi_Blackjack_V02a2_复核证据与任务包_20260910.zip",
+  "archive_sha256": "af77c6b13547d4b2792bf9c90499df6339dc7f9684616217cf01890334fc931e",
+  "manifest_files": [
+    {
+      "file": "复核与V02b执行任务书.md",
+      "sha256": "e7b8a95fc184350adcbc6713da7c4c934d6285a01ebae31d2530fd6ac0168b43"
+    },
+    {
+      "file": "source_identity.json",
+      "sha256": "6a416236bf6f04a1e9bc3be2b2bd0e36e7756854ee4f9b5ca8ce2e2468511fac"
+    },
+    {
+      "file": "local_receipt.json",
+      "sha256": "a6a7e946cd2a7a92a8ac9afc3c1060eaf14e433b045948d70c5cd84b5e0ee804"
+    },
+    {
+      "file": "ci_verified_summary.json",
+      "sha256": "5c2c1d2c5ed8388a693467e4d99a8c1dbf71e64ff3a20c2d7546b4c0f4289b85"
+    },
+    {
+      "file": "snapshot_shape_output.txt",
+      "sha256": "bf36cfe01588376debe0270c68c2314577f0ee7ca6d3aeea4404c7663357f8b4"
+    },
+    {
+      "file": "test_snapshot_shape.py",
+      "sha256": "be3c30a66026992c900c269f3c5a8ed48b39f424987c7d019817caaa74bc614e"
+    },
+    {
+      "file": "prior_provenance_checked.json",
+      "sha256": "cfddbfea209d82834039cc50e426c68293fb0855270a8f4621f20b0e25fea4eb"
+    },
+    {
+      "file": "isolated/blackjack_lab/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "isolated/blackjack_lab/storage/safe_files.py",
+      "sha256": "1c363f55f79e91a8e587ffe3edfec4194230354b01b0a0f61416b923ab5e8ccf"
+    },
+    {
+      "file": "isolated/blackjack_lab/storage/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "isolated/blackjack_lab/storage/analysis_snapshots.py",
+      "sha256": "8910944fc2c34d75089b5be32c9af888de9c523da9789858c359a4a96095fc7a"
+    },
+    {
+      "file": "isolated/blackjack_lab/analysis/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "isolated/blackjack_lab/analysis/contracts.py",
+      "sha256": "6d3a189891a6887139f5f5d783dd076953603a17c03d769f6163df67d9c24578"
+    }
+  ],
+  "source_identity": {
+    "commit": "09bb60c72c64363f02d3b27b818a49a254395af9",
+    "scope": "Three exact source modules reconstructed from GitHub connector reads; empty package initializers; not a full checkout.",
+    "files": [
+      {
+        "path": "blackjack_lab/storage/analysis_snapshots.py",
+        "expected_git_blob": "b14a8ca844df521dcf32568cefb62e2a301bab46",
+        "actual_git_blob": "b14a8ca844df521dcf32568cefb62e2a301bab46",
+        "sha256": "8910944fc2c34d75089b5be32c9af888de9c523da9789858c359a4a96095fc7a",
+        "matched": true
+      },
+      {
+        "path": "blackjack_lab/storage/safe_files.py",
+        "expected_git_blob": "20161e7f11dbf90d78f1b05446abb7fd279e5552",
+        "actual_git_blob": "20161e7f11dbf90d78f1b05446abb7fd279e5552",
+        "sha256": "1c363f55f79e91a8e587ffe3edfec4194230354b01b0a0f61416b923ab5e8ccf",
+        "matched": true
+      },
+      {
+        "path": "blackjack_lab/analysis/contracts.py",
+        "expected_git_blob": "1d639704cfc8ffb30dc3d45dd547a8c7276f1c39",
+        "actual_git_blob": "1d639704cfc8ffb30dc3d45dd547a8c7276f1c39",
+        "sha256": "6d3a189891a6887139f5f5d783dd076953603a17c03d769f6163df67d9c24578",
+        "matched": true
+      }
+    ]
+  },
+  "baseline_commit": "09bb60c72c64363f02d3b27b818a49a254395af9",
+  "command": [
+    "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\snapshot-shape-fix\\.local-evidence\\n1-20260910-215556-b95a67\\original",
+    "-p",
+    "test_snapshot_shape.py",
+    "-v"
+  ],
+  "exit_code": 1,
+  "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "module_path": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\snapshot-shape-fix\\blackjack_lab\\storage\\analysis_snapshots.py"
+}
