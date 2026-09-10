@@ -24,6 +24,7 @@ PEEK_NEGATIVE = "PEEK_NEGATIVE"          # 庄家检查底牌且不是 BJ
 BURN_CARDS = "BURN_CARDS"                # 数量已知、牌面未知的烧牌
 OBSERVATION_GAP = "OBSERVATION_GAP"      # 观察缺口（信息不完整）
 ROUND_ENDED = "ROUND_ENDED"
+OBSERVATION_STATUSES = ("unknown", "complete", "incomplete")
 SHOE_ENDED = "SHOE_ENDED"
 UNDO = "UNDO"                            # 撤销：令目标事件在重放时失效
 CORRECTION = "CORRECTION"                # 纠错：重放时替换目标事件负载
@@ -106,7 +107,7 @@ class Event:
             PLAYER_ACTION: ({"seat", "hand_id", "action"}, {"new_hand_id"}),
             PEEK_NEGATIVE: (set(), set()),
             BURN_CARDS: ({"count"}, {"note"}), OBSERVATION_GAP: ({"reason"}, set()),
-            ROUND_ENDED: (set(), {"settle", "reason"}), SHOE_ENDED: (set(), set()),
+            ROUND_ENDED: (set(), {"settle", "reason", "observation_status"}), SHOE_ENDED: (set(), set()),
             UNDO: ({"target_event_id"}, {"reason", "target_etype"}),
             CORRECTION: ({"target_event_id", "payload_fix"}, {"reason", "target_etype"}),
         }
@@ -121,6 +122,8 @@ class Event:
             raise ValueError("烧牌事件数量必须为正整数")
         if "settle" in self.payload and self.payload["settle"] is not None and type(self.payload["settle"]) is not bool:
             raise ValueError("结算要求必须为布尔值")
+        if "observation_status" in self.payload and self.payload["observation_status"] not in OBSERVATION_STATUSES:
+            raise ValueError("观察完整性必须为 unknown / complete / incomplete")
         if self.etype == ROUND_STARTED:
             participants = self.payload["participants"]
             if participants is not None and (not isinstance(participants, list) or any(not isinstance(p, str) for p in participants)):

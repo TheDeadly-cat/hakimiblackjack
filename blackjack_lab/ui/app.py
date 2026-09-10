@@ -31,7 +31,7 @@ from ..core.table import (
 )
 from ..ledger.events import (
     CARD_DEALT, CARD_REVEALED, FACE_HIDDEN, FACE_UNKNOWN, SOURCE_MANUAL,
-    BURN_CARDS, OBSERVATION_GAP, PEEK_NEGATIVE,
+    BURN_CARDS, OBSERVATION_GAP, PEEK_NEGATIVE, ROUND_ENDED,
 )
 from ..ledger.ledger import LedgerError
 from ..storage.export import export_csv, export_json
@@ -53,6 +53,23 @@ def tracked_operation(function):
         self._operation_start_revision = self.ctrl.commit_revision
         return function(self, *args, **kwargs)
     return invoke
+
+
+class RoundObservationDialog(simpledialog.Dialog):
+    """Explicit observation attestation; unknown is the default, never inferred from prose."""
+    choices = {"未知：不能确认是否漏牌": "unknown", "完整：确认全部移出牌均已记录": "complete",
+               "不完整：已知存在漏录": "incomplete"}
+
+    def body(self, parent):
+        ttk.Label(parent, text="观察完整性与是否计算输赢分别记录。\n已知缺失的初始牌或待补牌不能靠声明完整解除。", wraplength=410).pack(padx=10, pady=10)
+        self.selection = tk.StringVar(value=next(iter(self.choices)))
+        self.selector = ttk.Combobox(parent, state="readonly", width=43,
+                                    textvariable=self.selection, values=list(self.choices))
+        self.selector.pack(padx=10, pady=10)
+        return self.selector
+
+    def apply(self):
+        self.result = self.choices[self.selection.get()]
 
 
 class BlackjackLabApp(tk.Tk):
@@ -511,6 +528,11 @@ class BlackjackLabApp(tk.Tk):
                 fix = {"resolved": True}
             elif event.etype == PEEK_NEGATIVE:
                 fix = {"invalidated": True}
+            elif event.etype == ROUND_ENDED:
+                observation = self.ask_observation_status()
+                if observation is None:
+                    return
+                fix = {"observation_status": observation}
             else:
                 raise LedgerError("此事件不能直接修正；可逆序撤销。修改规则请新建牌靴。")
             reason = simpledialog.askstring("纠错依据", "说明纠错原因 / 已核对的记录依据：", parent=self)
@@ -543,12 +565,18 @@ class BlackjackLabApp(tk.Tk):
     def act_end_unsettled(self):
         reason = simpledialog.askstring("结束本轮（不输出结算）", "信息不足或结算规则未支持的原因：", parent=self)
         if reason:
+            observation = self.ask_observation_status()
+            if observation is None:
+                return
             try:
-                self.ctrl.end_round_unsettled(reason)
+                self.ctrl.end_round_unsettled(reason, observation)
                 self.refresh_all()
                 self.set_status("本轮已结束但未结算；未知牌与信息状态继续保留，可开下一轮")
             except Exception as exc:
                 self.fail(exc)
+
+    def ask_observation_status(self):
+        return RoundObservationDialog(self, "确认本轮观察完整性").result
 
     @tracked_operation
     def act_import(self):

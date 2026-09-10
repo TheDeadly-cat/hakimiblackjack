@@ -31,6 +31,10 @@ def build_input(ledger, seat, hand_id=None, through_seq=None):
         raise InputUnavailable("BURN_COUNT_UNKNOWN", "烧牌数量尚未核实")
     if rules.initial_burn_count is None:
         raise InputUnavailable("INITIAL_BURN_UNKNOWN", "尚未明确初始烧牌数量，不能把未知默认为零")
+    incomplete_rounds = [r for r in current.round_observations if r["status"] != "complete"]
+    if incomplete_rounds:
+        numbers = "、".join(str(r["round_no"]) for r in incomplete_rounds)
+        raise InputUnavailable("PRIOR_ROUND_OBSERVATION", f"此前第{numbers}轮存在漏录或观察完整性未知；可继续记牌，精确分析暂停")
     if shoe.gap or shoe.pending_candidates:
         raise InputUnavailable("RECORD_GAP", "存在观察缺口或待核对牌，暂停当前牌靴精确分析")
     if shoe.burn_unknown:

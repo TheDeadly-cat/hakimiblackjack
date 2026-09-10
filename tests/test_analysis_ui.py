@@ -70,7 +70,8 @@ class TestAnalysisUI(unittest.TestCase):
             self.assertIn("均为负", panel.text.get("1.0", "end"))
             self.assertIsNotNone(panel.saved)
             values.append(result["actions"]["hit"]["ev"])
-            with patch("blackjack_lab.ui.app.simpledialog.askstring", return_value="自建验收轮结束"):
+            with patch("blackjack_lab.ui.app.simpledialog.askstring", return_value="自建验收轮结束"), \
+                    patch.object(self.app, "ask_observation_status", return_value="unknown"):
                 self.app.act_end_unsettled()
             self.app.act_end_shoe()
         self.assertEqual(len(set(values)), 3)

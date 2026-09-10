@@ -72,14 +72,14 @@ class SessionController:
         return self._apply("start_round", participants)
 
     def end_round(self):
-        event = self._apply("end_round", settle=True)
+        event = self._apply("end_round", settle=True, observation_status="complete")
         seg = self.state().current
         return event, [r for r in seg.settlements if r["round"] == seg.table.round_no]
 
-    def end_round_unsettled(self, reason):
+    def end_round_unsettled(self, reason, observation_status="unknown"):
         if not reason.strip():
             raise ValueError("未结算结束必须记录原因")
-        return self._apply("end_round", settle=False, reason=reason)
+        return self._apply("end_round", settle=False, reason=reason, observation_status=observation_status)
 
     def end_shoe(self):
         return self._apply("end_shoe")

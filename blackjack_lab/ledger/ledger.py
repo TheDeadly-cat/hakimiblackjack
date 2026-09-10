@@ -24,7 +24,7 @@ from ..core.table import (
 )
 from .events import (
     BURN_CARDS, CANDIDATE, CARD_DEALT, CARD_REVEALED, CONFIRMED,
-    CORRECTION, FACE_HIDDEN, FACE_UNKNOWN, OBSERVATION_GAP, PEEK_NEGATIVE,
+    CORRECTION, FACE_HIDDEN, FACE_UNKNOWN, OBSERVATION_GAP, OBSERVATION_STATUSES, PEEK_NEGATIVE,
     PLAYER_ACTION, ROUND_ENDED, ROUND_STARTED, SESSION_STARTED, SHOE_CREATED,
     SHOE_ENDED, UNDO, Event, new_event_id,
 )
@@ -40,6 +40,7 @@ CORRECTABLE_FIELDS = {
     BURN_CARDS: {"count", "note"},
     OBSERVATION_GAP: {"reason", "resolved"},
     PEEK_NEGATIVE: {"invalidated"},
+    ROUND_ENDED: {"observation_status"},
 }
 
 
@@ -54,6 +55,7 @@ class ShoeSegment:
     settlements: List[dict] = field(default_factory=list)
     # 庄家信息不完整、只结束未结算的轮次号
     unsettled_rounds: List[int] = field(default_factory=list)
+    round_observations: List[dict] = field(default_factory=list)
     closed: bool = False
     round_id: Optional[str] = None
     unresolved: Dict[str, dict] = field(default_factory=dict)
@@ -240,8 +242,10 @@ class EventLedger:
     def gap(self, reason: str) -> Event:
         return self.append(Event(OBSERVATION_GAP, {"reason": reason}))
 
-    def end_round(self, *, settle: Optional[bool] = None, reason: str = "") -> Event:
-        return self.append(Event(ROUND_ENDED, {"settle": settle, "reason": reason}))
+    def end_round(self, *, settle: Optional[bool] = None, reason: str = "",
+                  observation_status: str = "unknown") -> Event:
+        return self.append(Event(ROUND_ENDED, {"settle": settle, "reason": reason,
+                                             "observation_status": observation_status}))
 
     def end_shoe(self) -> Event:
         return self.append(Event(SHOE_ENDED, {}))
@@ -311,6 +315,8 @@ class EventLedger:
                         raise LedgerError("纠错状态必须为布尔值")
                 if "count" in fix and (type(fix["count"]) is not int or fix["count"] < 0):
                     raise LedgerError("烧牌纠错数量必须为非负整数")
+                if "observation_status" in fix and fix["observation_status"] not in OBSERVATION_STATUSES:
+                    raise LedgerError("观察完整性纠错必须使用已定义状态")
                 corrections.setdefault(ev.payload["target_event_id"], {}).update(ev.payload["payload_fix"])
             seen[ev.event_id] = ev
         segments: List[ShoeSegment] = []
@@ -467,6 +473,16 @@ class EventLedger:
 
             elif ev.etype == ROUND_ENDED:
                 table.ensure_playing()
+                declared = payload.get("observation_status", "unknown")
+                missing = table.missing_observations()
+                observation = {"event_id": ev.event_id, "round_id": cur.round_id,
+                    "round_no": table.round_no, "declared": declared,
+                    "status": "incomplete" if missing else declared,
+                    "detected_missing": missing,
+                    "legacy_unspecified": "observation_status" not in payload}
+                cur.round_observations.append(observation)
+                if observation["status"] != "complete":
+                    shoe.mark_gap(f"第{table.round_no}轮观察完整性{observation['status']}；请核对结束事件 #{ev.seq}")
                 if table.phase == PHASE_DEALING:
                     table.enter_play_phase()
                 # 庄家信息完整才做确定性结算；否则只结束轮次并标注未结算

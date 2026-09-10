@@ -438,6 +438,32 @@ class TableState:
             if stops:
                 raise TableError("庄家已达到桌规停牌终点，后续牌与规则矛盾")
 
+    def missing_observations(self) -> List[dict]:
+        """Provable missing draws, independent of payout or settlement availability."""
+        missing = []
+        dealer = self.dealer.hands[0] if self.dealer.hands else None
+        if dealer is None or len(dealer.cards) < 2:
+            missing.append({"code": "DEALER_INITIAL_MISSING", "seat": DEALER})
+        hands = []
+        for name in self.participants:
+            seat_hands = self.players[name].hands
+            if not seat_hands:
+                missing.append({"code": "PLAYER_INITIAL_MISSING", "seat": name})
+            for hand in seat_hands:
+                hands.append(hand)
+                code = ("PLAYER_INITIAL_MISSING" if len(hand.cards) < 2 else
+                        "PLAYER_DRAW_PENDING" if hand.awaiting_hit or (hand.doubled and len(hand.cards) < 3) else None)
+                if code:
+                    missing.append({"code": code, "seat": name, "hand_id": hand.hand_id})
+        if dealer and len(dealer.cards) >= 2:
+            score, soft = dealer.total()
+            comparing = any(not h.surrendered and not h.is_bust and not (
+                is_natural_blackjack(h.ranks) and not h.from_split) for h in hands)
+            if comparing and score is not None and (score < 17 or (
+                    score == 17 and soft and self.rules.dealer_soft17 == "H17")):
+                missing.append({"code": "DEALER_DRAW_PENDING", "seat": DEALER})
+        return missing
+
     # ---------- 结算（确定性记账，非 EV）----------
     def settle(self) -> List[dict]:
         """本轮结束时逐手结算。庄家底牌必须已揭示。"""
