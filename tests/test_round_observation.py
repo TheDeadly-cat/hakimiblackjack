@@ -10,7 +10,7 @@ from blackjack_lab.ledger.events import Event, ROUND_ENDED
 from blackjack_lab.ledger.ledger import EventLedger, LedgerError
 from blackjack_lab.storage.export import export_json, import_json, export_csv, import_csv
 from blackjack_lab.ui.controller import SessionController
-from blackjack_lab.ui.app import RoundObservationDialog
+from blackjack_lab.ui.app import RoundObservationDialog, BlackjackLabApp
 from tests import test_analysis_ui as ui_fixture
 
 
@@ -198,4 +198,33 @@ class TestObservationWindows(unittest.TestCase):
         self.app.act_peek_negative()
         self.assertTrue(self.app.analysis_panel.compute_button.instate(["disabled"]))
         self.assertIn("此前第1轮", self.app.analysis_panel.status.get())
+        self.close()
+        self.app = BlackjackLabApp(self.db)
+        self.app.update()
+        self.assertEqual(self.app.ctrl.session_id, ledger.session_id)
+        self.assertTrue(self.app.analysis_panel.compute_button.instate(["disabled"]))
+        self.assertIn("此前第1轮", self.app.analysis_panel.status.get())
+        self.assertEqual(self.errors, [])
+
+    def test_actual_complete_choice_preserves_next_round_calculation(self):
+        ledger = first_round(True)
+        self.app.ctrl.store.save_ledger(ledger)
+        self.app.ctrl.load_session(ledger.session_id)
+        self.app.refresh_all()
+        self.choose_dialog("complete")
+        with patch("blackjack_lab.ui.app.simpledialog.askstring", return_value="观察完整，暂不结算"):
+            self.app.act_end_unsettled()
+        self.app.act_new_round()
+        self.app.var_target.set("庄家")
+        self.app.act_card("10")
+        self.app.act_hidden_card()
+        self.app.var_target.set("玩家1")
+        self.app.act_card("10")
+        self.app.act_card("6")
+        self.app.act_peek_negative()
+        self.assertFalse(self.app.analysis_panel.compute_button.instate(["disabled"]))
+        self.app.analysis_panel.compute_button.invoke()
+        result = ui_fixture.TestAnalysisUI.wait_result(self)
+        self.assertEqual(result["status"], "available")
+        self.assertEqual(self.app.ctrl.state().current.settlements, [])
         self.assertEqual(self.errors, [])

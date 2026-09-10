@@ -71,6 +71,14 @@ class RoundObservationDialog(simpledialog.Dialog):
     def apply(self):
         self.result = self.choices[self.selection.get()]
 
+    def buttonbox(self):
+        buttons = ttk.Frame(self)
+        ttk.Button(buttons, text="确认观察状态", command=self.ok).pack(side=tk.LEFT, padx=5)
+        ttk.Button(buttons, text="取消，不结束本轮", command=self.cancel).pack(side=tk.LEFT, padx=5)
+        self.bind("<Return>", self.ok)
+        self.bind("<Escape>", self.cancel)
+        buttons.pack(pady=8)
+
 
 class BlackjackLabApp(tk.Tk):
     def __init__(self, db_path: str | Path = DEFAULT_DB, recording_source=SOURCE_MANUAL):

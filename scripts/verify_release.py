@@ -88,11 +88,12 @@ socket._hakimi_offline_guard = True
             HAKIMI_GUARD_LOG=str(output / "offline-processes.txt"),
             HAKIMI_ATTEMPT_LOG=str(output / "offline-network-attempts.txt"), HAKIMI_OFFLINE_REQUIRED="1")
         code = ("import socket,sys,unittest; assert socket._hakimi_offline_guard; "
-                "suite=unittest.defaultTestLoader.loadTestsFromNames(['tests.test_analysis_ui','tests.test_analysis_integration']); "
+                "suite=unittest.defaultTestLoader.loadTestsFromNames(['tests.test_analysis_ui','tests.test_analysis_integration','tests.test_round_observation','tests.test_v02a_review_regressions']); "
                 "r=unittest.TextTestRunner(verbosity=2).run(suite); sys.exit(0 if r.wasSuccessful() else 1)")
         run("offline-workflows", ["-c", code], offline_env)
     run("math-performance", ["scripts/analysis_checks.py", "--output", str(output / "math-performance")])
     run("ui-visual", ["scripts/ui_visual_check.py", "--output", str(output / "screens")])
+    run("review-visual", ["scripts/review_visual_check.py", "--output", str(output / "review-screens")])
     manifest_file = output / "source-manifest.json"
     manifest_file.write_text(json.dumps(before, ensure_ascii=False, indent=2), encoding="utf-8")
     receipt = {"schema": "hakimi-v02a-acceptance-v1", "timestamp_utc": datetime.now(timezone.utc).isoformat(),

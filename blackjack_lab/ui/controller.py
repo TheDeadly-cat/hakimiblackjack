@@ -18,6 +18,8 @@ class SessionController:
     def __init__(self, db_path: str | Path, recording_source=SOURCE_MANUAL):
         self.store = LocalStore(db_path)
         self.commit_revision = 0
+        self._context_revision = 0
+        self._context_listeners = []
         self.recording_source = recording_source
         self.analysis_store = AnalysisSnapshots(str(Path(db_path).resolve()) + ".analysis")
         self.session_id = uuid.uuid4().hex
@@ -35,6 +37,8 @@ class SessionController:
         obj = cls.__new__(cls)
         obj.store = LocalStore(db_path)
         obj.commit_revision = 0
+        obj._context_revision = 0
+        obj._context_listeners = []
         obj.recording_source = SOURCE_MANUAL
         obj.analysis_store = AnalysisSnapshots(str(Path(db_path).resolve()) + ".analysis")
         try:
@@ -51,6 +55,26 @@ class SessionController:
         self.ledger = candidate
         self.session_id = session_id
         self.session_name = next((s["name"] for s in self.store.list_sessions() if s["session_id"] == session_id), "恢复会话")
+        self._publish_context_change()
+
+    @property
+    def context_token(self):
+        """Read authoritative current identity without depending on any view cache."""
+        return (self.session_id, self._context_revision, self.commit_revision,
+                self.ledger.events[-1].event_id if self.ledger.events else None)
+
+    def add_context_listener(self, listener):
+        self._context_listeners.append(listener)
+
+    def remove_context_listener(self, listener):
+        self._context_listeners.remove(listener)
+
+    def _publish_context_change(self):
+        self._context_revision += 1
+        # The durable commit and in-memory publication have already succeeded.
+        # Notification errors must never roll back or repeat that commit.
+        for listener in tuple(self._context_listeners):
+            listener()
 
     def list_recoverable(self):
         return self.store.list_sessions()
@@ -63,6 +87,7 @@ class SessionController:
         self.store.save_event(event)
         self.ledger = candidate
         self.commit_revision += 1
+        self._publish_context_change()
         return event
 
     def new_shoe(self, rules: RuleProfile):
@@ -125,6 +150,7 @@ class SessionController:
         self.session_id = candidate.session_id
         self.session_name = "导入会话"
         self.commit_revision += 1
+        self._publish_context_change()
         return candidate
 
     def analysis_input(self, seat, hand_id=None, through_seq=None):

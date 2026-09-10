@@ -59,10 +59,14 @@ class AnalysisPanel(ttk.Frame):
         self.service = AnalysisService()
         self.context_key = None
         self.request_key = None
+        self.request_digest = None
+        self.request_id = None
         self.last_result = None
         self.saved = None
         self.recomputed_from = None
         self._auto_id = None
+        self._auto_suppressed_key = None
+        self._closed = False
         self.status = tk.StringVar(value="先选择研究模板并录入当前手牌")
         self.persistence = tk.StringVar(value="结果会独立保存，原始事件不变")
         self.auto = tk.BooleanVar(value=False)
@@ -72,8 +76,10 @@ class AnalysisPanel(ttk.Frame):
         toolbar.grid(row=0, column=0, sticky="ew", pady=2)
         self.compute_button = ttk.Button(toolbar, text="计算当前手牌", command=self.calculate_current)
         self.compute_button.pack(side=tk.LEFT)
-        ttk.Button(toolbar, text="取消", command=self.cancel).pack(side=tk.LEFT, padx=3)
-        ttk.Checkbutton(toolbar, text="自动", variable=self.auto).pack(side=tk.LEFT)
+        self.cancel_button = ttk.Button(toolbar, text="取消", command=self.cancel)
+        self.cancel_button.pack(side=tk.LEFT, padx=3)
+        self.auto_button = ttk.Checkbutton(toolbar, text="自动", variable=self.auto)
+        self.auto_button.pack(side=tk.LEFT)
         ttk.Label(self, textvariable=self.status, wraplength=300).grid(row=1, column=0, sticky="w", padx=3)
         ttk.Label(self, textvariable=self.persistence, wraplength=300, foreground="#555").grid(row=2, column=0, sticky="w", padx=3)
         body = ttk.Frame(self)
@@ -87,6 +93,10 @@ class AnalysisPanel(ttk.Frame):
         footer.grid(row=4, column=0, sticky="ew", pady=2)
         ttk.Button(footer, text="历史分析 / 复算", command=self.show_history).pack(side=tk.LEFT)
         ttk.Button(footer, text="重试保存", command=self.retry_save).pack(side=tk.LEFT, padx=3)
+        self.app.ctrl.add_context_listener(self.context_changed)
+        self._target_traces = [(var, var.trace_add("write", self.context_changed))
+                               for var in (self.app.var_target, self.app.var_hand)]
+        self._auto_trace = self.auto.trace_add("write", self._auto_changed)
         self._poll_id = self.after(50, self._poll)
 
     def _set_text(self, text):
@@ -95,61 +105,109 @@ class AnalysisPanel(ttk.Frame):
         self.text.insert("1.0", text)
         self.text.configure(state=tk.DISABLED)
 
-    def on_context(self, segment):
-        ledger = self.app.ctrl.ledger
-        hand_id = self.app._selected_hand_id(segment) if segment else None
-        key = (self.app.ctrl.session_id, self.app.ctrl.commit_revision,
-               ledger.events[-1].event_id if ledger.events else None, self.app.var_target.get(), hand_id)
-        if key == self.context_key:
-            return
-        self.context_key = key
+    def _live_key(self):
+        return (self.app.ctrl.context_token, self.app.var_target.get(), self.app.var_hand.get())
+
+    def _cancel_auto(self):
         if self._auto_id:
             self.after_cancel(self._auto_id)
             self._auto_id = None
-        if self.service.active or self.last_result:
-            self.service.cancel(STALE)
-            self.last_result = None
-            self.saved = None
-            self.status.set("过期：牌面、目标或会话已变化")
-            self._set_text("旧请求与当前输入不匹配，已移除当前数值。已保存的原结果仍可在历史分析中查看。")
+
+    def _invalidate_current(self):
+        self.request_key = self.request_digest = self.request_id = None
+        self.last_result = self.saved = None
+        self.service.cancel(STALE)
+        self.status.set("过期：牌面、目标或会话已变化")
+        self.persistence.set("旧判断仅保留在历史分析中")
+        self._set_text("旧请求与当前输入不匹配，已移除当前数值。已保存的原结果仍可在历史分析中查看。")
+
+    def context_changed(self, *_args):
+        """Synchronous post-commit / target notification, before any general redraw."""
+        if self._closed or self._live_key() == self.context_key:
+            return
+        self._cancel_auto()
+        if not self.recomputed_from and (self.request_key is not None or self.last_result):
+            self._invalidate_current()
+        self.context_key = None  # Gate/button refresh may run later; invalidation has already happened.
+
+    def _auto_changed(self, *_args):
+        self._cancel_auto()
+        self._auto_suppressed_key = None if self.auto.get() else self._live_key()
+        if self.auto.get() and not self.recomputed_from:
+            self._auto_id = self.after(250, self._run_auto)
+
+    def _run_auto(self):
+        self._auto_id = None
+        if (self.auto.get() and not self._closed and not self.recomputed_from
+                and self._live_key() != self._auto_suppressed_key):
+            self.calculate_current()
+
+    def on_context(self, segment):
+        key = self._live_key()
+        if key == self.context_key:
+            return
+        self.context_changed()
+        self.context_key = key
+        hand_id = self.app._selected_hand_id(segment) if segment else None
         try:
             self.app.ctrl.analysis_input(self.app.var_target.get(), hand_id)
         except InputUnavailable as error:
-            self.status.set(f"{STATUS_ZH[error.status]}：{error.reason}")
+            if not self.recomputed_from:
+                self.status.set(f"{STATUS_ZH[error.status]}：{error.reason}")
             self.compute_button.state(["disabled"])
         else:
             self.compute_button.state(["!disabled"])
-            if not self.last_result:
+            if not self.last_result and not self.recomputed_from:
                 self.status.set("可计算：当前单手，正常底牌仍未揭示")
-            if self.auto.get():
-                self._auto_id = self.after(250, self.calculate_current)
+            if self.auto.get() and not self.recomputed_from and key != self._auto_suppressed_key:
+                self._auto_id = self.after(250, self._run_auto)
 
     def calculate_current(self):
-        self._auto_id = None
+        self._cancel_auto()
         try:
             segment = self.app._current_seg()
             hand_id = self.app._selected_hand_id(segment) if segment else None
             snapshot = self.app.ctrl.analysis_input(self.app.var_target.get(), hand_id)
             self.start(snapshot)
         except Exception as error:
-            self.service.cancel(STALE)
-            self.last_result = None
+            self.recomputed_from = None
+            self._invalidate_current()
             self._set_text("")
             self.status.set(f"待核对：{error}")
 
     def start(self, snapshot, recomputed_from=None, budget_seconds=5.0):
+        self._cancel_auto()
+        if not recomputed_from:
+            segment = self.app._current_seg()
+            hand_id = self.app._selected_hand_id(segment) if segment else None
+            current = self.app.ctrl.analysis_input(self.app.var_target.get(), hand_id)
+            if current.input_digest != snapshot.input_digest:
+                raise InputUnavailable("TARGET_CHANGED", "输入已改变，请按当前手牌重新计算")
+        self.context_key = self._live_key()
         self.request_key = self.context_key
+        self.request_digest = snapshot.input_digest
         self.recomputed_from = recomputed_from
         self.saved = None
         self.last_result = None
         self._set_text("正在按当时可见信息计算；可以继续录入或取消。")
         self.persistence.set("等待当前计算完成")
-        self.service.start(snapshot, budget_seconds)
+        self.request_id = self.service.start(snapshot, budget_seconds)
         self.status.set(("历史复算中" if recomputed_from else "计算中") + f" · 前缀 #{snapshot.through_seq}")
 
     def _poll(self):
+        if self._closed:
+            return
+        if self._poll_id:
+            self.after_cancel(self._poll_id)
+        # Defence in depth: compare to the live controller and selection, even if a
+        # commit notification or every general refresh method was skipped/failed.
+        if self.context_key != self._live_key():
+            self.on_context(self.app._current_seg())
         result = self.service.poll()
-        if result and self.request_key == self.context_key:
+        current_matches = self.request_key is not None and self.request_key == self._live_key()
+        if (result and (self.recomputed_from or current_matches)
+                and result.get("request_id") == self.request_id
+                and result.get("input_digest") == self.request_digest):
             self.last_result = result
             summary = result["reason"]
             if result["status"] == AVAILABLE:
@@ -164,6 +222,9 @@ class AnalysisPanel(ttk.Frame):
         self._poll_id = self.after(50, self._poll)
 
     def retry_save(self):
+        if not self.recomputed_from and self.request_key != self._live_key():
+            self._invalidate_current()
+            return
         if self.saved:
             self.persistence.set("此结果已保存，未重复创建快照")
             return
@@ -176,9 +237,14 @@ class AnalysisPanel(ttk.Frame):
             self.persistence.set("计算已完成，但快照未保存：" + str(error) + "；可重试保存，牌面记录未受影响")
 
     def cancel(self):
+        self._cancel_auto()
+        self._auto_suppressed_key = self._live_key()
         self.service.cancel()
-        self.last_result = None
+        self.request_key = self.request_digest = self.request_id = None
+        self.last_result = self.saved = None
+        self.recomputed_from = None
         self.status.set("已取消：可继续录入或重新计算")
+        self.persistence.set("本次未保存新判断；历史快照仍保留")
         self._set_text("")
 
     def show_history(self):
@@ -224,7 +290,11 @@ class AnalysisPanel(ttk.Frame):
             select()
 
     def close(self):
+        self._closed = True
+        self.app.ctrl.remove_context_listener(self.context_changed)
+        for var, trace_id in self._target_traces:
+            var.trace_remove("write", trace_id)
+        self.auto.trace_remove("write", self._auto_trace)
         self.after_cancel(self._poll_id)
-        if self._auto_id:
-            self.after_cancel(self._auto_id)
+        self._cancel_auto()
         self.service.close()
