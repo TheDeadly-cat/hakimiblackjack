@@ -24,11 +24,12 @@ def sha(path):
 
 def source_manifest():
     paths = []
-    for directory in ("blackjack_lab", "tests", "scripts"):
+    for directory in ("blackjack_lab", "tests", "scripts", "review_tests"):
         paths.extend((ROOT / directory).rglob("*.py"))
     paths.extend(ROOT.glob("*.bat"))
     paths.extend([ROOT / "requirements.txt", ROOT / "requirements-qa.txt", ROOT / "NOTICE.md", ROOT / "README.md"])
     paths.extend((ROOT / ".github").rglob("*.yml"))
+    paths.extend((ROOT / "review_tests").glob("*.json"))
     return {p.relative_to(ROOT).as_posix(): sha(p) for p in sorted(set(paths))}
 
 
@@ -94,6 +95,7 @@ socket._hakimi_offline_guard = True
     run("math-performance", ["scripts/analysis_checks.py", "--output", str(output / "math-performance")])
     run("ui-visual", ["scripts/ui_visual_check.py", "--output", str(output / "screens")])
     run("review-visual", ["scripts/review_visual_check.py", "--output", str(output / "review-screens")])
+    run("original-review-handoff", ["scripts/verify_review_handoff.py", "--output", str(output / "original-review-handoff")])
     manifest_file = output / "source-manifest.json"
     manifest_file.write_text(json.dumps(before, ensure_ascii=False, indent=2), encoding="utf-8")
     receipt = {"schema": "hakimi-v02a-acceptance-v1", "timestamp_utc": datetime.now(timezone.utc).isoformat(),

@@ -60,6 +60,7 @@ python -m blackjack_lab.main
 python -m unittest discover -s tests -v
 python -m blackjack_lab.main --check
 python -m compileall -q blackjack_lab tests scripts
+python scripts/verify_review_handoff.py
 ```
 
 完整验收（额外截图步骤使用可选开发依赖 Pillow）：
@@ -74,3 +75,5 @@ python scripts/verify_release.py
 性能场景、统计方法与预定阈值写在 `scripts/analysis_checks.py`。模拟以独立轮为采样单位；两个动作复用同一组轮，不把它们相加成独立样本。精确有理数参考使用绝对误差 1e-10；模拟另报标准误与95%区间，不要求随机均值逐位相等。
 
 原 V0.1、V0.1.1 文档与失败输出保留为历史证据。当前能力以本 README 和 V0.2a 验收矩阵为准。许可证边界见 `NOTICE.md`。没有平台适配、自动下注、云端识牌或实时捕获。
+
+`review_tests/` 保留原增量审查包的4项交接用例、48场景脚本和来源摘要。`verify_review_handoff.py` 不改写原脚本，使用当前完整工程执行并在唯一目录保存新输出；原数学5项属于主测试集的重叠检查，48个场景不计作48项新增 unittest。完整验收与 Windows CI 均包含这一步。

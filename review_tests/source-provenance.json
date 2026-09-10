@@ -1,0 +1,10 @@
+{
+  "archive_sha256": "fdc23029c392b1982a0dfea0944a46f7434069cde7375e7ce9573e6b774a2edc",
+  "original_review_commit": "ee485dd22285ec14f83bf8fe81df4fad2f3ea005",
+  "files": {
+    "original-supplementary-results.json": "e0d904d00e1eb5c3474d221cffafe9fb90a38c6d78394c35d9ebf13d23ce88b3",
+    "run_supplementary_math.py": "f653faf54d1a30016952c86cd60bbd0ba165e5c7b400bfd58d364fe9bb57951d",
+    "test_v02a_review_regressions.py": "d9fff919bee93658005dfd23b973f406b612addd6b435c3133726b87901a3a35"
+  },
+  "execution_policy": "Run against current full repository modules; preserve original scripts and assertions byte-for-byte."
+}

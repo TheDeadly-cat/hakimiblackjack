@@ -29,3 +29,5 @@ jobs:
         run: python -m compileall -q blackjack_lab tests scripts
       - name: Seeded independent simulation cross-check
         run: python -c "from scripts.analysis_checks import monte_carlo; r=monte_carlo(6, samples=2500); print(r); assert all(a['passed'] for a in r['actions'].values())"
+      - name: Original review handoff and 48 supplementary scenarios
+        run: python scripts/verify_review_handoff.py
