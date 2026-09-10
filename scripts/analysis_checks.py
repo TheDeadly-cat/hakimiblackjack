@@ -22,6 +22,7 @@ from tests.analysis_reference import dealer_end, net, points
 from tests.test_analysis_integration import example
 from blackjack_lab.ui.controller import SessionController
 from blackjack_lab.analysis.contracts import research_rules
+from scripts.source_identity import source_identity
 
 
 def monte_carlo(n_decks, samples=20_000, seed=20260910):
@@ -125,9 +126,10 @@ def main():
     directory.mkdir(parents=True, exist_ok=False)
     simulations = [monte_carlo(n, args.samples) for n in (6, 7, 8)]
     performance = benchmarks()
+    identity = source_identity(ROOT)
     report = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "python": sys.version,
-        "platform": platform.platform(), "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
-        "dirty_worktree": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True)),
+        "platform": platform.platform(), "commit": identity["commit"], "source_identity_kind": identity["kind"],
+        "dirty_worktree": identity["dirty_worktree"],
         "synthetic_only": True, "monte_carlo": simulations, "performance": performance, "recording": recording_benchmark(),
         "passed": all(a["passed"] for s in simulations for a in s["actions"].values()) and performance["all_completed"] and performance["target_met"]}
     (directory / "analysis-validation.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

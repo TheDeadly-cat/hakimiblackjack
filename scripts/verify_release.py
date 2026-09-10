@@ -14,6 +14,8 @@ import time
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from scripts.source_identity import source_identity
 
 
 def sha(path):
@@ -37,8 +39,8 @@ def main():
     output = args.output or ROOT / ".local-evidence" / ("acceptance-v02a-" + datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6])
     output.mkdir(parents=True, exist_ok=False)
     before = source_manifest()
-    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True)
+    identity = source_identity(ROOT)
+    head, dirty = identity["commit"], identity["dirty_worktree"]
     environment = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
     checks = []
     def run(name, arguments, env=None):
@@ -94,7 +96,7 @@ socket._hakimi_offline_guard = True
     manifest_file = output / "source-manifest.json"
     manifest_file.write_text(json.dumps(before, ensure_ascii=False, indent=2), encoding="utf-8")
     receipt = {"schema": "hakimi-v02a-acceptance-v1", "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        "commit": head, "working_tree_dirty_before": bool(dirty), "python": sys.version,
+        "commit": head, "working_tree_dirty_before": bool(dirty), "source_identity_kind": identity["kind"], "python": sys.version,
         "platform": platform.platform(), "source_manifest_sha256": sha(manifest_file),
         "source_unchanged_during_checks": before == source_manifest(), "checks": checks,
         "user_database_accessed": False, "test_data": "temporary SQLite and self-generated observations only",
