@@ -8,13 +8,14 @@ from .actions import solve_counts
 from .contracts import (AnalysisInput, ENGINE_VERSION, STRATEGY_VERSION, RESULT_SCHEMA,
                         AVAILABLE, INAPPLICABLE, UNSUPPORTED, PENDING, TIMEOUT, CANCELLED, STALE, FAILED, ACTION_ZH)
 from .probability import CalculationStopped, InsufficientCards
+from .split_contracts import SplitAnalysisInput, SPLIT_INPUT_SCHEMA, SPLIT_RESULT_SCHEMA
 
 
 def base_result(snapshot, request_id):
-    return {"schema": RESULT_SCHEMA, "request_id": request_id,
+    return {"schema": SPLIT_RESULT_SCHEMA if isinstance(snapshot, SplitAnalysisInput) else RESULT_SCHEMA, "request_id": request_id,
             "input": snapshot.to_dict(), "input_digest": snapshot.input_digest,
-            "rules_digest": snapshot.rules_digest, "engine_version": ENGINE_VERSION,
-            "strategy_version": STRATEGY_VERSION, "created_at": time(),
+            "rules_digest": snapshot.rules_digest, "engine_version": snapshot.engine_version,
+            "strategy_version": snapshot.strategy_version, "created_at": time(),
             "status": "computing", "reason_code": "COMPUTING", "reason": "计算中",
             "actions": {}, "probabilities": None, "highest_ev_action": None,
             "partial_comparison": False, "elapsed_seconds": 0.0,
@@ -23,6 +24,9 @@ def base_result(snapshot, request_id):
 
 def calculate(snapshot, request_id=None, budget_seconds=5.0):
     request_id = request_id or uuid.uuid4().hex
+    if isinstance(snapshot, SplitAnalysisInput):
+        from .split_service import calculate_split
+        return calculate_split(snapshot, request_id, budget_seconds)
     result = base_result(snapshot, request_id)
     start = perf_counter()
     try:
@@ -85,7 +89,8 @@ def _validate_distribution(values):
 
 def _worker(connection, data, request_id, budget):
     try:
-        result = calculate(AnalysisInput.from_dict(data), request_id, budget)
+        input_type = SplitAnalysisInput if data.get("schema") == SPLIT_INPUT_SCHEMA else AnalysisInput
+        result = calculate(input_type.from_dict(data), request_id, budget)
         import socket
         result["worker_network_guard_active"] = bool(getattr(socket, "_hakimi_offline_guard", False))
         result["worker_peak_working_set_bytes"] = _peak_memory()

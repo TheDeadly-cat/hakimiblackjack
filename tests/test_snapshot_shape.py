@@ -122,16 +122,17 @@ class TestSnapshotShapes(unittest.TestCase):
         self.assertEqual(before, {path.name: path.read_bytes() for path in self.directory.glob("*.json")})
 
     def test_split_schema_common_identity_compatibility_without_single_hand_fields(self):
-        result = json.loads(canonical(self.saved["result"]))
-        result["schema"] = "hakimi-analysis-result-v2"
-        info = result["input"]
-        info["schema"] = "hakimi-split-analysis-input-v1"
-        info["hands"] = [{"hand_id": info["hand_id"], "ranks": ["8"]}, {"hand_id": "second-hand", "ranks": ["8"]}]
-        info["active_hand_id"] = info["hand_id"]
-        del info["player_ranks"]
-        result["input_digest"] = digest(info)
+        from tests.test_analysis_integration import example
+        from blackjack_lab.analysis.split_contracts import split_research_rules
+        from blackjack_lab.analysis.information import build_input
+        ledger = example(cards=('8','8'),up='6',rules=split_research_rules())
+        hand_id = build_input(ledger,'玩家1').hand_id
+        ledger.player_action('玩家1',hand_id,'分牌')
+        result = calculate(build_input(ledger,'玩家1'))
+        self.assertEqual(result['status'],'available')
+        self.assertNotIn('player_ranks',result['input'])
         saved = self.store.save(result)
-        self.assertEqual(self.store.load(saved["snapshot_id"]), saved)
+        self.assertEqual(canonical(self.store.load(saved["snapshot_id"])), canonical(saved))
         self.assertEqual(self.store.list()[1], [])
 
     def test_invalid_encoding_and_filename_do_not_change_healthy_history(self):
@@ -217,20 +218,22 @@ class TestSnapshotHistoryUI(unittest.TestCase):
         self.assertEqual(canonical(self.app.ctrl.ledger.to_list()), self.events_before)
         self.assertEqual(self.errors, [])
 
-    def test_real_tk_newer_result_envelope_requires_its_own_display_adapter(self):
-        result = json.loads(canonical(self.saved["result"]))
-        result["schema"] = "hakimi-analysis-result-v2"
-        info = result["input"]
-        info["schema"] = "hakimi-split-analysis-input-v1"
-        info["hands"] = [{"hand_id": info["hand_id"], "ranks": ["8"]}]
-        del info["player_ranks"]
-        result["input_digest"] = digest(info)
+    def test_real_tk_newer_result_uses_split_display_adapter_and_retains_legacy(self):
+        # B3 replaces N1's temporary 'adapter absent' assertion with actual v2.
+        from tests.test_analysis_integration import example
+        from blackjack_lab.analysis.split_contracts import split_research_rules
+        from blackjack_lab.analysis.information import build_input
+        ledger = example(cards=('8','8'),up='6',rules=split_research_rules())
+        self.app.ctrl.store.save_ledger(ledger)
+        result = calculate(build_input(ledger,'玩家1'))
+        self.assertEqual(result['status'],'available')
         self.app.ctrl.analysis_store.save(result)
         win = self.window()
         texts = [w.get("1.0", "end") for w in win.winfo_children() if w.winfo_class() == "Text"]
-        self.assertTrue(any("不支持此结果格式" in text for text in texts))
+        self.assertTrue(any("两手顺序分牌" in text and '合计净收益分布' in text for text in texts))
         button = next(w for w in win.winfo_children() if w.winfo_class() == "TButton")
-        self.assertTrue(button.instate(["disabled"]))
+        self.assertFalse(button.instate(["disabled"]))
+        self.assertEqual((self.directory / (self.saved['snapshot_id']+'.json')).read_bytes(),self.original)
         self.assertEqual(self.errors, [])
 
 

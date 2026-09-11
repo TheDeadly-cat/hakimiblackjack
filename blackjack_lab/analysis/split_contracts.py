@@ -183,6 +183,9 @@ class SplitAnalysisInput:
                         else ("stand", "hit"))
             if self.legal_actions != expected or self.uncertain_actions:
                 raise ValueError("分牌后的动作必须按当前行动手和强制补牌状态计算")
+        excluded = 9 if self.peek_negative and self.dealer_up == 1 else 0 if self.peek_negative and self.dealer_up == 10 else None
+        if self.physical_remaining < 0 or sum(self.counts)-(self.counts[excluded] if excluded is not None else 0) <= 0:
+            raise ValueError("没有满足当前信息的物理底牌")
 
     @classmethod
     def from_dict(cls, data):
