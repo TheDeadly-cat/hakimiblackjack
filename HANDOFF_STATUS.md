@@ -1,5 +1,94 @@
 # 项目接手状态
 
+更新时间：2026-09-11（T1b/T2b 已推送；PR #8 待 CI 与合入）
+执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
+当前任务ID：T1b+T2b 交付 + T5 并行
+本轮允许文件：交接记录同步推送/PR 事实；T5 仅新契约文档、独立参考与参考测试。未改 `SplitEngine.cs`、旧规则模板、旧参考、容差或 5 秒预算。
+
+## 当前活动摘要
+- 集成基线：GitHub `main` `4f84595bfc933896586dab9af9d17ad73eed6e73`（#6/#7 已合并）。修复候选不在 main，不能写成“最新版已正式交付”。
+- 远程分支：`handoff/t1b-t2b-output-receipt` 已存在，HEAD `0ed0e9d95762d4588b6de411dc33eb8cc44b2f7c`
+- 关联 PR：[#8](https://github.com/TheDeadly-cat/hakimiblackjack/pull/8) → `main`（利用已有 `pull_request` 触发；`handoff/**` 的 push 不会跑 CI）
+- 该 HEAD 的 Actions：创建 PR 后开始 run（以 GitHub 当时记录为准）；创建 PR 前 count=0。main CI `34588429217` / 258 项只证明 `4f84595`，不能换签给 `0ed0e9d`。
+- G1/G2/G3 对应路径已实现；审查者 19 项隔离检查通过，不是完整 Windows 281。开发者 281 在 `.local-evidence/`，未独立核实为 CI。
+- 未执行：`0ed0e9d` 的 318 冷请求与 20 张截图（不得用旧回执换签）
+- 下一单：T5 DAS 契约/独立参考；**不是** T3，不重做 #2–#7
+- 回滚：共享 main 上禁止 `git reset --hard de1d095`。未合入前以 PR 分支为准；先保留未提交工作、用户库和 `.analysis`
+
+## 源码身份
+- 仓库：https://github.com/TheDeadly-cat/hakimiblackjack
+- 工作目录：`C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2b1`
+- 分支：`handoff/t1b-t2b-output-receipt`（远程已存在；本地因 git :443 常失败，跟踪信息可能仍显示 `origin/main`）
+- 基线HEAD：`4f84595bfc933896586dab9af9d17ad73eed6e73`
+- T1b：`159c3bf152e71b9f3d3f22b007c76d35086f31c0`（动作集合与收益支持）
+- T2b：`c43c187bb672f5e31d872ed5cc31584a80bd4185`（构建回执根对象与唯一写探针）
+- 本轮新HEAD：`0ed0e9d95762d4588b6de411dc33eb8cc44b2f7c`（文档提交；产品字节与 T2b 树一致）
+- 工作树是否干净：交接摘要同步推送/PR 事实后以 `git status` 为准；`.local-evidence/` 不入库
+- 相关PR：#2–#7 已在 main。本修复分支 PR [#8](https://github.com/TheDeadly-cat/hakimiblackjack/pull/8)。未授权不合入。
+
+## 环境
+- 操作系统/位数：Windows-11-10.0.26200-SP0，64-bit
+- Python路径/版本：`C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe` 3.14.6
+- Tk和SQLite版本：Tk 8.6 / Tcl 8.6.15；sqlite 3.50.4
+- .NET编译器路径/版本：`C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe` 4.8.9221.0
+- 是否真实执行native：是（门禁 native 焦点、分牌工作流随 discover、已校验产物复用）。审查包 semantics/回执探针为 mock 夹具，不是 C# 数值神谕。
+- 是否真实执行GUI：discover 中的 Tk 回调有执行；`inspect_environment()` 真实 `Tk()`；20 张窗口截图未运行
+
+## 本轮任务
+- 原始问题：G1 普通停牌/补牌/加倍/投降的非法净收益仍标 `available`；G2 三张牌多返回的高 EV `double` 会成为推荐；G3 坏 `build.json` 根对象使预检崩溃；G4 交接记录仍写未推送、main `09bb60c`、下一单 T3。
+- 实际读取的关键文件/函数：`split_service._validate_available_action`/`calculate_split`、`environment.inspect_environment`、`native_backend._build_native_locked`、审查包 `probes/test_service_semantics.py` 与 `probes/test_environment_receipt.py`
+- 修改与原因：分牌前与分牌后统一要求后端动作集合等于 `legal_actions`；按动作/注额检查净收益支持（普通 stand/hit `{-1,0,+1}`，double `{-2,0,+2}`，晚投降仅 `-0.5`，天然 BJ 未分牌两张的 stand `{0,+1.5}`）；抽出 `parse_build_receipt` 供预检与 `build_native` 共用；写探针改为缓存父目录下本次唯一临时文件并只删本次创建的文件。`example()` 在十点明牌发第三张前补 peek，使审查包三张牌探针能在完整工程建快照（与真实录牌顺序一致）。
+- 不在范围内的未修改项：`SplitEngine.cs`、DAS 生产求解、1e-10/1e-12、5 秒预算、进程层 Job 竞态重写、318/截图、T5
+- 新增/调整的测试：`tests/test_split_output_guard.py` 保留原 26 项并增加动作语义 mock + native 正向保护（天然 BJ、T/J pending、三张仅 stand/hit）；`tests/test_split_environment.py` 增加 `[]`/`null`/字符串/`{}`/语法错误/正常对象与唯一写探针。Mock 与 native 分班标注。
+
+## 验证（每条写真实执行情况）
+cwd 均为 `C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2b1`。下表命令在工作树已含 T1b/T2b 源码时执行；当时 `git rev-parse HEAD` 仍显示基线 `4f84595`，因测试先于提交。提交后源码字节与该次运行一致。
+
+| 命令 | 退出码 | 通过/失败/跳过/未运行 | 完整日志 |
+|---|---|---|---|
+| 审查包 `test_service_semantics.py`（修前） | 1 | 执行且失败（7 项：2 ok，4 FAIL，1 ERROR） | `.local-evidence/t1b-t2b-pre-fix-20260911-190625/semantics-pre.txt` |
+| 审查包 `test_environment_receipt.py`（修前） | 1 | 执行且失败（6 项：3 ok，3 ERROR/`AttributeError`） | `.local-evidence/t1b-t2b-pre-fix-20260911-190625/environment-pre.txt` |
+| 审查包 `test_service_semantics.py`（修后） | 0 | 执行且通过（7/7，mock） | `.local-evidence/t1b-t2b-20260911-191223/semantics-post.txt` |
+| 审查包 `test_environment_receipt.py`（修后） | 0 | 执行且通过（6/6，mock 回执；不执行 C#） | `environment-receipt-post.txt` |
+| `python scripts/check_environment.py --json` | 0 | 执行且通过（`ready=true`，合法 JSON） | `check-environment-json.txt` |
+| `python scripts/check_environment.py` | 0 | 执行且通过（`ready=True`） | `check-environment.txt` |
+| `python -m blackjack_lab.main --prepare-split` | 0 | 执行且通过（复用已校验产物） | `prepare-split.txt` |
+| `python -m unittest tests.test_split_output_guard tests.test_split_environment tests.test_split_process -v` | 0 | 执行且通过（62/62；含 mock 语义与 native 正向保护） | `focus.txt` |
+| `python -m unittest discover -s tests -v` | 0 | 执行且通过（281 tests，45.822s；main CI 258 + 本轮 23） | `unittest-discover.txt` |
+| `python scripts/verify_review_handoff.py --output .../original-5-48-4` | 0 | 执行且通过（原 5/48/4，`passed=true`，max_abs_error≈2.22e-16） | `verify-review-handoff.txt` 与 `original-5-48-4/` |
+| `python -m unittest discover -s docs/acceptance/n1-20260910-220300-9f6f68/original -p test_snapshot_shape.py -v` | 0 | 执行且通过（4/4） | `n1-original.txt` |
+| `python -m compileall -q blackjack_lab tests scripts` | 0 | 执行且通过 | `compileall.txt` |
+| `python scripts/verify_split_release.py` / 318 冷请求 / 20 张截图 | — | 未运行（本轮未改数学核心与请求预算；不得用旧回执换签） | — |
+
+## 证据身份
+- 修前证据：`.local-evidence/t1b-t2b-pre-fix-20260911-190625`
+- 修后证据：`.local-evidence/t1b-t2b-20260911-191223`
+- 已提交 hash：
+  - `blackjack_lab/analysis/split_service.py` git blob `b2d96f71991e1bf5d8f03c6e4517c41afea82f3e`；sha256 `226bcc1a73f67b348ccf7c5a9ecc411190459191e67308d949ac2850e863dcf0`
+  - `blackjack_lab/analysis/environment.py` git blob `4d20d5400190ec6bf867baa99e54a629545ab556`；sha256 `24f2001082bf25760c951bcfbcfe84447f2eeaba6ee7737af46016d3eb5899fd`
+  - `blackjack_lab/analysis/native_backend.py` git blob `28009b390884a4ae1f7f78e5a9d57f14854f481c`；sha256 `e562ed1b42a22987a02acf6ce4f2d6fb795b7c4cf156fa73ffcd1fd55ac385f8`
+  - `tests/test_split_output_guard.py` git blob `0e659e5b55bc2dfd5b00bb675021acf024e035e0`；sha256 `975dc2df5a0c3d22d23ffbeec07a6401a29b75935dd80b5f4a3f755e1797c52f`
+  - `tests/test_split_environment.py` git blob `13ac50c00ffaa87d4602f85be28151952bd791a1`；sha256 `ba259ae9774d46fc1c13d1a15784237621169b02cba22a1f1b644c5a588a9f75`
+  - `tests/test_analysis_integration.py` git blob `d201d7a70fd99e86224eacb08af18aaacff1a9f5`；sha256 `26a1680ff169579c6bddcf424e8fe9630e3576d763fb1e3630c26315a1adfe68`
+  - 已校验产物未改：`SplitEngine.exe` binary sha256 `437e4016ceee36a531a2bc25c86e542658c2b31189c63ed3aabf4f91d299dc87`
+- 历史证据是否保持不变：是（未改 `docs/acceptance`、未覆盖 T0–T2 `.local-evidence`）
+- 外部CI与本地执行的区分：上表为本机 Windows 原生执行（探针为 mock）；CI 258 对应已合并 main `4f84595`，不能写成当前工作树结果。
+
+## 兼容与风险
+- 拒绝发布时清空 `actions` / `probabilities` / `highest_ev_action`；不静默改分布、不改容差、不重算 EV。坏回执与损坏 exe 保留，不删 `data/`，不安装、不提权。
+- 未解决：T5 DAS；当前 HEAD 的 318/截图；Job 归属窄窗口仍只登记、未复现孤儿 `csc`。
+- 回滚：不要在已共享的 main 上 `git reset --hard de1d095`。丢弃本轮未提交改动前先确认没有需要保留的本地文件；用户数据库与 `.analysis` 本轮未触碰。
+
+## 下一单
+- 唯一下一任务ID：T5（两手 DAS 契约与独立参考：每手注额、唯一加倍牌、合计 [-4,4]、分 A 禁 DAS、信息上界有「无 DAS」前提）
+- 前置条件：T1b/T2b 本机相关测试已通过；生产 `SplitEngine` DAS 要等设计审查后的 T6
+- 需用户或审查者决定的事项：PR #8 的 Windows CI 通过后是否授权合入 main
+- 是否获准push/merge：已推送分支并开 PR；**未获准 merge**
+
+---
+
+# T2 时点历史（以下为当时原文，未改验收表）
+
 更新时间：2026-09-11（本机 T2 完成后）
 执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
 当前任务ID：T2

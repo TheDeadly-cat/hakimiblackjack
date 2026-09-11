@@ -7,9 +7,12 @@ import sqlite3
 import struct
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 from time import perf_counter
 
 from . import native_backend as backend
+from .native_backend import BuildReceiptError, parse_build_receipt
 
 
 def inspect_environment(*, prepare=False):
@@ -64,34 +67,42 @@ def inspect_environment(*, prepare=False):
         else:
             warnings.append(_issue("COMPILER_MISSING", message + "；若现有产物摘要正确仍可计算，但不能重新编译", action))
 
+    probe = None
     try:
         cache.parent.mkdir(parents=True, exist_ok=True)
-        probe = cache.parent / ".hakimi-write-probe"
+        handle, probe_path = tempfile.mkstemp(prefix=".hakimi-write-", suffix=".tmp", dir=str(cache.parent))
+        os.close(handle)
+        probe = Path(probe_path)
         probe.write_text("ok", encoding="utf-8")
-        probe.unlink()
         writable = True
     except OSError as error:
         writable = False
         write_error = str(error)
         failures.append(_issue("CACHE_NOT_WRITABLE", f"无法写入 {cache.parent}：{error}",
                                "检查目录权限。不要删除 data/ 或 .analysis；不要提权启动作为常规方案"))
+    finally:
+        if probe is not None:
+            try:
+                probe.unlink()
+            except OSError:
+                pass
 
     if executable.is_file() and receipt.is_file():
         try:
-            saved = json.loads(receipt.read_text(encoding="utf-8"))
+            saved = parse_build_receipt(receipt.read_text(encoding="utf-8"))
             binary = hashlib.sha256(executable.read_bytes()).hexdigest()
             source = backend.source_digest()
-            match = (saved.get("source_sha256") == source and saved.get("flags") == list(backend.FLAGS)
-                     and saved.get("binary_sha256") == binary and executable.parent.name == source)
+            match = (saved["source_sha256"] == source and saved["flags"] == list(backend.FLAGS)
+                     and saved["binary_sha256"] == binary and executable.parent.name == source)
             artifact = dict(path=str(executable), source_sha256=source,
-                            receipt_source_sha256=saved.get("source_sha256"),
-                            binary_sha256=binary, receipt_binary_sha256=saved.get("binary_sha256"),
-                            flags=saved.get("flags"), valid=match)
+                            receipt_source_sha256=saved["source_sha256"],
+                            binary_sha256=binary, receipt_binary_sha256=saved["binary_sha256"],
+                            flags=saved["flags"], valid=match)
             if not match:
                 failures.append(_issue("ARTIFACT_HASH_MISMATCH",
                                        "本地分牌加速器摘要不匹配；请保留该损坏目录并在旁边重新准备",
                                        "不要删除用户数据库或历史快照，不要把清缓存扩大到 data/"))
-        except (OSError, json.JSONDecodeError, TypeError, ValueError) as error:
+        except (OSError, UnicodeError, BuildReceiptError) as error:
             failures.append(_issue("ARTIFACT_UNREADABLE", "无法读取构建回执：" + str(error),
                                    "保留损坏文件作诊断，使用新的源码摘要目录重新 --prepare-split"))
     elif compiler.is_file() and writable:

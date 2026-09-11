@@ -21,6 +21,29 @@ FLAGS = ("/nologo", "/optimize+", "/r:System.Web.Extensions.dll")
 NO_WINDOW = 0x08000000
 
 
+class BuildReceiptError(ValueError):
+    """Controlled failure while reading a local build.json object."""
+
+
+def parse_build_receipt(text):
+    try:
+        saved = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise BuildReceiptError("构建回执不是合法 JSON") from error
+    if not isinstance(saved, dict):
+        raise BuildReceiptError("构建回执根必须是对象")
+    source = saved.get("source_sha256")
+    binary = saved.get("binary_sha256")
+    flags = saved.get("flags")
+    if type(source) is not str or not source:
+        raise BuildReceiptError("构建回执缺少有效 source_sha256")
+    if type(binary) is not str or not binary:
+        raise BuildReceiptError("构建回执缺少有效 binary_sha256")
+    if not isinstance(flags, list) or any(type(item) is not str for item in flags):
+        raise BuildReceiptError("构建回执 flags 必须为字符串列表")
+    return {"source_sha256": source, "binary_sha256": binary, "flags": flags}
+
+
 def source_digest():
     return hashlib.sha256(SOURCE.read_bytes()).hexdigest()
 
@@ -108,9 +131,13 @@ def _build_native_locked(timeout):
     executable = directory / "SplitEngine.exe"
     receipt = directory / "build.json"
     if executable.is_file() and receipt.is_file():
-        saved = json.loads(receipt.read_text(encoding="utf-8"))
-        if (saved.get("source_sha256") == key and saved.get("flags") == list(FLAGS)
-                and saved.get("binary_sha256") == hashlib.sha256(executable.read_bytes()).hexdigest()):
+        try:
+            saved = parse_build_receipt(receipt.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, BuildReceiptError) as error:
+            raise RuntimeError("无法读取本地分牌加速器构建回执；请保留该损坏目录并在旁边重新准备新构建，"
+                               "不要删除用户数据库或分析快照。") from error
+        if (saved["source_sha256"] == key and saved["flags"] == list(FLAGS)
+                and saved["binary_sha256"] == hashlib.sha256(executable.read_bytes()).hexdigest()):
             return executable
         raise RuntimeError("本地分牌加速器摘要不匹配；请保留该损坏目录并在旁边重新准备新构建，"
                            "不要删除用户数据库或分析快照。")

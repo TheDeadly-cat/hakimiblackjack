@@ -2,6 +2,7 @@
 from time import perf_counter
 import math
 
+from ..core.cards import is_natural_blackjack
 from .contracts import AVAILABLE, INAPPLICABLE, PENDING, TIMEOUT, FAILED, UNSUPPORTED, ACTION_ZH
 from .probability import CalculationStopped, InsufficientCards, FiniteModel, LABELS, DEALER_LABELS, total
 from .split_actions import solve_split_counts
@@ -44,6 +45,28 @@ def _validate_hit_bust(value):
         raise ArithmeticError('补牌爆牌概率越界')
 
 
+def _require_backend_actions(snapshot, numbers):
+    actions = numbers.get('actions') if isinstance(numbers, dict) else None
+    if not isinstance(actions, dict) or set(actions) != set(snapshot.legal_actions):
+        raise ArithmeticError('求解器动作与当前顺序输入不一致')
+
+
+def _net_support_for_action(snapshot, action):
+    """Allowed net outcomes for a one-bet pre-split action; None uses the two-hand contract."""
+    if not snapshot.pre_split or action == 'split':
+        return None
+    if action == 'surrender':
+        return {-0.5}
+    if action == 'double':
+        return {-2.0, 0.0, 2.0}
+    if action in ('stand', 'hit'):
+        hand = snapshot.hands[0]
+        if action == 'stand' and is_natural_blackjack(hand.ranks) and not hand.from_split:
+            return {0.0, 1.5}
+        return {-1.0, 0.0, 1.0}
+    raise ArithmeticError('当前动作没有已声明的收益支持')
+
+
 def _validate_available_action(snapshot, action, item):
     ev = _finite_number(item.get('ev'), 'ev')
     dist = item.get('net_distribution')
@@ -60,7 +83,10 @@ def _validate_available_action(snapshot, action, item):
         totals[outcome] = totals.get(outcome, 0.0) + probability
     if abs(ev - sum(outcome * probability for outcome, probability in totals.items())) > 1e-10:
         raise ArithmeticError('合计EV与完整净收益分布不一致')
-    if snapshot.pre_split and action != 'split':
+    allowed = _net_support_for_action(snapshot, action)
+    if allowed is not None:
+        if not set(totals).issubset(allowed):
+            raise ArithmeticError('净收益格超出当前动作允许集合')
         return
     if set(totals) != TOTAL_NETS:
         raise ArithmeticError('需要完整的五个合计收益格')
@@ -124,6 +150,7 @@ def calculate_split(snapshot, request_id, budget_seconds):
         if snapshot.pre_split:
             numbers = solve_presplit_native(snapshot.counts, snapshot.hands[0].values, snapshot.dealer_up,
                 snapshot.peek_negative, snapshot.legal_actions, remaining())
+            _require_backend_actions(snapshot, numbers)
             for action,label in ACTION_ZH.items():
                 if action in numbers['actions']:
                     item=dict(status=AVAILABLE,reason_code='CALCULATED',reason='已计算',**numbers['actions'][action])
@@ -144,8 +171,7 @@ def calculate_split(snapshot, request_id, budget_seconds):
                 split_aces=snapshot.hands[0].split_ace,
                 force_active=active < 2 and snapshot.hands[active].forced_draw,
                 budget_seconds=remaining())
-            if set(numbers['actions']) != set(snapshot.legal_actions):
-                raise ArithmeticError("求解器动作与当前顺序输入不一致")
+            _require_backend_actions(snapshot, numbers)
             result['actions'] = {a: dict(status=AVAILABLE, label=SPLIT_ACTION_ZH[a], reason_code='CALCULATED',
                                         reason='当前行动手的合计净收益', **v) for a,v in numbers['actions'].items()}
             result['probabilities'] = {}

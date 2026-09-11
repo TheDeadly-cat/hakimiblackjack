@@ -24,9 +24,14 @@ def example(n=6, cards=("10", "6"), up="10", rules=None, participants=None, peek
     ledger.start_round(participants or ["玩家1"])
     ledger.deal("庄家", up, source="自建模拟器")
     ledger.deal("庄家", hidden=True, source="自建模拟器")
-    for card in cards:
+    peeked = False
+    ten_up = up in ("A", "10", "J", "Q", "K", "T")
+    for index, card in enumerate(cards):
+        if index >= 2 and peek and ten_up and not peeked:
+            ledger.peek_negative()
+            peeked = True
         ledger.deal("玩家1", card, source="自建模拟器")
-    if peek and up in ("A", "10", "J", "Q", "K", "T"):
+    if peek and ten_up and not peeked:
         ledger.peek_negative()
     return ledger
 

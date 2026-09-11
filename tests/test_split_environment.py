@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
 from blackjack_lab.analysis.environment import inspect_environment
@@ -150,6 +151,115 @@ class TestSplitEnvironment(unittest.TestCase):
                               cwd=str(ROOT), capture_output=True, text=True, check=False)
         self.assertEqual(main.returncode, 0, main.stderr or main.stdout)
         self.assertIn('ready=True', main.stdout)
+
+    def test_write_probe_uses_unique_temp_file_and_does_not_leave_it(self):
+        from blackjack_lab.analysis import native_backend as backend
+        parent = backend.native_cache_directory().parent
+        fixed = parent / '.hakimi-write-probe'
+        existed = fixed.exists()
+        before = {path.name for path in parent.glob('.hakimi-write-*')}
+        report = inspect_environment()
+        after = {path.name for path in parent.glob('.hakimi-write-*')}
+        self.assertTrue(report['cache_writable'])
+        self.assertEqual(after, before)
+        self.assertEqual(fixed.exists(), existed)
+
+    def test_array_receipt_fails_closed_and_keeps_files(self):
+        from blackjack_lab.analysis import native_backend as backend
+        ledger = example(cards=('8', '8'), up='6', rules=split_research_rules())
+        with tempfile.TemporaryDirectory() as directory:
+            source = _isolated_source(directory, b't2b-array-receipt')
+            cache, executable, sentinel = _corrupt_artifact(source)
+            (cache / 'build.json').write_text('[]', encoding='utf-8')
+            user_db = Path(directory) / 'data' / 'blackjack_lab.db'
+            user_db.parent.mkdir()
+            user_db.write_text('user-records', encoding='utf-8')
+            with patch.object(backend, 'SOURCE', source):
+                with self.assertRaises(RuntimeError) as error:
+                    backend.build_native()
+                report = inspect_environment()
+                result = calculate(build_input(ledger, '玩家1'))
+            self.assertNotIn('has no attribute', str(error.exception).lower())
+            self.assertIn('构建回执', str(error.exception))
+            self.assertFalse(report['ready'])
+            self.assertTrue(any(item['code'] == 'ARTIFACT_UNREADABLE' for item in report['failures']))
+            self.assertNotEqual(result['status'], 'available')
+            self.assertEqual(result['actions'], {})
+            self.assertIsNone(result['highest_ev_action'])
+            self.assertEqual((cache / 'build.json').read_text(encoding='utf-8'), '[]')
+            self.assertEqual(executable.read_bytes(), b'not-a-real-split-engine')
+            self.assertTrue(sentinel.exists())
+            self.assertEqual(user_db.read_text(encoding='utf-8'), 'user-records')
+
+
+class TestBuildReceiptParsing(unittest.TestCase):
+    """Receipt-root parsing with isolated files. Does not execute the C# binary."""
+
+    def check(self, contents):
+        from blackjack_lab.analysis import environment
+        from blackjack_lab.analysis import native_backend as backend
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'lab/analysis/native/SplitEngine.cs'
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b'// synthetic non-executed source\n')
+            source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+            cache = root / 'lab/.local-native' / source_hash
+            cache.mkdir(parents=True)
+            binary = cache / 'SplitEngine.exe'
+            binary.write_bytes(b'synthetic non-executable bytes')
+            receipt = cache / 'build.json'
+            flags = list(backend.FLAGS)
+            good = dict(source_sha256=source_hash, flags=flags,
+                        binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest())
+            text = json.dumps(good) if contents is None else contents
+            receipt.write_text(text, encoding='utf-8')
+            original = receipt.read_bytes(), binary.read_bytes()
+            doubled = SimpleNamespace(SOURCE=source, FLAGS=tuple(flags), NO_WINDOW=0x08000000,
+                compiler_path=lambda: root / 'not-installed-csc.exe',
+                native_cache_directory=lambda: cache, source_digest=lambda: source_hash,
+                parse_build_receipt=backend.parse_build_receipt,
+                BuildReceiptError=backend.BuildReceiptError)
+            tk = ModuleType('tkinter')
+            tk.TkVersion = 8.6
+            tk.Tk = lambda: SimpleNamespace(tk=SimpleNamespace(eval=lambda _: 'synthetic-Tcl'),
+                                            destroy=lambda: None)
+            with patch.object(environment, 'backend', doubled), patch.dict('sys.modules', {'tkinter': tk}):
+                report = environment.inspect_environment(prepare=False)
+            self.assertEqual((receipt.read_bytes(), binary.read_bytes()), original)
+            return report
+
+    def assert_receipt_failure(self, contents, code='ARTIFACT_UNREADABLE'):
+        report = self.check(contents)
+        self.assertFalse(report['ready'])
+        self.assertTrue(any(item['code'] == code for item in report['failures']), report['failures'])
+        self.assertTrue(any(item['code'].startswith('ARTIFACT_') for item in report['failures']))
+
+    def test_valid_receipt_parses_control(self):
+        report = self.check(None)
+        self.assertTrue(report['artifact']['valid'])
+
+    def test_syntax_error_is_controlled(self):
+        self.assert_receipt_failure('{')
+
+    def test_empty_object_is_controlled(self):
+        self.assert_receipt_failure('{}')
+
+    def test_array_root_is_controlled(self):
+        self.assert_receipt_failure('[]')
+
+    def test_null_root_is_controlled(self):
+        self.assert_receipt_failure('null')
+
+    def test_string_root_is_controlled(self):
+        self.assert_receipt_failure('"invalid-receipt"')
+
+    def test_parse_build_receipt_rejects_bad_roots(self):
+        from blackjack_lab.analysis.native_backend import parse_build_receipt, BuildReceiptError
+        for text in ('[]', 'null', '"invalid-receipt"', '{}', '{'):
+            with self.subTest(text=text):
+                with self.assertRaises(BuildReceiptError):
+                    parse_build_receipt(text)
 
 
 if __name__ == '__main__':
