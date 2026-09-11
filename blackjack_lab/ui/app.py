@@ -39,7 +39,7 @@ from ..storage.database import LocalStore
 from .controller import SessionController
 from .analysis_panel import AnalysisPanel
 from ..analysis.contracts import research_rules
-from ..analysis.split_contracts import SPLIT_PROFILE, split_research_rules
+from ..analysis.split_contracts import DAS_PROFILE, SPLIT_PROFILE, das_research_rules, split_research_rules
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DB = PROJECT_ROOT / "data" / "blackjack_lab.db"
@@ -186,6 +186,7 @@ class BlackjackLabApp(tk.Tk):
         template_menu = tk.Menu(template_button, tearoff=False)
         template_menu.add_command(label="V0.2a 原单手分析模板（四手录牌规则）", command=self.act_research_template)
         template_menu.add_command(label="V0.2b1 两手顺序分牌模板", command=lambda: self.act_research_template(split=True))
+        template_menu.add_command(label="V0.2b2 两手顺序分牌DAS模板", command=lambda: self.act_research_template(das=True))
         template_button.configure(menu=template_menu)
         template_button.grid(row=0, column=4, padx=6)
 
@@ -284,7 +285,8 @@ class BlackjackLabApp(tk.Tk):
             "手动录牌 / 分牌归属 / 撤销纠错\n"
             "6·7·8副守恒/SQLite恢复/JSON导出\n"
             "V0.2b1：单手 / 两手顺序合计EV / 复盘\n"
-            "再分/DAS/多玩家EV/识别捕获未支持"),
+            "V0.2b2：显式DAS模板（非A分手一次加倍）\n"
+            "再分/多玩家EV/识别捕获未支持"),
             foreground="#555").pack(anchor="w", padx=4, pady=3)
 
         # ---------- 右侧：动作 + 组成 ----------
@@ -392,17 +394,27 @@ class BlackjackLabApp(tk.Tk):
     # 动作
     # ============================================================
     @tracked_operation
-    def act_research_template(self, split=False):
-        rules = (split_research_rules if split else research_rules)(self.var_decks.get())
+    def act_research_template(self, split=False, das=False):
+        if das:
+            rules = das_research_rules(self.var_decks.get())
+            das_choice = "允许"
+            scope = "两手顺序分牌，首手完成后才给第二手补牌；非A允许DAS/无再分/分A一张。"
+        elif split:
+            rules = split_research_rules(self.var_decks.get())
+            das_choice = "禁止"
+            scope = "两手顺序分牌，首手完成后才给第二手补牌；无DAS/无再分/分A一张。"
+        else:
+            rules = research_rules(self.var_decks.get())
+            das_choice = "禁止"
+            scope = "原单手分析，保留四手录牌规则。"
         self.var_s17.set("S17")
         self.var_bjp.set("3:2")
         self.var_split_match.set("same_rank 同牌面")
-        self.var_das.set("禁止")
+        self.var_das.set(das_choice)
         self.var_surrender.set("late")
         self.var_confirm.set(CONFIRM_VERIFIED)
         excluded = {"n_decks", "dealer_soft17", "blackjack_payout", "split_match", "double_after_split", "surrender", "confirm_status"}
         self.rule_details = {k: v for k, v in asdict(rules).items() if k not in excluded}
-        scope = "两手顺序分牌，首手完成后才给第二手补牌；无DAS/无再分/分A一张。" if split else "原单手分析，保留四手录牌规则。"
         self.set_status("已载入自建研究模板（非平台桌规）：" + scope + "请新建牌靴使用；当前规则快照不变。")
 
     @tracked_operation
@@ -870,7 +882,10 @@ class BlackjackLabApp(tk.Tk):
             f"锁定 {seg.rules.n_decks}副/{seg.rules.dealer_soft17 or '未知'}｜牌靴 #{shoe_no}｜第 {seg.table.round_no} 轮｜"
             f"阶段 {'牌靴已结束' if seg.closed else seg.table.phase}｜记录：{self._record_status(seg)}｜"
             f"守恒：{'正常' if ok else '异常'}｜"
-            f"规则确认：{seg.rules.confirm_status}｜分析：" + ("两手顺序模型" if seg.rules.profile_id == SPLIT_PROFILE else "原单手模型"))
+            f"规则确认：{seg.rules.confirm_status}｜分析：" + (
+                "两手DAS模型" if seg.rules.profile_id == DAS_PROFILE
+                else "两手顺序模型" if seg.rules.profile_id == SPLIT_PROFILE
+                else "原单手模型"))
 
     def refresh_hands(self, seg=None) -> None:
         if seg is None:
@@ -878,7 +893,7 @@ class BlackjackLabApp(tk.Tk):
         values = ["（按顺序行动手）", "（最新一手）"]
         special = self.var_hand.get() if self.var_hand.get() in values else "（最新一手）"
         profile_id = seg.rules.profile_id if seg else None
-        if profile_id == SPLIT_PROFILE and getattr(self, "_hand_profile_id", None) != profile_id:
+        if profile_id in (SPLIT_PROFILE, DAS_PROFILE) and getattr(self, "_hand_profile_id", None) != profile_id:
             special = "（按顺序行动手）"
         self._hand_profile_id = profile_id
         selected_id = self._hand_ids.get(self.var_hand.get())

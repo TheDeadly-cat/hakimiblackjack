@@ -386,6 +386,7 @@ class TableState:
         elif action == ACTION_DOUBLE:
             hand.doubled = True
             hand.bet_units *= 2
+            hand.awaiting_hit = True
         elif action == ACTION_SURRENDER:
             hand.surrendered = True
         elif action == ACTION_SPLIT:

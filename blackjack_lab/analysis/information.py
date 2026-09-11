@@ -50,8 +50,8 @@ def build_input(ledger, seat, hand_id=None, through_seq=None):
         raise InputUnavailable("RULE_COMBINATION_UNSUPPORTED", "本版分析仅验收S17、3:2、美式决策前检查、任意两张加倍、无投降/晚投降的模板", UNSUPPORTED)
     if seat == DEALER or len(table.participants) != 1 or seat not in table.participants:
         raise InputUnavailable("SINGLE_PLAYER_ONLY", "当前仅支持单参与玩家的目标手牌；7座位录牌仍可使用", UNSUPPORTED)
-    from .split_contracts import SPLIT_PROFILE
-    if rules.profile_id == SPLIT_PROFILE:
+    from .split_contracts import SPLIT_PROFILE, DAS_PROFILE
+    if rules.profile_id in (SPLIT_PROFILE, DAS_PROFILE):
         from .split_information import build_split_input
         return build_split_input(ledger.session_id, current, seat, hand_id, seq, prefix)
     hands = table.players[seat].hands

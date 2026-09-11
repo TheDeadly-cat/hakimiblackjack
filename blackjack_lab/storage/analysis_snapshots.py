@@ -112,8 +112,8 @@ def _validate_result(result):
 
 
 def _validate_split_result(result):
-    from ..analysis.split_contracts import SplitAnalysisInput
-    from ..analysis.split_service import SPLIT_ACTION_ZH
+    from ..analysis.split_contracts import DAS_ENGINE, SplitAnalysisInput
+    from ..analysis.split_service import DAS_JOINT_KEYS, DAS_TOTAL_NETS, SPLIT_ACTION_ZH
     try:
         snapshot = SplitAnalysisInput.from_dict(result['input'])
         snapshot.validate()
@@ -122,11 +122,16 @@ def _validate_split_result(result):
     _require(result['rules_digest'] == snapshot.rules_digest, 'rules_digest', '与规则快照不一致')
     if result['status'] != 'available':
         return
-    _require(type(result.get('current_investment')) is int and result['current_investment'] == (1 if snapshot.pre_split else 2),
+    das = snapshot.engine_version == DAS_ENGINE
+    expected_current = 1 if snapshot.pre_split else sum(h.bet_units for h in snapshot.hands)
+    _require(type(result.get('current_investment')) is int and result['current_investment'] == expected_current,
              'current_investment', '原注/分牌总投入不一致')
     actions = result.get('actions')
     _require(isinstance(actions, dict), 'actions', '必须为对象')
     _require(set(snapshot.legal_actions).issubset(actions), 'actions', '缺少当前合法动作')
+    joint_keys = DAS_JOINT_KEYS if das else {f'{a},{b}' for a in (-1, 0, 1) for b in (-1, 0, 1)}
+    total_nets = DAS_TOTAL_NETS if das else {-2., -1., 0., 1., 2.}
+    lo, hi = (-4, 4) if das else (-2, 2)
     for action,item in actions.items():
         _require(action in SPLIT_ACTION_ZH and isinstance(item, dict), 'actions', '动作格式无效')
         status = item.get('status')
@@ -135,12 +140,22 @@ def _validate_split_result(result):
             continue
         for name in ('ev', 'additional_investment', 'total_investment'):
             _number(item.get(name), 'actions.'+name)
-        added = 1 if snapshot.pre_split and action in ('split','double') else 0
+        if das:
+            added = 1 if action == 'double' or (snapshot.pre_split and action in ('split', 'double')) else 0
+        else:
+            added = 1 if snapshot.pre_split and action in ('split','double') else 0
         _require(item['additional_investment']==added and item['total_investment']==result['current_investment']+added,
                  'actions.total_investment','原注与追加注口径不一致')
+        if das:
+            future = item.get('possible_future_additional')
+            ceiling = item.get('max_final_investment')
+            _require(type(future) is int and 0 <= future <= 2, 'possible_future_additional', '必须为0到2的整数上界')
+            _require(type(ceiling) is int and ceiling == result['current_investment'] + added + future,
+                     'max_final_investment', '最终投入上界不一致')
         distribution = item.get('net_distribution')
         _require(isinstance(distribution, dict) and bool(distribution), 'net_distribution', '必须为收益对象')
         total = expectation = 0.
+        two_hand = not snapshot.pre_split or action == 'split'
         for net,p in distribution.items():
             _number(p,'net_distribution.probability')
             try:
@@ -148,21 +163,22 @@ def _validate_split_result(result):
             except (ValueError, TypeError) as error:
                 raise SnapshotFormatError('net_distribution：收益键无效') from error
             _number(outcome,'net_distribution.net')
-            _require(p>=0 and -2<=outcome<=2, 'net_distribution', '收益或概率越界')
-            if not snapshot.pre_split or action == 'split':
-                _require(outcome in (-2,-1,0,1,2), 'net_distribution', '两手净收益不能有半注或BJ收益')
+            _require(p>=0 and lo<=outcome<=hi, 'net_distribution', '收益或概率越界')
+            if two_hand:
+                allowed = set(range(-4, 5)) if das else (-2, -1, 0, 1, 2)
+                _require(outcome == int(outcome) and int(outcome) in allowed, 'net_distribution', '两手净收益不能有半注或BJ收益')
             total += p
             expectation += outcome*p
         _require(abs(total-1)<=1e-10 and abs(expectation-item['ev'])<=1e-10, 'net_distribution', '概率和或EV不一致')
-        if not snapshot.pre_split or action == 'split':
+        if two_hand:
             hand_evs = item.get('hand_evs')
             _require(isinstance(hand_evs,(list,tuple)) and len(hand_evs)==2, 'hand_evs', '必须包含两手边际')
             for value in hand_evs:
                 _number(value,'hand_evs[]')
             _require(abs(sum(hand_evs)-item['ev'])<=1e-10, 'hand_evs', '与总EV不一致')
             joint = item.get('joint_distribution')
-            _require(isinstance(joint,dict) and set(joint)=={f'{a},{b}' for a in (-1,0,1) for b in (-1,0,1)},
-                     'joint_distribution','必须包含九个共享结算格')
+            _require(isinstance(joint,dict) and set(joint)==joint_keys,
+                     'joint_distribution','必须包含已声明的共享结算格')
             for value in joint.values():
                 _number(value,'joint_distribution[]')
                 _require(value>=0,'joint_distribution[]','概率不得为负')
@@ -171,7 +187,7 @@ def _validate_split_result(result):
                 marginal = sum(int(pair.split(',')[index])*p for pair,p in joint.items())
                 _require(abs(marginal-hand_evs[index])<=1e-10,'joint_distribution','边际EV不匹配')
             totals = {float(k):p for k,p in distribution.items()}
-            _require(set(totals)=={-2.,-1.,0.,1.,2.},'net_distribution','需要完整的五个合计收益格')
+            _require(set(totals)==total_nets,'net_distribution','需要完整的合计收益格')
             for net,p in totals.items():
                 expected = sum(pj for pair,pj in joint.items() if sum(map(int,pair.split(',')))==net)
                 _require(abs(p-expected)<=1e-10,'joint_distribution','与合计收益分布不匹配')
