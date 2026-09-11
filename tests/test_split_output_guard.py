@@ -38,6 +38,22 @@ def make_complete_snapshot():
     return build_input(ledger, "玩家1")
 
 
+def make_three_card_snapshot():
+    # Dealer 6 avoids the US-peek gate; legal actions are stand/hit only.
+    return build_input(example(6, cards=("10", "2", "4"), up="6",
+                               rules=split_research_rules(6)), "玩家1")
+
+
+def make_blackjack_snapshot():
+    return build_input(example(6, cards=("A", "K"), up="10",
+                               rules=split_research_rules(6)), "玩家1")
+
+
+def make_pending_pair_snapshot():
+    return build_input(example(6, cards=("T", "J"), up="6",
+                               rules=split_research_rules(6)), "玩家1")
+
+
 def valid_transport_payload():
     # Valid types, supports, mass and expectation; NOT a numerical oracle.
     labels = ("A", "2", "3", "4", "5", "6", "7", "8", "9", "T")
@@ -257,6 +273,96 @@ class TestSplitJointAndPostSplitGuards(SplitOutputMixin, unittest.TestCase):
             _validate_split_probabilities(snapshot, forged)
 
 
+class TestSplitActionSemantics(SplitOutputMixin, unittest.TestCase):
+    """Mock backend: action-set equality and one-bet payoff support. Not a native oracle."""
+
+    def setUp(self):
+        from blackjack_lab.analysis import split_service
+        self.service = split_service
+
+    def run_on(self, snapshot, payload):
+        with patch.object(self.service, "solve_presplit_native",
+                          return_value=copy.deepcopy(payload)) as backend:
+            result = self.service.calculate_split(snapshot, "review-action-semantics", 5.0)
+            backend.assert_called_once()
+        return result
+
+    def test_ordinary_stand_cannot_win_two_units(self):
+        payload = valid_transport_payload()
+        payload["actions"]["stand"] = {"ev": 2.0, "net_distribution": {"2": 1.0}}
+        self.assert_refused(self.run_on(make_snapshot(), payload))
+
+    def test_hit_cannot_have_half_unit_outcome(self):
+        payload = valid_transport_payload()
+        payload["actions"]["hit"] = {"ev": 0.5, "net_distribution": {"0.5": 1.0}}
+        self.assert_refused(self.run_on(make_snapshot(), payload))
+
+    def test_double_cannot_use_one_unit_payoff_support(self):
+        payload = valid_transport_payload()
+        payload["actions"]["double"] = {"ev": 1.0, "net_distribution": {"1": 1.0}}
+        self.assert_refused(self.run_on(make_snapshot(), payload))
+
+    def test_surrender_cannot_be_a_push(self):
+        payload = valid_transport_payload()
+        payload["actions"]["surrender"] = {"ev": 0.0, "net_distribution": {"0": 1.0}}
+        self.assert_refused(self.run_on(make_snapshot(), payload))
+
+    def test_ordinary_stand_cannot_use_blackjack_payout(self):
+        payload = valid_transport_payload()
+        payload["actions"]["stand"] = {"ev": 1.5, "net_distribution": {"1.5": 1.0}}
+        self.assert_refused(self.run_on(make_snapshot(), payload))
+
+    def test_natural_blackjack_stand_three_to_two_is_available(self):
+        payload = valid_transport_payload()
+        payload["actions"] = {"stand": {"ev": 1.5, "net_distribution": {"1.5": 1.0}}}
+        result = self.run_on(make_blackjack_snapshot(), payload)
+        self.assertEqual(result["status"], "available", result.get("reason"))
+        self.assertEqual(result["actions"]["stand"]["ev"], 1.5)
+        self.assertEqual(result["highest_ev_action"], "stand")
+        self.assertEqual(result["actions"]["hit"]["status"], "inapplicable")
+
+    def test_unrequested_double_cannot_enter_three_card_comparison(self):
+        payload = valid_transport_payload()
+        del payload["actions"]["surrender"]
+        payload["actions"]["double"] = {"ev": 2.0, "net_distribution": {"-2": 0.0, "0": 0.0, "2": 1.0}}
+        result = self.run_on(make_three_card_snapshot(), payload)
+        self.assert_refused(result)
+        self.assertNotEqual(result.get("highest_ev_action"), "double")
+
+    def test_three_card_stand_hit_only_is_available(self):
+        payload = valid_transport_payload()
+        payload["actions"] = {
+            "stand": payload["actions"]["stand"],
+            "hit": payload["actions"]["hit"],
+        }
+        result = self.run_on(make_three_card_snapshot(), payload)
+        self.assertEqual(result["status"], "available", result.get("reason"))
+        self.assertEqual(result["actions"]["double"]["status"], "inapplicable")
+        self.assertEqual(result["actions"]["split"]["status"], "inapplicable")
+        self.assertIn(result["highest_ev_action"], ("stand", "hit"))
+
+    def test_missing_legal_action_is_refused(self):
+        payload = valid_transport_payload()
+        del payload["actions"]["hit"]
+        self.assert_refused(self.run_on(make_snapshot(), payload))
+
+    def test_pending_pair_published_as_calculated_is_refused(self):
+        payload = valid_transport_payload()
+        payload["actions"]["split"] = valid_two_hand_action()
+        snapshot = make_pending_pair_snapshot()
+        self.assertIn("split", snapshot.uncertain_actions)
+        self.assertNotIn("split", snapshot.legal_actions)
+        self.assert_refused(self.run_on(snapshot, payload))
+
+    def test_pending_pair_without_split_payload_stays_partial(self):
+        payload = valid_transport_payload()
+        result = self.run_on(make_pending_pair_snapshot(), payload)
+        self.assertEqual(result["status"], "available", result.get("reason"))
+        self.assertEqual(result["actions"]["split"]["status"], "pending")
+        self.assertTrue(result["partial_comparison"])
+        self.assertIsNone(result["highest_ev_action"])
+
+
 class TestSplitOutputNativeFocus(unittest.TestCase):
     def test_real_native_presplit_and_postsplit_pass_validation(self):
         from blackjack_lab.analysis.service import calculate
@@ -273,6 +379,39 @@ class TestSplitOutputNativeFocus(unittest.TestCase):
         complete = calculate(make_complete_snapshot(), "native-output-guard-complete", 5.0)
         self.assertEqual(complete["status"], "available", complete.get("reason"))
         self.assertEqual(complete["probabilities"], {})
+
+    def test_real_native_natural_blackjack_keeps_three_to_two(self):
+        from blackjack_lab.analysis.service import calculate
+        result = calculate(make_blackjack_snapshot(), "native-output-guard-bj", 5.0)
+        self.assertEqual(result["status"], "available", result.get("reason"))
+        stand = result["actions"]["stand"]
+        self.assertEqual(stand["status"], "available")
+        self.assertAlmostEqual(stand["ev"], 1.5, delta=1e-10)
+        nets = {float(key) for key in stand["net_distribution"]}
+        self.assertTrue(nets.issubset({0.0, 1.5}), nets)
+        self.assertEqual(result["highest_ev_action"], "stand")
+        self.assertEqual(result["actions"]["hit"]["status"], "inapplicable")
+
+    def test_real_native_three_card_hand_is_stand_or_hit_only(self):
+        from blackjack_lab.analysis.service import calculate
+        result = calculate(make_three_card_snapshot(), "native-output-guard-three", 5.0)
+        self.assertEqual(result["status"], "available", result.get("reason"))
+        self.assertEqual(result["actions"]["stand"]["status"], "available")
+        self.assertEqual(result["actions"]["hit"]["status"], "available")
+        self.assertEqual(result["actions"]["double"]["status"], "inapplicable")
+        self.assertEqual(result["actions"]["split"]["status"], "inapplicable")
+        self.assertEqual(result["actions"]["surrender"]["status"], "inapplicable")
+        self.assertIn(result["highest_ev_action"], ("stand", "hit"))
+
+    def test_real_native_unconfirmed_ten_pair_stays_pending(self):
+        from blackjack_lab.analysis.service import calculate
+        result = calculate(make_pending_pair_snapshot(), "native-output-guard-pending-pair", 5.0)
+        self.assertEqual(result["status"], "available", result.get("reason"))
+        self.assertEqual(result["actions"]["split"]["status"], "pending")
+        self.assertTrue(result["partial_comparison"])
+        self.assertIsNone(result["highest_ev_action"])
+        for action in ("stand", "hit", "double", "surrender"):
+            self.assertEqual(result["actions"][action]["status"], "available", action)
 
 
 if __name__ == "__main__":
