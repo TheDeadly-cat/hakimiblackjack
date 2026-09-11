@@ -1,0 +1,254 @@
+{
+  "format": "hakimi-blackjack-lab-json",
+  "format_version": 1,
+  "tool_version": "0.2.0b1",
+  "engine_version": "v0.2b1-finite-two-hand-1",
+  "exported_at": 1789140868.092035,
+  "session_id": "synthetic-analysis-session",
+  "session_name": "DAS合成示例",
+  "note": "自建模拟器 DAS 模板；非平台记录。规则以 SHOE_CREATED.profile_id 为准。",
+  "events": [
+    {
+      "event_id": "b66ffe393f1446979f2439c2b57489c8",
+      "seq": 1,
+      "etype": "SESSION_STARTED",
+      "payload": {
+        "note": "自建数学验收数据；非真实牌桌"
+      },
+      "event_time": 1789140868.0893652,
+      "observed_at": 1789140868.0893652,
+      "session_id": "synthetic-analysis-session",
+      "shoe_id": null,
+      "round_id": null,
+      "source": "手动录入",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "v0.1"
+    },
+    {
+      "event_id": "6411c6272fcd4ea9a1e5cc627944be40",
+      "seq": 2,
+      "etype": "SHOE_CREATED",
+      "payload": {
+        "shoe_id": "dd5e51916e56411ca06ea5b6a922d213",
+        "n_decks": 6,
+        "rules_snapshot": "{\"american_hole_card\": true, \"blackjack_payout\": [3, 2], \"burn_cards_known\": true, \"check_bj_when\": \"before_player_actions_A_T\", \"confirm_status\": \"已确认\", \"cut_shuffle_note\": null, \"dealer_bj_extra_bet_rule\": \"all_bets_lost\", \"dealer_soft17\": \"S17\", \"double_after_split\": true, \"double_on_totals\": null, \"game_name\": \"单玩家两手顺序分牌DAS研究\", \"initial_burn_count\": 0, \"max_split_hands\": 2, \"n_decks\": 6, \"n_seats\": 7, \"profile_id\": \"research-s17-us-peek-two-sequential-das-v1\", \"remark\": \"首手完成后才给第二手补第二张；无再分/非A允许DAS/分A一张；原注合计净收益\", \"resplit_aces\": false, \"rule_source\": \"用户主动选择的自建研究桌规，不代表平台规则\", \"shoe_model\": \"finite_no_replacement\", \"split_ace_hit_once\": true, \"split_deal_order\": \"sequential_complete_first\", \"split_match\": \"same_rank\", \"start_from_new_shoe\": true, \"surrender\": \"late\", \"table_id\": null, \"vendor\": \"自建研究模板\", \"verify_date\": null, \"version\": 1}"
+      },
+      "event_time": 1789140868.0895388,
+      "observed_at": 1789140868.0895388,
+      "session_id": "synthetic-analysis-session",
+      "shoe_id": "dd5e51916e56411ca06ea5b6a922d213",
+      "round_id": null,
+      "source": "手动录入",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "971cee9c04f34c7d918daed96adc0d48",
+      "seq": 3,
+      "etype": "ROUND_STARTED",
+      "payload": {
+        "round_id": "dd5e51916e56411ca06ea5b6a922d213-R1",
+        "round_no": 1,
+        "participants": [
+          "玩家1"
+        ]
+      },
+      "event_time": 1789140868.089921,
+      "observed_at": 1789140868.089921,
+      "session_id": "synthetic-analysis-session",
+      "shoe_id": "dd5e51916e56411ca06ea5b6a922d213",
+      "round_id": "dd5e51916e56411ca06ea5b6a922d213-R1",
+      "source": "手动录入",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "05bbe9f1a9df4abdbda39ebf23cce641",
+      "seq": 4,
+      "etype": "CARD_DEALT",
+      "payload": {
+        "seat": "庄家",
+        "rank": "6",
+        "suit": null,
+        "track_id": null,
+        "hand_id": "R1-庄家-H1",
+        "face_state": "shown"
+      },
+      "event_time": 1789140868.0902438,
+      "observed_at": 1789140868.0902438,
+      "session_id": "synthetic-analysis-session",
+      "shoe_id": "dd5e51916e56411ca06ea5b6a922d213",
+      "round_id": "dd5e51916e56411ca06ea5b6a922d213-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "5ce3f696031d4b8d91116d46948fb095",
+      "seq": 5,
+      "etype": "CARD_DEALT",
+      "payload": {
+        "seat": "庄家",
+        "rank": null,
+        "suit": null,
+        "track_id": null,
+        "hand_id": "R1-庄家-H1",
+        "face_state": "hidden"
+      },
+      "event_time": 1789140868.0906162,
+      "observed_at": 1789140868.0906162,
+      "session_id": "synthetic-analysis-session",
+      "shoe_id": "dd5e51916e56411ca06ea5b6a922d213",
+      "round_id": "dd5e51916e56411ca06ea5b6a922d213-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "6d7a0c51e6ad43f7ba3141b41d4ff2e8",
+      "seq": 6,
+      "etype": "CARD_DEALT",
+      "payload": {
+        "seat": "玩家1",
+        "rank": "8",
+        "suit": null,
+        "track_id": null,
+        "hand_id": "R1-玩家1-H2",
+        "face_state": "shown"
+      },
+      "event_time": 1789140868.0910244,
+      "observed_at": 1789140868.0910244,
+      "session_id": "synthetic-analysis-session",
+      "shoe_id": "dd5e51916e56411ca06ea5b6a922d213",
+      "round_id": "dd5e51916e56411ca06ea5b6a922d213-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "e5468d9a51ad49699c8728f07020cb38",
+      "seq": 7,
+      "etype": "CARD_DEALT",
+      "payload": {
+        "seat": "玩家1",
+        "rank": "8",
+        "suit": null,
+        "track_id": null,
+        "hand_id": "R1-玩家1-H2",
+        "face_state": "shown"
+      },
+      "event_time": 1789140868.0914822,
+      "observed_at": 1789140868.0914822,
+      "session_id": "synthetic-analysis-session",
+      "shoe_id": "dd5e51916e56411ca06ea5b6a922d213",
+      "round_id": "dd5e51916e56411ca06ea5b6a922d213-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    }
+  ],
+  "shoe_snapshots": [
+    {
+      "shoe_id": "dd5e51916e56411ca06ea5b6a922d213",
+      "n_decks": 6,
+      "rules_snapshot": {
+        "american_hole_card": true,
+        "blackjack_payout": [
+          3,
+          2
+        ],
+        "burn_cards_known": true,
+        "check_bj_when": "before_player_actions_A_T",
+        "confirm_status": "已确认",
+        "cut_shuffle_note": null,
+        "dealer_bj_extra_bet_rule": "all_bets_lost",
+        "dealer_soft17": "S17",
+        "double_after_split": true,
+        "double_on_totals": null,
+        "game_name": "单玩家两手顺序分牌DAS研究",
+        "initial_burn_count": 0,
+        "max_split_hands": 2,
+        "n_decks": 6,
+        "n_seats": 7,
+        "profile_id": "research-s17-us-peek-two-sequential-das-v1",
+        "remark": "首手完成后才给第二手补第二张；无再分/非A允许DAS/分A一张；原注合计净收益",
+        "resplit_aces": false,
+        "rule_source": "用户主动选择的自建研究桌规，不代表平台规则",
+        "shoe_model": "finite_no_replacement",
+        "split_ace_hit_once": true,
+        "split_deal_order": "sequential_complete_first",
+        "split_match": "same_rank",
+        "start_from_new_shoe": true,
+        "surrender": "late",
+        "table_id": null,
+        "vendor": "自建研究模板",
+        "verify_date": null,
+        "version": 1
+      },
+      "integrity_state": "可分析",
+      "conservation_ok": true,
+      "conservation_note": "守恒正常：已说明移除 4/312，物理剩余 308",
+      "remaining": {
+        "A": 24,
+        "2": 24,
+        "3": 24,
+        "4": 24,
+        "5": 24,
+        "6": 23,
+        "7": 24,
+        "8": 22,
+        "9": 24,
+        "10": 24,
+        "J": 24,
+        "Q": 24,
+        "K": 24
+      },
+      "exact_out": {
+        "A": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 1,
+        "7": 0,
+        "8": 2,
+        "9": 0,
+        "10": 0,
+        "J": 0,
+        "Q": 0,
+        "K": 0
+      },
+      "t_bucket_out": 0,
+      "unrevealed_out": 1,
+      "burn_unknown": 0,
+      "gap": false,
+      "group_remaining": {
+        "small": 119,
+        "neutral": 70,
+        "big": 120
+      },
+      "round_no": 1,
+      "phase": "发牌中",
+      "closed": false,
+      "unsettled_rounds": [],
+      "unresolved": {
+        "5ce3f696031d4b8d91116d46948fb095": {
+          "seat": "庄家",
+          "hand_id": "R1-庄家-H1",
+          "track_id": null,
+          "face_state": "hidden",
+          "round_id": "dd5e51916e56411ca06ea5b6a922d213-R1"
+        }
+      },
+      "pending_candidates": 0,
+      "settlements": []
+    }
+  ]
+}

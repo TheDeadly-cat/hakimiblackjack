@@ -50,8 +50,6 @@ class TestDasEngineMatchesReference(unittest.TestCase):
             force_active=awaiting in ("double", "deal") or (active < 2 and len(hands[active]) == 1),
             force_close=awaiting == "double")
         self.assertEqual(set(result["actions"]), set(expected))
-        if allow_das:
-            self.assertEqual(result["information_bound_prunes"], 0)
         for action, item in expected.items():
             actual = result["actions"][action]
             self.assertAlmostEqual(actual["ev"], float(item["ev"]), delta=1e-10, msg=action)
@@ -84,12 +82,16 @@ class TestDasEngineMatchesReference(unittest.TestCase):
         self.compare((8,) * 6, ((2, 10, 10), (2, 3)), 6, peek=False, active=1, awaiting="deal")
         self.compare((8,) * 8, ((2, 3), (2,)), 6, peek=False, awaiting="deal")
 
-    def test_das_does_not_use_b1_information_bound(self):
+    def test_small_das_shoes_do_not_fire_the_information_bound(self):
         result = solve_split_counts(
             counts_of((8, 8, 9, 9, 10, 10)), ((8, 8), (8,)), 6, True, active=0,
             allow_das=True, stakes=(1, 1))
         self.assertEqual(result["information_bound_prunes"], 0)
         self.assertIn("double", result["actions"])
+
+    def test_das_stake_span_bound_matches_fraction_when_exercised(self):
+        result = self.compare((10,) * 64 + (1, 8), ((8, 10, 1), (8,)), 10)
+        self.assertGreater(result["information_bound_prunes"], 0)
 
     def test_presplit_split_under_das_matches_forced_first_deal(self):
         cards = (8, 8, 9, 9, 10, 10)

@@ -1,5 +1,15 @@
 # 项目接手状态
 
+更新时间：2026-09-12（T9：DAS 336 门禁已过，待固定提交上的 `verify_das_release`；PR #11 未授权不合入）
+执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
+当前任务ID：T9 DAS 专属性能与研究版交付
+审查基线：`42e30d37b4e127a17d2980821178915a377826fe`（PR #11，318 CI 通过，未合并）
+工作分支：`handoff/t9-das-benchmarks`（从该审查提交派生）。不重做 T5—T8。本消息不授权 merge/push。
+第一项编码与 T9-B 脚本已落地。336 正式过门回执：`.local-evidence/das-cold-20260912-t9-opt3/`，**336 available、0 timeout、0 failed**，p50=0.60s，**p95=1.756s**，各副 p95 均 <2s，max=2.619s（7 副 2 对 A）。超过 2s 的 6 条保留在分母中。不得用 318 unittest 或旧 b1 318 冷请求换签。T9-C：版本层保持 `0.2.0b1` / das-2；`scripts/make_portable_copy.py` 生成无用户数据的运行副本。最终研究版提交以干净工作树验收回执为准。
+
+
+# 历史接手（T8）
+
 更新时间：2026-09-11（T8 进行中：R-DAS-01 补牌等待不得再开 DAS；未授权不合入）
 执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
 当前任务ID：T8 DAS pending-hit 语义修复

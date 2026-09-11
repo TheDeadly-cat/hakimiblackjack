@@ -1,0 +1,5180 @@
+{
+  "schema": "hakimi-das-benchmark-spec-v1",
+  "status": "FROZEN",
+  "reviewed_head": "42e30d37b4e127a17d2980821178915a377826fe",
+  "profile": "research-s17-us-peek-two-sequential-das-v1",
+  "required_engine": "v0.2b2-finite-two-hand-das-2",
+  "required_strategy": "sequential-two-hand-total-net-das-v2",
+  "budget_seconds": 5.0,
+  "target_p95_seconds": 2.0,
+  "percentile": "nearest-rank",
+  "count": 336,
+  "expected_counts": {
+    "presplit": 300,
+    "dynamic": 36
+  },
+  "gate": "All frozen cases available; no failure/timeout; p95 target met; unchanged source identity.",
+  "caveat": "Frozen synthetic DAS matrix. Construct with EventLedger and build_input; do not forge rules_json or skip information checks.",
+  "cases": [
+    {
+      "id": "pre-6-A-A",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-A-2",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-A-3",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-A-4",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-A-5",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-A-6",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-A-7",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-A-8",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-A-9",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-A-10",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-2-A",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-2-2",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-2-3",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-2-4",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-2-5",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-2-6",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-2-7",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-2-8",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-2-9",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-2-10",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-3-A",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-3-2",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-3-3",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-3-4",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-3-5",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-3-6",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-3-7",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-3-8",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-3-9",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-3-10",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-4-A",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-4-2",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-4-3",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-4-4",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-4-5",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-4-6",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-4-7",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-4-8",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-4-9",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-4-10",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-5-A",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-5-2",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-5-3",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-5-4",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-5-5",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-5-6",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-5-7",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-5-8",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-5-9",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-5-10",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-6-A",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-6-2",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-6-3",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-6-4",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-6-5",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-6-6",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-6-7",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-6-8",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-6-9",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-6-10",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-7-A",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-7-2",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-7-3",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-7-4",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-7-5",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-7-6",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-7-7",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-7-8",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-7-9",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-7-10",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-8-A",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-8-2",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-8-3",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-8-4",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-8-5",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-8-6",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-8-7",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-8-8",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-8-9",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-8-10",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-9-A",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-9-2",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-9-3",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-9-4",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-9-5",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-9-6",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-9-7",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-9-8",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-9-9",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-9-10",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-10-A",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-6-10-2",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-10-3",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-10-4",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-10-5",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-10-6",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-10-7",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-10-8",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-10-9",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-6-10-10",
+      "group": "presplit",
+      "decks": 6,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "dynamic-6-D01",
+      "group": "dynamic",
+      "label": "首手初始待第二张",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-6-D02",
+      "group": "dynamic",
+      "label": "首手8+3可DAS",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-6-D03",
+      "group": "dynamic",
+      "label": "首手普通hit待第三张",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "hit",
+          "hand": "first",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-6-D04",
+      "group": "dynamic",
+      "label": "首手8+3+6无DAS",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "hit",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-6-D05",
+      "group": "dynamic",
+      "label": "首手DAS待唯一牌",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-6-D06",
+      "group": "dynamic",
+      "label": "首手DAS完成次手初始待牌",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-6-D07",
+      "group": "dynamic",
+      "label": "次手8+3可DAS",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-6-D08",
+      "group": "dynamic",
+      "label": "次手普通hit待第三张",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        },
+        {
+          "action": "hit",
+          "hand": "second",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-6-D09",
+      "group": "dynamic",
+      "label": "次手DAS待唯一牌",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "second",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-6-D10",
+      "group": "dynamic",
+      "label": "两手DAS关闭",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "second",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "6"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-6-D11",
+      "group": "dynamic",
+      "label": "首手DAS爆牌",
+      "decks": 6,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "8"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "10"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-6-D12",
+      "group": "dynamic",
+      "label": "分A普通21",
+      "decks": 6,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "10"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "10"
+        }
+      ]
+    },
+    {
+      "id": "pre-7-A-A",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-A-2",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-A-3",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-A-4",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-A-5",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-A-6",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-A-7",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-A-8",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-A-9",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-A-10",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-2-A",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-2-2",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-2-3",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-2-4",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-2-5",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-2-6",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-2-7",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-2-8",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-2-9",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-2-10",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-3-A",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-3-2",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-3-3",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-3-4",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-3-5",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-3-6",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-3-7",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-3-8",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-3-9",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-3-10",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-4-A",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-4-2",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-4-3",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-4-4",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-4-5",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-4-6",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-4-7",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-4-8",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-4-9",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-4-10",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-5-A",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-5-2",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-5-3",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-5-4",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-5-5",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-5-6",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-5-7",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-5-8",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-5-9",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-5-10",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-6-A",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-6-2",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-6-3",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-6-4",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-6-5",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-6-6",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-6-7",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-6-8",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-6-9",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-6-10",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-7-A",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-7-2",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-7-3",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-7-4",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-7-5",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-7-6",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-7-7",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-7-8",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-7-9",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-7-10",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-8-A",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-8-2",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-8-3",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-8-4",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-8-5",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-8-6",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-8-7",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-8-8",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-8-9",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-8-10",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-9-A",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-9-2",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-9-3",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-9-4",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-9-5",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-9-6",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-9-7",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-9-8",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-9-9",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-9-10",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-10-A",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-7-10-2",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-10-3",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-10-4",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-10-5",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-10-6",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-10-7",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-10-8",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-10-9",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-7-10-10",
+      "group": "presplit",
+      "decks": 7,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "dynamic-7-D01",
+      "group": "dynamic",
+      "label": "首手初始待第二张",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-7-D02",
+      "group": "dynamic",
+      "label": "首手8+3可DAS",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-7-D03",
+      "group": "dynamic",
+      "label": "首手普通hit待第三张",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "hit",
+          "hand": "first",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-7-D04",
+      "group": "dynamic",
+      "label": "首手8+3+6无DAS",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "hit",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-7-D05",
+      "group": "dynamic",
+      "label": "首手DAS待唯一牌",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-7-D06",
+      "group": "dynamic",
+      "label": "首手DAS完成次手初始待牌",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-7-D07",
+      "group": "dynamic",
+      "label": "次手8+3可DAS",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-7-D08",
+      "group": "dynamic",
+      "label": "次手普通hit待第三张",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        },
+        {
+          "action": "hit",
+          "hand": "second",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-7-D09",
+      "group": "dynamic",
+      "label": "次手DAS待唯一牌",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "second",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-7-D10",
+      "group": "dynamic",
+      "label": "两手DAS关闭",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "second",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "6"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-7-D11",
+      "group": "dynamic",
+      "label": "首手DAS爆牌",
+      "decks": 7,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "8"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "10"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-7-D12",
+      "group": "dynamic",
+      "label": "分A普通21",
+      "decks": 7,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "10"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "10"
+        }
+      ]
+    },
+    {
+      "id": "pre-8-A-A",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-A-2",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-A-3",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-A-4",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-A-5",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-A-6",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-A-7",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-A-8",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-A-9",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-A-10",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-2-A",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-2-2",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-2-3",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-2-4",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-2-5",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-2-6",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-2-7",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-2-8",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-2-9",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-2-10",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "2",
+        "2"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-3-A",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-3-2",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-3-3",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-3-4",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-3-5",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-3-6",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-3-7",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-3-8",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-3-9",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-3-10",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "3",
+        "3"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-4-A",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-4-2",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-4-3",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-4-4",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-4-5",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-4-6",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-4-7",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-4-8",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-4-9",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-4-10",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "4",
+        "4"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-5-A",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-5-2",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-5-3",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-5-4",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-5-5",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-5-6",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-5-7",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-5-8",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-5-9",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-5-10",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "5",
+        "5"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-6-A",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-6-2",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-6-3",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-6-4",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-6-5",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-6-6",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-6-7",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-6-8",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-6-9",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-6-10",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "6",
+        "6"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-7-A",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-7-2",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-7-3",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-7-4",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-7-5",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-7-6",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-7-7",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-7-8",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-7-9",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-7-10",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "7",
+        "7"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-8-A",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-8-2",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-8-3",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-8-4",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-8-5",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-8-6",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-8-7",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-8-8",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-8-9",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-8-10",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-9-A",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-9-2",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-9-3",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-9-4",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-9-5",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-9-6",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-9-7",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-9-8",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-9-9",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-9-10",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "9",
+        "9"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-10-A",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "A",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "pre-8-10-2",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "2",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-10-3",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "3",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-10-4",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "4",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-10-5",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "5",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-10-6",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-10-7",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "7",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-10-8",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "8",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-10-9",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "9",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": []
+    },
+    {
+      "id": "pre-8-10-10",
+      "group": "presplit",
+      "decks": 8,
+      "player_cards": [
+        "10",
+        "10"
+      ],
+      "dealer_up": "10",
+      "dealer_hole": "unknown",
+      "negative_peek": true,
+      "steps": []
+    },
+    {
+      "id": "dynamic-8-D01",
+      "group": "dynamic",
+      "label": "首手初始待第二张",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-8-D02",
+      "group": "dynamic",
+      "label": "首手8+3可DAS",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-8-D03",
+      "group": "dynamic",
+      "label": "首手普通hit待第三张",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "hit",
+          "hand": "first",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-8-D04",
+      "group": "dynamic",
+      "label": "首手8+3+6无DAS",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "hit",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-8-D05",
+      "group": "dynamic",
+      "label": "首手DAS待唯一牌",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-8-D06",
+      "group": "dynamic",
+      "label": "首手DAS完成次手初始待牌",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-8-D07",
+      "group": "dynamic",
+      "label": "次手8+3可DAS",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-8-D08",
+      "group": "dynamic",
+      "label": "次手普通hit待第三张",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        },
+        {
+          "action": "hit",
+          "hand": "second",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-8-D09",
+      "group": "dynamic",
+      "label": "次手DAS待唯一牌",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "second",
+          "rank": null
+        }
+      ]
+    },
+    {
+      "id": "dynamic-8-D10",
+      "group": "dynamic",
+      "label": "两手DAS关闭",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "6"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "3"
+        },
+        {
+          "action": "double",
+          "hand": "second",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "6"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-8-D11",
+      "group": "dynamic",
+      "label": "首手DAS爆牌",
+      "decks": 8,
+      "player_cards": [
+        "8",
+        "8"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "8"
+        },
+        {
+          "action": "double",
+          "hand": "first",
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "10"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-8-D12",
+      "group": "dynamic",
+      "label": "分A普通21",
+      "decks": 8,
+      "player_cards": [
+        "A",
+        "A"
+      ],
+      "dealer_up": "6",
+      "dealer_hole": "unknown",
+      "negative_peek": false,
+      "steps": [
+        {
+          "action": "split",
+          "hand": null,
+          "rank": null
+        },
+        {
+          "action": "deal",
+          "hand": "first",
+          "rank": "10"
+        },
+        {
+          "action": "deal",
+          "hand": "second",
+          "rank": "10"
+        }
+      ]
+    }
+  ]
+}
