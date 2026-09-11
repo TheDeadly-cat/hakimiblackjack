@@ -1,0 +1,15 @@
+{
+  "复核与V02b执行任务书.md": "e7b8a95fc184350adcbc6713da7c4c934d6285a01ebae31d2530fd6ac0168b43",
+  "source_identity.json": "6a416236bf6f04a1e9bc3be2b2bd0e36e7756854ee4f9b5ca8ce2e2468511fac",
+  "local_receipt.json": "a6a7e946cd2a7a92a8ac9afc3c1060eaf14e433b045948d70c5cd84b5e0ee804",
+  "ci_verified_summary.json": "5c2c1d2c5ed8388a693467e4d99a8c1dbf71e64ff3a20c2d7546b4c0f4289b85",
+  "snapshot_shape_output.txt": "bf36cfe01588376debe0270c68c2314577f0ee7ca6d3aeea4404c7663357f8b4",
+  "test_snapshot_shape.py": "be3c30a66026992c900c269f3c5a8ed48b39f424987c7d019817caaa74bc614e",
+  "prior_provenance_checked.json": "cfddbfea209d82834039cc50e426c68293fb0855270a8f4621f20b0e25fea4eb",
+  "isolated/blackjack_lab/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "isolated/blackjack_lab/storage/safe_files.py": "1c363f55f79e91a8e587ffe3edfec4194230354b01b0a0f61416b923ab5e8ccf",
+  "isolated/blackjack_lab/storage/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "isolated/blackjack_lab/storage/analysis_snapshots.py": "8910944fc2c34d75089b5be32c9af888de9c523da9789858c359a4a96095fc7a",
+  "isolated/blackjack_lab/analysis/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "isolated/blackjack_lab/analysis/contracts.py": "6d3a189891a6887139f5f5d783dd076953603a17c03d769f6163df67d9c24578"
+}
