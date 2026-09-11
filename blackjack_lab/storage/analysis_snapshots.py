@@ -112,7 +112,7 @@ def _validate_result(result):
 
 
 def _validate_split_result(result):
-    from ..analysis.split_contracts import DAS_ENGINE, SplitAnalysisInput
+    from ..analysis.split_contracts import is_das_engine, SplitAnalysisInput
     from ..analysis.split_service import DAS_JOINT_KEYS, DAS_TOTAL_NETS, SPLIT_ACTION_ZH
     try:
         snapshot = SplitAnalysisInput.from_dict(result['input'])
@@ -122,7 +122,7 @@ def _validate_split_result(result):
     _require(result['rules_digest'] == snapshot.rules_digest, 'rules_digest', '与规则快照不一致')
     if result['status'] != 'available':
         return
-    das = snapshot.engine_version == DAS_ENGINE
+    das = is_das_engine(snapshot.engine_version)
     expected_current = 1 if snapshot.pre_split else sum(h.bet_units for h in snapshot.hands)
     _require(type(result.get('current_investment')) is int and result['current_investment'] == expected_current,
              'current_investment', '原注/分牌总投入不一致')

@@ -7,7 +7,8 @@ from .contracts import AVAILABLE, INAPPLICABLE, PENDING, TIMEOUT, FAILED, UNSUPP
 from .probability import CalculationStopped, InsufficientCards, FiniteModel, LABELS, DEALER_LABELS, total
 from .split_actions import solve_split_counts
 from .split_contracts import (
-    SPLIT_ENGINE, SPLIT_STRATEGY, DAS_ENGINE, DAS_STRATEGY, _hand_can_das)
+    SPLIT_ENGINE, SPLIT_STRATEGY, DAS_ENGINE, DAS_STRATEGY, _hand_can_das,
+    is_das_engine)
 from .native_backend import solve_presplit_native
 
 SPLIT_ACTION_ZH = {**ACTION_ZH, "deal": "录入已确定要发的一张牌", "complete": "两手完成，等待庄家结算"}
@@ -71,12 +72,17 @@ def _net_support_for_action(snapshot, action):
 
 
 def _is_das_snapshot(snapshot):
-    return snapshot.engine_version == DAS_ENGINE
+    return is_das_engine(snapshot.engine_version)
 
 
 def _remaining_das_units(snapshot, action):
     if snapshot.pre_split:
-        return 2 if action == 'split' else 0
+        if action != 'split':
+            return 0
+        ranks = snapshot.hands[0].ranks
+        if ranks and ranks[0] == 'A':
+            return 0
+        return 2
     if snapshot.hands and snapshot.hands[0].split_ace:
         return 0
     index = snapshot.active_index
@@ -89,7 +95,11 @@ def _remaining_das_units(snapshot, action):
         return later
     if index < 2 and stakes[index] == 1:
         hand = snapshot.hands[index]
-        if len(hand.ranks) < 2 or _hand_can_das(hand):
+        if len(hand.ranks) == 1:
+            return later + 1
+        if hand.forced_draw:
+            return later
+        if _hand_can_das(hand):
             return later + 1
     return later
 
@@ -178,7 +188,7 @@ def calculate_split(snapshot, request_id, budget_seconds):
         snapshot.validate()
         das = _is_das_snapshot(snapshot)
         if das:
-            if snapshot.strategy_version != DAS_STRATEGY:
+            if snapshot.engine_version != DAS_ENGINE or snapshot.strategy_version != DAS_STRATEGY:
                 raise ValueError("分牌引擎/策略已升级，请按原事件前缀另建输入复算")
         elif snapshot.engine_version != SPLIT_ENGINE or snapshot.strategy_version != SPLIT_STRATEGY:
             raise ValueError("分牌引擎/策略已升级，请按原事件前缀另建输入复算")

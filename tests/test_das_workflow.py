@@ -6,9 +6,9 @@ from blackjack_lab.analysis.contracts import InputUnavailable, research_rules
 from blackjack_lab.analysis.information import build_input
 from blackjack_lab.analysis.service import calculate
 from blackjack_lab.analysis.split_contracts import (
-    DAS_ENGINE, DAS_PROFILE, DAS_STRATEGY, SPLIT_ENGINE, SPLIT_PROFILE,
-    das_research_rules, split_research_rules)
-from blackjack_lab.core.table import ACTION_DOUBLE, TableError
+    DAS_ENGINE, DAS_ENGINE_LEGACY, DAS_PROFILE, DAS_STRATEGY, DAS_STRATEGY_LEGACY,
+    SPLIT_ENGINE, SPLIT_PROFILE, SplitAnalysisInput, das_research_rules, split_research_rules)
+from blackjack_lab.core.table import ACTION_DOUBLE, ACTION_HIT, TableError
 from blackjack_lab.ui.split_display import format_split_result
 from tests import test_analysis_ui as ui_fixture
 from tests.test_analysis_integration import example
@@ -111,9 +111,37 @@ class TestDasWorkflow(unittest.TestCase):
         self.assertTrue(snapshot.hands[0].closed)
         self.assertEqual(snapshot.legal_actions,('deal',))
         self.assertNotIn('double',snapshot.legal_actions)
+        before=build_input(example(cards=('A','A'),up='6',rules=das_research_rules()),'玩家1')
+        split=calculate(before)
+        self.assertEqual(split['status'],'available',split['reason'])
+        self.assertEqual(split['actions']['split']['possible_future_additional'],0)
         table=ledger.replay().current.table
         with self.assertRaises(TableError):
             table.apply_action('玩家1',first,ACTION_DOUBLE)
+
+    def test_legacy_das_identity_validates_but_cannot_recompute(self):
+        snapshot=build_input(example(cards=('8','8'),up='6',rules=das_research_rules()),'玩家1')
+        data=snapshot.to_dict()
+        data['engine_version']=DAS_ENGINE_LEGACY
+        data['strategy_version']=DAS_STRATEGY_LEGACY
+        old=SplitAnalysisInput.from_dict(data)
+        old.validate()
+        failed=calculate(old)
+        self.assertEqual(failed['status'],'failed')
+        self.assertIn('已升级',failed['reason'])
+
+    def test_hit_pending_deal_does_not_keep_current_das(self):
+        ledger,first=das_split_example()
+        ledger.deal('玩家1','3',hand_id=first)
+        ledger.player_action('玩家1',first,ACTION_HIT)
+        snapshot=build_input(ledger,'玩家1')
+        self.assertEqual(snapshot.legal_actions,('deal',))
+        self.assertTrue(snapshot.hands[0].forced_draw)
+        self.assertEqual(snapshot.hands[0].bet_units,1)
+        result=calculate(snapshot)
+        self.assertEqual(result['status'],'available',result['reason'])
+        self.assertEqual(set(result['actions']),{'deal'})
+        self.assertEqual(result['actions']['deal']['possible_future_additional'],1)
 
 
 class TestDasTk(unittest.TestCase):
@@ -209,6 +237,25 @@ class TestDasTk(unittest.TestCase):
         self.assertEqual(recomputed['engine_version'],SPLIT_ENGINE)
         if os.environ.get('HAKIMI_OFFLINE_REQUIRED')=='1':
             self.assertTrue(recomputed['worker_network_guard_active'])
+        self.assertEqual(self.errors,[])
+
+    def test_hit_then_deal_does_not_reenable_das(self):
+        panel=self.start_das()
+        self.compute(panel)
+        self.app.btn_split.invoke()
+        self.compute(panel)
+        self.app.act_card('3')
+        ready=self.compute(panel)
+        self.assertIn('hit',ready['actions'])
+        hit_ev=ready['actions']['hit']['ev']
+        self.app.act_action(ACTION_HIT)
+        pending=self.compute(panel)
+        self.assertEqual(set(pending['actions']),{'deal'})
+        self.assertAlmostEqual(pending['actions']['deal']['ev'],hit_ev,delta=1e-10)
+        self.assertEqual(pending['actions']['deal']['possible_future_additional'],1)
+        self.app.act_card('6')
+        after=self.compute(panel)
+        self.assertNotIn('double',after['actions'])
         self.assertEqual(self.errors,[])
 
 

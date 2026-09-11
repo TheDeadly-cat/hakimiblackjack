@@ -1,12 +1,12 @@
 """Chinese display adapter for the total objective; no computation in widgets."""
 from ..analysis.contracts import AVAILABLE, STATUS_ZH
-from ..analysis.split_contracts import DAS_ENGINE
+from ..analysis.split_contracts import is_das_engine
 from ..analysis.split_service import SPLIT_ACTION_ZH
 
 
 def format_split_result(result, historical=False):
     info = result['input']
-    das = result.get('engine_version') == DAS_ENGINE
+    das = is_das_engine(result.get('engine_version'))
     prefix = '历史分析 · ' if historical else '当前 · '
     lines = [f"{prefix}{info['seat']} · {info['n_decks']}副 · 庄家 {info['dealer_up']}",
              '两手顺序分牌DAS' if das else '两手顺序分牌']

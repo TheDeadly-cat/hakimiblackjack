@@ -15,6 +15,7 @@ import tempfile
 from time import perf_counter
 
 from .probability import CalculationStopped, InsufficientCards
+from .split_contracts import DAS_STRATEGY
 
 SOURCE = Path(__file__).with_name("native") / "SplitEngine.cs"
 FLAGS = ("/nologo", "/optimize+", "/r:System.Web.Extensions.dll")
@@ -262,7 +263,7 @@ def solve_native(counts, hands, dealer_up, peek_negative, *, active=0,
         data.update(backend="windows-dotnet-framework-exact", backend_source_sha256=executable.parent.name,
                     backend_binary_sha256=binary_digest,
                     method="exact_finite_shared_shoe_float64", approximation=False,
-                    strategy=("sequential-two-hand-total-net-das-v1" if allow_das
+                    strategy=(DAS_STRATEGY if allow_das
                               else "sequential-two-hand-total-net-hit-stand-v1"),
                     decision_tolerance=1e-12,
                     elapsed_seconds=perf_counter()-start)

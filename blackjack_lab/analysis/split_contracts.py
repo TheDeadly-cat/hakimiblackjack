@@ -12,9 +12,12 @@ DAS_PROFILE = "research-s17-us-peek-two-sequential-das-v1"
 SPLIT_INPUT_SCHEMA = "hakimi-split-analysis-input-v1"
 SPLIT_RESULT_SCHEMA = "hakimi-analysis-result-v2"
 SPLIT_ENGINE = "v0.2b1-finite-two-hand-1"
-DAS_ENGINE = "v0.2b2-finite-two-hand-das-1"
+DAS_ENGINE = "v0.2b2-finite-two-hand-das-2"
+DAS_ENGINE_LEGACY = "v0.2b2-finite-two-hand-das-1"
 SPLIT_STRATEGY = "sequential-two-hand-total-net-hit-stand-v1"
-DAS_STRATEGY = "sequential-two-hand-total-net-das-v1"
+DAS_STRATEGY = "sequential-two-hand-total-net-das-v2"
+DAS_STRATEGY_LEGACY = "sequential-two-hand-total-net-das-v1"
+KNOWN_DAS_ENGINES = (DAS_ENGINE_LEGACY, DAS_ENGINE)
 SPLIT_ORDER = "sequential_complete_first"
 HARD_BUDGET_SECONDS = 5.0
 P95_TARGET_SECONDS = 2.0
@@ -45,6 +48,15 @@ def supported_split_rules(rules):
             and rules.max_split_hands == 2 and rules.split_deal_order == SPLIT_ORDER
             and rules.split_match == "same_rank" and rules.double_after_split is False
             and rules.resplit_aces is False and rules.split_ace_hit_once is True)
+
+
+def is_das_engine(version):
+    return version in KNOWN_DAS_ENGINES
+
+
+def known_das_identity(engine_version, strategy_version):
+    return ((engine_version == DAS_ENGINE and strategy_version == DAS_STRATEGY)
+            or (engine_version == DAS_ENGINE_LEGACY and strategy_version == DAS_STRATEGY_LEGACY))
 
 
 def supported_das_rules(rules):
@@ -189,7 +201,7 @@ class SplitAnalysisInput:
         if self.schema != SPLIT_INPUT_SCHEMA or not (supported_split_rules(rules) or is_das):
             raise ValueError("不是已声明的两手顺序研究模板；禁止把旧四手规则截成两手")
         if is_das:
-            if (self.engine_version != DAS_ENGINE or self.strategy_version != DAS_STRATEGY
+            if (not known_das_identity(self.engine_version, self.strategy_version)
                     or "DAS-non-ace" not in self.support_scope):
                 raise ValueError("DAS模板必须使用已声明的DAS引擎、策略与支持范围")
         elif self.engine_version != SPLIT_ENGINE or self.strategy_version != SPLIT_STRATEGY:
