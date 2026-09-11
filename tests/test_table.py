@@ -90,6 +90,7 @@ class TestDouble(unittest.TestCase):
         hid = t.players[p].hands[0].hand_id
         t.apply_action(p, hid, ACTION_DOUBLE)
         self.assertTrue(t.players[p].hands[0].doubled)
+        self.assertTrue(t.players[p].hands[0].awaiting_hit)
         # 加倍后只能补一张，补完自动停牌
         t.add_card(p, "10", hand_id=hid)
         self.assertTrue(t.players[p].hands[0].stood)
