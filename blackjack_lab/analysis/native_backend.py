@@ -207,16 +207,23 @@ class _Job:
 
 def solve_native(counts, hands, dealer_up, peek_negative, *, active=0,
                  split_aces=False, force_active=False, budget_seconds=5.0,
-                 _single_player=None, _single_actions=()):
+                 _single_player=None, _single_actions=(),
+                 allow_das=False, stakes=(1, 1), force_close=False):
     import math
     start = perf_counter()
     if (len(counts) != 10 or any(type(n) is not int or not 0 <= n <= (128 if i == 9 else 32) for i, n in enumerate(counts))
             or len(hands) != 2 or any(not h or any(type(v) is not int or not 1 <= v <= 10 for v in h) for h in hands)
             or type(active) is not int or active not in (0, 1, 2)
             or type(dealer_up) is not int or not 1 <= dealer_up <= 10
-            or any(type(v) is not bool for v in (peek_negative, split_aces, force_active))
-            or type(budget_seconds) not in (int, float) or not math.isfinite(budget_seconds) or not 0 < budget_seconds <= 5):
+            or any(type(v) is not bool for v in (peek_negative, split_aces, force_active, allow_das, force_close))
+            or type(budget_seconds) not in (int, float) or not math.isfinite(budget_seconds) or not 0 < budget_seconds <= 5
+            or not (isinstance(stakes, (tuple, list)) and len(stakes) == 2
+                    and all(type(s) is int and s in (1, 2) for s in stakes))):
         raise ValueError("无效的两手共享牌靴输入或计算预算")
+    if force_close and not allow_das:
+        raise ValueError("无DAS时不能等待加倍补牌")
+    if not allow_das and tuple(stakes) != (1, 1):
+        raise ValueError("无DAS两手注额必须各为1")
     if active == 0 and len(hands[1]) != 1:
         raise ValueError("首手完成前不能提前收到第二手的新牌")
     process = job = None
@@ -238,6 +245,8 @@ def solve_native(counts, hands, dealer_up, peek_negative, *, active=0,
         payload = dict(counts=counts, hands=hands, dealer_up=dealer_up, peek_negative=peek_negative,
                        active=active, split_aces=split_aces, force_active=force_active,
                        budget_seconds=remaining)
+        if allow_das:
+            payload.update(allow_das=True, stakes=list(stakes), force_close=force_close)
         if _single_player is not None:
             payload.update(single_player=_single_player, single_actions=_single_actions)
         stdout, stderr = process.communicate(json.dumps(payload), timeout=remaining)
@@ -253,7 +262,9 @@ def solve_native(counts, hands, dealer_up, peek_negative, *, active=0,
         data.update(backend="windows-dotnet-framework-exact", backend_source_sha256=executable.parent.name,
                     backend_binary_sha256=binary_digest,
                     method="exact_finite_shared_shoe_float64", approximation=False,
-                    strategy="sequential-two-hand-total-net-hit-stand-v1", decision_tolerance=1e-12,
+                    strategy=("sequential-two-hand-total-net-das-v1" if allow_das
+                              else "sequential-two-hand-total-net-hit-stand-v1"),
+                    decision_tolerance=1e-12,
                     elapsed_seconds=perf_counter()-start)
         return data
     except subprocess.TimeoutExpired as error:
@@ -267,7 +278,8 @@ def solve_native(counts, hands, dealer_up, peek_negative, *, active=0,
             process.communicate()
 
 
-def solve_presplit_native(counts, player, dealer_up, peek_negative, actions, budget_seconds=5.0):
+def solve_presplit_native(counts, player, dealer_up, peek_negative, actions, budget_seconds=5.0,
+                          allow_das=False):
     if (len(player)<2 or any(type(v) is not int or not 1<=v<=10 for v in player)
             or any(a not in ('stand','hit','double','split','surrender') for a in actions)
             or len(set(actions))!=len(actions)):
@@ -276,4 +288,4 @@ def solve_presplit_native(counts, player, dealer_up, peek_negative, actions, bud
         raise ValueError('分牌动作需要已确定的两张同牌面对；输入入口另验证原始牌面')
     return solve_native(counts, ((player[0],),(player[1],)), dealer_up, peek_negative,
                         split_aces=player[0]==1 and player[1]==1, budget_seconds=budget_seconds,
-                        _single_player=player, _single_actions=actions)
+                        _single_player=player, _single_actions=actions, allow_das=allow_das)

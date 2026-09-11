@@ -44,6 +44,24 @@ struct D9 {
     public double EV() {return -2*A-B-D+F+H+2*I;}
 }
 
+// 5x5 joint over per-hand nets {-2,-1,0,1,2}. Array is copied at cache boundaries.
+struct D25 {
+    public double[] P;
+    public static D25 Zero() { D25 d; d.P=new double[25]; return d; }
+    public D25 Copy() { D25 d=Zero(); if(P!=null) Array.Copy(P,d.P,25); return d; }
+    public void Add(D25 o,double p) {
+        if(P==null) P=new double[25];
+        if(o.P==null) return;
+        for(int i=0;i<25;i++) P[i]+=o.P[i]*p;
+    }
+    public void Put(int a,int b,double p) { if(P==null) P=new double[25]; P[(a+2)*5+(b+2)]+=p; }
+    public double EV() {
+        if(P==null) return 0; double e=0;
+        for(int a=-2;a<=2;a++) for(int b=-2;b<=2;b++) e+=(a+b)*P[(a+2)*5+(b+2)];
+        return e;
+    }
+}
+
 class SplitEngine {
     const double Epsilon=1e-12;
     readonly int up,excluded; bool aces; readonly double budget;
@@ -56,6 +74,11 @@ class SplitEngine {
     readonly Dictionary<Key,double> firstCache=new Dictionary<Key,double>();
     readonly Dictionary<Key,D9> secondDistCache=new Dictionary<Key,D9>();
     readonly Dictionary<Key,D9> firstDistCache=new Dictionary<Key,D9>();
+    readonly Dictionary<Key,double> secondDasEv=new Dictionary<Key,double>();
+    readonly Dictionary<Key,double> firstDasEv=new Dictionary<Key,double>();
+    readonly Dictionary<Key,D25> secondDasDist=new Dictionary<Key,D25>();
+    readonly Dictionary<Key,D25> firstDasDist=new Dictionary<Key,D25>();
+    int stake2; bool secondForceDeal, secondCanDas;
     public SplitEngine(int dealerUp,bool peek,bool splitAces,double seconds) {up=dealerUp;excluded=peek&&up==1?9:peek&&up==10?0:-1;aces=splitAces;budget=seconds;}
     void Check() {nodes++;if((nodes&1023)==1 && watch.Elapsed.TotalSeconds>=budget)throw new InvalidOperationException("TIMEOUT");}
     static int Score(int h,bool a) {return a&&h<=11?h+10:h;}
@@ -206,6 +229,201 @@ class SplitEngine {
         if(aces){secondCache.Clear();secondDistCache.Clear();}
         return new Dictionary<string,object>{{"next_draw",draw},{"hit_bust",bust},{"dealer_distribution",dealerValues}};
     }
+    static int DasState(int h,bool a,bool forceDeal,bool forceClose,bool canDas,int stake1,int stake2,int s1) {
+        return (h&63)|((a?1:0)<<6)|((forceDeal?1:0)<<7)|((forceClose?1:0)<<8)|((canDas?1:0)<<9)
+            |((stake1==2?1:0)<<10)|((stake2==2?1:0)<<11)|((s1&31)<<12);
+    }
+    static int StakePay(int score,int dealerIndex,int stake) {
+        int unit=score>21||dealerIndex==0?-1:dealerIndex==6||score>dealerIndex+16?1:score==dealerIndex+16?0:-1;
+        return unit*stake;
+    }
+    D25 TerminalDas(ulong c,int s1,int s2,int stake1,int stake2) {
+        Check(); D25 result=D25.Zero();
+        if(s1>21&&s2>21){result.Put(-stake1,-stake2,1); return result;}
+        D7 dealer=Dealer(c);
+        for(int i=0;i<7;i++){double p=dealer.Get(i);if(p==0)continue;
+            result.Put(StakePay(s1,i,stake1),StakePay(s2,i,stake2),p);}
+        return result;
+    }
+    object DasResult(D25 d) {
+        var net=new Dictionary<string,double>(); for(int v=-4;v<=4;v++) net[v.ToString()]=0;
+        var joint=new Dictionary<string,double>(); double one=0,two=0;
+        if(d.P==null) d.P=new double[25];
+        for(int a=-2;a<=2;a++) for(int b=-2;b<=2;b++) {
+            double p=d.P[(a+2)*5+(b+2)]; net[(a+b).ToString()]+=p; joint[a+","+b]=p; one+=a*p; two+=b*p;
+        }
+        return new Dictionary<string,object>{{"ev",d.EV()},{"net_distribution",net},{"joint_distribution",joint},{"hand_evs",new double[]{one,two}}};
+    }
+    double SecondDas(ulong c,int s1,int stake1,int h,bool a,int st2,bool forceDeal,bool forceClose,bool canDas) {
+        Check(); if(h>21) return TerminalDas(c,s1,22,stake1,st2).EV();
+        a=a&&h<=11; Key key=new Key(c,DasState(h,a,forceDeal,forceClose,canDas,stake1,st2,s1));
+        double value; if(secondDasEv.TryGetValue(key,out value)) return value;
+        int score=Score(h,a),size=Size(c),mass=Mass(c,size);
+        if(forceClose) {
+            if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+            value=0; for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0) value+=p*TerminalDas(Remove(c,i),s1,Math.Min(Score(h+i+1,a||i==0),22),stake1,st2).EV();}
+            secondDasEv[key]=value; return value;
+        }
+        if(forceDeal) {
+            if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+            value=0; for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p==0) continue;
+                int nh=h+i+1; bool na=a||i==0; int ns=Score(nh,na);
+                value+=p*SecondDas(Remove(c,i),s1,stake1,nh,na,st2,false,false,!aces&&ns<21&&st2==1);}
+            secondDasEv[key]=value; return value;
+        }
+        double standing=TerminalDas(c,s1,Math.Min(score,22),stake1,st2).EV();
+        if(aces||score>=21||size<2){secondDasEv[key]=standing; return standing;}
+        bool safe=!aces&&!canDas&&SafeLow(size,h,a);
+        if(!safe){value=standing;
+            if(!canDas){double bust=0; for(int i=0;i<10;i++) if(Score(h+i+1,a||i==0)>21) bust+=Draw(c,i,size,mass);
+                if(1-2*bust<=Stand(c,score)+Epsilon){secondDasEv[key]=value; return value;}}
+        } else value=0;
+        if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+        double hitting=0; for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0) hitting+=p*SecondDas(Remove(c,i),s1,stake1,h+i+1,a||i==0,st2,false,false,false);}
+        if(safe||hitting>standing+Epsilon) value=hitting; else value=standing;
+        if(canDas){double dbl=0; for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0) dbl+=p*TerminalDas(Remove(c,i),s1,Math.Min(Score(h+i+1,a||i==0),22),stake1,2).EV();}
+            if(dbl>value+Epsilon) value=dbl;}
+        secondDasEv[key]=value; return value;
+    }
+    double FirstDas(ulong c,int h,bool a,int stake1,bool forceDeal,bool forceClose,bool canDas) {
+        Check(); a=a&&h<=11; Key key=new Key(c,DasState(h,a,forceDeal,forceClose,canDas,stake1,stake2,0));
+        double value; if(firstDasEv.TryGetValue(key,out value)) return value;
+        int score=Score(h,a),size=Size(c),mass=Mass(c,size);
+        if(forceClose) {
+            if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+            value=0; for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0)
+                value+=p*SecondDas(Remove(c,i),Math.Min(Score(h+i+1,a||i==0),22),stake1,h2,a2,stake2,secondForceDeal,false,secondCanDas);}
+            firstDasEv[key]=value; return value;
+        }
+        if(forceDeal) {
+            if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+            value=0; for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p==0) continue;
+                int nh=h+i+1; bool na=a||i==0; int ns=Score(nh,na);
+                value+=p*FirstDas(Remove(c,i),nh,na,stake1,false,false,!aces&&ns<21&&stake1==1);}
+            firstDasEv[key]=value; return value;
+        }
+        double standing=SecondDas(c,Math.Min(score,22),stake1,h2,a2,stake2,secondForceDeal,false,secondCanDas);
+        if(aces||score>=21||size<2){firstDasEv[key]=standing; return standing;}
+        bool safe=!aces&&!canDas&&SafeLow(size,h,a);
+        if(!safe) value=standing; else value=0;
+        if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+        double hitting=0; for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0) hitting+=p*FirstDas(Remove(c,i),h+i+1,a||i==0,stake1,false,false,false);}
+        if(safe||hitting>standing+Epsilon) value=hitting; else value=standing;
+        if(canDas){double dbl=0; for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0)
+            dbl+=p*SecondDas(Remove(c,i),Math.Min(Score(h+i+1,a||i==0),22),2,h2,a2,stake2,secondForceDeal,false,secondCanDas);}
+            if(dbl>value+Epsilon) value=dbl;}
+        firstDasEv[key]=value; return value;
+    }
+    D25 SecondDistDas(ulong c,int s1,int stake1,int h,bool a,int st2,bool forceDeal,bool forceClose,bool canDas) {
+        Check(); a=a&&h<=11; Key key=new Key(c,DasState(h,a,forceDeal,forceClose,canDas,stake1,st2,s1));
+        D25 result; if(secondDasDist.TryGetValue(key,out result)) return result.Copy();
+        int score=Score(h,a),size=Size(c),mass=Mass(c,size);
+        if(h>21){result=TerminalDas(c,s1,22,stake1,st2); secondDasDist[key]=result.Copy(); return result;}
+        if(forceClose) {
+            if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+            result=D25.Zero(); for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0) result.Add(TerminalDas(Remove(c,i),s1,Math.Min(Score(h+i+1,a||i==0),22),stake1,st2),p);}
+            secondDasDist[key]=result.Copy(); return result;
+        }
+        if(forceDeal) {
+            if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+            result=D25.Zero(); for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p==0) continue;
+                int nh=h+i+1; bool na=a||i==0; int ns=Score(nh,na);
+                result.Add(SecondDistDas(Remove(c,i),s1,stake1,nh,na,st2,false,false,!aces&&ns<21&&st2==1),p);}
+            secondDasDist[key]=result.Copy(); return result;
+        }
+        D25 standing=TerminalDas(c,s1,Math.Min(score,22),stake1,st2);
+        if(aces||score>=21||size<2){secondDasDist[key]=standing.Copy(); return standing;}
+        bool safe=!aces&&!canDas&&SafeLow(size,h,a);
+        if(!safe&&!canDas){double bust=0; for(int i=0;i<10;i++) if(Score(h+i+1,a||i==0)>21) bust+=Draw(c,i,size,mass);
+            if(1-2*bust<=Stand(c,score)+Epsilon){secondDasDist[key]=standing.Copy(); return standing;}}
+        if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+        D25 hitting=D25.Zero(); double hitEv=0;
+        for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0){hitEv+=p*SecondDas(Remove(c,i),s1,stake1,h+i+1,a||i==0,st2,false,false,false);
+            hitting.Add(SecondDistDas(Remove(c,i),s1,stake1,h+i+1,a||i==0,st2,false,false,false),p);}}
+        double standEv=standing.EV(), best=standEv; int choice=0;
+        if(safe||hitEv>best+Epsilon){best=hitEv; choice=1;}
+        if(canDas){D25 dbl=D25.Zero(); double dblEv=0;
+            for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0){dblEv+=p*TerminalDas(Remove(c,i),s1,Math.Min(Score(h+i+1,a||i==0),22),stake1,2).EV();
+                dbl.Add(TerminalDas(Remove(c,i),s1,Math.Min(Score(h+i+1,a||i==0),22),stake1,2),p);}}
+            if(dblEv>best+Epsilon){secondDasDist[key]=dbl.Copy(); return dbl;}
+        }
+        result=choice==1?hitting:standing; secondDasDist[key]=result.Copy(); return result;
+    }
+    D25 FirstDistDas(ulong c,int h,bool a,int stake1,bool forceDeal,bool forceClose,bool canDas) {
+        Check(); a=a&&h<=11; Key key=new Key(c,DasState(h,a,forceDeal,forceClose,canDas,stake1,stake2,0));
+        D25 result; if(firstDasDist.TryGetValue(key,out result)) return result.Copy();
+        int score=Score(h,a),size=Size(c),mass=Mass(c,size);
+        if(forceClose) {
+            if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+            result=D25.Zero(); for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0)
+                result.Add(SecondDistDas(Remove(c,i),Math.Min(Score(h+i+1,a||i==0),22),stake1,h2,a2,stake2,secondForceDeal,false,secondCanDas),p);}
+            firstDasDist[key]=result.Copy(); return result;
+        }
+        if(forceDeal) {
+            if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+            result=D25.Zero(); for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p==0) continue;
+                int nh=h+i+1; bool na=a||i==0; int ns=Score(nh,na);
+                result.Add(FirstDistDas(Remove(c,i),nh,na,stake1,false,false,!aces&&ns<21&&stake1==1),p);}
+            firstDasDist[key]=result.Copy(); return result;
+        }
+        D25 standing=SecondDistDas(c,Math.Min(score,22),stake1,h2,a2,stake2,secondForceDeal,false,secondCanDas);
+        if(aces||score>=21||size<2){firstDasDist[key]=standing.Copy(); return standing;}
+        bool safe=!aces&&!canDas&&SafeLow(size,h,a);
+        if(size<2||mass<=0) throw new InvalidOperationException("INSUFFICIENT_CARDS");
+        D25 hitting=D25.Zero(); double hitEv=0;
+        for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0){hitEv+=p*FirstDas(Remove(c,i),h+i+1,a||i==0,stake1,false,false,false);
+            hitting.Add(FirstDistDas(Remove(c,i),h+i+1,a||i==0,stake1,false,false,false),p);}}
+        double standEv=SecondDas(c,Math.Min(score,22),stake1,h2,a2,stake2,secondForceDeal,false,secondCanDas);
+        double best=standEv; int choice=0;
+        if(safe||hitEv>best+Epsilon){best=hitEv; choice=1;}
+        if(canDas){D25 dbl=D25.Zero(); double dblEv=0;
+            for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0){
+                int ns=Math.Min(Score(h+i+1,a||i==0),22);
+                dblEv+=p*SecondDas(Remove(c,i),ns,2,h2,a2,stake2,secondForceDeal,false,secondCanDas);
+                dbl.Add(SecondDistDas(Remove(c,i),ns,2,h2,a2,stake2,secondForceDeal,false,secondCanDas),p);}
+            }
+            if(dblEv>best+Epsilon){firstDasDist[key]=dbl.Copy(); return dbl;}
+        }
+        result=choice==1?hitting:standing; firstDasDist[key]=result.Copy(); return result;
+    }
+    void FillDasActions(ulong c,int[] one,int[] two,int h1,bool a1,int active,bool forceActive,bool forceClose,int stake1,int st2,Dictionary<string,object> actions) {
+        stake2=st2;
+        secondForceDeal=two.Length==1||(active==1&&forceActive&&!forceClose);
+        secondCanDas=!aces&&two.Length==2&&Score(h2,a2)<21&&st2==1&&!(active==1&&forceClose);
+        bool firstForceDeal=one.Length==1||(active==0&&forceActive&&!forceClose);
+        bool firstCanDas=!aces&&one.Length==2&&Score(h1,a1)<21&&stake1==1&&!forceClose;
+        if(active==2) actions["complete"]=DasResult(TerminalDas(c,Math.Min(Score(h1,a1),22),Math.Min(Score(h2,a2),22),stake1,st2));
+        else if(active==0) {
+            if(firstForceDeal||forceClose) actions["deal"]=DasResult(FirstDistDas(c,h1,a1,stake1,firstForceDeal,forceClose,firstCanDas));
+            else {
+                actions["stand"]=DasResult(SecondDistDas(c,Math.Min(Score(h1,a1),22),stake1,h2,a2,st2,secondForceDeal,false,secondCanDas));
+                if(!aces&&Score(h1,a1)<21) {
+                    int size=Size(c),mass=Mass(c,size); D25 hit=D25.Zero();
+                    for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0) hit.Add(FirstDistDas(Remove(c,i),h1+i+1,a1||i==0,stake1,false,false,false),p);}
+                    actions["hit"]=DasResult(hit);
+                    if(firstCanDas){D25 dbl=D25.Zero();
+                        for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0)
+                            dbl.Add(SecondDistDas(Remove(c,i),Math.Min(Score(h1+i+1,a1||i==0),22),2,h2,a2,st2,secondForceDeal,false,secondCanDas),p);}
+                        actions["double"]=DasResult(dbl);}
+                }
+            }
+        } else {
+            int s1=Math.Min(Score(h1,a1),22);
+            if(secondForceDeal||forceClose) actions["deal"]=DasResult(SecondDistDas(c,s1,stake1,h2,a2,st2,secondForceDeal,forceClose,secondCanDas));
+            else {
+                actions["stand"]=DasResult(TerminalDas(c,s1,Math.Min(Score(h2,a2),22),stake1,st2));
+                if(!aces&&Score(h2,a2)<21) {
+                    int size=Size(c),mass=Mass(c,size); D25 hit=D25.Zero();
+                    for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0) hit.Add(SecondDistDas(Remove(c,i),s1,stake1,h2+i+1,a2||i==0,st2,false,false,false),p);}
+                    actions["hit"]=DasResult(hit);
+                    if(secondCanDas){D25 dbl=D25.Zero();
+                        for(int i=0;i<10;i++){double p=Draw(c,i,size,mass); if(p>0)
+                            dbl.Add(TerminalDas(Remove(c,i),s1,Math.Min(Score(h2+i+1,a2||i==0),22),stake1,2),p);}
+                        actions["double"]=DasResult(dbl);}
+                }
+            }
+        }
+    }
     object Solve(Dictionary<string,object> input) {
         int[] counts=Ints(input["counts"]);if(counts.Length!=10)throw new ArgumentException("COUNT_LENGTH");ulong c=0;
         for(int i=0;i<10;i++){if(counts[i]<0||counts[i]>(i==9?128:32))throw new ArgumentException("COUNT_RANGE");c|=(ulong)counts[i]<<Shift(i);}
@@ -213,12 +431,23 @@ class SplitEngine {
         foreach(int v in one){h1+=v;a1|=v==1;}foreach(int v in two){h2+=v;a2|=v==1;}force2=two.Length==1||(Convert.ToInt32(input["active"])==1&&input.ContainsKey("force_active")&&(bool)input["force_active"]);
         int active=Convert.ToInt32(input["active"]);var actions=new Dictionary<string,object>();
         if(active<2&&Size(c)<2)throw new InvalidOperationException("INSUFFICIENT_CARDS");
+        bool allowDas=input.ContainsKey("allow_das")&&(bool)input["allow_das"];
+        int stake1=1,st2=1;
+        if(input.ContainsKey("stakes")){int[] st=Ints(input["stakes"]); if(st.Length!=2||(st[0]!=1&&st[0]!=2)||(st[1]!=1&&st[1]!=2)) throw new ArgumentException("STAKES"); stake1=st[0]; st2=st[1];}
+        bool forceClose=input.ContainsKey("force_close")&&(bool)input["force_close"];
+        bool forceActive=input.ContainsKey("force_active")&&(bool)input["force_active"];
+        if(!allowDas){ if(forceClose) throw new ArgumentException("FORCE_CLOSE"); if(stake1!=1||st2!=1) throw new ArgumentException("STAKES"); }
         Dictionary<string,object> probabilities=null;
         if(input.ContainsKey("single_player")){
             object[] requested=(object[])input["single_actions"];
             probabilities=Single(c,Ints(input["single_player"]),requested,actions);
-            if(Array.IndexOf(requested,"split")>=0)actions["split"]=Result(FirstDist(c,h1,a1,true));
+            if(Array.IndexOf(requested,"split")>=0){
+                if(allowDas){ stake2=st2; secondForceDeal=true; secondCanDas=false;
+                    actions["split"]=DasResult(FirstDistDas(c,h1,a1,stake1,true,false,false)); }
+                else actions["split"]=Result(FirstDist(c,h1,a1,true));
+            }
         }
+        else if(allowDas) FillDasActions(c,one,two,h1,a1,active,forceActive,forceClose,stake1,st2,actions);
         else if(active==2)actions["complete"]=Result(Terminal(c,Math.Min(Score(h1,a1),22),Math.Min(Score(h2,a2),22)));
         else if(active==0){if(one.Length==1||(input.ContainsKey("force_active")&&(bool)input["force_active"]))actions["deal"]=Result(FirstDist(c,h1,a1,true));else{
             actions["stand"]=Result(SecondDist(c,Math.Min(Score(h1,a1),22),h2,a2,force2));

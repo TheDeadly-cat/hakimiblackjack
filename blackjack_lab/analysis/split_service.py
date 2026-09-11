@@ -6,12 +6,15 @@ from ..core.cards import is_natural_blackjack
 from .contracts import AVAILABLE, INAPPLICABLE, PENDING, TIMEOUT, FAILED, UNSUPPORTED, ACTION_ZH
 from .probability import CalculationStopped, InsufficientCards, FiniteModel, LABELS, DEALER_LABELS, total
 from .split_actions import solve_split_counts
-from .split_contracts import SPLIT_ENGINE, SPLIT_STRATEGY
+from .split_contracts import (
+    SPLIT_ENGINE, SPLIT_STRATEGY, DAS_ENGINE, DAS_STRATEGY, _hand_can_das)
 from .native_backend import solve_presplit_native
 
 SPLIT_ACTION_ZH = {**ACTION_ZH, "deal": "录入已确定要发的一张牌", "complete": "两手完成，等待庄家结算"}
 JOINT_KEYS = {f'{a},{b}' for a in (-1, 0, 1) for b in (-1, 0, 1)}
+DAS_JOINT_KEYS = {f'{a},{b}' for a in range(-2, 3) for b in range(-2, 3)}
 TOTAL_NETS = {-2.0, -1.0, 0.0, 1.0, 2.0}
+DAS_TOTAL_NETS = {float(v) for v in range(-4, 5)}
 
 
 def _finite_number(value, name):
@@ -67,6 +70,30 @@ def _net_support_for_action(snapshot, action):
     raise ArithmeticError('当前动作没有已声明的收益支持')
 
 
+def _is_das_snapshot(snapshot):
+    return snapshot.engine_version == DAS_ENGINE
+
+
+def _remaining_das_units(snapshot, action):
+    if snapshot.pre_split:
+        return 2 if action == 'split' else 0
+    if snapshot.hands and snapshot.hands[0].split_ace:
+        return 0
+    index = snapshot.active_index
+    stakes = tuple(h.bet_units for h in snapshot.hands)
+    later = 0
+    for i in range(index + 1, 2):
+        if stakes[i] == 1:
+            later += 1
+    if action in ('stand', 'hit', 'double'):
+        return later
+    if index < 2 and stakes[index] == 1:
+        hand = snapshot.hands[index]
+        if len(hand.ranks) < 2 or _hand_can_das(hand):
+            return later + 1
+    return later
+
+
 def _validate_available_action(snapshot, action, item):
     ev = _finite_number(item.get('ev'), 'ev')
     dist = item.get('net_distribution')
@@ -78,7 +105,7 @@ def _validate_available_action(snapshot, action, item):
         except (TypeError, ValueError) as error:
             raise ArithmeticError('净收益键无效') from error
         _finite_number(outcome, 'net_distribution.net')
-        if not -2 <= outcome <= 2:
+        if not -4 <= outcome <= 4:
             raise ArithmeticError('净收益越界')
         totals[outcome] = totals.get(outcome, 0.0) + probability
     if abs(ev - sum(outcome * probability for outcome, probability in totals.items())) > 1e-10:
@@ -88,8 +115,14 @@ def _validate_available_action(snapshot, action, item):
         if not set(totals).issubset(allowed):
             raise ArithmeticError('净收益格超出当前动作允许集合')
         return
-    if set(totals) != TOTAL_NETS:
-        raise ArithmeticError('需要完整的五个合计收益格')
+    das = _is_das_snapshot(snapshot)
+    joint_keys = DAS_JOINT_KEYS if das else JOINT_KEYS
+    total_nets = DAS_TOTAL_NETS if das else TOTAL_NETS
+    bound = 4 if das else 2
+    if any(abs(outcome) > bound + 1e-12 for outcome in totals):
+        raise ArithmeticError('净收益越界')
+    if set(totals) != total_nets:
+        raise ArithmeticError('需要完整的合计收益格')
     hand_evs = item.get('hand_evs')
     if not isinstance(hand_evs, (list, tuple)) or len(hand_evs) != 2:
         raise ArithmeticError('必须包含两手边际')
@@ -97,7 +130,7 @@ def _validate_available_action(snapshot, action, item):
     if abs(sum(hands) - ev) > 1e-10:
         raise ArithmeticError('两手边际EV与合计EV不一致')
     joint = item.get('joint_distribution')
-    _validate_probability_map(joint, JOINT_KEYS, 'joint_distribution')
+    _validate_probability_map(joint, joint_keys, 'joint_distribution')
     for index in (0, 1):
         try:
             marginal = sum(int(pair.split(',')[index]) * probability for pair, probability in joint.items())
@@ -143,13 +176,17 @@ def calculate_split(snapshot, request_id, budget_seconds):
 
     try:
         snapshot.validate()
-        if snapshot.engine_version != SPLIT_ENGINE or snapshot.strategy_version != SPLIT_STRATEGY:
+        das = _is_das_snapshot(snapshot)
+        if das:
+            if snapshot.strategy_version != DAS_STRATEGY:
+                raise ValueError("分牌引擎/策略已升级，请按原事件前缀另建输入复算")
+        elif snapshot.engine_version != SPLIT_ENGINE or snapshot.strategy_version != SPLIT_STRATEGY:
             raise ValueError("分牌引擎/策略已升级，请按原事件前缀另建输入复算")
         if type(budget_seconds) not in (int, float) or not math.isfinite(budget_seconds) or not 0 < budget_seconds <= 5:
             raise ValueError("计算预算必须大于0且不超过5秒")
         if snapshot.pre_split:
             numbers = solve_presplit_native(snapshot.counts, snapshot.hands[0].values, snapshot.dealer_up,
-                snapshot.peek_negative, snapshot.legal_actions, remaining())
+                snapshot.peek_negative, snapshot.legal_actions, remaining(), allow_das=das)
             _require_backend_actions(snapshot, numbers)
             for action,label in ACTION_ZH.items():
                 if action in numbers['actions']:
@@ -166,11 +203,15 @@ def calculate_split(snapshot, request_id, budget_seconds):
             result['probability_status']=dict(next_target_draw=AVAILABLE if any(a in snapshot.legal_actions for a in ('hit','double')) else INAPPLICABLE)
         else:
             active = snapshot.active_index
+            stakes = tuple(h.bet_units for h in snapshot.hands)
+            force_draw = active < 2 and snapshot.hands[active].forced_draw
             numbers = solve_split_counts(snapshot.counts, tuple(h.values for h in snapshot.hands),
                 snapshot.dealer_up, snapshot.peek_negative, active=active,
                 split_aces=snapshot.hands[0].split_ace,
-                force_active=active < 2 and snapshot.hands[active].forced_draw,
-                budget_seconds=remaining())
+                force_active=force_draw,
+                budget_seconds=remaining(),
+                allow_das=das, stakes=stakes,
+                force_close=force_draw and das and snapshot.hands[active].bet_units == 2)
             _require_backend_actions(snapshot, numbers)
             result['actions'] = {a: dict(status=AVAILABLE, label=SPLIT_ACTION_ZH[a], reason_code='CALCULATED',
                                         reason='当前行动手的合计净收益', **v) for a,v in numbers['actions'].items()}
@@ -181,12 +222,21 @@ def calculate_split(snapshot, request_id, budget_seconds):
                 hand = snapshot.hands[active].values
                 result['probabilities'] = dict(next_target_draw=dict(zip(LABELS,draw)),
                     hit_bust=sum(p for i,p in enumerate(draw) if total(sum(hand)+i+1,1 in hand or i==0)>21))
+        current = 1 if snapshot.pre_split else sum(h.bet_units for h in snapshot.hands)
         for action,item in result['actions'].items():
             if item['status'] != AVAILABLE:
                 continue
             _validate_available_action(snapshot, action, item)
-            item['additional_investment'] = 1 if snapshot.pre_split and action in ('split','double') else 0
-            item['total_investment'] = (1 if snapshot.pre_split else 2)+item['additional_investment']
+            if das:
+                additional = 1 if action == 'double' or (snapshot.pre_split and action in ('split', 'double')) else 0
+                future = _remaining_das_units(snapshot, action)
+                item['additional_investment'] = additional
+                item['possible_future_additional'] = future
+                item['max_final_investment'] = current + additional + future
+                item['total_investment'] = current + additional
+            else:
+                item['additional_investment'] = 1 if snapshot.pre_split and action in ('split','double') else 0
+                item['total_investment'] = (1 if snapshot.pre_split else 2)+item['additional_investment']
         _validate_split_probabilities(snapshot, result['probabilities'])
         partial = bool(snapshot.uncertain_actions) or any(result['actions'][a]['status'] != AVAILABLE for a in snapshot.legal_actions)
         ordered = sorted(((v['ev'],a) for a,v in result['actions'].items() if v['status'] == AVAILABLE),reverse=True)
@@ -198,7 +248,7 @@ def calculate_split(snapshot, request_id, budget_seconds):
             highest_ev_action=highest, partial_comparison=partial,
             all_computed_ev_negative=bool(ordered) and ordered[0][0]<0,
             method='exact_finite_shared_shoe_float64', approximation=False, numerical_tolerance=1e-10,
-            decision_tolerance=1e-12, current_investment=1 if snapshot.pre_split else 2,
+            decision_tolerance=1e-12, current_investment=current,
             active_hand_id=snapshot.active_hand_id,
             **{k:numbers[k] for k in ('nodes','backend','backend_source_sha256','backend_binary_sha256','peak_memory','caches','information_bound_prunes') if k in numbers})
     except CalculationStopped as error:
