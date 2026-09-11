@@ -57,6 +57,7 @@ class RuleProfile:
     max_split_hands: int = 4
     resplit_aces: Optional[bool] = False
     split_ace_hit_once: Optional[bool] = True
+    split_deal_order: Optional[str] = None    # Legacy snapshots retain unknown order.
 
     surrender: Optional[str] = None           # None 不支持 / 'early' / 'late'
     n_seats: int = 7                          # 玩家座位 1~7，庄家固定 1 位
@@ -101,6 +102,7 @@ class RuleProfile:
             "confirm_status": (CONFIRM_UNKNOWN, CONFIRM_VERIFIED),
             "surrender": (None, "early", "late"),
             "dealer_bj_extra_bet_rule": (None, "all_bets_lost", "original_bets_only"),
+            "split_deal_order": (None, "sequential_complete_first", "both_second_cards_first"),
         }.items():
             if getattr(self, name) not in allowed:
                 raise ValueError(f"无效规则字段 {name}: {getattr(self, name)!r}")
