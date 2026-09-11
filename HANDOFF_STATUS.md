@@ -1,29 +1,30 @@
 # 项目接手状态
 
-更新时间：2026-09-11（T1b/T2b 已提交，未推送）
+更新时间：2026-09-11（T1b/T2b 已推送；PR #8 待 CI 与合入）
 执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
-当前任务ID：T1b+T2b
-本轮允许文件：`blackjack_lab/analysis/split_service.py`、`tests/test_split_output_guard.py`、`blackjack_lab/analysis/environment.py`、`blackjack_lab/analysis/native_backend.py`（仅回执读取）、`tests/test_split_environment.py`、`tests/test_analysis_integration.py`（仅 US-peek 后发第三张）、本交接记录。未改 `SplitEngine.cs`、规则模板、数据库、容差或 5 秒预算。
+当前任务ID：T1b+T2b 交付 + T5 并行
+本轮允许文件：交接记录同步推送/PR 事实；T5 仅新契约文档、独立参考与参考测试。未改 `SplitEngine.cs`、旧规则模板、旧参考、容差或 5 秒预算。
 
 ## 当前活动摘要
-- 集成基线：GitHub `main` `4f84595bfc933896586dab9af9d17ad73eed6e73`（#6 B4 / #7 T1+T2 已合并；本地工作分支 `handoff/t1b-t2b-output-receipt` 从该提交拉出）
-- GitHub Actions（该 main HEAD）：run `34588429217` / job `103227892813`，Windows Server 2025 / CPython 3.14.7，258 tests。本轮本地 281 项不能冒充该 CI。
-- 原 T1/T2 完成项保留：有限数门禁、概率键/质量、Job 编译、环境预检。NaN / `hit_bust` 1.25 / 非法概率键已在 #7 修好，本轮不当作未修缺陷返工。
-- 新发现并修复：G1 分牌前非 split 早退导致不验收益支持；G2 分牌前先信后端键，非法 `double` 可进入 `highest_ev_action`；G3 `build.json` 根为 `[]`/`null`/字符串时 `AttributeError`，写探针固定名 `.hakimi-write-probe`
-- 未执行：当前工作树的 318 冷请求与 20 张截图（不得用旧回执换签）
-- 下一单：T5 DAS 契约/独立参考，**不是** T3
-- 回滚：共享 main 上禁止把 `git reset --hard de1d095` 写成常规方案。先保留未提交工作、用户库和 `.analysis`；需要丢弃本轮未提交改动时用 `git restore`/`git checkout --` 针对已跟踪文件，不要硬重置已合并的 main。
+- 集成基线：GitHub `main` `4f84595bfc933896586dab9af9d17ad73eed6e73`（#6/#7 已合并）。修复候选不在 main，不能写成“最新版已正式交付”。
+- 远程分支：`handoff/t1b-t2b-output-receipt` 已存在，HEAD `0ed0e9d95762d4588b6de411dc33eb8cc44b2f7c`
+- 关联 PR：[#8](https://github.com/TheDeadly-cat/hakimiblackjack/pull/8) → `main`（利用已有 `pull_request` 触发；`handoff/**` 的 push 不会跑 CI）
+- 该 HEAD 的 Actions：创建 PR 后开始 run（以 GitHub 当时记录为准）；创建 PR 前 count=0。main CI `34588429217` / 258 项只证明 `4f84595`，不能换签给 `0ed0e9d`。
+- G1/G2/G3 对应路径已实现；审查者 19 项隔离检查通过，不是完整 Windows 281。开发者 281 在 `.local-evidence/`，未独立核实为 CI。
+- 未执行：`0ed0e9d` 的 318 冷请求与 20 张截图（不得用旧回执换签）
+- 下一单：T5 DAS 契约/独立参考；**不是** T3，不重做 #2–#7
+- 回滚：共享 main 上禁止 `git reset --hard de1d095`。未合入前以 PR 分支为准；先保留未提交工作、用户库和 `.analysis`
 
 ## 源码身份
 - 仓库：https://github.com/TheDeadly-cat/hakimiblackjack
 - 工作目录：`C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0.2b1`
-- 分支：`handoff/t1b-t2b-output-receipt`（跟踪 `origin/main`；本轮未 push、未 merge）
+- 分支：`handoff/t1b-t2b-output-receipt`（远程已存在；本地因 git :443 常失败，跟踪信息可能仍显示 `origin/main`）
 - 基线HEAD：`4f84595bfc933896586dab9af9d17ad73eed6e73`
 - T1b：`159c3bf152e71b9f3d3f22b007c76d35086f31c0`（动作集合与收益支持）
 - T2b：`c43c187bb672f5e31d872ed5cc31584a80bd4185`（构建回执根对象与唯一写探针）
-- 本轮新HEAD：本交接记录提交（提交后以 `git rev-parse HEAD` 为准）
-- 工作树是否干净：本提交纳入交接记录；`.local-evidence/` 仍为本地证据、不入库
-- 相关PR：#2–#7 已按 merge commit 进入 main（#6 `42aa5b4`，#7 `4f84595`）。本轮未新开 PR。
+- 本轮新HEAD：`0ed0e9d95762d4588b6de411dc33eb8cc44b2f7c`（文档提交；产品字节与 T2b 树一致）
+- 工作树是否干净：交接摘要同步推送/PR 事实后以 `git status` 为准；`.local-evidence/` 不入库
+- 相关PR：#2–#7 已在 main。本修复分支 PR [#8](https://github.com/TheDeadly-cat/hakimiblackjack/pull/8)。未授权不合入。
 
 ## 环境
 - 操作系统/位数：Windows-11-10.0.26200-SP0，64-bit
@@ -81,8 +82,8 @@ cwd 均为 `C:\Users\Administrator\Documents\ChatGPT\blackjack\implementation-v0
 ## 下一单
 - 唯一下一任务ID：T5（两手 DAS 契约与独立参考：每手注额、唯一加倍牌、合计 [-4,4]、分 A 禁 DAS、信息上界有「无 DAS」前提）
 - 前置条件：T1b/T2b 本机相关测试已通过；生产 `SplitEngine` DAS 要等设计审查后的 T6
-- 需用户或审查者决定的事项：是否推送 `handoff/t1b-t2b-output-receipt`；是否授权开 PR
-- 是否获准push/merge：否
+- 需用户或审查者决定的事项：PR #8 的 Windows CI 通过后是否授权合入 main
+- 是否获准push/merge：已推送分支并开 PR；**未获准 merge**
 
 ---
 
