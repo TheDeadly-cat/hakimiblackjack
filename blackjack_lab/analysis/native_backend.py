@@ -25,6 +25,51 @@ def source_digest():
     return hashlib.sha256(SOURCE.read_bytes()).hexdigest()
 
 
+def compiler_path():
+    return Path(os.environ.get("SystemRoot", r"C:\Windows")) / "Microsoft.NET/Framework64/v4.0.30319/csc.exe"
+
+
+def native_cache_directory():
+    return SOURCE.parents[2] / ".local-native" / source_digest()
+
+
+def _run_owned_process(command, timeout, stdin_data=None):
+    """Run a helper owned by a kill-on-close job so worker death cannot orphan it."""
+    job = process = None
+    try:
+        job = _Job()
+        process = subprocess.Popen(command, stdin=subprocess.PIPE if stdin_data is not None else None,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                   encoding="utf-8", errors="replace", creationflags=NO_WINDOW)
+        job.assign(process)
+        stdout, stderr = process.communicate(stdin_data, timeout=timeout)
+        return process.returncode, stdout, stderr
+    except subprocess.TimeoutExpired:
+        raise
+    finally:
+        if job:
+            job.close()
+        if process:
+            if process.poll() is None:
+                process.kill()
+            try:
+                process.communicate()
+            except Exception:
+                pass
+
+
+def _compile_source(frozen_source, output, timeout):
+    compiler = compiler_path()
+    if not compiler.is_file():
+        raise RuntimeError("找不到 Windows .NET Framework 4 编译器，分牌分析不可用。"
+                           f"期望路径：{compiler}。请启用该组件后运行 python scripts/check_environment.py；"
+                           "不要自动安装或提权。录牌功能仍可使用。")
+    code, stdout, stderr = _run_owned_process(
+        [str(compiler), *FLAGS, "/out:" + str(output), str(frozen_source)], timeout)
+    if code:
+        raise RuntimeError("分牌加速器编译失败：" + (stdout or "") + (stderr or ""))
+
+
 def build_native(timeout=15):
     """Serialize publication with an OS mutex, released even after process death."""
     if os.name != 'nt':
@@ -57,7 +102,6 @@ def build_native(timeout=15):
 def _build_native_locked(timeout):
     if os.name != "nt":
         raise RuntimeError("分牌加速器当前需要 Windows .NET Framework 4 编译器")
-    compiler = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "Microsoft.NET/Framework64/v4.0.30319/csc.exe"
     source_bytes = SOURCE.read_bytes()
     key = hashlib.sha256(source_bytes).hexdigest()
     directory = SOURCE.parents[2] / ".local-native" / key
@@ -68,26 +112,29 @@ def _build_native_locked(timeout):
         if (saved.get("source_sha256") == key and saved.get("flags") == list(FLAGS)
                 and saved.get("binary_sha256") == hashlib.sha256(executable.read_bytes()).hexdigest()):
             return executable
-        raise RuntimeError("本地分牌加速器摘要不匹配；请保留该文件并重新准备新构建目录")
-    if not compiler.is_file():
-        raise RuntimeError("找不到 Windows .NET Framework 4 编译器，分牌分析不可用")
-    directory.mkdir(parents=True, exist_ok=True)
+        raise RuntimeError("本地分牌加速器摘要不匹配；请保留该损坏目录并在旁边重新准备新构建，"
+                           "不要删除用户数据库或分析快照。")
+    write_error = f"无法写入分牌数值程序目录 {directory}；请检查权限。不要为此自动安装软件或提权。录牌功能仍可使用。"
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise RuntimeError(write_error) from error
     # Concurrent preparations build unique files; publication replaces only a
     # derived artifact for this identical source identity, never user data.
-    with tempfile.TemporaryDirectory(prefix="build-", dir=directory) as temporary:
-        output = Path(temporary) / "SplitEngine.exe"
-        frozen_source = Path(temporary) / 'SplitEngine.cs'
-        frozen_source.write_bytes(source_bytes)
-        result = subprocess.run([str(compiler), *FLAGS, "/out:" + str(output), str(frozen_source)],
-                                capture_output=True, text=True, creationflags=NO_WINDOW, timeout=timeout)
-        if result.returncode:
-            raise RuntimeError("分牌加速器编译失败：" + result.stdout + result.stderr)
-        metadata = dict(source_sha256=key, binary_sha256=hashlib.sha256(output.read_bytes()).hexdigest(),
-                        compiler=str(compiler), flags=FLAGS)
-        temp_receipt = Path(temporary) / "build.json"
-        temp_receipt.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
-        os.replace(output, executable)
-        os.replace(temp_receipt, receipt)
+    try:
+        with tempfile.TemporaryDirectory(prefix="build-", dir=directory) as temporary:
+            output = Path(temporary) / "SplitEngine.exe"
+            frozen_source = Path(temporary) / "SplitEngine.cs"
+            frozen_source.write_bytes(source_bytes)
+            _compile_source(frozen_source, output, timeout)
+            metadata = dict(source_sha256=key, binary_sha256=hashlib.sha256(output.read_bytes()).hexdigest(),
+                            compiler=str(compiler_path()), flags=FLAGS)
+            temp_receipt = Path(temporary) / "build.json"
+            temp_receipt.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+            os.replace(output, executable)
+            os.replace(temp_receipt, receipt)
+    except OSError as error:
+        raise RuntimeError(write_error) from error
     return executable
 
 

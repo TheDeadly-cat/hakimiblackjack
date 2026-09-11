@@ -31,7 +31,7 @@ python -m blackjack_lab.main
 
 两手共享剩余牌、未知底牌和庄家结算。当前手策略最大化合计净收益，不能提前知道第二手未来牌，也不能用独立卷积替代联合分布。分牌前已投入1，分牌另加1，分后总投入2；两手全赢+2、全输-2、一赢一输0。首手爆牌的-1已经计入，不能再次扣本金；分A的A+十点是普通21。
 
-初次分牌请求会在本地编译对应源码，编译时间也计入请求预算。可事先运行 `python -m blackjack_lab.main --prepare-split`。派生产物位于 `blackjack_lab/.local-native/<源码摘要>/`，使用前校验产物摘要；缺失编译器或编译失败会明确报告，仍可继续录牌。源码和编译器路径/参数随构建回执保留，不承诺不同机器产物逐字节相同。
+初次分牌请求会在本地编译对应源码，编译时间也计入请求预算。可事先运行 `python -m blackjack_lab.main --prepare-split`。派生产物位于 `blackjack_lab/.local-native/<源码摘要>/`，使用前校验产物摘要；缺失编译器或编译失败会明确报告，仍可继续录牌。源码和编译器路径/参数随构建回执保留，不承诺不同机器产物逐字节相同。依赖预检（不安装软件、不改执行策略、不提权）：`python scripts/check_environment.py` 或 `python -m blackjack_lab.main --check-environment`。
 
 - 正常未知底牌作为隐藏变量计算。非 BJ 检查既影响底牌候选，也影响下一张玩家牌的条件概率；不会把账面剩余数直接除以物理待发数。
 - 补牌 EV 包含之后按新见牌在补／停之间继续决策，不是强制补一张后停牌，也没有偷看底牌再选策略。
@@ -62,8 +62,10 @@ python -m blackjack_lab.main
 ## 验证和开发
 
 ```powershell
+python scripts/check_environment.py
 python -m unittest discover -s tests -v
 python -m blackjack_lab.main --check
+python -m blackjack_lab.main --check-environment
 python -m compileall -q blackjack_lab tests scripts
 python scripts/verify_review_handoff.py
 python scripts/split_benchmarks.py
