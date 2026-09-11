@@ -2,6 +2,7 @@
 import copy
 from dataclasses import replace
 import json
+import os
 from pathlib import Path
 import tempfile
 import time
@@ -27,6 +28,28 @@ def split_example(n=6, pair='8', up='6'):
 
 
 class TestSplitWorkflow(unittest.TestCase):
+    def test_raw_rank_pair_guard_rejects_forged_ten_bucket_legality(self):
+        for cards in (('J','K'),('T','T')):
+            snapshot=build_input(example(cards=cards,up='6',rules=split_research_rules()),'玩家1')
+            information=json.loads(snapshot.information_json)
+            information['action_states']['分牌']['allowed']=True
+            forged=replace(snapshot,legal_actions=(*snapshot.legal_actions,'split'),uncertain_actions=(),
+                           information_json=canonical(information))
+            with self.assertRaises(ValueError):
+                forged.validate()
+            result=calculate(forged)
+            self.assertEqual(result['status'],'failed')
+            self.assertEqual(result['actions'],{})
+
+    def test_natural_21_presplit_does_not_display_an_illegal_draw_metric(self):
+        from blackjack_lab.ui.analysis_panel import format_result
+        snapshot=build_input(example(cards=('A','10'),up='6',rules=split_research_rules()),'玩家1')
+        result=calculate(snapshot)
+        self.assertEqual(result['status'],'available',result['reason'])
+        self.assertEqual(result['actions']['stand']['ev'],1.5)
+        self.assertEqual(result['actions']['hit']['status'],'inapplicable')
+        self.assertNotIn('爆牌概率',format_result(result))
+
     def test_b01_three_deck_sizes_compare_all_pre_split_actions(self):
         values=[]
         for decks in (6,7,8):
@@ -184,6 +207,8 @@ class TestSplitTk(unittest.TestCase):
         panel.compute_button.invoke()
         result=self.wait_result()
         self.assertEqual(result['status'],'available',result['reason'])
+        if os.environ.get('HAKIMI_OFFLINE_REQUIRED')=='1':
+            self.assertTrue(result['worker_network_guard_active'])
         self.assertIsNotNone(panel.saved,panel.persistence.get())
         return result
 

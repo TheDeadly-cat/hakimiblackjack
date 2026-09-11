@@ -1,0 +1,223 @@
+{
+  "schema": "hakimi-analysis-result-v2",
+  "request_id": "186fb89fa54340bebcd9db77937d64d9",
+  "input": {
+    "session_id": "synthetic-analysis-session",
+    "shoe_id": "913632868b1345ca8122e2da973efea5",
+    "round_id": "913632868b1345ca8122e2da973efea5-R1",
+    "through_seq": 7,
+    "prefix_digest": "da26ce1a37372d12f786a76daa46e968f72aabe811de46c517dcbb885a705ffd",
+    "seat": "玩家1",
+    "hand_id": "R1-玩家1-H2",
+    "n_decks": 7,
+    "rules_json": "{\"american_hole_card\":true,\"blackjack_payout\":[3,2],\"burn_cards_known\":true,\"check_bj_when\":\"before_player_actions_A_T\",\"confirm_status\":\"已确认\",\"cut_shuffle_note\":null,\"dealer_bj_extra_bet_rule\":\"all_bets_lost\",\"dealer_soft17\":\"S17\",\"double_after_split\":false,\"double_on_totals\":null,\"game_name\":\"单玩家两手顺序分牌研究\",\"initial_burn_count\":0,\"max_split_hands\":2,\"n_decks\":7,\"n_seats\":7,\"profile_id\":\"research-s17-us-peek-two-sequential-v1\",\"remark\":\"首手完成后才给第二手补第二张；无再分/无DAS/分A一张；原注合计净收益\",\"resplit_aces\":false,\"rule_source\":\"用户主动选择的自建研究桌规，不代表平台规则\",\"shoe_model\":\"finite_no_replacement\",\"split_ace_hit_once\":true,\"split_deal_order\":\"sequential_complete_first\",\"split_match\":\"same_rank\",\"start_from_new_shoe\":true,\"surrender\":\"late\",\"table_id\":null,\"vendor\":\"自建研究模板\",\"verify_date\":null,\"version\":1}",
+    "information_json": "{\"action_states\":{\"停牌\":{\"action\":\"停牌\",\"allowed\":true,\"reason\":\"可停牌\",\"reason_code\":\"LEGAL\",\"status\":\"available\"},\"分牌\":{\"action\":\"分牌\",\"allowed\":true,\"reason\":\"可分牌\",\"reason_code\":\"LEGAL\",\"status\":\"available\"},\"加倍\":{\"action\":\"加倍\",\"allowed\":true,\"reason\":\"可加倍（加倍后只补一张）\",\"reason_code\":\"LEGAL\",\"status\":\"available\"},\"投降\":{\"action\":\"投降\",\"allowed\":true,\"reason\":\"可投降（损失半注）\",\"reason_code\":\"LEGAL\",\"status\":\"available\"},\"补牌\":{\"action\":\"补牌\",\"allowed\":true,\"reason\":\"可补牌\",\"reason_code\":\"LEGAL\",\"status\":\"available\"}},\"burn_unknown\":0,\"dealer_hole\":\"one_unknown_physical_card\",\"exact_out\":{\"10\":2,\"2\":1,\"3\":0,\"4\":0,\"5\":0,\"6\":0,\"7\":0,\"8\":0,\"9\":0,\"A\":0,\"J\":0,\"K\":0,\"Q\":0},\"gap\":false,\"negative_peek\":false,\"pending_candidates\":0,\"split_order_violations\":[],\"t_bucket_out\":0,\"unrevealed_out\":1}",
+    "counts": [
+      28,
+      27,
+      28,
+      28,
+      28,
+      28,
+      28,
+      28,
+      28,
+      110
+    ],
+    "physical_remaining": 360,
+    "hands": [
+      {
+        "hand_id": "R1-玩家1-H2",
+        "parent_id": null,
+        "ranks": [
+          "10",
+          "10"
+        ],
+        "card_event_ids": [
+          "9c6fd753b8f04c20ab4a5282ecdd0ff4",
+          "018687f3856b4fafbdbe3225d0f8d8ae"
+        ],
+        "origin_ranks": [
+          "10",
+          "10"
+        ],
+        "origin_event_ids": [
+          "9c6fd753b8f04c20ab4a5282ecdd0ff4",
+          "018687f3856b4fafbdbe3225d0f8d8ae"
+        ],
+        "from_split": false,
+        "split_ace": false,
+        "closed": false,
+        "forced_draw": false,
+        "bet_units": 1
+      }
+    ],
+    "active_hand_id": "R1-玩家1-H2",
+    "pending_hand_ids": [
+      "R1-玩家1-H2"
+    ],
+    "dealer_up": 2,
+    "peek_negative": false,
+    "legal_actions": [
+      "stand",
+      "hit",
+      "double",
+      "split",
+      "surrender"
+    ],
+    "uncertain_actions": [],
+    "schema": "hakimi-split-analysis-input-v1",
+    "engine_version": "v0.2b1-finite-two-hand-1",
+    "strategy_version": "sequential-two-hand-total-net-hit-stand-v1",
+    "support_scope": "S17/3:2/US-peek/zero-burn/single-player/two-sequential/no-DAS/no-resplit"
+  },
+  "input_digest": "0277689fb3ab9a09ed6777dd629add7c83154c7ed3ed2c79398e06c4e37b35c6",
+  "rules_digest": "79e5f9ef3eb33919fc6b3cfa18e16999af3cd6344147b682881841dec9d78453",
+  "engine_version": "v0.2b1-finite-two-hand-1",
+  "strategy_version": "sequential-two-hand-total-net-hit-stand-v1",
+  "created_at": 1789057515.1519647,
+  "status": "available",
+  "reason_code": "CALCULATED",
+  "reason": "两手顺序研究模型下的原始投注合计净收益",
+  "actions": {
+    "stand": {
+      "label": "停牌",
+      "status": "available",
+      "reason_code": "CALCULATED",
+      "reason": "已计算",
+      "ev": 0.6381857668214352,
+      "net_distribution": {
+        "-1": 0.11867954395707307,
+        "0": 0.12445514526441859,
+        "1": 0.7568653107785083
+      },
+      "additional_investment": 0,
+      "total_investment": 1
+    },
+    "hit": {
+      "label": "补牌",
+      "status": "available",
+      "reason_code": "CALCULATED",
+      "reason": "已计算",
+      "ev": -0.8540682491117713,
+      "net_distribution": {
+        "-1": 0.9224376731301939,
+        "0": 0.009192902851383519,
+        "1": 0.06836942401842257
+      },
+      "additional_investment": 0,
+      "total_investment": 1
+    },
+    "double": {
+      "label": "加倍",
+      "status": "available",
+      "reason_code": "CALCULATED",
+      "reason": "已计算",
+      "ev": -1.7081364982235425,
+      "net_distribution": {
+        "-2": 0.9224376731301939,
+        "0": 0.009192902851383519,
+        "2": 0.06836942401842257
+      },
+      "additional_investment": 1,
+      "total_investment": 2
+    },
+    "split": {
+      "label": "分牌",
+      "status": "available",
+      "reason_code": "CALCULATED",
+      "reason": "已计算",
+      "ev": 0.35763460153356574,
+      "net_distribution": {
+        "-2": 0.22444816262298298,
+        "-1": 0.09481181861165938,
+        "0": 0.21052866568571332,
+        "1": 0.03907996076809753,
+        "2": 0.43113139231154674
+      },
+      "joint_distribution": {
+        "-1,-1": 0.22444816262298298,
+        "-1,0": 0.047405909305829684,
+        "-1,1": 0.09750805215026284,
+        "0,-1": 0.04740590930582969,
+        "0,0": 0.015512561385187624,
+        "0,1": 0.019539980384048763,
+        "1,-1": 0.09750805215026284,
+        "1,0": 0.01953998038404876,
+        "1,1": 0.43113139231154674
+      },
+      "hand_evs": [
+        0.17881730076678276,
+        0.17881730076678282
+      ],
+      "additional_investment": 1,
+      "total_investment": 2
+    },
+    "surrender": {
+      "label": "投降",
+      "status": "available",
+      "reason_code": "CALCULATED",
+      "reason": "已计算",
+      "ev": -0.5,
+      "net_distribution": {
+        "-0.5": 1
+      },
+      "additional_investment": 0,
+      "total_investment": 1
+    }
+  },
+  "probabilities": {
+    "next_target_draw": {
+      "A": 0.07756232686980609,
+      "2": 0.07479224376731303,
+      "3": 0.07756232686980609,
+      "4": 0.07756232686980609,
+      "5": 0.07756232686980609,
+      "6": 0.07756232686980609,
+      "7": 0.07756232686980609,
+      "8": 0.07756232686980609,
+      "9": 0.07756232686980609,
+      "T": 0.3047091412742382
+    },
+    "hit_bust": 0.9224376731301939,
+    "dealer_terminal_if_stand_now": {
+      "blackjack": 0,
+      "17": 0.14038456580503988,
+      "18": 0.1350848535037103,
+      "19": 0.13050371257842014,
+      "20": 0.12445514526441859,
+      "21": 0.11867954395707307,
+      "bust": 0.35089217889133795
+    }
+  },
+  "highest_ev_action": "stand",
+  "partial_comparison": false,
+  "elapsed_seconds": 0.24669939999876078,
+  "ev_unit": "相对原始1单位初始注的最终净收益（返还本金不是盈利）",
+  "probability_status": {
+    "next_target_draw": "available"
+  },
+  "all_computed_ev_negative": false,
+  "method": "exact_finite_shared_shoe_float64",
+  "approximation": false,
+  "numerical_tolerance": 1e-10,
+  "decision_tolerance": 1e-12,
+  "current_investment": 1,
+  "active_hand_id": "R1-玩家1-H2",
+  "nodes": 454481,
+  "backend": "windows-dotnet-framework-exact",
+  "backend_source_sha256": "88e2cecf760d9075a0be59e082a4a3ddb71d499c3683a3466444ffc05c63c405",
+  "backend_binary_sha256": "437e4016ceee36a531a2bc25c86e542658c2b31189c63ed3aabf4f91d299dc87",
+  "peak_memory": 247865344,
+  "caches": [
+    85380,
+    1681,
+    3963,
+    38,
+    402,
+    21
+  ],
+  "information_bound_prunes": 19,
+  "worker_network_guard_active": false,
+  "worker_peak_working_set_bytes": 36765696
+}

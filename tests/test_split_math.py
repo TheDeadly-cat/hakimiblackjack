@@ -49,6 +49,10 @@ class TestSplitMath(unittest.TestCase):
             with self.subTest(size=size):
                 self.compare((10,)*(size-2)+(1,8),((2,),(2,)),10)
 
+    def test_information_gain_bound_is_exercised_and_matches_complete_fraction_search(self):
+        result=self.compare((10,)*64+(1,8),((8,10,1),(8,)),10)
+        self.assertGreater(result['information_bound_prunes'],0)
+
     def test_ace_soft_transition_and_negative_peek(self):
         self.compare((1,1,8,9,10,10,10),((2,1),(2,)),10)
         self.compare((1,1,8,9,10,10,10),((8,),(8,)),6,peek=False)
@@ -79,6 +83,8 @@ class TestSplitMath(unittest.TestCase):
             solve_split_counts((1,)*10,((8,),(8,9)),6,False)
         with self.assertRaises(InsufficientCards):
             solve_split_counts((0,)*9+(1,),((8,),(8,)),6,False)
+        with self.assertRaises(InsufficientCards):
+            solve_split_counts((0,)*9+(1,),((8,10),(10,10)),10,True,active=1)
 
     def test_timeout_does_not_return_partial_ev(self):
         with self.assertRaises(CalculationStopped):

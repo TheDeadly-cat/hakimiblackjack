@@ -1,0 +1,340 @@
+{
+  "format": "hakimi-blackjack-lab-json",
+  "format_version": 1,
+  "tool_version": "0.2.0b1",
+  "engine_version": "v0.2b1-finite-two-hand-1",
+  "exported_at": 1789057367.5669801,
+  "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+  "session_name": "",
+  "note": "",
+  "events": [
+    {
+      "event_id": "94c852f08042449991f24867e7fe4d61",
+      "seq": 1,
+      "etype": "SESSION_STARTED",
+      "payload": {
+        "note": ""
+      },
+      "event_time": 1789057364.4483209,
+      "observed_at": 1789057364.4483209,
+      "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+      "shoe_id": null,
+      "round_id": null,
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "v0.1"
+    },
+    {
+      "event_id": "211908039a4f455c80efa8cc90949d95",
+      "seq": 2,
+      "etype": "SHOE_CREATED",
+      "payload": {
+        "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+        "n_decks": 7,
+        "rules_snapshot": "{\"american_hole_card\": true, \"blackjack_payout\": [3, 2], \"burn_cards_known\": true, \"check_bj_when\": \"before_player_actions_A_T\", \"confirm_status\": \"已确认\", \"cut_shuffle_note\": null, \"dealer_bj_extra_bet_rule\": \"all_bets_lost\", \"dealer_soft17\": \"S17\", \"double_after_split\": false, \"double_on_totals\": null, \"game_name\": \"单玩家两手顺序分牌研究\", \"initial_burn_count\": 0, \"max_split_hands\": 2, \"n_decks\": 7, \"n_seats\": 7, \"profile_id\": \"research-s17-us-peek-two-sequential-v1\", \"remark\": \"首手完成后才给第二手补第二张；无再分/无DAS/分A一张；原注合计净收益\", \"resplit_aces\": false, \"rule_source\": \"用户主动选择的自建研究桌规，不代表平台规则\", \"shoe_model\": \"finite_no_replacement\", \"split_ace_hit_once\": true, \"split_deal_order\": \"sequential_complete_first\", \"split_match\": \"same_rank\", \"start_from_new_shoe\": true, \"surrender\": \"late\", \"table_id\": null, \"vendor\": \"自建研究模板\", \"verify_date\": null, \"version\": 1}"
+      },
+      "event_time": 1789057364.4912612,
+      "observed_at": 1789057364.4912612,
+      "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+      "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+      "round_id": null,
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "ccc764ad72a84c1c9e4e290827d7f983",
+      "seq": 3,
+      "etype": "ROUND_STARTED",
+      "payload": {
+        "round_id": "b489ed75c80940288dd0ffba53d1a94b-R1",
+        "round_no": 1,
+        "participants": [
+          "玩家1"
+        ]
+      },
+      "event_time": 1789057364.5003986,
+      "observed_at": 1789057364.5003986,
+      "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+      "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+      "round_id": "b489ed75c80940288dd0ffba53d1a94b-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "5a858d95ed204ba78027f2b687dac807",
+      "seq": 4,
+      "etype": "CARD_DEALT",
+      "payload": {
+        "seat": "庄家",
+        "rank": "6",
+        "suit": null,
+        "track_id": null,
+        "hand_id": "R1-庄家-H1",
+        "face_state": "shown"
+      },
+      "event_time": 1789057364.511553,
+      "observed_at": 1789057364.511553,
+      "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+      "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+      "round_id": "b489ed75c80940288dd0ffba53d1a94b-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "7df7e7f633cb4225be1be48fb8b54f79",
+      "seq": 5,
+      "etype": "CARD_DEALT",
+      "payload": {
+        "seat": "庄家",
+        "rank": null,
+        "suit": null,
+        "track_id": null,
+        "hand_id": "R1-庄家-H1",
+        "face_state": "hidden"
+      },
+      "event_time": 1789057364.5223415,
+      "observed_at": 1789057364.5223415,
+      "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+      "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+      "round_id": "b489ed75c80940288dd0ffba53d1a94b-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "de566e7f05a24a99a8be1dde705f6460",
+      "seq": 6,
+      "etype": "CARD_DEALT",
+      "payload": {
+        "seat": "玩家1",
+        "rank": "8",
+        "suit": null,
+        "track_id": null,
+        "hand_id": "R1-玩家1-H2",
+        "face_state": "shown"
+      },
+      "event_time": 1789057364.5334346,
+      "observed_at": 1789057364.5334346,
+      "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+      "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+      "round_id": "b489ed75c80940288dd0ffba53d1a94b-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "baed6dddf8e14d2c937503ab25694925",
+      "seq": 7,
+      "etype": "CARD_DEALT",
+      "payload": {
+        "seat": "玩家1",
+        "rank": "8",
+        "suit": null,
+        "track_id": null,
+        "hand_id": "R1-玩家1-H2",
+        "face_state": "shown"
+      },
+      "event_time": 1789057364.5426602,
+      "observed_at": 1789057364.5426602,
+      "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+      "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+      "round_id": "b489ed75c80940288dd0ffba53d1a94b-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "d29f9d84b811424589894b8ce72161c8",
+      "seq": 8,
+      "etype": "PLAYER_ACTION",
+      "payload": {
+        "seat": "玩家1",
+        "hand_id": "R1-玩家1-H2",
+        "action": "分牌",
+        "new_hand_id": "R1-玩家1-H3"
+      },
+      "event_time": 1789057365.2130435,
+      "observed_at": 1789057365.2130435,
+      "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+      "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+      "round_id": "b489ed75c80940288dd0ffba53d1a94b-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "20cfb693e9b044ce97b756637ddbbee1",
+      "seq": 9,
+      "etype": "CARD_DEALT",
+      "payload": {
+        "seat": "玩家1",
+        "rank": "10",
+        "suit": null,
+        "track_id": null,
+        "hand_id": "R1-玩家1-H2",
+        "face_state": "shown"
+      },
+      "event_time": 1789057365.9080338,
+      "observed_at": 1789057365.9080338,
+      "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+      "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+      "round_id": "b489ed75c80940288dd0ffba53d1a94b-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "fd008225d7944fe0ab0141cfb9154811",
+      "seq": 10,
+      "etype": "CARD_DEALT",
+      "payload": {
+        "seat": "玩家1",
+        "rank": "10",
+        "suit": null,
+        "track_id": null,
+        "hand_id": "R1-玩家1-H2",
+        "face_state": "shown"
+      },
+      "event_time": 1789057366.5575776,
+      "observed_at": 1789057366.5575776,
+      "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+      "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+      "round_id": "b489ed75c80940288dd0ffba53d1a94b-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    },
+    {
+      "event_id": "72ae02e1bb0844298828991ae282ef97",
+      "seq": 11,
+      "etype": "CARD_DEALT",
+      "payload": {
+        "seat": "玩家1",
+        "rank": "9",
+        "suit": null,
+        "track_id": null,
+        "hand_id": "R1-玩家1-H3",
+        "face_state": "shown"
+      },
+      "event_time": 1789057367.1635165,
+      "observed_at": 1789057367.1635165,
+      "session_id": "fce4a42a3c1348fe99a8c800f713087b",
+      "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+      "round_id": "b489ed75c80940288dd0ffba53d1a94b-R1",
+      "source": "自建模拟器",
+      "confirm_status": "已确认",
+      "evidence": null,
+      "rule_version": "1"
+    }
+  ],
+  "shoe_snapshots": [
+    {
+      "shoe_id": "b489ed75c80940288dd0ffba53d1a94b",
+      "n_decks": 7,
+      "rules_snapshot": {
+        "american_hole_card": true,
+        "blackjack_payout": [
+          3,
+          2
+        ],
+        "burn_cards_known": true,
+        "check_bj_when": "before_player_actions_A_T",
+        "confirm_status": "已确认",
+        "cut_shuffle_note": null,
+        "dealer_bj_extra_bet_rule": "all_bets_lost",
+        "dealer_soft17": "S17",
+        "double_after_split": false,
+        "double_on_totals": null,
+        "game_name": "单玩家两手顺序分牌研究",
+        "initial_burn_count": 0,
+        "max_split_hands": 2,
+        "n_decks": 7,
+        "n_seats": 7,
+        "profile_id": "research-s17-us-peek-two-sequential-v1",
+        "remark": "首手完成后才给第二手补第二张；无再分/无DAS/分A一张；原注合计净收益",
+        "resplit_aces": false,
+        "rule_source": "用户主动选择的自建研究桌规，不代表平台规则",
+        "shoe_model": "finite_no_replacement",
+        "split_ace_hit_once": true,
+        "split_deal_order": "sequential_complete_first",
+        "split_match": "same_rank",
+        "start_from_new_shoe": true,
+        "surrender": "late",
+        "table_id": null,
+        "vendor": "自建研究模板",
+        "verify_date": null,
+        "version": 1
+      },
+      "integrity_state": "可分析",
+      "conservation_ok": true,
+      "conservation_note": "守恒正常：已说明移除 7/364，物理剩余 357",
+      "remaining": {
+        "A": 28,
+        "2": 28,
+        "3": 28,
+        "4": 28,
+        "5": 28,
+        "6": 27,
+        "7": 28,
+        "8": 26,
+        "9": 27,
+        "10": 26,
+        "J": 28,
+        "Q": 28,
+        "K": 28
+      },
+      "exact_out": {
+        "A": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 1,
+        "7": 0,
+        "8": 2,
+        "9": 1,
+        "10": 2,
+        "J": 0,
+        "Q": 0,
+        "K": 0
+      },
+      "t_bucket_out": 0,
+      "unrevealed_out": 1,
+      "burn_unknown": 0,
+      "gap": false,
+      "group_remaining": {
+        "small": 139,
+        "neutral": 81,
+        "big": 138
+      },
+      "round_no": 1,
+      "phase": "进行中",
+      "closed": false,
+      "unsettled_rounds": [],
+      "unresolved": {
+        "7df7e7f633cb4225be1be48fb8b54f79": {
+          "seat": "庄家",
+          "hand_id": "R1-庄家-H1",
+          "track_id": null,
+          "face_state": "hidden",
+          "round_id": "b489ed75c80940288dd0ffba53d1a94b-R1"
+        }
+      },
+      "pending_candidates": 0,
+      "settlements": []
+    }
+  ]
+}

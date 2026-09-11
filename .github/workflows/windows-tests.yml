@@ -1,4 +1,4 @@
-name: Windows recording and V0.2a analysis
+name: Windows recording and V0.2b1 analysis
 
 on:
   push:
@@ -18,11 +18,19 @@ jobs:
       PYTHONIOENCODING: utf-8
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.14'
+      - name: Verify exact tested commit
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -c "import os,subprocess; actual=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(); print('TESTED_HEAD='+actual); assert actual==os.environ['EXPECTED_HEAD']"
       - name: Core self-check
         run: python -m blackjack_lab.main --check
+      - name: Prepare source-bound Windows split engine
+        run: python -m blackjack_lab.main --prepare-split
       - name: Unit, persistence, recovery and Tk workflow tests
         run: python -m unittest discover -s tests -v
       - name: Compile source and tests
@@ -31,3 +39,5 @@ jobs:
         run: python -c "from scripts.analysis_checks import monte_carlo; r=monte_carlo(6, samples=2500); print(r); assert all(a['passed'] for a in r['actions'].values())"
       - name: Original review handoff and 48 supplementary scenarios
         run: python scripts/verify_review_handoff.py
+      - name: Original N1 supplemental snapshot tests
+        run: python -m unittest discover -s docs/acceptance/n1-20260910-220300-9f6f68/original -p test_snapshot_shape.py -v

@@ -92,7 +92,7 @@ def calculate_split(snapshot, request_id, budget_seconds):
             method='exact_finite_shared_shoe_float64', approximation=False, numerical_tolerance=1e-10,
             decision_tolerance=1e-12, current_investment=1 if snapshot.pre_split else 2,
             active_hand_id=snapshot.active_hand_id,
-            **{k:numbers[k] for k in ('nodes','backend','backend_source_sha256','peak_memory','caches') if k in numbers})
+            **{k:numbers[k] for k in ('nodes','backend','backend_source_sha256','backend_binary_sha256','peak_memory','caches','information_bound_prunes') if k in numbers})
     except CalculationStopped as error:
         result.update(status=TIMEOUT, reason_code=str(error), reason='请求预算到期，分牌比较未完成；未发布部分搜索值')
     except InsufficientCards as error:

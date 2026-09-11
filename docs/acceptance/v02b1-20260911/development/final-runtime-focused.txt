@@ -1,0 +1,29 @@
+test_ace_soft_transition_and_negative_peek (tests.test_split_math.TestSplitMath.test_ace_soft_transition_and_negative_peek) ... ok
+test_first_bust_still_values_second_hand (tests.test_split_math.TestSplitMath.test_first_bust_still_values_second_hand) ... ok
+test_information_gain_bound_is_exercised_and_matches_complete_fraction_search (tests.test_split_math.TestSplitMath.test_information_gain_bound_is_exercised_and_matches_complete_fraction_search) ... ok
+test_physical_worlds_match_joint_and_total_payoffs (tests.test_split_math.TestSplitMath.test_physical_worlds_match_joint_and_total_payoffs) ... ok
+test_safe_low_dominance_with_fraction_worlds_at_64_card_threshold (tests.test_split_math.TestSplitMath.test_safe_low_dominance_with_fraction_worlds_at_64_card_threshold) ... ok
+test_shared_dealer_is_not_independent_convolution (tests.test_split_math.TestSplitMath.test_shared_dealer_is_not_independent_convolution) ... ok
+test_split_ace_21_is_ordinary_two_units (tests.test_split_math.TestSplitMath.test_split_ace_21_is_ordinary_two_units) ... ok
+test_timeout_does_not_return_partial_ev (tests.test_split_math.TestSplitMath.test_timeout_does_not_return_partial_ev) ... ok
+test_wrong_order_and_insufficient_physical_cards_are_explicit (tests.test_split_math.TestSplitMath.test_wrong_order_and_insufficient_physical_cards_are_explicit) ... ok
+test_b01_b02_b03_actual_split_record_update_and_save (tests.test_split_workflow.TestSplitTk.test_b01_b02_b03_actual_split_record_update_and_save) ... ok
+test_b09_failed_refresh_drops_old_split_values_and_future_publication (tests.test_split_workflow.TestSplitTk.test_b09_failed_refresh_drops_old_split_values_and_future_publication) ... ok
+test_b10_b14_history_recomputes_original_prefix_separately (tests.test_split_workflow.TestSplitTk.test_b10_b14_history_recomputes_original_prefix_separately) ... ok
+test_b12_save_failure_cancel_and_timeout_keep_events (tests.test_split_workflow.TestSplitTk.test_b12_save_failure_cancel_and_timeout_keep_events) ... ok
+test_b01_three_deck_sizes_compare_all_pre_split_actions (tests.test_split_workflow.TestSplitWorkflow.test_b01_three_deck_sizes_compare_all_pre_split_actions) ... ok
+test_b02_first_card_removed_once_origin_stable_and_forced_hit (tests.test_split_workflow.TestSplitWorkflow.test_b02_first_card_removed_once_origin_stable_and_forced_hit) ... ok
+test_b03_b08_first_bust_second_continues_in_total_units (tests.test_split_workflow.TestSplitWorkflow.test_b03_b08_first_bust_second_continues_in_total_units) ... ok
+test_b04_ace_limit_and_both_closed_are_ordinary_21 (tests.test_split_workflow.TestSplitWorkflow.test_b04_ace_limit_and_both_closed_are_ordinary_21) ... ok
+test_b05_original_four_hand_rules_are_not_truncated (tests.test_split_workflow.TestSplitWorkflow.test_b05_original_four_hand_rules_are_not_truncated) ... ok
+test_b06_future_second_card_and_hole_do_not_change_original_prefix (tests.test_split_workflow.TestSplitWorkflow.test_b06_future_second_card_and_hole_do_not_change_original_prefix) ... ok
+test_b11_cross_round_missing_observation_still_blocks_new_template (tests.test_split_workflow.TestSplitWorkflow.test_b11_cross_round_missing_observation_still_blocks_new_template) ... ok
+test_b11_wrong_order_recorded_then_undo_restores_analysis (tests.test_split_workflow.TestSplitWorkflow.test_b11_wrong_order_recorded_then_undo_restores_analysis) ... ok
+test_b13_restart_json_csv_preserve_input_and_origin_events (tests.test_split_workflow.TestSplitWorkflow.test_b13_restart_json_csv_preserve_input_and_origin_events) ... ok
+test_natural_21_presplit_does_not_display_an_illegal_draw_metric (tests.test_split_workflow.TestSplitWorkflow.test_natural_21_presplit_does_not_display_an_illegal_draw_metric) ... ok
+test_raw_rank_pair_guard_rejects_forged_ten_bucket_legality (tests.test_split_workflow.TestSplitWorkflow.test_raw_rank_pair_guard_rejects_forged_ten_bucket_legality) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 10.768s
+
+OK

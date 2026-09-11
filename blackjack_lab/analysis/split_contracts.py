@@ -167,6 +167,9 @@ class SplitAnalysisInput:
         if self.pre_split:
             if self.hands[0].from_split or self.hands[0].closed or self.hands[0].forced_draw:
                 raise ValueError("分牌前输入不是可决策的原手")
+            ranks = self.hands[0].ranks
+            if 'split' in self.legal_actions and (len(ranks)!=2 or ranks[0]!=ranks[1] or ranks[0]=='T'):
+                raise ValueError("分牌需要已确认的同原始牌面，十点汇总桶不能替代牌面配对")
             basis.validate()
         else:
             from dataclasses import replace

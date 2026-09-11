@@ -26,16 +26,47 @@ def source_digest():
 
 
 def build_native(timeout=15):
+    """Serialize publication with an OS mutex, released even after process death."""
+    if os.name != 'nt':
+        raise RuntimeError('分牌加速器当前需要 Windows .NET Framework 4 编译器')
+    started = perf_counter()
+    api = ctypes.WinDLL('kernel32', use_last_error=True)
+    api.CreateMutexW.argtypes = (ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR)
+    api.CreateMutexW.restype = wintypes.HANDLE
+    api.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+    api.ReleaseMutex.argtypes = (wintypes.HANDLE,)
+    api.CloseHandle.argtypes = (wintypes.HANDLE,)
+    name = 'Local\\HakimiBlackjackBuild-' + hashlib.sha256(str(SOURCE.resolve()).encode('utf-8')).hexdigest()
+    handle = api.CreateMutexW(None, False, name)
+    if not handle:
+        raise ctypes.WinError(ctypes.get_last_error())
+    acquired = False
+    try:
+        status = api.WaitForSingleObject(handle, max(1, int(timeout*1000)))
+        acquired = status in (0, 0x80)  # normal or abandoned owner
+        remaining = timeout-(perf_counter()-started)
+        if not acquired or remaining <= 0:
+            raise subprocess.TimeoutExpired('native build lock', timeout)
+        return _build_native_locked(remaining)
+    finally:
+        if acquired:
+            api.ReleaseMutex(handle)
+        api.CloseHandle(handle)
+
+
+def _build_native_locked(timeout):
     if os.name != "nt":
         raise RuntimeError("分牌加速器当前需要 Windows .NET Framework 4 编译器")
     compiler = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "Microsoft.NET/Framework64/v4.0.30319/csc.exe"
-    key = source_digest()
+    source_bytes = SOURCE.read_bytes()
+    key = hashlib.sha256(source_bytes).hexdigest()
     directory = SOURCE.parents[2] / ".local-native" / key
     executable = directory / "SplitEngine.exe"
     receipt = directory / "build.json"
     if executable.is_file() and receipt.is_file():
         saved = json.loads(receipt.read_text(encoding="utf-8"))
-        if saved.get("source_sha256") == key and saved.get("binary_sha256") == hashlib.sha256(executable.read_bytes()).hexdigest():
+        if (saved.get("source_sha256") == key and saved.get("flags") == list(FLAGS)
+                and saved.get("binary_sha256") == hashlib.sha256(executable.read_bytes()).hexdigest()):
             return executable
         raise RuntimeError("本地分牌加速器摘要不匹配；请保留该文件并重新准备新构建目录")
     if not compiler.is_file():
@@ -45,7 +76,9 @@ def build_native(timeout=15):
     # derived artifact for this identical source identity, never user data.
     with tempfile.TemporaryDirectory(prefix="build-", dir=directory) as temporary:
         output = Path(temporary) / "SplitEngine.exe"
-        result = subprocess.run([str(compiler), *FLAGS, "/out:" + str(output), str(SOURCE)],
+        frozen_source = Path(temporary) / 'SplitEngine.cs'
+        frozen_source.write_bytes(source_bytes)
+        result = subprocess.run([str(compiler), *FLAGS, "/out:" + str(output), str(frozen_source)],
                                 capture_output=True, text=True, creationflags=NO_WINDOW, timeout=timeout)
         if result.returncode:
             raise RuntimeError("分牌加速器编译失败：" + result.stdout + result.stderr)
@@ -115,6 +148,7 @@ def solve_native(counts, hands, dealer_up, peek_negative, *, active=0,
     process = job = None
     try:
         executable = build_native(timeout=budget_seconds)
+        binary_digest = hashlib.sha256(executable.read_bytes()).hexdigest()
         remaining = budget_seconds - (perf_counter() - start)
         if remaining <= 0:
             raise CalculationStopped("TIMEOUT")
@@ -142,7 +176,8 @@ def solve_native(counts, hands, dealer_up, peek_negative, *, active=0,
             raise RuntimeError(data.get("error", stderr or "加速器没有完整结果"))
         if process.returncode or perf_counter() - start >= budget_seconds:
             raise CalculationStopped("TIMEOUT")
-        data.update(backend="windows-dotnet-framework-exact", backend_source_sha256=source_digest(),
+        data.update(backend="windows-dotnet-framework-exact", backend_source_sha256=executable.parent.name,
+                    backend_binary_sha256=binary_digest,
                     method="exact_finite_shared_shoe_float64", approximation=False,
                     strategy="sequential-two-hand-total-net-hit-stand-v1", decision_tolerance=1e-12,
                     elapsed_seconds=perf_counter()-start)

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Hakimi Blackjack Lab —— V0.2a 手动录牌与单手分析工作台（Tkinter）。
+"""Hakimi Blackjack Lab —— V0.2b1 手动录牌与顺序分牌分析工作台（Tkinter）。
 
 界面结构遵循开发大纲第 5 节：
 - 顶部：模式、6/7/8 副、规则确认状态、牌靴/轮次、记录完整性、分析状态；
@@ -144,7 +144,7 @@ class BlackjackLabApp(tk.Tk):
         bar = ttk.LabelFrame(self, text="下一牌靴设置（当前锁定快照见状态行）")
         bar.grid(row=0, column=0, sticky="ew", padx=6, pady=4)
 
-        ttk.Label(bar, text=f"V0.2a 手动录牌 · {self.recording_source}").grid(
+        ttk.Label(bar, text=f"V0.2b1 手动录牌 · {self.recording_source}").grid(
             row=0, column=0, sticky="w", padx=4, pady=2)
 
         deck_box = ttk.Frame(bar)
@@ -283,8 +283,8 @@ class BlackjackLabApp(tk.Tk):
         ttk.Label(f, justify=tk.LEFT, text=(
             "手动录牌 / 分牌归属 / 撤销纠错\n"
             "6·7·8副守恒/SQLite恢复/JSON导出\n"
-            "V0.2a：概率 / 单手EV / 快照复盘\n"
-            "分牌EV / 识别 / 捕获尚未支持"),
+            "V0.2b1：单手 / 两手顺序合计EV / 复盘\n"
+            "再分/DAS/多玩家EV/识别捕获未支持"),
             foreground="#555").pack(anchor="w", padx=4, pady=3)
 
         # ---------- 右侧：动作 + 组成 ----------
@@ -320,7 +320,7 @@ class BlackjackLabApp(tk.Tk):
         self.analysis_tabs = ttk.Notebook(right)
         self.analysis_tabs.grid(row=1, column=0, sticky="nsew", padx=3, pady=3)
         self.analysis_panel = AnalysisPanel(self.analysis_tabs, self)
-        self.analysis_tabs.add(self.analysis_panel, text="概率 / 单手EV")
+        self.analysis_tabs.add(self.analysis_panel, text="动作EV / 概率")
         comp_box = ttk.Frame(self.analysis_tabs)
         self.analysis_tabs.add(comp_box, text="牌靴组成")
         self.txt_comp = tk.Text(comp_box, width=38, height=16, wrap=tk.WORD,

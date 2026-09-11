@@ -9,6 +9,10 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
+from concurrent.futures import ThreadPoolExecutor
+import hashlib
+import threading
 
 from blackjack_lab.analysis.native_backend import _Job, NO_WINDOW, build_native, source_digest
 
@@ -26,6 +30,40 @@ def _run_native_probe(marker):
 
 
 class TestSplitProcess(unittest.TestCase):
+    def test_concurrent_preparations_publish_one_consistent_artifact(self):
+        from blackjack_lab.analysis import native_backend as backend
+        with tempfile.TemporaryDirectory() as directory:
+            source=Path(directory)/'lab/analysis/native/SplitEngine.cs'
+            source.parent.mkdir(parents=True)
+            source.write_bytes(backend.SOURCE.read_bytes())
+            barrier=threading.Barrier(4)
+            def prepare(_):
+                barrier.wait()
+                return backend.build_native()
+            with patch.object(backend,'SOURCE',source),ThreadPoolExecutor(max_workers=4) as pool:
+                outputs=list(pool.map(prepare,range(4)))
+            self.assertEqual(len(set(outputs)),1)
+            metadata=json.loads(outputs[0].with_name('build.json').read_text(encoding='utf-8'))
+            self.assertEqual(metadata['binary_sha256'],hashlib.sha256(outputs[0].read_bytes()).hexdigest())
+
+    def test_source_edit_during_build_cannot_relabel_the_completed_result(self):
+        from blackjack_lab.analysis import native_backend as backend
+        with tempfile.TemporaryDirectory() as directory:
+            source=Path(directory)/'lab/analysis/native/SplitEngine.cs'
+            source.parent.mkdir(parents=True)
+            original=backend.SOURCE.read_bytes()
+            source.write_bytes(original)
+            run=subprocess.run
+            def edit_after_capture(command,**kwargs):
+                self.assertEqual(Path(command[-1]).read_bytes(),original)
+                source.write_bytes(original+b'\n// edited after source capture\n')
+                return run(command,**kwargs)
+            with patch.object(backend,'SOURCE',source),patch.object(backend.subprocess,'run',side_effect=edit_after_capture):
+                result=backend.solve_native((0,)*9+(6,),((8,),(8,)),6,False)
+                self.assertEqual(result['backend_source_sha256'],hashlib.sha256(original).hexdigest())
+                self.assertNotEqual(result['backend_source_sha256'],backend.source_digest())
+                self.assertEqual(result['actions']['deal']['ev'],2.)
+
     def test_source_addressed_compiled_artifact_is_verified(self):
         executable=build_native()
         info=json.loads(executable.with_name('build.json').read_text(encoding='utf-8'))

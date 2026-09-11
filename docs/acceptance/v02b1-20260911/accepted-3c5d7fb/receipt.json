@@ -1,0 +1,232 @@
+{
+  "schema": "hakimi-v02b1-acceptance-v1",
+  "timestamp_utc": "2026-09-10T16:26:38.339200+00:00",
+  "identity": {
+    "commit": "3c5d7fb47e2ed942a54a0d522079777fb96c883e",
+    "dirty_worktree": false,
+    "kind": "git"
+  },
+  "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "source_manifest": {
+    ".github/workflows/windows-tests.yml": "552ba0405e59484998bc9c2c99747a6060f83426e18714180babf097cb91577e",
+    "blackjack_lab/__init__.py": "2a7f2c1a5212cf2f13e95faacf04ffc516287d13ac7bb513321e2edc878ab916",
+    "blackjack_lab/analysis/__init__.py": "5922ba9f02301767199135259b5a0f92592878f732e481b68ffb4c1c35e20c24",
+    "blackjack_lab/analysis/actions.py": "db62d08cfe4cfe7da52fd2bf2fdeb690e0b757ce6101501ec3eefeedeb160770",
+    "blackjack_lab/analysis/contracts.py": "6d3a189891a6887139f5f5d783dd076953603a17c03d769f6163df67d9c24578",
+    "blackjack_lab/analysis/information.py": "38c01c366e75fd18bc5bcb288ea4d403104789f9fa08d6c22785accfb4bc00f2",
+    "blackjack_lab/analysis/native/SplitEngine.cs": "88e2cecf760d9075a0be59e082a4a3ddb71d499c3683a3466444ffc05c63c405",
+    "blackjack_lab/analysis/native_backend.py": "7c40fb159821425af99bb48c1ea822bb5373207c21c7c63f3c249329e4064378",
+    "blackjack_lab/analysis/probability.py": "e08237a80407ae2284f4a4fc35c0d85446525080d86261b8d7724c3460c22659",
+    "blackjack_lab/analysis/service.py": "7b6923b79eab5e451633c57881a15bf0d5e1dcaab6c28b29ad2ea6a2bbf82ed3",
+    "blackjack_lab/analysis/split_actions.py": "23e6bb9a437d19a1fd6b7b6f26e4afb943c124326c8ba24097bdb43112fc3c90",
+    "blackjack_lab/analysis/split_contracts.py": "8d20ef8b5b228ddf435badcb90a3ea652b5c89334413c8ed2295604d244e08ef",
+    "blackjack_lab/analysis/split_information.py": "9e0a94092c52674b06586ea18787f9386930fc5581a6a399c92132d4e1cdc861",
+    "blackjack_lab/analysis/split_service.py": "abeb1d7a6fbb9fba6b1668757bab2c92e9013096c894eae19dd2b13bf86581dc",
+    "blackjack_lab/capture/__init__.py": "f3156222606b13cf3570d06bce289f62e3bf778a18921cb989456bfb51d5c996",
+    "blackjack_lab/core/__init__.py": "43bdc873fa77328bed637e21711f8a93a7b437bb15866c7d1b5448be0b5f24fd",
+    "blackjack_lab/core/cards.py": "a302bc9e7b814d8f6a6857acd5089fedf8610a376ae7a43769ba982d8e2a21b6",
+    "blackjack_lab/core/rules.py": "0fc982ec4e2c15aa366d5004fe87e6af60a0816cf570ecd2154b287acfa07b4a",
+    "blackjack_lab/core/shoe.py": "6e4ec77ec6fc94416cc517f4de731dc353b3228cd0e45a9f5dc78417f7a4ee9e",
+    "blackjack_lab/core/table.py": "78081c7582fe5115acbb407340223b71f2cf9cad45503e8aa9263c7742d32582",
+    "blackjack_lab/ledger/__init__.py": "95ac1402dab497c35c216574f98d76a9d518137025c10c4d43f3ebf6d1c34c4f",
+    "blackjack_lab/ledger/events.py": "a4a64a553928807ecf230b2c2787d54f898ba0e4185d1d5c1b580599a3e77403",
+    "blackjack_lab/ledger/ledger.py": "5780761f316632db39639e68b6b08e4bc6286efd9facbac0f44b2fe6099a3c2f",
+    "blackjack_lab/main.py": "13dc6904fbc1dddfde7602ce2f297eb6c8757859ddf2359e3ebf432f328e6325",
+    "blackjack_lab/simulator/__init__.py": "322b7a424ff1a4619678a074894010ab314a491eccac897c623180ce7bec3533",
+    "blackjack_lab/storage/__init__.py": "14c945eba5bb2b1401107dd27eaa5d73ca06b0434b95ea28d3d922fb0627e0a9",
+    "blackjack_lab/storage/analysis_snapshots.py": "6bb7c2ae109f1d8c9c8f9d0672481e4a724495a5cedc364fcda5513a5cd25906",
+    "blackjack_lab/storage/database.py": "de3d5c0b337d082174910550843d7e141440b742a776f07592b2791efae68e68",
+    "blackjack_lab/storage/export.py": "184a4034404e8015f7939a53a53a6ab932ed718e3afb4b3d6879f1b06cd7b95b",
+    "blackjack_lab/storage/safe_files.py": "1c363f55f79e91a8e587ffe3edfec4194230354b01b0a0f61416b923ab5e8ccf",
+    "blackjack_lab/ui/__init__.py": "6952597003836f4b60494daa675ab7598e11fe74c9c24ba68402aedffcb46e78",
+    "blackjack_lab/ui/analysis_panel.py": "04be9d389c369518a9c70e41c385dae138adfdd53c24e6c0275d32b2c153eb14",
+    "blackjack_lab/ui/app.py": "4a241eacd45f20d3c207c1368faf5cd24aa7834b0bb34c1a3e6032f7a8a82ff3",
+    "blackjack_lab/ui/controller.py": "1b62bacdffa641e0bc870bb7eeb2e17fc27c7a124639c7419b2d47ed0bf78a90",
+    "blackjack_lab/ui/split_display.py": "18510d425b2a043e4935f3cb2cf5a08b20d4784e68646f832fd8f947a35965ee",
+    "blackjack_lab/vision/__init__.py": "2f0b2df8201e0d67fed2d9a02d686fac0e4f80f8e9f01348544bb1360e89ea54",
+    "NOTICE.md": "ca072606664981bf33354ef5b4094e0f7f8b63609220aa4e757d360a429860ec",
+    "README.md": "dd8ede58d7a745bbb61eadc0507346b6758246008f10dd5413cb4c00df90578e",
+    "requirements-qa.txt": "1ccbdd739b494b193e5e877c6a55117c133acb9e86339b9b2abec77322ffc9e8",
+    "requirements.txt": "b4d314d5896563be60f580e10352828d9a9a589e60a0f8b2c50e354cf5cf6c2a",
+    "review_tests/original-supplementary-results.json": "e0d904d00e1eb5c3474d221cffafe9fb90a38c6d78394c35d9ebf13d23ce88b3",
+    "review_tests/run_supplementary_math.py": "f653faf54d1a30016952c86cd60bbd0ba165e5c7b400bfd58d364fe9bb57951d",
+    "review_tests/source-provenance.json": "6f8125884892967a216a21c5b098aa0f7f1d9c357f2e71c830954ce67771735d",
+    "review_tests/test_v02a_review_regressions.py": "d9fff919bee93658005dfd23b973f406b612addd6b435c3133726b87901a3a35",
+    "scripts/analysis_checks.py": "a0209e6e95c6b90492c548c0505a7b926179bbfb6308f971c8ad8784af58b2e1",
+    "scripts/review_visual_check.py": "977fecf4cf549b47c3d8892d7be8121657246c7b221a4ea4bc7fd02e40af8428",
+    "scripts/source_identity.py": "0bbecc912116e3a5a9a2fbe4e1682ec3bf4c41624b8d347c7310af0747fc0973",
+    "scripts/split_benchmarks.py": "be260e534f6c56e92d44f71a0bdf9275160cd7b2828e1245d3c5d73cc63d99f0",
+    "scripts/split_ui_check.py": "588fd704392d03b8e01f2993ea45f3c36cdd0045e2c67959b364c0b4ca6c80bd",
+    "scripts/ui_visual_check.py": "0675504e4da08f5db251ab1d710cf48047e9551c144f43c43a5850ae8c4edd5f",
+    "scripts/verify_release.py": "8c97fb2f4b5bab03b6a6a4643ea895714493efe46ac6f27b36af693f21ca8d41",
+    "scripts/verify_review_handoff.py": "b82b25757f9cbea16c5ce13aa76dfb77509437e2ab63c97773d8c10712b385ff",
+    "scripts/verify_split_release.py": "98998dc46142b25eca3358c9a9d21f3aba6bce4078fe4981572cf241c3bf25b8",
+    "tests/__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+    "tests/analysis_reference.py": "334fe6a65d109ae89de3816b872e450890ee72825026d9ac281e1700f2e8fffc",
+    "tests/split_reference.py": "cdd25f64b9801b41e8a5e5ac785f4b9008377a1a72fe65d34d84a5d2510b5206",
+    "tests/test_analysis_integration.py": "e6435006b38f6f7c61b48f7ed3a56503b7c2d10c669df24ed086f67097bf87de",
+    "tests/test_analysis_math.py": "fd1f1b6e9cb5251ea2995f07f7ee0fd33cf17b82769478cffc9dc508528c1428",
+    "tests/test_analysis_prerequisites.py": "bcb973c28a0ba71536bf4a9e3e2438b098742824badc827ec18cba42688a0746",
+    "tests/test_analysis_ui.py": "bac07566e250028a65bdc3e5b2908695dc4d00a6f3df2d98e5418d7790b5ca76",
+    "tests/test_cards.py": "f3ef7c0cd872221d7310836ec3a509b307ff282e729ff5a64053058a2652381a",
+    "tests/test_integration.py": "0ef950a2a2a0bfe47e874e0b0b0171c4b126b1f307ad8982831dd4dad51249ae",
+    "tests/test_ledger.py": "c3ab89dcc4c2b522e80e205a3081ed53c9a5b64759e035a2d073e0345a407cfb",
+    "tests/test_recovery_and_audit.py": "7fef3122a21020732df9cbadaab7672a7d768f67e9a115e780a33bf8d743bac9",
+    "tests/test_round_observation.py": "2b1fcb7655a4da30e7d6746d0fd10f2d05a7677fa8de64620aa3408025a2f8f8",
+    "tests/test_shoe.py": "a0fa7ac939c41017e79ef9c3d685d983a4d793e0b726bddd157202bd199dca83",
+    "tests/test_snapshot_shape.py": "f01cbcd08840896d9cc76942bc82a563053b146b3071d73bf6400c679056451f",
+    "tests/test_split_contracts.py": "9554272c76dbd86368a291a30f4fd078c1de77930ba5efb9af9c1c9a45582c83",
+    "tests/test_split_math.py": "3f9b772362da5750745ccfeee88f67115e28e08f5bd80c7241eea9fbc0caff7f",
+    "tests/test_split_native_single.py": "4d7cac115fe7a509bca91e7606491ffa6a354962254214a3e0be8a6d8b70eada",
+    "tests/test_split_process.py": "cebb1aafc166733af861b48647d157474b18773835f210810ea219e34213dbc1",
+    "tests/test_split_workflow.py": "daf751189cac9cdf5557b7d3a022a7c24d5fff50d40e94a3ac571c4cb59ca86d",
+    "tests/test_storage.py": "f2ffc5448dc2b315958132207850bfcecb290e8a52e7dbf92e33508ee3d1cc97",
+    "tests/test_table.py": "66ef2f91606c5f5ccfa2cbe2f20d9235e9c54d6a42ca31d64a400fe9fd63d5ff",
+    "tests/test_ui_workflow.py": "29a335e578a08c3bce6ec7419654aac6906b4811d68a7d216b9ca9d396a5b34f",
+    "tests/test_v01_regressions.py": "b93f03243e4d580c73f21d53f71da7ed5b5db01c6ede4818b77ef53d37ff6952",
+    "tests/test_v02a_review_regressions.py": "43ee05cd8df8e7fff365ab6e7fc8cbeab1ae5866fb0d4658c1a0fb370de96cd0",
+    "启动界面.bat": "e7bbc9f72b6ea204dda203904a1c2930fa27d613d92523c7e21d875d1cdd923a",
+    "运行测试.bat": "12dbe3253f2331b28fc6d0e7e7ca74898ec0ff5e9704497603b9aeafdc6e4947"
+  },
+  "source_unchanged": true,
+  "checks": [
+    {
+      "name": "selfcheck",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "blackjack_lab.main",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.0970549999983632,
+      "output": "selfcheck.txt",
+      "sha256": "881dfa05ab1579446ec679eea2585c28f51ca057c7135ab992792577babd8d64"
+    },
+    {
+      "name": "prepare-native",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "blackjack_lab.main",
+        "--prepare-split"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.11069800000041141,
+      "output": "prepare-native.txt",
+      "sha256": "c40938dfd29aac2a0d322badaf7b16e567a2da80e453c6ff65a55dc38839c573"
+    },
+    {
+      "name": "full-tests",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 38.0064696999998,
+      "output": "full-tests.txt",
+      "sha256": "28e26d76ea9786bfa651128593d235edfd7f22699919b86b600f6dc37651c74b"
+    },
+    {
+      "name": "compile",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "compileall",
+        "-q",
+        "blackjack_lab",
+        "tests",
+        "scripts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.12379520000104094,
+      "output": "compile.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "original-5-48-4",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/verify_review_handoff.py",
+        "--output",
+        "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2b1\\.local-evidence\\acceptance-v02b1-20260911-002153-6df8da\\original-5-48-4"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.673635799999829,
+      "output": "original-5-48-4.txt",
+      "sha256": "fe747c55e70d299e5fa160f4e24844c248539260f553102e4341546ae874965d"
+    },
+    {
+      "name": "original-n1-four",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "docs/acceptance/n1-20260910-220300-9f6f68/original",
+        "-p",
+        "test_snapshot_shape.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.17595569999866711,
+      "output": "original-n1-four.txt",
+      "sha256": "df43127c991f597cbe87c573c50d5f3f1f7a4d9297fa39eb5245b087709fd0a5"
+    },
+    {
+      "name": "guarded-split-workflows",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "unittest",
+        "tests.test_split_workflow",
+        "tests.test_snapshot_shape",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 9.368003699999463,
+      "output": "guarded-split-workflows.txt",
+      "sha256": "35096323501d0852fc5f806c683047c8d20090e62e2692d11fbd40df00790670"
+    },
+    {
+      "name": "split-ui",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/split_ui_check.py",
+        "--output",
+        "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2b1\\.local-evidence\\acceptance-v02b1-20260911-002153-6df8da\\screens"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 7.112858500000584,
+      "output": "split-ui.txt",
+      "sha256": "8ddea05a89d136e74eba7f90c85e444db83b4e30e4cd2a52d535896b86833bb7"
+    },
+    {
+      "name": "cold-performance",
+      "command": [
+        "C:\\Users\\Administrator\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/split_benchmarks.py",
+        "--output",
+        "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2b1\\.local-evidence\\acceptance-v02b1-20260911-002153-6df8da\\performance",
+        "--compare-dir",
+        "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\implementation-v0.2b1\\.local-evidence\\split-cold-20260910-230534-1338fe"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 227.1685892000005,
+      "output": "cold-performance.txt",
+      "sha256": "1181f2995202c5cb5314737f0f84938e623e19e421c24cf6fd5c27d5de8448e6"
+    }
+  ],
+  "user_database_accessed": false,
+  "data_scope": "Only temporary SQLite and explicitly synthetic input fixtures",
+  "network_scope": "Python socket guard includes spawned Python workers; native code uses local stdin/stdout only. This is not an OS firewall or .NET network-blocking test.",
+  "network_attempts": "",
+  "passed": true
+}

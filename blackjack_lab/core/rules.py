@@ -144,7 +144,8 @@ CAPABILITY_MATRIX = {
     "历史时点/人工纠错/导入恢复": (VERIFIED, "前缀重放不使用后续揭示或纠错；数据库事务写入"),
     "规则纠错分支": (UNSUPPORTED, "改规则请新建牌靴，不修改已锁定快照"),
     "单手停/补/加倍/晚投降EV及净收益分布": (VERIFIED, "S17/3:2/美式检查/零烧牌/单玩家未分牌；补牌后按可见信息继续补或停"),
-    "分牌与多玩家整轮净收益分布": (UNSUPPORTED, "V0.2b；当前合法分牌缺少EV时只能部分比较"),
+    "单玩家两手顺序分牌合计EV与收益分布": (EXPERIMENTAL, "V0.2b1显式模板：共享牌靴/庄家、无再分/无DAS/分A一张；性能与验收见本版回执"),
+    "再分/DAS/多玩家整轮净收益分布": (UNSUPPORTED, "保留录牌；旧四手模板不截断为两手，缺能力时仅部分比较"),
     "分析快照/请求取消/超时/过期/历史复算": (VERIFIED, "独立请求进程、事件前缀身份、不可覆盖的JSON旁路快照"),
     "本地牌面识别/屏幕捕获": (UNSUPPORTED, "V0.3/V0.4，本版仍为手动录入"),
     "实盘平台适配（含 Stake）": (UNSUPPORTED, "须单独核对平台条款与授权，默认禁用"),
@@ -153,7 +154,7 @@ CAPABILITY_MATRIX = {
 
 def capability_report() -> str:
     """生成可读的能力矩阵文本（供界面与文档使用）。"""
-    lines = ["规则能力矩阵（V0.2a）", "=" * 36]
+    lines = ["规则能力矩阵（V0.2b1）", "=" * 36]
     for name, (status, note) in CAPABILITY_MATRIX.items():
         lines.append(f"[{status}] {name} —— {note}")
     return "\n".join(lines)
