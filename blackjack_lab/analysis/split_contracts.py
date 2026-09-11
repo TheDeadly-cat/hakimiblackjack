@@ -8,10 +8,13 @@ import json
 from .contracts import AnalysisInput, canonical, digest, research_rules
 
 SPLIT_PROFILE = "research-s17-us-peek-two-sequential-v1"
+DAS_PROFILE = "research-s17-us-peek-two-sequential-das-v1"
 SPLIT_INPUT_SCHEMA = "hakimi-split-analysis-input-v1"
 SPLIT_RESULT_SCHEMA = "hakimi-analysis-result-v2"
 SPLIT_ENGINE = "v0.2b1-finite-two-hand-1"
+DAS_ENGINE = "v0.2b2-finite-two-hand-das-1"
 SPLIT_STRATEGY = "sequential-two-hand-total-net-hit-stand-v1"
+DAS_STRATEGY = "sequential-two-hand-total-net-das-v1"
 SPLIT_ORDER = "sequential_complete_first"
 HARD_BUDGET_SECONDS = 5.0
 P95_TARGET_SECONDS = 2.0
@@ -28,11 +31,40 @@ def split_research_rules(n_decks=6, surrender="late"):
     return rules
 
 
+def das_research_rules(n_decks=6, surrender="late"):
+    rules = split_research_rules(n_decks, surrender)
+    rules.profile_id = DAS_PROFILE
+    rules.game_name = "单玩家两手顺序分牌DAS研究"
+    rules.double_after_split = True
+    rules.remark = "首手完成后才给第二手补第二张；无再分/非A允许DAS/分A一张；原注合计净收益"
+    return rules
+
+
 def supported_split_rules(rules):
     return (rules.profile_id == SPLIT_PROFILE and rules.version == 1
             and rules.max_split_hands == 2 and rules.split_deal_order == SPLIT_ORDER
             and rules.split_match == "same_rank" and rules.double_after_split is False
             and rules.resplit_aces is False and rules.split_ace_hit_once is True)
+
+
+def supported_das_rules(rules):
+    return (rules.profile_id == DAS_PROFILE and rules.version == 1
+            and rules.max_split_hands == 2 and rules.split_deal_order == SPLIT_ORDER
+            and rules.split_match == "same_rank" and rules.double_after_split is True
+            and rules.resplit_aces is False and rules.split_ace_hit_once is True)
+
+
+def _hand_can_das(hand):
+    if hand.split_ace or hand.bet_units != 1 or len(hand.ranks) != 2:
+        return False
+    score = sum(hand.values)
+    aces = hand.values.count(1)
+    if 1 in hand.values and score <= 11:
+        score += 10
+    while score > 21 and aces:
+        score -= 10
+        aces -= 1
+    return score < 21
 
 
 @dataclass(frozen=True)
@@ -53,7 +85,8 @@ class SplitHand:
     def values(self):
         return tuple(VALUES[r] for r in self.ranks)
 
-    def validate(self):
+    def validate(self, allow_das=False):
+        allowed_units = (1, 2) if allow_das else (1,)
         if (not isinstance(self.hand_id, str) or not self.hand_id
                 or self.parent_id is not None and (not isinstance(self.parent_id, str) or not self.parent_id)
                 or any(type(v) is not tuple for v in (self.ranks, self.card_event_ids, self.origin_ranks, self.origin_event_ids))
@@ -62,7 +95,7 @@ class SplitHand:
                 or any(not isinstance(v, str) or not v for v in self.card_event_ids)
                 or len(set(self.card_event_ids)) != len(self.card_event_ids)
                 or any(type(v) is not bool for v in (self.from_split, self.split_ace, self.closed, self.forced_draw))
-                or type(self.bet_units) is not int or self.bet_units != 1):
+                or type(self.bet_units) is not int or self.bet_units not in allowed_units):
             raise ValueError("分牌手身份、原始牌面或投入无效")
         length = 1 if self.from_split else 2
         if (len(self.origin_ranks) != length or self.origin_ranks != self.ranks[:length]
@@ -79,6 +112,13 @@ class SplitHand:
             score += 10
         if self.from_split and (score >= 21 or self.split_ace and len(self.ranks) == 2) and not self.closed:
             raise ValueError("已达终点的分牌手必须闭合")
+        if allow_das and self.bet_units == 2:
+            if self.split_ace or len(self.ranks) == 1:
+                raise ValueError("分A或单张手不能处于已DAS注额")
+            if len(self.ranks) == 2 and not self.forced_draw:
+                raise ValueError("已选DAS后必须等待唯一补牌")
+            if len(self.ranks) >= 3 and not self.closed:
+                raise ValueError("DAS补牌后必须闭合")
 
     @classmethod
     def from_dict(cls, data):
@@ -144,13 +184,21 @@ class SplitAnalysisInput:
         from ..core.rules import RuleProfile
         if type(self.dealer_up) is not int or not 1 <= self.dealer_up <= 10:
             raise ValueError("庄家明牌点值无效")
-        if self.schema != SPLIT_INPUT_SCHEMA or not supported_split_rules(RuleProfile.from_json(self.rules_json)):
+        rules = RuleProfile.from_json(self.rules_json)
+        is_das = supported_das_rules(rules)
+        if self.schema != SPLIT_INPUT_SCHEMA or not (supported_split_rules(rules) or is_das):
             raise ValueError("不是已声明的两手顺序研究模板；禁止把旧四手规则截成两手")
+        if is_das:
+            if (self.engine_version != DAS_ENGINE or self.strategy_version != DAS_STRATEGY
+                    or "DAS-non-ace" not in self.support_scope):
+                raise ValueError("DAS模板必须使用已声明的DAS引擎、策略与支持范围")
+        elif self.engine_version != SPLIT_ENGINE or self.strategy_version != SPLIT_STRATEGY:
+            raise ValueError("无DAS模板必须使用b1引擎与策略")
         if (any(type(v) is not tuple for v in (self.hands, self.pending_hand_ids, self.counts, self.legal_actions, self.uncertain_actions))
                 or len(self.hands) not in (1, 2) or any(type(h) is not SplitHand for h in self.hands)):
             raise ValueError("分牌输入必须包含不可变的一手或两手")
         for h in self.hands:
-            h.validate()
+            h.validate(allow_das=is_das)
         ids = tuple(h.hand_id for h in self.hands)
         cards = tuple(e for h in self.hands for e in h.card_event_ids)
         if len(set(ids)) != len(ids) or self.hand_id not in ids or len(set(cards)) != len(cards):
@@ -165,7 +213,7 @@ class SplitAnalysisInput:
         # mapping split actions into single-hand calculations.
         basis = self.single_input()
         if self.pre_split:
-            if self.hands[0].from_split or self.hands[0].closed or self.hands[0].forced_draw:
+            if self.hands[0].from_split or self.hands[0].closed or self.hands[0].forced_draw or self.hands[0].bet_units != 1:
                 raise ValueError("分牌前输入不是可决策的原手")
             ranks = self.hands[0].ranks
             if 'split' in self.legal_actions and (len(ranks)!=2 or ranks[0]!=ranks[1] or ranks[0]=='T'):
@@ -182,8 +230,14 @@ class SplitAnalysisInput:
             if self.active_index == 0 and len(self.hands[1].ranks) != 1:
                 raise ValueError("不得包含第二手尚未轮到的未来牌")
             active = self.hands[self.active_index] if self.active_index < 2 else None
-            expected = (("complete",) if active is None else ("deal",) if active.forced_draw
-                        else ("stand", "hit"))
+            if active is None:
+                expected = ("complete",)
+            elif active.forced_draw:
+                expected = ("deal",)
+            elif is_das and _hand_can_das(active):
+                expected = ("stand", "hit", "double")
+            else:
+                expected = ("stand", "hit")
             if self.legal_actions != expected or self.uncertain_actions:
                 raise ValueError("分牌后的动作必须按当前行动手和强制补牌状态计算")
         excluded = 9 if self.peek_negative and self.dealer_up == 1 else 0 if self.peek_negative and self.dealer_up == 10 else None
