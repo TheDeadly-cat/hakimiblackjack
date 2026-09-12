@@ -47,7 +47,7 @@ class TestDasEngineMatchesReference(unittest.TestCase):
         result = solve_split_counts(
             counts_of(cards), hands, up, peek, active=active, split_aces=aces,
             allow_das=allow_das, stakes=stakes,
-            force_active=awaiting == "double" or (active < 2 and len(hands[active]) == 1),
+            force_active=awaiting in ("double", "deal") or (active < 2 and len(hands[active]) == 1),
             force_close=awaiting == "double")
         self.assertEqual(set(result["actions"]), set(expected))
         if allow_das:
@@ -81,6 +81,8 @@ class TestDasEngineMatchesReference(unittest.TestCase):
         self.compare((8, 8, 9, 9, 10, 10), ((8, 8, 10), (8,)), 6, active=1, stakes=(2, 1))
         self.compare((5, 5, 10, 10, 9, 9), ((10, 10), (6,)), 6)
         self.compare((10,) * 6, ((10, 1), (10,)), 6, active=0)
+        self.compare((8,) * 6, ((2, 10, 10), (2, 3)), 6, peek=False, active=1, awaiting="deal")
+        self.compare((8,) * 8, ((2, 3), (2,)), 6, peek=False, awaiting="deal")
 
     def test_das_does_not_use_b1_information_bound(self):
         result = solve_split_counts(

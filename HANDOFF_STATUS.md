@@ -1,5 +1,21 @@
 # 项目接手状态
 
+更新时间：2026-09-11（T8 进行中：R-DAS-01 补牌等待不得再开 DAS；未授权不合入）
+执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
+当前任务ID：T8 DAS pending-hit 语义修复
+产品 `main`：`bb8674b504d855cd2e810be89fbd3cbdcb40400d`（#9 T6 + #10 T7 已合并；与 T7 `7a68563` 同树）。审查包若仍写 #9/#10 待合、`main=a071ed55`，以本段为准。
+工作分支：`handoff/t8-das-pending-hit`（本轮提交并开 PR）。**不要**重做 T5，也不要把 Downloads 里过期的「T5下一单」当新任务。未授权不合入。
+本轮允许：C# 用牌张数区分分牌第二张与普通补牌；生产引擎/策略升为 `das-2`/`das-v2`；投入上界与参考对齐；旧 `das-1` 快照只读。禁止改旧 b1 模板、旧 `tests/split_reference.py`、T5 `tests/das_contract.py` 参考身份、1e-10/1e-12、5 秒预算。未授权不 merge / force-push。
+
+## 当前活动摘要（T8）
+- 审查包 R-DAS-01（P1）：`forced_draw = len==1 or awaiting_hit` 把普通补牌等待当成了分牌第二张，C# 发完后按 `canDas=!aces && ns<21 && stake==1` 重新打开 DAS。直接录入第三张则禁止 DAS，两条路径不一致。
+- R-DAS-02（P2）：分 A 的 split 上界曾写成 2；两张牌的补牌等待仍把当前手算进此后可能 DAS。
+- R-DAS-03：DAS 专用性能矩阵仍未跑，不得用旧 318 冷请求换签。
+- 修复要点：`CanDasAfterDeal(nCards==1 && ns<21 && stake==1)`；生产身份 `v0.2b2-finite-two-hand-das-2` / `sequential-two-hand-total-net-das-v2`。初始第二张仍可 DAS（夹具 EV=4）；已选 DAS 仍 stake=2 `force_close`（夹具 EV=1）。
+- 本机 `318` 项 unittest 已通过。下一动作：PR CI 与合入授权。共享 `main` 在合入前仍含 P1。
+
+# 历史接手（T1b/T2b，保留原文）
+
 更新时间：2026-09-11（T1b/T2b 已推送；PR #8 待 CI 与合入）
 执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
 当前任务ID：T1b+T2b 交付 + T5 并行

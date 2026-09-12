@@ -72,8 +72,9 @@ def pair_payoff(scores, stakes, dealer, dealer_natural):
 def remaining_das_hands(index, hands, stakes, split_aces, allow_das, action):
     """Upper bound on extra DAS units after this action, not a proved option set.
 
-    stand/hit forgo this hand's DAS. double spends it. deal/complete keep this
-    hand in the bound when its stake is still 1 and it is not already ineligible.
+    stand/hit forgo this hand's DAS. double spends it. A 1-card deal keeps this
+    hand in the bound. A 2-card deal (hit pending or DAS unique card) does not;
+    the current hand is no longer eligible after that card arrives.
     """
     if not allow_das or split_aces:
         return 0
@@ -82,6 +83,8 @@ def remaining_das_hands(index, hands, stakes, split_aces, allow_das, action):
         if stakes[i] == 1:
             later += 1
     if action in ("stand", "hit", "double"):
+        return later
+    if action == "deal" and index < 2 and len(hands[index]) >= 2:
         return later
     if index < 2 and stakes[index] == 1:
         hand = hands[index]

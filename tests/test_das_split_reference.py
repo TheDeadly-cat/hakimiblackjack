@@ -107,6 +107,17 @@ class TestDasLegalActions(unittest.TestCase):
         self.assertEqual(result["deal"]["possible_future_additional"], 2)
         self.assertEqual(result["deal"]["max_final_investment"], 4)
 
+    def test_hit_pending_two_card_deal_does_not_keep_current_das(self):
+        second = das_split_reference((8,) * 6, ((2, 10, 10), (2, 3)), 6, peek=False,
+                                     active=1, awaiting="deal")
+        self.assertEqual(second["deal"]["possible_future_additional"], 0)
+        first = das_split_reference((8,) * 8, ((2, 3), (2,)), 6, peek=False, awaiting="deal")
+        self.assertEqual(first["deal"]["possible_future_additional"], 1)
+
+    def test_split_aces_bound_is_zero(self):
+        result = das_split_reference((10,) * 6, ((1,), (1,)), 6, split_aces=True)
+        self.assertEqual(result["deal"]["possible_future_additional"], 0)
+
 
 class TestDasPayoffSupport(unittest.TestCase):
     def test_double_action_uses_doubled_first_hand_support(self):
