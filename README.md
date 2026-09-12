@@ -1,8 +1,9 @@
-# Hakimi Blackjack Lab — V0.2b1
+# Hakimi Blackjack Lab — 单玩家两手顺序分析（含显式 DAS 模板）
 
 **分牌前比较动作，分牌后逐张更新当前操作、原始投注的合计 EV 和净收益分布，并保存历史复盘。**
 
-软件版本 `0.2.0b1`。保留 Python、Tkinter 和 SQLite，新增单玩家两手顺序分牌。没有多玩家 EV、再分、识别、捕获或真实平台接入。两手 DAS 只在显式 V0.2b2 模板下计算，不会把旧无 DAS 快照改写成新引擎。数学与工作流验证、目标机性能、CI 和交付证据分别报告，不把测试通过解释为获利保证。
+产品显示版本 `0.2.0b1`。规则模板、求解引擎是另一套身份：无 DAS 为 `v0.2b1-finite-two-hand-1`；两手 DAS 生产引擎为 `v0.2b2-finite-two-hand-das-2`。保留 Python、Tkinter 和 SQLite。没有多玩家 EV、再分、识别、捕获或真实平台接入。两手 DAS **只在显式 V0.2b2 模板**下计算，不会把旧无 DAS 快照改写成新引擎。数学与工作流验证、目标机性能、CI 和交付证据分别报告；318 项 unittest、旧 b1 318 冷请求、DAS 336 矩阵不能互相换签。不把测试通过解释为获利保证。Windows DAS 336 门禁与干净运行副本的做法见 [V0.2b2 验收与交付](docs/V0.2b2-验收与交付.md)。
+
 
 ## 开始使用
 
@@ -14,7 +15,7 @@ Windows 64 位 / Python 3.10+（含 Tkinter）。Python 主程序使用标准库
 python -m blackjack_lab.main
 ```
 
-第一次可以导入 `fixtures/v02b1/split-eight-before.json`，然后点右侧“计算当前手牌”。还可导入 `split-eight-first-bust.json` 查看首手爆牌后继续第二手，或 `split-aces-ordinary-21.json` 查看分A的普通21结算期望。这些都是标记为自建模拟器的数据，底牌仍未知；不是平台记录或投注建议。原单手示例仍在 `fixtures/v02a/`。
+第一次可以导入 `fixtures/v02b1/split-eight-before.json`，然后点右侧“计算当前手牌”。还可导入 `split-eight-first-bust.json` 查看首手爆牌后继续第二手，或 `split-aces-ordinary-21.json` 查看分A的普通21结算期望。DAS 合成示例见 `fixtures/v02b2/`。这些都是标记为自建模拟器的数据，底牌仍未知；不是平台记录或投注建议。原单手示例仍在 `fixtures/v02a/`。
 
 自己录入时：
 
@@ -39,9 +40,9 @@ python -m blackjack_lab.main
 - 旧四手模板仍仅作原单手分析，合法分牌缺少 EV 时显示部分比较，不静默截断为两手。全部适用动作完成且超过数值区分阈值时才标示模型下 EV 最高；强制发牌或等待庄家属于确定流程。
 - 全部动作 EV 为负时会明确提示。较高可能只意味着少亏；当前手牌 EV **不等于下一轮开局优势**，本版不输出注额建议。
 - 未知起靴、未知初始烧牌数、漏牌、待确认牌或未支持规则会阻止相应精确分析。旧规则中没有初始烧牌数字，不会自动当零。
-- H17、6:5、非零未知烧牌、其他底牌规则、其他分牌顺序、再分/DAS 和多玩家分析仍不支持；保留真实记录，不套用研究模板代算。
+- H17、6:5、非零未知烧牌、其他底牌规则、其他分牌顺序、再分和多玩家分析仍不支持；未声明的旧四手 DAS 组合也不是本契约。保留真实记录，不套用研究模板代算。
 
-两手规则、不可变输入、独立参考和预定性能门槛见 [V0.2b1 数学与性能契约](docs/V0.2b1数学与性能契约.md)。原单手定义仍见 [V0.2a 数学契约](docs/V0.2a数学契约.md)，完整路线见 [调整版r1](docs/planning/开发大纲调整版-r1-20260910.md)。
+两手规则、不可变输入、独立参考和预定性能门槛见 [V0.2b1 数学与性能契约](docs/V0.2b1数学与性能契约.md) 与 [V0.2b2 DAS 契约](docs/V0.2b2-DAS契约.md)。DAS 验收命令见 [V0.2b2 验收与交付](docs/V0.2b2-验收与交付.md)。原单手定义仍见 [V0.2a 数学契约](docs/V0.2a数学契约.md)，完整路线见 [调整版r1](docs/planning/开发大纲调整版-r1-20260910.md)。
 
 ## 记录、保存与恢复
 
@@ -69,7 +70,14 @@ python -m blackjack_lab.main --check-environment
 python -m compileall -q blackjack_lab tests scripts
 python scripts/verify_review_handoff.py
 python scripts/split_benchmarks.py
+python scripts/das_benchmarks.py
+python scripts/make_portable_copy.py --require-clean
+python scripts/verify_das_release.py
+python scripts/fetch_possibly_wrong.py
+python scripts/compare_possibly_wrong.py --output .local-evidence/external-pw-<唯一目录>
 ```
+
+后两步下载并运行 GPL 的官方 `strategy.exe`，**不是产品的一部分**，也不进入 CI。缺少该二进制时 unittest 仍应通过。做法见 [V0.2b2 外部对照](docs/V0.2b2-外部对照.md)。
 
 原 V0.2a 回归与截图验收脚本（不能代替新增分牌工作流/性能验收，截图使用可选开发依赖 Pillow）：
 
@@ -80,7 +88,7 @@ python scripts/verify_release.py
 
 每次在 `.local-evidence/acceptance-v02a-时间-随机标识/` 创建独立目录，不覆盖原报告。包含真实命令、退出码、源文件哈希、独立小牌靴有理数验证、禁止 socket 网络连接的独立进程工作流、固定种子模拟、目标机延迟/内存和真实窗口截图。`--output` 可指定新的目录，已存在目录会被拒绝。
 
-新分牌冷请求脚本 `scripts/split_benchmarks.py` 固定300个分牌前案例（3种副数×10种对子×10种庄家）及18个动态前缀；保留全部输入/输出、超时/失败、p50/p95/最大及峰值内存。5秒硬请求预算和2秒p95目标不随结果修改，旧单手性能不能替代分牌测量。独立 Fraction 参考逐联合收益格和合计格使用 `1e-10` 门槛；Windows Job Object 检查包含强制终止 Python 工作进程后清理数值子进程。
+新分牌冷请求脚本 `scripts/split_benchmarks.py` 固定300个无 DAS 分牌前案例及18个动态前缀。DAS 专属矩阵是 `scripts/das_benchmarks.py` 的 336 条（300 分牌前 + 36 动态），与 unittest 项数和旧 b1 318 冷请求都不是同一份证据。5秒硬请求预算和2秒p95目标不随结果修改。
 
 原 V0.1/V0.2a 文档、首轮失败输出与旧回执保留为历史证据。当前能力以本 README 和本版验收回执为准。许可证边界见 `NOTICE.md`。没有平台适配、自动下注、云端识牌或实时捕获。
 

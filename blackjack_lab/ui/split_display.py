@@ -1,6 +1,6 @@
 """Chinese display adapter for the total objective; no computation in widgets."""
 from ..analysis.contracts import AVAILABLE, STATUS_ZH
-from ..analysis.split_contracts import is_das_engine
+from ..analysis.split_contracts import DAS_ENGINE_LEGACY, is_das_engine
 from ..analysis.split_service import SPLIT_ACTION_ZH
 
 
@@ -17,6 +17,8 @@ def format_split_result(result, historical=False):
         details.append(f"第{i}手 · {' '.join(hand['ranks'])} · {state} · 注额{stake}")
     if historical:
         lines.append('原时点结果，不代表当前输入')
+    if result.get('engine_version') == DAS_ENGINE_LEGACY:
+        lines.append('旧算法历史结果：部分普通补牌等待场景存在已知问题，数值保留供审计，不代表重新认证；请按原事件前缀另存复算。')
     if result['status'] != AVAILABLE:
         lines.append(f"{STATUS_ZH.get(result['status'],result['status'])}：{result['reason']}")
         return '\n'.join(lines)
