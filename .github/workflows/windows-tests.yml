@@ -61,7 +61,8 @@ jobs:
           EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python -c "import os,subprocess; actual=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(); print('VISION_TESTED_HEAD='+actual); assert actual==os.environ['EXPECTED_HEAD']"
       - name: Install optional image and annotation dependencies without WGC
-        run: python -m pip install --only-binary=:all: --index-url https://pypi.org/simple -r requirements-vision.txt
+        run: |
+          python -m pip install --only-binary=:all: --index-url https://pypi.org/simple -r requirements-vision.txt
       - name: Check the single OpenCV distribution and dependency versions
         run: python -c "import cv2,numpy,PIL,importlib.metadata as m; names={d.metadata['Name'].lower() for d in m.distributions()}; assert 'opencv-python-headless' not in names; assert 'windows-capture' not in names; print('cv2='+cv2.__version__+' numpy='+numpy.__version__+' Pillow='+PIL.__version__); assert m.version('opencv-python')=='5.0.0.93'; assert numpy.__version__=='2.4.6'; assert PIL.__version__=='12.2.0'"
       - name: Synthetic recognition, dataset, model selection, and manual confirmation contracts
