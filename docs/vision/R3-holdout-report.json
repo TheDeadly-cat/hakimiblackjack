@@ -1,0 +1,139 @@
+{
+  "style_id": "synthetic-felt-v1",
+  "platform_claim": "none",
+  "split": "holdout-seed-20260912",
+  "human_corrected_not_counted": true,
+  "templates_not_taken_from_holdout_images": true,
+  "match_score_is_not_probability": true,
+  "n_frames": 915,
+  "n_identifiable": 1430,
+  "n_distractor_frames": 200,
+  "raw_rank_accuracy_among_accepted": 1.0,
+  "end_to_end_identifiable_recall": 0.8636363636363636,
+  "identifiable_miss_rate": 0.0,
+  "identifiable_reject_rate": 0.13636363636363635,
+  "identifiable_wrong_accept": 0,
+  "false_detections_accepted": 0,
+  "false_detections_per_frame": 0.0,
+  "false_from_empty_frames": 0,
+  "per_rank": {
+    "A": {
+      "correct": 118,
+      "reject": 3
+    },
+    "2": {
+      "correct": 86,
+      "reject": 26
+    },
+    "3": {
+      "correct": 85,
+      "reject": 25
+    },
+    "4": {
+      "correct": 119
+    },
+    "5": {
+      "correct": 85,
+      "reject": 25
+    },
+    "6": {
+      "correct": 103,
+      "reject": 5
+    },
+    "7": {
+      "correct": 91
+    },
+    "8": {
+      "correct": 97,
+      "reject": 16
+    },
+    "9": {
+      "correct": 91,
+      "reject": 16
+    },
+    "10": {
+      "correct": 54,
+      "reject": 52
+    },
+    "J": {
+      "correct": 115,
+      "reject": 6
+    },
+    "Q": {
+      "correct": 90,
+      "reject": 20
+    },
+    "K": {
+      "correct": 101,
+      "reject": 1
+    }
+  },
+  "per_rank_totals": {
+    "A": 121,
+    "2": 112,
+    "3": 110,
+    "4": 119,
+    "5": 110,
+    "6": 108,
+    "7": 91,
+    "8": 113,
+    "9": 107,
+    "10": 106,
+    "J": 121,
+    "Q": 110,
+    "K": 102
+  },
+  "recognize_seconds": 17.530236100006732,
+  "recognize_seconds_per_frame": 0.019158727978149433,
+  "r3_plan": {
+    "identifiable_frames": 715,
+    "primary_per_rank": 55,
+    "interference": 200,
+    "empty": 80
+  },
+  "suggested_gates": {
+    "min_identifiable_instances": {
+      "min": 1000,
+      "actual": 1430,
+      "met": true
+    },
+    "min_per_rank": {
+      "min": 50,
+      "actual": {
+        "A": 121,
+        "2": 112,
+        "3": 110,
+        "4": 119,
+        "5": 110,
+        "6": 108,
+        "7": 91,
+        "8": 113,
+        "9": 107,
+        "10": 106,
+        "J": 121,
+        "Q": 110,
+        "K": 102
+      },
+      "met": true
+    },
+    "min_interference_frames": {
+      "min": 200,
+      "actual": 200,
+      "met": true
+    },
+    "accepted_rank_accuracy": {
+      "min": 0.99,
+      "actual": 1.0,
+      "met": true
+    },
+    "suggested_e2e_recall": {
+      "min": 0.95,
+      "actual": 0.8636363636363636,
+      "met": false,
+      "note": "建议门槛，不是取消人工确认的依据"
+    }
+  },
+  "size_and_accuracy_gates_met": true,
+  "note": "仅对自建 synthetic-felt-v1 有效；不能外推真实平台。匹配度不是正确概率。",
+  "error_samples": 40
+}

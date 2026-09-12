@@ -1,5 +1,72 @@
 # 项目接手状态
 
+更新时间：2026-09-12（开发目标改为旁观录像闭环：理解录像，不生产录像）
+执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
+当前任务ID：V0.3b 旁观录像（本地录屏文件 → 选区/识牌 → 跨帧去重 → 人工确认 → 现有账本）
+产品显示仍为 `0.2.0b1`。不重做 T5–T10，不另建仓库，不开发录屏器，不改 SplitEngine / 公式 / 容差 / 5s / SQLite schema / 用户库。
+开发基线：已合并 main `17c664375da2809138f8290fe0f7a77fc1603d25` 的后代 `cdd0e8f2e34e27f9652575556b3d4b5c9f25603d`。
+本轮未授权 commit / push / 发运行包。
+
+## 本轮完成
+
+- 任务书：`docs/vision/V0.3b-旁观录像.md`。观察者模式；识别多人 ≠ 计算多人 EV。
+- 开靴三态：新靴完整 / 中途开始 / 不确定。三种都不自动补副数或烧牌。
+- 跨帧跟踪：同一牌多帧一个观察；两张 8 两个观察；移位更新归属；已确认后重放不再入账。
+- 后揭底牌：`visible_rank_at` 在揭牌前保持未知，供复盘按当时信息分析。
+- 核对窗可打开本地录像（只读），暂停后识别本帧；录屏仍用 NVIDIA / Windows 现成工具。
+
+## 命令（本机已跑）
+
+```
+python -m unittest tests.test_vision_video tests.test_vision_isolation tests.test_vision_bridge tests.test_vision_ui_confirm tests.test_vision_pipeline tests.test_vision_contracts -q
+```
+
+47 项 OK。未改 SplitEngine.cs。未提交。
+
+## 旁观第一桌（2026-09-12 续）
+
+已从本机 NVIDIA 录像冻结 `navy-live-felt-v1`：2560×1440 → 直播画面 → 深色绒面，庄家+7 座位。检测出框，无模板则不自动认点。原文件只读。座位号按画面从左到右，须人工核对。
+
+```
+python -m unittest tests.test_vision_navy_table tests.test_vision_pipeline tests.test_vision_isolation tests.test_vision_video -q
+python scripts/probe_navy_live_video.py "C:\Users\Administrator\Videos\NVIDIA\Desktop\Desktop 2026.09.12 - 12.58.11.02.mp4" --frame 49222
+```
+
+## 下一动作
+
+用核对窗打开这段录像，人工拒绝印刷字、确认真牌与座位。未支持的多人分析必须标出。不要把当前工作树运行包直接发给别人。
+
+# 历史接手（V0.3a R3 + T10 门禁，保留）
+
+更新时间：2026-09-12（V0.3a R3 封闭集与确认入账已在更新后的 main 上实跑；T10-S1/S2 + T9-H1 保留）
+执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
+当前任务ID：V0.3a 离线识牌（候选 → 人工确认 → 现有账本）
+产品显示仍为 `0.2.0b1`。不重做 T5–T10，不合并 PR #12，不重建 `experiments/`，不改 SplitEngine / 公式 / 容差 / 5s / SQLite schema / 用户库。
+开发基线：已合并 main `17c664375da2809138f8290fe0f7a77fc1603d25` 的后代 `cdd0e8f2e34e27f9652575556b3d4b5c9f25603d`。
+本轮未授权 commit / push / 发运行包。
+
+## 本轮完成
+
+- **T10-S1**：不可能原牌组成拒绝（25K/六副）；合法 25T 与 6/7/8 对照保留。`"false"` 解析为 False；`[6.9]` 拒绝。
+- **T10-S2**：输出目录已存在则拒绝覆盖。取消停当前计算、后续不跑、已完成保留；按钮文案一致。CLI 仅显式参数覆盖 `--config`。
+- **T9-H1**：336 回执绑定案例→输入→完整结果。空壳、`EV=999`/`hit_bust=12`、共用 stub 拒绝。本工作树无 opt3 原材料则两项 skip，不重跑矩阵。
+- **V0.3a**：本地图出候选；确认/改正/拒绝后走现有控制器与账本；拒绝不写。R3 holdout：1430 可辨认 / 200 干扰；已接受准确率 1.0；端到端检出 0.8636（建议 0.95 未过，未降阈值）。Windows 回执 `.local-evidence/acceptance-v03a-20260912-124156-212169/`。
+
+## 命令（本机已跑）
+
+```
+python -m unittest tests.test_vision_contracts tests.test_vision_pipeline tests.test_vision_bridge tests.test_vision_ui_confirm tests.test_experiments.TestExperiments.test_twenty_five_kings_on_six_decks_are_rejected tests.test_experiments.TestExperiments.test_cli_defaults_do_not_erase_config_file -q
+python scripts/verify_vision_v03a.py --rebuild-holdout
+```
+
+焦点 35 项 OK。验收包 `passed=true`（实验门禁 35 OK / 2 skip = 无本树 opt3 原材料）。未改 SplitEngine.cs。识牌改动与 R3 文档尚未提交。
+
+## 下一动作
+
+真正的前三/六轮模拟仍未开工。不要把当前工作树运行包直接发给别人。需要你授权才会 commit / 推送。
+
+# 历史接手（T10-S1/S2 + T9-H1 完整结果绑定，保留）
+
 更新时间：2026-09-12（T10-S1/S2 + T9-H1 完整结果绑定；基线 `17c6643`，PR **#12 已合并**）
 执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
 当前任务ID：实验入口边界与 336 回执内容绑定
@@ -9,7 +76,8 @@
 
 ## 本轮完成
 
-- **T10-S1**：合成实验先按 13 种原牌容量核对玩家牌、庄家明牌与额外移除。明确 25K（六副）拒绝；未细分 25T 仍合法；`peek_negative="false"` 与 `n_decks=[6.9]` 拒绝，不再悄悄改条件。
+- **T10-S1**：合成实验先按 13 种原牌容量核对玩家牌、庄家明牌与额外移除。明确 25K（六副）拒绝；未细分 25T 仍合法。`peek_negative="false"` 显式解析为 False，不再被 `bool(text)` 变成 True；`n_decks=[6.9]` 拒绝，不再截成 6。6／7／8 边界分别测过。
+- **T10-S2**：输出目录已存在则拒绝覆盖；JSON/CSV 走现有原子写入。取消复用 `AnalysisService` 停当前计算，后续场景不再跑，已完成项保留。按钮文案与行为一致。CLI `--config` 不会被 argparse 默认值抹掉，只有显式参数才覆盖。
 - **T10-S2**：输出目录已存在则拒绝覆盖；JSON/CSV 走现有原子写入。取消复用 `AnalysisService` 停当前计算，后续场景不再跑，已完成项保留。按钮文案与行为一致。
 - **T9-H1 收口**：336 附件必须有案例身份、独立结果文件、完整输入/动作/EV/分布；空壳、`EV=999`/`hit_bust=12`、同一文件冒充 336 案均拒绝。opt3 原材料若仍在本机，按完整结果复核，不重跑矩阵。
 
@@ -17,11 +85,14 @@
 
 ```
 python -m unittest tests.test_experiments tests.test_experiment_ui tests.test_das_release_gate -v
+python -m unittest discover -s tests -q
 ```
+
+焦点 36 项 OK（含本机 opt3 336 完整结果绑定，不再 skip）。全套 **397 OK**。未改 SplitEngine.cs。未提交本轮 CLI/7 副边界补充。
 
 ## 下一动作
 
-V0.3-A 离线识牌候选（人工确认后进现有账本）。真正的前三/六轮模拟仍未开工。不要把当前工作树运行包直接发给别人。
+V0.3a 识牌已接到本 main：候选 → 人工确认 → 现有账本。R3 封闭合成集与 `scripts/verify_vision_v03a.py` 正在本机跑。真正的前三/六轮模拟仍未开工。不要把当前工作树运行包直接发给别人。
 
 # 历史接手（T9-H1/H2/H3 + T10-A/B，保留）
 

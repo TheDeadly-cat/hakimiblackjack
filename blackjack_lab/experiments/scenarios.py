@@ -94,8 +94,7 @@ def _live_ledger(n_decks, config):
 
 
 def apply_fixed_removals(snapshot, extra_ranks, known_ranks=()):
-    if known_ranks:
-        assert_original_composition(snapshot.n_decks, known_ranks)
+    assert_original_composition(snapshot.n_decks, tuple(known_ranks) if known_ranks else tuple(extra_ranks))
     if not extra_ranks:
         return snapshot
     counts = list(snapshot.counts)

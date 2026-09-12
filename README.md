@@ -2,8 +2,7 @@
 
 **分牌前比较动作，分牌后逐张更新当前操作、原始投注的合计 EV 和净收益分布，并保存历史复盘。**
 
-产品显示版本 `0.2.0b1`。规则模板、求解引擎是另一套身份：无 DAS 为 `v0.2b1-finite-two-hand-1`；两手 DAS 生产引擎为 `v0.2b2-finite-two-hand-das-2`。保留 Python、Tkinter 和 SQLite。没有多玩家 EV、再分、识别、捕获或真实平台接入。两手 DAS **只在显式 V0.2b2 模板**下计算，不会把旧无 DAS 快照改写成新引擎。数学与工作流验证、目标机性能、CI 和交付证据分别报告；318 项 unittest、旧 b1 318 冷请求、DAS 336 矩阵不能互相换签。不把测试通过解释为获利保证。Windows DAS 336 门禁与干净运行副本的做法见 [V0.2b2 验收与交付](docs/V0.2b2-验收与交付.md)。
-
+产品显示版本 `0.2.0b1`。规则模板、求解引擎是另一套身份：无 DAS 为 `v0.2b1-finite-two-hand-1`；两手 DAS 生产引擎为 `v0.2b2-finite-two-hand-das-2`。保留 Python、Tkinter 和 SQLite。没有多玩家 EV、再分、捕获或真实平台接入。识牌是可选平行线：仅对自建 `synthetic-felt-v1` 做离线候选，默认不入账，不能当作真实牌桌识别。两手 DAS **只在显式 V0.2b2 模板**下计算，不会把旧无 DAS 快照改写成新引擎。数学与工作流验证、目标机性能、CI 和交付证据分别报告；318 项 unittest、旧 b1 318 冷请求、DAS 336 矩阵不能互相换签。不把测试通过解释为获利保证。Windows DAS 336 门禁与干净运行副本的做法见 [V0.2b2 验收与交付](docs/V0.2b2-验收与交付.md)。
 
 ## 开始使用
 
@@ -78,6 +77,18 @@ python scripts/compare_possibly_wrong.py --output .local-evidence/external-pw-<�
 ```
 
 后两步下载并运行 GPL 的官方 `strategy.exe`，**不是产品的一部分**，也不进入 CI。缺少该二进制时 unittest 仍应通过。做法见 [V0.2b2 外部对照](docs/V0.2b2-外部对照.md)。
+
+可选识牌（未安装时不影响手动录牌与分析）：
+
+```powershell
+python -m pip install -r requirements-vision.txt
+python scripts/vision_demo.py fixtures/vision/synthetic-v1/smoke/all13.png
+python scripts/vision_demo.py --gui
+python scripts/vision_benchmarks.py
+python scripts/verify_vision_v03a.py --rebuild-holdout
+```
+
+主窗口「识牌核对」：打开本地图或本地旁观录像、确认/改正/拒绝后经控制器入账。未确认时账本不变，界面标明「图像待核对」。匹配度不是正确概率。录像由 NVIDIA / Windows 现成工具录制，本软件只理解录像。说明见 [V0.3b 旁观录像](docs/vision/V0.3b-旁观录像.md)、[R0 接口理解](docs/vision/R0-接口理解.md) 与 [R3 验收](docs/vision/R3-验收.md)。
 
 原 V0.2a 回归与截图验收脚本（不能代替新增分牌工作流/性能验收，截图使用可选开发依赖 Pillow）：
 

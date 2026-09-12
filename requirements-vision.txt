@@ -1,0 +1,15 @@
+# Hakimi Blackjack Lab —— 可选识牌依赖（V0.3a）
+#
+# 不安装本文件时，手动录牌、会话恢复和数学自检必须仍可用。
+# 不要把这些包写进程序启动的全局必需导入路径。
+#
+# 本机实际试装（Windows / Python 3.14.6，2026-09-12）：
+#   opencv-python-headless==4.14.0.94
+#   numpy==2.4.6（已存在，由 OpenCV 引用）
+#
+# 安装：
+#   python -m pip install -r requirements-vision.txt
+#
+# OpenCV matchTemplate 的返回值是匹配度，不是校准后的正确概率。
+
+opencv-python-headless==4.14.0.94

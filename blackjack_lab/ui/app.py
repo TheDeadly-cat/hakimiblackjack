@@ -112,6 +112,8 @@ class BlackjackLabApp(tk.Tk):
         self.rule_details = {}
         self.var_participants = {name: tk.BooleanVar(value=name == "玩家1") for name in SEAT_NAMES[1:]}
         self._hand_ids = {}
+        self.vision_session = None
+        self._vision_win = None
 
         self._build_top()
         self._build_body()
@@ -195,6 +197,9 @@ class BlackjackLabApp(tk.Tk):
         self.var_topinfo = tk.StringVar()
         ttk.Label(bar, textvariable=self.var_topinfo, foreground="#1a3c6e"
                   ).grid(row=2, column=0, columnspan=6, sticky="w", padx=4)
+        self.var_vision = tk.StringVar(value="")
+        ttk.Label(bar, textvariable=self.var_vision, foreground="#7a1f1f"
+                  ).grid(row=3, column=0, columnspan=6, sticky="w", padx=4)
 
     def _build_body(self) -> None:
         body = ttk.Frame(self)
@@ -288,7 +293,7 @@ class BlackjackLabApp(tk.Tk):
             "6·7·8副守恒/SQLite恢复/JSON导出\n"
             "V0.2b1：单手 / 两手顺序合计EV / 复盘\n"
             "V0.2b2：显式DAS模板（非A分手一次加倍）\n"
-            "再分/多玩家EV/识别捕获未支持"),
+            "识牌：本地图+人工确认入账；捕获/实盘未支持"),
             foreground="#555").pack(anchor="w", padx=4, pady=3)
 
         # ---------- 右侧：动作 + 组成 ----------
@@ -358,6 +363,7 @@ class BlackjackLabApp(tk.Tk):
             ("结束本轮（未结算）", self.act_end_unsettled),
             ("导入 JSON / CSV", self.act_import), ("恢复历史会话", self.act_recover),
             ("备份数据库", self.act_backup), ("旧会话诊断", self.act_diagnose),
+            ("识牌核对", self.act_open_vision),
             ("刷新界面", self.act_refresh),
         ]:
             ttk.Button(more, text=text, command=cmd).pack(side=tk.LEFT, padx=3)
@@ -425,6 +431,12 @@ class BlackjackLabApp(tk.Tk):
             return
         from .experiment_panel import ExperimentWindow
         self.experiment_window = ExperimentWindow(self)
+
+    @tracked_operation
+    def act_open_vision(self):
+        from .vision_panel import open_vision_window
+        open_vision_window(self)
+        self.refresh_vision_banner()
 
     @tracked_operation
     def act_refresh(self):
@@ -879,6 +891,19 @@ class BlackjackLabApp(tk.Tk):
         self.refresh_composition(seg, replay)
         self.refresh_timeline()
         self.refresh_topinfo(seg, replay)
+        self.refresh_vision_banner()
+
+    def refresh_vision_banner(self) -> None:
+        session = getattr(self, "vision_session", None)
+        if session is None:
+            self.var_vision.set("")
+            return
+        if session.has_pending():
+            self.var_vision.set("图像待核对：识牌候选尚未全部确认，当前分析未计入本图。")
+        elif session.has_committed():
+            self.var_vision.set("部分识牌已入账；新截图请重新打开并绑定当前轮。")
+        else:
+            self.var_vision.set(session.review_status())
 
     def refresh_topinfo(self, seg, replay) -> None:
         shoe_no = len(replay.segments)
@@ -1048,6 +1073,12 @@ class BlackjackLabApp(tk.Tk):
         return status
 
     def on_close(self):
+        win = getattr(self, "_vision_win", None)
+        if win is not None:
+            try:
+                win.destroy()
+            except tk.TclError:
+                pass
         self.analysis_panel.close()
         if self.experiment_window is not None and self.experiment_window.winfo_exists():
             self.experiment_window.destroy()

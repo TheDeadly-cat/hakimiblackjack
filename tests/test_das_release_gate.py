@@ -189,6 +189,47 @@ class TestAttachedMatrixGate(unittest.TestCase):
             self.assertFalse(verdict["passed"])
             self.assertTrue({"result_source_mismatch", "incomplete_result"} & set(verdict["errors"]))
 
+    def test_complete_calculated_result_binds_to_its_case(self):
+        from blackjack_lab.analysis.service import calculate
+        case = next(item for item in self.spec["cases"] if item["id"] == "pre-6-A-A")
+        snapshot, _elapsed = bench.construct_case(case)
+        payload = calculate(snapshot, request_id="gate-bind", budget_seconds=5.0)
+        self.assertEqual(payload.get("status"), "available", payload.get("reason"))
+        tiny = {
+            "schema": self.spec.get("schema"),
+            "count": 1,
+            "cases": [case],
+            "target_p95_seconds": 2.0,
+            "budget_seconds": 5.0,
+            "_load_errors": [],
+        }
+        with tempfile.TemporaryDirectory() as folder:
+            directory = Path(folder) / "matrix"
+            directory.mkdir()
+            if type(payload.get("backend_source_sha256")) is not str:
+                payload = dict(payload)
+                payload["backend_source_sha256"] = self.engine
+            (directory / (case["id"] + ".json")).write_text(
+                json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            receipt = {
+                "schema": bench.SCHEMA,
+                "passed": True,
+                "count": 1,
+                "completed": 1,
+                "failed": 0,
+                "timed_out": 0,
+                "p95_seconds": 0.1,
+                "cases": [_row(case)],
+                "source_manifest": dict(self.numeric),
+                "spec_sha256": hashlib.sha256(bench.SPEC_PATH.read_bytes()).hexdigest(),
+                "identity": {"commit": "synthetic", "dirty_worktree": False, "kind": "test"},
+                "binary_sha256": "0" * 64,
+            }
+            (directory / "receipt.json").write_text(json.dumps(receipt), encoding="utf-8")
+            verdict = validate_attached_matrix(directory, spec=tiny, current_numeric=self.numeric)
+            self.assertTrue(verdict["passed"], verdict["errors"])
+            self.assertEqual(verdict["completed"], 1)
+
 
 class TestVerifyDasReleaseAttachment(unittest.TestCase):
     def execute(self, matrix_receipt, extra_files=None):

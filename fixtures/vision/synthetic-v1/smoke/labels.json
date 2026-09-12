@@ -1,0 +1,227 @@
+{
+  "all13.png": [
+    {
+      "rank": "A",
+      "face": "shown",
+      "bbox": {
+        "x": 100,
+        "y": 64,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "dealer",
+      "identifiable": true
+    },
+    {
+      "rank": "2",
+      "face": "shown",
+      "bbox": {
+        "x": 200,
+        "y": 64,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "dealer",
+      "identifiable": true
+    },
+    {
+      "rank": "3",
+      "face": "shown",
+      "bbox": {
+        "x": 300,
+        "y": 64,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "dealer",
+      "identifiable": true
+    },
+    {
+      "rank": "4",
+      "face": "shown",
+      "bbox": {
+        "x": 400,
+        "y": 64,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "dealer",
+      "identifiable": true
+    },
+    {
+      "rank": "5",
+      "face": "shown",
+      "bbox": {
+        "x": 500,
+        "y": 64,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "dealer",
+      "identifiable": true
+    },
+    {
+      "rank": "6",
+      "face": "shown",
+      "bbox": {
+        "x": 600,
+        "y": 64,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "dealer",
+      "identifiable": true
+    },
+    {
+      "rank": "7",
+      "face": "shown",
+      "bbox": {
+        "x": 700,
+        "y": 64,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "dealer",
+      "identifiable": true
+    },
+    {
+      "rank": "8",
+      "face": "shown",
+      "bbox": {
+        "x": 100,
+        "y": 410,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "player_target",
+      "identifiable": true
+    },
+    {
+      "rank": "9",
+      "face": "shown",
+      "bbox": {
+        "x": 200,
+        "y": 410,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "player_target",
+      "identifiable": true
+    },
+    {
+      "rank": "10",
+      "face": "shown",
+      "bbox": {
+        "x": 300,
+        "y": 410,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "player_target",
+      "identifiable": true
+    },
+    {
+      "rank": "J",
+      "face": "shown",
+      "bbox": {
+        "x": 400,
+        "y": 410,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "player_target",
+      "identifiable": true
+    },
+    {
+      "rank": "Q",
+      "face": "shown",
+      "bbox": {
+        "x": 500,
+        "y": 410,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "player_target",
+      "identifiable": true
+    },
+    {
+      "rank": "K",
+      "face": "shown",
+      "bbox": {
+        "x": 600,
+        "y": 410,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "player_target",
+      "identifiable": true
+    }
+  ],
+  "two_eights.png": [
+    {
+      "rank": "8",
+      "face": "shown",
+      "bbox": {
+        "x": 160,
+        "y": 410,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "player_target",
+      "identifiable": true
+    },
+    {
+      "rank": "8",
+      "face": "shown",
+      "bbox": {
+        "x": 280,
+        "y": 410,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "player_target",
+      "identifiable": true
+    }
+  ],
+  "empty.png": [],
+  "backs.png": [
+    {
+      "rank": null,
+      "face": "back",
+      "bbox": {
+        "x": 160,
+        "y": 64,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "dealer",
+      "identifiable": false
+    },
+    {
+      "rank": "A",
+      "face": "shown",
+      "bbox": {
+        "x": 280,
+        "y": 64,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "dealer",
+      "identifiable": true
+    }
+  ],
+  "occluded.png": [
+    {
+      "rank": "K",
+      "face": "unreadable",
+      "bbox": {
+        "x": 200,
+        "y": 400,
+        "w": 90,
+        "h": 126
+      },
+      "region_id": "player_target",
+      "identifiable": false
+    }
+  ]
+}

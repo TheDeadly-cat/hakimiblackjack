@@ -1,6 +1,16 @@
 # -*- coding: utf-8 -*-
-"""vision：牌桌区域、候选牌识别、跨帧追踪与质量检查（V0.3 交付）。
+"""vision：V0.3a 离线识牌（固定样式模板匹配）。
 
-V0.1 不包含任何识别功能，也不提供假的识别画面或假实时动画。
-模板匹配阈值须由独立验证集制定，不把模型分数当作校准概率。
+本包在导入时不加载 OpenCV。未安装识牌依赖时，手动录牌与数学分析不受影响。
+识别器只产生候选观察，不写账本、不扣牌、不调用 EV。
 """
+from .contracts import (
+    RECOGNITION_SCHEMA_VERSION, RANKS_13, REVIEW_PENDING, STYLE_ID,
+)
+
+__all__ = [
+    "RECOGNITION_SCHEMA_VERSION",
+    "RANKS_13",
+    "REVIEW_PENDING",
+    "STYLE_ID",
+]

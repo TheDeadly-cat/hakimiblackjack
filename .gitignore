@@ -25,6 +25,8 @@ venv/
 .coverage
 .DS_Store
 .local-evidence/
+*.vision/
+fixtures/vision/synthetic-v1/holdout/
 *.analysis/
 /BUILD_INFO.json
 

@@ -169,7 +169,8 @@ class EventLedger:
              track_id: Optional[str] = None,
              confirm_status: str = CONFIRMED, source: str = "手动录入",
              evidence: Optional[str] = None,
-             event_id: Optional[str] = None) -> Event:
+             event_id: Optional[str] = None,
+             observed_at: Optional[float] = None) -> Event:
         self._require_shoe()
         if event_id and event_id in self._ids:
             old = self._find(event_id)
@@ -198,21 +199,33 @@ class EventLedger:
             "face_state": FACE_HIDDEN if hidden else (
                 FACE_UNKNOWN if unknown else "shown"),
         }, source=source, confirm_status=confirm_status, evidence=evidence,
-           event_id=event_id or new_event_id())
+           event_id=event_id or new_event_id(), observed_at=observed_at)
         return self.append(ev)
 
     def reveal(self, target_event_id: str, rank: str,
-               suit: Optional[str] = None) -> Event:
+               suit: Optional[str] = None, *,
+               source: str = "手动录入", evidence: Optional[str] = None,
+               event_id: Optional[str] = None,
+               observed_at: Optional[float] = None) -> Event:
         target = self._find(target_event_id)
         if target.etype != CARD_DEALT:
             raise LedgerError("只能揭示发牌事件")
-        return self.append(Event(CARD_REVEALED, {
+        payload = {
             "target_event_id": target_event_id,
             "seat": target.payload["seat"],
             "hand_id": target.payload.get("hand_id"),
             "track_id": target.payload.get("track_id"),
             "rank": rank, "suit": suit,
-        }))
+        }
+        if event_id and event_id in self._ids:
+            old = self._find(event_id)
+            if (old.etype != CARD_REVEALED or old.payload != payload
+                    or (old.source, old.evidence) != (source, evidence)):
+                raise LedgerError("事件ID已存在但内容不同，拒绝静默丢弃冲突记录")
+            return old
+        return self.append(Event(CARD_REVEALED, payload, source=source,
+                                 evidence=evidence, event_id=event_id or new_event_id(),
+                                 observed_at=observed_at))
 
     def player_action(self, seat: str, hand_id: str, action: str,
                       extra: Optional[dict] = None) -> Event:
@@ -266,7 +279,9 @@ class EventLedger:
         raise LedgerError("没有可撤销的事件")
 
     def correct(self, target_event_id: str, payload_fix: Dict[str, Any],
-                reason: str = "") -> Event:
+                reason: str = "", *, source: str = "手动录入",
+                evidence: Optional[str] = None, event_id: Optional[str] = None,
+                observed_at: Optional[float] = None) -> Event:
         """对历史事件追加纠错；重放时以修正负载执行，原事件保留。"""
         target = self._find(target_event_id)
         allowed = CORRECTABLE_FIELDS
@@ -274,10 +289,19 @@ class EventLedger:
             raise LedgerError("仅允许纠正牌面/花色/未知状态、烧牌、缺口或检查结果；规则修改请新建牌靴")
         if self.is_voided(target_event_id):
             raise LedgerError("已撤销事件不可纠错")
-        return self.append(Event(CORRECTION, {
+        payload = {
             "target_event_id": target_event_id, "payload_fix": payload_fix,
             "reason": reason, "target_etype": target.etype,
-        }))
+        }
+        if event_id and event_id in self._ids:
+            old = self._find(event_id)
+            if (old.etype != CORRECTION or old.payload != payload
+                    or (old.source, old.evidence) != (source, evidence)):
+                raise LedgerError("事件ID已存在但内容不同，拒绝静默丢弃冲突记录")
+            return old
+        return self.append(Event(CORRECTION, payload, source=source,
+                                 evidence=evidence, event_id=event_id or new_event_id(),
+                                 observed_at=observed_at))
 
     # ---------- 重放 ----------
     def replay(self, through_seq: Optional[int] = None) -> ReplayResult:

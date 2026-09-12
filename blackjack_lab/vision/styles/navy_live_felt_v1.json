@@ -1,0 +1,41 @@
+{
+  "layout_profile_id": "navy-live-felt-v1",
+  "style_id": "navy-live-felt-v1",
+  "style_claim": "local-observer-recording",
+  "platform_claim": "none",
+  "notes": "仅针对本机一段 2560x1440 NVIDIA 桌面旁观录像的固定窗口。不是通用平台适配。原录像只读；真实画面不得入库。",
+  "source_frame": {"width": 2560, "height": 1440},
+  "source_crop": {"x": 95, "y": 448, "w": 1180, "h": 542},
+  "felt_crop": {"x": 0, "y": 260, "w": 1180, "h": 282},
+  "canvas": {"width": 1180, "height": 282},
+  "felt_kind": "navy",
+  "detect": {
+    "min_w": 12,
+    "min_h": 18,
+    "max_w": 55,
+    "max_h": 70,
+    "min_aspect": 0.40,
+    "max_aspect": 0.95,
+    "threshold": 215,
+    "split_wide_clusters": true,
+    "expected_card_w": 26
+  },
+  "card": {"width": 26, "height": 36, "index": {"x": 1, "y": 1, "w": 11, "h": 14}},
+  "regions": {
+    "dealer": {"x": 400, "y": 40, "w": 380, "h": 110, "seat_hint": "庄家"},
+    "seat_1": {"x": 30, "y": 120, "w": 200, "h": 150, "seat_hint": "玩家1"},
+    "seat_2": {"x": 180, "y": 130, "w": 200, "h": 145, "seat_hint": "玩家2"},
+    "seat_3": {"x": 350, "y": 140, "w": 200, "h": 135, "seat_hint": "玩家3"},
+    "seat_4": {"x": 500, "y": 145, "w": 200, "h": 130, "seat_hint": "玩家4"},
+    "seat_5": {"x": 650, "y": 140, "w": 200, "h": 135, "seat_hint": "玩家5"},
+    "seat_6": {"x": 800, "y": 130, "w": 200, "h": 145, "seat_hint": "玩家6"},
+    "seat_7": {"x": 950, "y": 120, "w": 210, "h": 150, "seat_hint": "玩家7"}
+  },
+  "seat_order_note": "玩家1–7 按画面从左到右。是否与桌上座位号一致须人工核对。",
+  "limits": {
+    "max_image_bytes": 20971520,
+    "max_pixels": 16000000,
+    "max_side": 4096,
+    "queue_length": 1
+  }
+}

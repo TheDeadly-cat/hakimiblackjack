@@ -82,13 +82,28 @@ class SessionController:
     def _apply(self, method, *args, **kwargs):
         candidate = copy.deepcopy(self.ledger)
         event = getattr(candidate, method)(*args, **kwargs)
-        if event.event_id not in self.ledger._ids:
+        if event.event_id in self.ledger._ids:
+            return event  # 幂等：已提交则返回原事件，不重复扣牌、不增加版本
+        if "source" not in kwargs:
             event.source = self.recording_source
         self.store.save_event(event)
         self.ledger = candidate
         self.commit_revision += 1
         self._publish_context_change()
         return event
+
+    @staticmethod
+    def _event_meta(evidence=None, source=None, event_id=None, observed_at=None):
+        meta = {}
+        if evidence is not None:
+            meta["evidence"] = evidence
+        if source is not None:
+            meta["source"] = source
+        if event_id is not None:
+            meta["event_id"] = event_id
+        if observed_at is not None:
+            meta["observed_at"] = observed_at
+        return meta
 
     def new_shoe(self, rules: RuleProfile):
         return self._apply("create_shoe", rules)
@@ -109,19 +124,28 @@ class SessionController:
     def end_shoe(self):
         return self._apply("end_shoe")
 
-    def deal_shown(self, seat, rank, hand_id=None, suit=None, track_id=None, confirm_status=CONFIRMED):
+    def deal_shown(self, seat, rank, hand_id=None, suit=None, track_id=None, confirm_status=CONFIRMED,
+                   evidence=None, source=None, event_id=None, observed_at=None):
         return self._apply("deal", seat, rank, hand_id=hand_id, suit=suit,
-                           track_id=track_id, confirm_status=confirm_status)
+                           track_id=track_id, confirm_status=confirm_status,
+                           **self._event_meta(evidence, source, event_id, observed_at))
 
-    def deal_hidden(self, seat, hand_id=None, track_id=None):
-        return self._apply("deal", seat, None, hidden=True, hand_id=hand_id, track_id=track_id)
+    def deal_hidden(self, seat, hand_id=None, track_id=None,
+                    evidence=None, source=None, event_id=None, observed_at=None):
+        return self._apply("deal", seat, None, hidden=True, hand_id=hand_id, track_id=track_id,
+                           **self._event_meta(evidence, source, event_id, observed_at))
 
-    def deal_unknown(self, seat, hand_id=None, track_id=None):
+    def deal_unknown(self, seat, hand_id=None, track_id=None,
+                     evidence=None, source=None, event_id=None, observed_at=None,
+                     confirm_status=CANDIDATE):
         return self._apply("deal", seat, None, unknown=True, hand_id=hand_id,
-                           track_id=track_id, confirm_status=CANDIDATE)
+                           track_id=track_id, confirm_status=confirm_status,
+                           **self._event_meta(evidence, source, event_id, observed_at))
 
-    def reveal(self, target_event_id, rank, suit=None):
-        return self._apply("reveal", target_event_id, rank, suit=suit)
+    def reveal(self, target_event_id, rank, suit=None,
+               evidence=None, source=None, event_id=None, observed_at=None):
+        return self._apply("reveal", target_event_id, rank, suit=suit,
+                           **self._event_meta(evidence, source, event_id, observed_at))
 
     def player_action(self, seat, hand_id, action, extra=None):
         return self._apply("player_action", seat, hand_id, action, extra)
@@ -138,10 +162,12 @@ class SessionController:
     def undo_last(self, reason=""):
         return self._apply("undo_last", reason)
 
-    def correct(self, event_id, payload_fix, reason):
+    def correct(self, event_id, payload_fix, reason, *,
+                source=None, evidence=None, observed_at=None, correction_id=None):
         if not reason.strip():
             raise ValueError("纠错必须填写依据或原因")
-        return self._apply("correct", event_id, payload_fix, reason)
+        meta = self._event_meta(evidence, source, correction_id, observed_at)
+        return self._apply("correct", event_id, payload_fix, reason, **meta)
 
     def import_file(self, path):
         candidate = import_csv(path) if Path(path).suffix.lower() == ".csv" else import_json(path)

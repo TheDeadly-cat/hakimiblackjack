@@ -1,0 +1,689 @@
+{
+  "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+  "captured_at": null,
+  "clock_note": "未知拍摄时钟时不得用模型运行时间冒充采集时间",
+  "empty_regions": [],
+  "image_path": "C:\\Users\\Administrator\\Documents\\ChatGPT\\blackjack\\vision-v0.3a\\fixtures\\vision\\synthetic-v1\\smoke\\all13.png",
+  "layout_profile_id": "synthetic-felt-v1",
+  "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+  "model_id": "template-ncc-synthetic-felt-v1",
+  "observations": [
+    {
+      "accepted_rank": "A",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 100,
+        "y": 64
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "6e14b505b32e5b1ad75859309b45943f2bd07a57451136eb9ac91d6df9bca073",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "14401e477b5737befcc10a5bbb9dcbec",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "A",
+          "score_is_calibrated_probability": false,
+          "template_id": "A"
+        },
+        {
+          "match_score": 0.7618077397346497,
+          "rank": "8",
+          "score_is_calibrated_probability": false,
+          "template_id": "8"
+        },
+        {
+          "match_score": 0.7226918935775757,
+          "rank": "9",
+          "score_is_calibrated_probability": false,
+          "template_id": "9"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "dealer",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "庄家",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "2",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 200,
+        "y": 64
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "56d2a725592af4e2eeb014d62743868155af2d9f05866f78456e302588948899",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "2e90227eb6190d4b4ee308548c467c43",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "2",
+          "score_is_calibrated_probability": false,
+          "template_id": "2"
+        },
+        {
+          "match_score": 0.8122923374176025,
+          "rank": "3",
+          "score_is_calibrated_probability": false,
+          "template_id": "3"
+        },
+        {
+          "match_score": 0.7501500844955444,
+          "rank": "8",
+          "score_is_calibrated_probability": false,
+          "template_id": "8"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "dealer",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "庄家",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "3",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 300,
+        "y": 64
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "d7f118e68a0bc54ff61c85df4af23cdd4c10c77befd8af991fdb4f0fa4717922",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "2bdd725931a479efda62e672bcbb5158",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "3",
+          "score_is_calibrated_probability": false,
+          "template_id": "3"
+        },
+        {
+          "match_score": 0.8122923374176025,
+          "rank": "2",
+          "score_is_calibrated_probability": false,
+          "template_id": "2"
+        },
+        {
+          "match_score": 0.8122916221618652,
+          "rank": "9",
+          "score_is_calibrated_probability": false,
+          "template_id": "9"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "dealer",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "庄家",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "4",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 400,
+        "y": 64
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "788d2ea9413412415f6a340c334eb92b586259b26611790dd5eaef283b9f5d63",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "e8e2f0bb1875b1822db635976f7d41e1",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "4",
+          "score_is_calibrated_probability": false,
+          "template_id": "4"
+        },
+        {
+          "match_score": 0.5670814514160156,
+          "rank": "A",
+          "score_is_calibrated_probability": false,
+          "template_id": "A"
+        },
+        {
+          "match_score": 0.537428081035614,
+          "rank": "9",
+          "score_is_calibrated_probability": false,
+          "template_id": "9"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "dealer",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "庄家",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "5",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 500,
+        "y": 64
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "8ec130d08b0c566dad9846d915ff558973fd76aa1d93e4679c1717a0285682f1",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "8022434f4568a51aaae3588a2f07a6ca",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "5",
+          "score_is_calibrated_probability": false,
+          "template_id": "5"
+        },
+        {
+          "match_score": 0.607012152671814,
+          "rank": "9",
+          "score_is_calibrated_probability": false,
+          "template_id": "9"
+        },
+        {
+          "match_score": 0.5615937113761902,
+          "rank": "3",
+          "score_is_calibrated_probability": false,
+          "template_id": "3"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "dealer",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "庄家",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "6",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 600,
+        "y": 64
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "ae1601e1389ecd5ccdbaa7a409387a5897591aeeb4f2ac84c813ff75bc1d0085",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "4135bf5a2568a20956a501193264b835",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "6",
+          "score_is_calibrated_probability": false,
+          "template_id": "6"
+        },
+        {
+          "match_score": 0.8932880163192749,
+          "rank": "8",
+          "score_is_calibrated_probability": false,
+          "template_id": "8"
+        },
+        {
+          "match_score": 0.779891312122345,
+          "rank": "9",
+          "score_is_calibrated_probability": false,
+          "template_id": "9"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "dealer",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "庄家",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "7",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 700,
+        "y": 64
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "f824f84bc466e6207256f54423a6ab8d8f53ed6e4a10b3a9332be61b7f4c062c",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "aef16fd5a6f831f1c398d7b5a8d501d8",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "7",
+          "score_is_calibrated_probability": false,
+          "template_id": "7"
+        },
+        {
+          "match_score": 0.4939071834087372,
+          "rank": "J",
+          "score_is_calibrated_probability": false,
+          "template_id": "J"
+        },
+        {
+          "match_score": 0.48441651463508606,
+          "rank": "3",
+          "score_is_calibrated_probability": false,
+          "template_id": "3"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "dealer",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "庄家",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "8",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 100,
+        "y": 410
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "b23eff96f9de0765a5e210fdd9067da77776b74ec771d984f4640702196cca1a",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "4a4dddd20b6db0466f0e0f23e35e8747",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "8",
+          "score_is_calibrated_probability": false,
+          "template_id": "8"
+        },
+        {
+          "match_score": 0.8932880163192749,
+          "rank": "6",
+          "score_is_calibrated_probability": false,
+          "template_id": "6"
+        },
+        {
+          "match_score": 0.8932880163192749,
+          "rank": "9",
+          "score_is_calibrated_probability": false,
+          "template_id": "9"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "player_target",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "玩家1",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "9",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 200,
+        "y": 410
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "6f4996cc08ee1411d16676794e16b3bdcd9dc6640e047c075025cc54c3773cff",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "93ba200c6d262995a96e172dacdc4d68",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "9",
+          "score_is_calibrated_probability": false,
+          "template_id": "9"
+        },
+        {
+          "match_score": 0.8932880163192749,
+          "rank": "8",
+          "score_is_calibrated_probability": false,
+          "template_id": "8"
+        },
+        {
+          "match_score": 0.8122930526733398,
+          "rank": "3",
+          "score_is_calibrated_probability": false,
+          "template_id": "3"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "player_target",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "玩家1",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "10",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 300,
+        "y": 410
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "ad4c435171bf27a52fcaeae016b4da1d5e51dba37efdf5da3bc0374cdec2cd42",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "57abc692eb6bdb88fecb0c3619c658d3",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "10",
+          "score_is_calibrated_probability": false,
+          "template_id": "10"
+        },
+        {
+          "match_score": 0.2795044779777527,
+          "rank": "J",
+          "score_is_calibrated_probability": false,
+          "template_id": "J"
+        },
+        {
+          "match_score": 0.2015719711780548,
+          "rank": "4",
+          "score_is_calibrated_probability": false,
+          "template_id": "4"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "player_target",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "玩家1",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "J",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 400,
+        "y": 410
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "f9bceb97c7eb4bc3c7d1ba8fd6483d523d8109f1281fe14ec2b38226d1c60438",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "ca29c090dcf5d985551ef841c990710d",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "J",
+          "score_is_calibrated_probability": false,
+          "template_id": "J"
+        },
+        {
+          "match_score": 0.5489755272865295,
+          "rank": "9",
+          "score_is_calibrated_probability": false,
+          "template_id": "9"
+        },
+        {
+          "match_score": 0.5094956159591675,
+          "rank": "7",
+          "score_is_calibrated_probability": false,
+          "template_id": "7"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "player_target",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "玩家1",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "Q",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 500,
+        "y": 410
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "5b34cc5b85e83ec4506fe85c490bb0731d6a0dffa829ddd967d516c170d249ca",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "1cc4cf178168c3b713f0f865dae90701",
+      "rank_candidates": [
+        {
+          "match_score": 0.9999993443489075,
+          "rank": "Q",
+          "score_is_calibrated_probability": false,
+          "template_id": "Q"
+        },
+        {
+          "match_score": 0.6935843229293823,
+          "rank": "A",
+          "score_is_calibrated_probability": false,
+          "template_id": "A"
+        },
+        {
+          "match_score": 0.6509379744529724,
+          "rank": "8",
+          "score_is_calibrated_probability": false,
+          "template_id": "8"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "player_target",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "玩家1",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    },
+    {
+      "accepted_rank": "K",
+      "asset_sha256": "11e59b895a2ba5aaac6c0121d8b54c0b977e206b46819571e932f4771ec882cb",
+      "bbox": {
+        "h": 126,
+        "w": 90,
+        "x": 600,
+        "y": 410
+      },
+      "captured_at": null,
+      "crop_relpath": null,
+      "crop_sha256": "10015a1742323b61ffda1b4ef7609f27edf6a01d682824a2aaa32acc39d66ebb",
+      "face_state_candidate": "shown",
+      "frame_index": null,
+      "hand_hint": null,
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_digest": "9afe3f70d9b76bf2c98aa835f4bc298be096c01c67455da9989cbfd7205e8855",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "notes": [
+        "检测框左右排序仅便于展示，不是历史发牌顺序"
+      ],
+      "observation_id": "ec0919a1d7571c55fe3f1c3467e4ed75",
+      "rank_candidates": [
+        {
+          "match_score": 1.0,
+          "rank": "K",
+          "score_is_calibrated_probability": false,
+          "template_id": "K"
+        },
+        {
+          "match_score": 0.4598316252231598,
+          "rank": "6",
+          "score_is_calibrated_probability": false,
+          "template_id": "6"
+        },
+        {
+          "match_score": 0.43873611092567444,
+          "rank": "Q",
+          "score_is_calibrated_probability": false,
+          "template_id": "Q"
+        }
+      ],
+      "recognition_schema_version": "0.3a-r1",
+      "region_id": "player_target",
+      "reject_reason": null,
+      "relative_time_ms": null,
+      "score_is_calibrated_probability": false,
+      "seat_hint": "玩家1",
+      "source_declaration": "自建合成样式",
+      "track_id": null
+    }
+  ],
+  "platform_claim": "none",
+  "recognition_schema_version": "0.3a-r1",
+  "recognized_at": 1789184046.706037,
+  "reject_reason": null,
+  "review_status": "图像待核对",
+  "score_is_calibrated_probability": false,
+  "source_declaration": "自建合成样式",
+  "warnings": [
+    "图像待核对：候选尚未写入账本，旧分析不能当成已考虑本图。",
+    "match_score 是模板匹配度，不是经过验证的正确概率。",
+    "10/J/Q/K 保持原始牌面，视觉层不会合并成 T。",
+    "observation_id 不是 track_id；首版不做跨图自动跟踪。"
+  ],
+  "writes_ledger": false
+}

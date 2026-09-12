@@ -1,0 +1,69 @@
+{
+  "asset_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "image_path": "fixtures/vision/synthetic-v1/smoke/two_eights.png",
+  "layout_profile_id": "synthetic-felt-v1",
+  "model_id": "template-ncc-synthetic-felt-v1",
+  "model_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "recognition_schema_version": "0.3a-r1",
+  "review_status": "图像待核对",
+  "source_declaration": "自建合成样式",
+  "platform_claim": "none",
+  "captured_at": null,
+  "recognized_at": 0,
+  "clock_note": "未知拍摄时钟时不得用模型运行时间冒充采集时间",
+  "empty_regions": ["dealer"],
+  "warnings": ["图像待核对：候选尚未写入账本"],
+  "reject_reason": null,
+  "observations": [
+    {
+      "observation_id": "11111111111111111111111111111111",
+      "asset_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "crop_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "bbox": {"x": 160, "y": 410, "w": 90, "h": 126},
+      "region_id": "player_target",
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "model_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "recognition_schema_version": "0.3a-r1",
+      "rank_candidates": [
+        {"rank": "8", "match_score": 0.91, "template_id": "8"},
+        {"rank": "6", "match_score": 0.42, "template_id": "6"}
+      ],
+      "reject_reason": null,
+      "face_state_candidate": "shown",
+      "source_declaration": "自建合成样式",
+      "seat_hint": "玩家1",
+      "hand_hint": null,
+      "captured_at": null,
+      "relative_time_ms": null,
+      "frame_index": null,
+      "crop_relpath": "crops/11111111111111111111111111111111.png",
+      "notes": []
+    },
+    {
+      "observation_id": "22222222222222222222222222222222",
+      "asset_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "crop_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "bbox": {"x": 280, "y": 410, "w": 90, "h": 126},
+      "region_id": "player_target",
+      "layout_profile_id": "synthetic-felt-v1",
+      "model_id": "template-ncc-synthetic-felt-v1",
+      "model_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "recognition_schema_version": "0.3a-r1",
+      "rank_candidates": [
+        {"rank": "8", "match_score": 0.88, "template_id": "8"},
+        {"rank": "9", "match_score": 0.40, "template_id": "9"}
+      ],
+      "reject_reason": null,
+      "face_state_candidate": "shown",
+      "source_declaration": "自建合成样式",
+      "seat_hint": "玩家1",
+      "hand_hint": null,
+      "captured_at": null,
+      "relative_time_ms": null,
+      "frame_index": null,
+      "crop_relpath": "crops/22222222222222222222222222222222.png",
+      "notes": []
+    }
+  ]
+}

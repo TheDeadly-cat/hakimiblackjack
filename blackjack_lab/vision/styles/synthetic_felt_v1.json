@@ -1,0 +1,19 @@
+{
+  "layout_profile_id": "synthetic-felt-v1",
+  "style_id": "synthetic-felt-v1",
+  "style_claim": "self-built-synthetic",
+  "platform_claim": "none",
+  "notes": "自建绿色绒面+白牌块体字。只能证明该封闭样式，不能声明真实平台适配。",
+  "canvas": {"width": 960, "height": 640},
+  "regions": {
+    "dealer": {"x": 80, "y": 24, "w": 800, "h": 230, "seat_hint": "庄家"},
+    "player_target": {"x": 80, "y": 360, "w": 800, "h": 250, "seat_hint": "玩家1"}
+  },
+  "card": {"width": 90, "height": 126, "index": {"x": 6, "y": 6, "w": 48, "h": 36}},
+  "limits": {
+    "max_image_bytes": 20971520,
+    "max_pixels": 16000000,
+    "max_side": 4096,
+    "queue_length": 1
+  }
+}
