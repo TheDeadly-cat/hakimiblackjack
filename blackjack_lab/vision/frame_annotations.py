@@ -79,6 +79,11 @@ def build_annotation_queue(session_dir, annotation_file, output):
                 raise ContractError("未知标签来源")
             if provenance == "human_reviewed" and not obj.get("reviewed_by"):
                 raise ContractError("人工复核标签缺少复核人")
+            # A previously reviewed whole-card rank does not certify a newly
+            # assistant-cropped glyph. The UI retains the old rank review, but
+            # exports stay proposals until the user confirms the new crop.
+            if obj.get("bbox_provenance") == "assistant_upper_corner_crop":
+                provenance = "assistant_proposed"
             if not obj.get("physical_card_id") or not obj.get("rejection_reason"):
                 raise ContractError("补框必须记录物理牌身份与漏检/补框原因")
             glyph = manual_glyph(bgr, obj["bbox"])

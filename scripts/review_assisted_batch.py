@@ -15,6 +15,17 @@ from blackjack_lab.vision.glyph_dataset import LABEL_RANKS
 LABELS = LABEL_RANKS + ("unreadable",)
 
 
+def labels_complete(frame):
+    objects = frame.get("objects", [])
+    return bool(frame.get("complete") or (objects and all(
+        o.get("label_provenance") == "human_reviewed" for o in objects)))
+
+
+def first_pending_page(frames):
+    pending = [i for i, f in enumerate(frames) if not labels_complete(f)]
+    return next((i for i in pending if frames[i].get("objects")), next(iter(pending), 0))
+
+
 class ReviewStore:
     def __init__(self, bundle):
         self.path = Path(bundle)
@@ -74,6 +85,10 @@ class ReviewStore:
                 if rank is not None and selected is not None:
                     obj["rank"] = rank
                 obj.update(label_provenance="human_reviewed", reviewed_by=reviewer.strip(), reviewed_at=now)
+                if obj.get("bbox_provenance") == "assistant_upper_corner_crop":
+                    obj["bbox_provenance"] = "human_reviewed"
+                if obj.get("upper_corner_selection"):
+                    obj["upper_corner_selection"].update(provenance="human_reviewed", reviewed_by=reviewer.strip(), reviewed_at=now)
             record["complete"] = selected is None
             if selected is None:
                 record.update(reviewed_by=reviewer.strip(), reviewed_at=now)
@@ -83,7 +98,22 @@ class ReviewStore:
 
     def delete(self, video, page, selected):
         def update(f):
-            f["objects"].pop(selected); f["complete"] = False
+            obj = f["objects"].pop(selected)
+            if f.get("review_policy"):
+                obj["upper_corner_selection"] = dict(obj.get("upper_corner_selection", {}),
+                    keep=False, reason="user_removed", provenance="user_action")
+                f.setdefault("excluded_objects", []).append(obj)
+            f["complete"] = False
+            f.pop("reviewed_at", None); f.pop("reviewed_by", None)
+        self.change(video, page, update)
+
+    def restore(self, video, page, excluded_index):
+        def update(f):
+            obj = f["excluded_objects"].pop(excluded_index)
+            obj["upper_corner_selection"] = dict(obj.get("upper_corner_selection", {}),
+                keep=True, reason="user_restored", provenance="user_action")
+            f["objects"].append(obj)
+            f["complete"] = False
             f.pop("reviewed_at", None); f.pop("reviewed_by", None)
         self.change(video, page, update)
 
@@ -109,6 +139,8 @@ def run_ui(bundle):
 
     store = ReviewStore(bundle)
     root = tk.Tk(); root.title("哈基米 · AI 预标注检查（改错即可，无需逐张画框）")
+    if store.bundle.get("review_policy"):
+        root.title("哈基米 · 正向上角复核（保留已审核进度）")
     root.geometry("1420x900")
     state = {"video": 0, "page": 0, "selected": None, "photo": None, "crop_photo": None}
     reviewer = tk.StringVar(value=store.bundle.get("default_reviewer", ""))
@@ -123,6 +155,8 @@ def run_ui(bundle):
     ttk.Label(top, text="蓝色待核 · 绿色已核 · 灰色非牌；编号自动生成").pack(side="left", padx=14)
     ttk.Checkbutton(top, text="显示非牌框", variable=show_junk, command=lambda: safe(load_page)).pack(side="left")
     ttk.Label(root, textvariable=status, padding=5).pack(fill="x")
+    if store.bundle.get("review_policy"):
+        ttk.Label(root, text="本批只核每张牌上方／左上方的正向点数；下角与倒向项另存，可用“查看排除项”检查或恢复。", padding=3).pack(fill="x")
     ttk.Label(root, text="看整图与预填标签；点框或列表查看放大图。按 2–9 / A J Q K / 0=10 / N=非牌 / U=看不清 即可改错；Enter 确认下一项，Ctrl+Enter 整页通过。",
               padding=5).pack(fill="x")
     canvas = tk.Canvas(root, background="#172033", highlightthickness=0); canvas.pack(fill="x", padx=10)
@@ -164,13 +198,17 @@ def run_ui(bundle):
             score=o.get("proposal_score")
             tree.insert("","end",iid=str(i),values=(i+1,'非牌' if o['rank']=='junk' else '待辨认' if o['rank']=='unreadable' else o['rank'],
                 '你已确认' if human else '有疑点，请优先看' if o.get('needs_attention') else 'AI 已检查，待你确认' if o.get('assistant_visual_reviewed') else '自动预标注，待确认',f"{score:.3f}" if score is not None else '—'))
-        pages=store.documents[state['video']]['frames'];done=sum(f.get('complete') is True for f in pages)
-        total=sum(len(d['frames']) for d in store.documents);all_done=sum(f.get('complete') is True for d in store.documents for f in d['frames'])
+        pages=store.documents[state['video']]['frames']
+        total=sum(len(d['frames']) for d in store.documents);all_done=sum(labels_complete(f) for d in store.documents for f in d['frames'])
+        active_total=sum(len(f['objects']) for f in pages)
+        human_total=sum(o.get('label_provenance')=='human_reviewed' for f in pages for o in f['objects'])
         elapsed=f.get('elapsed_s');stamp=f"{int(elapsed)//60:02d}:{int(elapsed)%60:02d}" if elapsed is not None else '未知时间'
-        status.set(f"录像 {entry['title']} · {stamp} · 第 {state['page']+1}/{len(pages)} 页 · 全部已核 {all_done}/{total} 页 · 显示 {len(visible)} 框，非牌 {sum(o['rank']=='junk' for o in objects)} 框 · {'已完成' if f.get('complete') else '待你检查'}")
-        chosen_video.set(titles[state['video']]); state['selected']=None;crop_label.configure(image='');detail.set('点选一个框可放大、改点数或删除。一个物理牌可能有多个角标；这一步先核对可见字形。')
+        status.set(f"录像 {entry['title']} · {stamp} · 第 {state['page']+1}/{len(pages)} 页 · 本段已核 {human_total}/{active_total} 项 · 全部已核 {all_done}/{total} 页 · 本页保留 {len(objects)}，另存排除 {len(f.get('excluded_objects',[]))} · {'已核完点数' if labels_complete(f) else '待你检查'}")
+        chosen_video.set(titles[state['video']]); state['selected']=None;crop_label.configure(image='');detail.set('点选上角框可放大、改点数。已确认的点数保留；怀疑误排时可直接恢复旧框。')
         if visible:
-            n=next((i for i in visible if i >= (selected or 0)),visible[-1]);tree.selection_set(str(n));tree.focus(str(n));tree.see(str(n));select()
+            pending=[i for i in visible if objects[i].get('label_provenance')!='human_reviewed']
+            options=pending or visible
+            n=next((i for i in options if i >= (selected or 0)),options[0]);tree.selection_set(str(n));tree.focus(str(n));tree.see(str(n));select()
 
     def select(_event=None):
         values=tree.selection()
@@ -189,14 +227,18 @@ def run_ui(bundle):
         n=state['selected']
         if n is None:return
         store.confirm(state['video'],state['page'],reviewer.get(),selected=n,rank=value)
-        load_page(min(n+1,len(frame()['objects'])-1));tree.focus_set()
+        if labels_complete(frame()): move_page(pending=True)
+        else: load_page(min(n+1,len(frame()['objects'])-1))
+        tree.focus_set()
 
     def move_page(delta=1, pending=False):
         locations=[(v,p) for v,d in enumerate(store.documents) for p,_ in enumerate(d['frames'])]
         start=locations.index((state['video'],state['page']))
         if pending:
             candidates=locations[start+1:]+locations[:start+1]
-            target=next(((v,p) for v,p in candidates if not store.documents[v]['frames'][p].get('complete')),locations[start])
+            candidates=[(v,p) for v,p in candidates if not labels_complete(store.documents[v]['frames'][p])]
+            target=next(((v,p) for v,p in candidates if store.documents[v]['frames'][p]['objects']),
+                        next(iter(candidates),locations[start]))
         else:target=locations[min(len(locations)-1,max(0,start+delta))]
         state['video'],state['page']=target;load_page()
 
@@ -214,13 +256,48 @@ def run_ui(bundle):
 
     def switch(_event=None):
         state['video']=video_box.current(); pages=store.documents[state['video']]['frames']
-        state['page']=next((i for i,f in enumerate(pages) if not f.get('complete')),0);load_page()
+        state['page']=first_pending_page(pages);load_page()
+
+    def inspect_excluded():
+        v,p=state['video'],state['page']
+        dialog=tk.Toplevel(root);dialog.title('排除项：只在你认为误排时恢复');dialog.geometry('740x560')
+        dialog.transient(root);dialog.grab_set()
+        listing=tk.Listbox(dialog,width=40);listing.pack(side='left',fill='both',expand=True,padx=8,pady=8)
+        right=ttk.Frame(dialog,padding=8);right.pack(side='left',fill='both')
+        preview=ttk.Label(right);preview.pack()
+        note=ttk.Label(right,wraplength=320);note.pack(pady=10)
+        def refresh():
+            listing.delete(0,'end')
+            for i,o in enumerate(frame().get('excluded_objects',[])):
+                listing.insert('end',f"{i+1}. {o['rank']} · {'原来已确认' if o.get('label_provenance')=='human_reviewed' else '待确认建议'}")
+            if listing.size():listing.selection_set(0);show()
+            else:preview.configure(image='');note.configure(text='本页没有排除项。')
+        def show(_event=None):
+            if not listing.curselection():return
+            obj=frame()['excluded_objects'][listing.curselection()[0]];x,y,w,h=obj['bbox'];im=state['image'];pad=60
+            crop=im.crop((max(0,x-pad),max(0,y-pad),min(im.width,x+w+pad),min(im.height,y+h+pad)))
+            ImageDraw.Draw(crop).rectangle((min(x,pad),min(y,pad),min(x,pad)+w,min(y,pad)+h),outline='#16b6ff',width=2)
+            scale=min(320/crop.width,350/crop.height);crop=crop.resize((round(crop.width*scale),round(crop.height*scale)))
+            preview.photo=ImageTk.PhotoImage(crop);preview.configure(image=preview.photo)
+            reason=obj.get('upper_corner_selection',{}).get('reason','')
+            description=('原标注为非牌' if reason=='previous_noncard_label' else
+                         '同一上角的拆分笔画已合并' if reason=='fragment_merged_into_same_upper_index' else
+                         '你已手动移出' if reason=='user_removed' else '下角、倒向、碎片或方向不确定')
+            note.configure(text=f"当前标注：{obj['rank']}\n排除原因：{description}\n如它属于正向上角，点击恢复即可，无需重画。恢复不自动确认点数。")
+        def restore():
+            if listing.curselection():
+                store.restore(v,p,listing.curselection()[0]);load_page();refresh()
+        listing.bind('<<ListboxSelect>>',show)
+        ttk.Button(right,text='恢复选中框',command=lambda:safe(restore)).pack(pady=5)
+        ttk.Button(right,text='关闭',command=dialog.destroy).pack(pady=5)
+        refresh()
 
     for i,label in enumerate(LABELS):
         ttk.Button(buttons,text='非牌' if label=='junk' else '看不清' if label=='unreadable' else label,width=7,
                    command=lambda value=label:safe(lambda:set_rank(value))).grid(row=i//5,column=i%5,padx=2,pady=3)
     for title,command in (("上一页",lambda:move_page(-1)),("下一页",lambda:move_page(1)),("下一待核页",lambda:move_page(pending=True)),
-                          ("确认此项 ↵",set_rank),("删除误框 Del",remove),("撤销 Ctrl+Z",undo),("整页通过（含非牌）Ctrl+Enter",complete_page)):
+                          ("确认此项 ↵",set_rank),("删除误框 Del",remove),("撤销 Ctrl+Z",undo),("整页通过 Ctrl+Enter",complete_page),
+                          ("查看排除项",inspect_excluded)):
         ttk.Button(bottom,text=title,command=lambda fn=command:safe(fn)).pack(side='left',padx=3)
     ttk.Checkbutton(bottom,text="补漏框",variable=drawing).pack(side='left',padx=5)
 
@@ -263,7 +340,7 @@ def run_ui(bundle):
     tree.bind('<<TreeviewSelect>>',select);video_box.bind('<<ComboboxSelected>>',switch)
     canvas.bind('<ButtonPress-1>',press);canvas.bind('<B1-Motion>',drag);canvas.bind('<ButtonRelease-1>',lambda e:safe(lambda:release(e)))
     root.bind('<Key>',key)
-    state['page']=next((i for i,f in enumerate(store.documents[0]['frames']) if not f.get('complete')),0)
+    state['page']=first_pending_page(store.documents[0]['frames'])
     load_page();root.mainloop()
 
 
