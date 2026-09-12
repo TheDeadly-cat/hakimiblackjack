@@ -88,7 +88,7 @@ python scripts/vision_benchmarks.py
 python scripts/verify_vision_v03a.py --rebuild-holdout
 ```
 
-主窗口「识牌核对」：打开本地图或本地旁观录像、确认/改正/拒绝后经控制器入账。未确认时账本不变，界面标明「图像待核对」。匹配度不是正确概率。录像由 NVIDIA / Windows 现成工具录制，本软件只理解录像。说明见 [V0.3b 旁观录像](docs/vision/V0.3b-旁观录像.md)、[R0 接口理解](docs/vision/R0-接口理解.md) 与 [R3 验收](docs/vision/R3-验收.md)。
+主窗口「识牌核对」：打开本地图或本地旁观录像、确认/改正/拒绝后经控制器入账。未确认时账本不变，界面标明「图像待核对」。匹配度不是正确概率。录像由 NVIDIA / Windows 现成工具录制，本软件只理解录像。说明见 [V0.3b 旁观录像](docs/vision/V0.3b-旁观录像.md)、[R0 接口理解](docs/vision/R0-接口理解.md) 与 [R3 验收](docs/vision/R3-验收.md)。真实牌桌角标走「标注 → 训练 → 按局留出」，第一次留出未达标，自动确认仍关，见 [V0.3e](docs/vision/V0.3e-标注训练留出集.md)。
 
 原 V0.2a 回归与截图验收脚本（不能代替新增分牌工作流/性能验收，截图使用可选开发依赖 Pillow）：
 

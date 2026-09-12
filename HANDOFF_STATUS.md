@@ -1,9 +1,60 @@
 # 项目接手状态
 
+更新时间：2026-09-12（V0.3e 标注 + 训练 + 按局留出评测）
+执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
+当前任务ID：V0.3e 真实角标标注闭环（候选观察，不自动入账）
+产品显示仍为 `0.2.0b1`。不重做 T5–T10，不另建仓库，不开发录屏器，不改 SplitEngine / 公式 / 容差 / 5s / SQLite schema / 用户库。
+
+分支与基线：
+- 工作分支仍为 `vision/v0.3c-live`，HEAD 在本轮开始时是 `d062e32`（模板匹配未收敛）。
+- 上游基线仍为 main `cdd0e8f2e34e27f9652575556b3d4b5c9f25603d`。
+- 本轮已授权 commit，未授权 push / 发运行包。素材与标签在 `.local-evidence/`，不入库。
+
+## 本轮完成
+
+- 按局切分：`blackjack_lab/vision/glyph_dataset.py`。同一帧 / 同一局不得进训练与留出两侧。
+- 分类器：`blackjack_lab/vision/rank_classifier.py`。本机 OpenCV 5 无 `cv2.ml` / HOG，用 numpy kNN。6/9 不做 180° 增强。分数不是校准概率。
+- 脚本：`prepare_glyph_queue.py`（含 `--append` 只加训练局）、`label_glyphs.py`、`train_rank_classifier.py`（门槛只在训练局内选）。
+- 测试：`tests.test_vision_rank_classifier` 9 项。
+- 文档：`docs/vision/V0.3e-标注训练留出集.md`。
+
+## 命令（本机已跑）
+
+```
+python -m unittest tests.test_vision_rank_classifier -q
+python scripts/prepare_glyph_queue.py .local-evidence/material-train-20260912 --append --per-round 3
+python scripts/train_rank_classifier.py .local-evidence/material-train-20260912/glyph-queue
+```
+
+## 真实留出数字（留出 63 条冻结；不是验收通过）
+
+| | 第一轮 | 第二轮 |
+|---|---|---|
+| 训练标注 | 93 | 196 |
+| 接受项准确率 | 0.857（24/28） | 0.804（37/46） |
+| 端到端召回 | 0.421（24/57） | 0.649（37/57） |
+| 错认 | 4 | 9 |
+
+Q 仍未进入训练（连通块经常抽不到桌上的 Q）。A / 10 仍然太少。**自动确认未打开。**
+
+## 已知限制
+
+- 留出是同一段采集的后若干局，不是第二个会话。
+- 标注来自拼版图上能看清的裁片；用户应用 `label_glyphs.py ui` 复核后再当真值。
+- 未接到核对窗，未改实时捕获路径。
+- 未改 SplitEngine.cs。未改他人测试。
+
+## 下一动作
+
+补 Q（可能要改抽取，而不是再加同一批连通块）；另采一段做留出。召回和错认没有到能入账的程度之前，不要打开自动确认。
+
+# 历史接手（V0.3c 实时捕获落地，保留）
+
 更新时间：2026-09-12（V0.3c 实时捕获落地：授权窗口 → 统一帧 → 现有识别管线）
 执行工具/模型：Cursor Claude Opus 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
 当前任务ID：V0.3c 实时窗口捕获（浏览器窗口只读捕获，不操控网站、不下注）
 产品显示仍为 `0.2.0b1`。不重做 T5–T10，不另建仓库，不开发录屏器，不改 SplitEngine / 公式 / 容差 / 5s / SQLite schema / 用户库。
+
 
 分支与基线：
 - 先把此前**未提交**的 V0.3a/V0.3b 成果落盘为回滚点：`vision/v0.3a-r0-r1` 上的 `7c7405a`（81 文件，6496 插入）。用户已授权本次提交。

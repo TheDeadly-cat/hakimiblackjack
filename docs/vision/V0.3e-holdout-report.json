@@ -1,0 +1,31 @@
+{
+  "schema": "0.3e-holdout-1",
+  "style_id": "navy-live-felt-v1",
+  "platform_claim": "none",
+  "split": "same-session-by-round-last-30pct",
+  "human_corrected_not_counted": true,
+  "score_is_calibrated_probability": false,
+  "auto_confirm_enabled": false,
+  "round": 2,
+  "holdout_frozen": true,
+  "n_train_labeled": 196,
+  "n_holdout_labeled": 63,
+  "n_identifiable": 57,
+  "n_junk": 6,
+  "accepted": 46,
+  "accepted_correct": 37,
+  "accepted_wrong": 9,
+  "rejected_identifiable": 11,
+  "raw_rank_accuracy_among_accepted": 0.8043478260869565,
+  "end_to_end_identifiable_recall": 0.6491228070175439,
+  "junk_kept_out": 5,
+  "junk_as_rank": 1,
+  "train_missing_or_sparse": ["A", "10", "Q"],
+  "round1_for_comparison": {
+    "n_train_labeled": 93,
+    "raw_rank_accuracy_among_accepted": 0.8571428571428571,
+    "end_to_end_identifiable_recall": 0.42105263157894735,
+    "accepted_wrong": 4
+  },
+  "note": "第二轮只追加训练局。留出 63 条冻结。召回升高、错认也升高。不是验收通过。裁片与标签在 .local-evidence/，不入库。"
+}
