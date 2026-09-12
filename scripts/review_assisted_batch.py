@@ -15,10 +15,16 @@ from blackjack_lab.vision.glyph_dataset import LABEL_RANKS
 LABELS = LABEL_RANKS + ("unreadable",)
 
 
+def object_review_pending(obj):
+    return (obj.get("label_provenance") != "human_reviewed"
+            or obj.get("bbox_provenance") == "assistant_upper_corner_crop")
+
+
 def labels_complete(frame):
     objects = frame.get("objects", [])
-    return bool(frame.get("complete") or (objects and all(
-        o.get("label_provenance") == "human_reviewed" for o in objects)))
+    if any(object_review_pending(obj) for obj in objects):
+        return False  # An older page/rank review does not confirm a new crop.
+    return bool(frame.get("complete") or objects)
 
 
 def first_pending_page(frames):
@@ -82,6 +88,11 @@ class ReviewStore:
             for obj in chosen:
                 obj.setdefault("proposed_rank", obj["rank"])
                 obj.setdefault("proposal_provenance", obj.get("label_provenance", "unspecified"))
+                if (obj.get("label_provenance") == "human_reviewed"
+                        and obj.get("bbox_provenance") == "assistant_upper_corner_crop"):
+                    obj.setdefault("rank_review_before_bbox_confirmation", {
+                        key: copy.deepcopy(obj[key]) for key in
+                        ("rank", "label_provenance", "reviewed_by", "reviewed_at") if key in obj})
                 if rank is not None and selected is not None:
                     obj["rank"] = rank
                 obj.update(label_provenance="human_reviewed", reviewed_by=reviewer.strip(), reviewed_at=now)
@@ -152,7 +163,7 @@ def run_ui(bundle):
     video_box = ttk.Combobox(top, values=titles, textvariable=chosen_video, width=26, state="readonly")
     video_box.pack(side="left"); ttk.Label(top, text="复核人").pack(side="left", padx=(14,4))
     ttk.Entry(top, textvariable=reviewer, width=16).pack(side="left")
-    ttk.Label(top, text="蓝色待核 · 绿色已核 · 灰色非牌；编号自动生成").pack(side="left", padx=14)
+    ttk.Label(top, text="蓝色待核 · 橙色新框待核 · 绿色已核 · 灰色非牌；编号自动生成").pack(side="left", padx=14)
     ttk.Checkbutton(top, text="显示非牌框", variable=show_junk, command=lambda: safe(load_page)).pack(side="left")
     ttk.Label(root, textvariable=status, padding=5).pack(fill="x")
     if store.bundle.get("review_policy"):
@@ -192,21 +203,24 @@ def run_ui(bundle):
         state['visible'] = visible
         for i,o in enumerate(objects):
             if i not in visible: continue
-            human=o.get("label_provenance")=="human_reviewed"; color="#49e6a2" if human else "#9ba5b7" if o['rank']=='junk' else "#65bbff"
+            human=o.get("label_provenance")=="human_reviewed"
+            crop_pending=o.get("bbox_provenance")=="assistant_upper_corner_crop"
+            color="#ffc05a" if crop_pending else "#49e6a2" if human else "#9ba5b7" if o['rank']=='junk' else "#65bbff"
             x,y,w,h=o['bbox'];canvas.create_rectangle(x*scale,y*scale,(x+w)*scale,(y+h)*scale,outline=color,width=1)
             canvas.create_text(x*scale,max(8,y*scale-7),text=f"{i+1}:{o['rank']}",fill=color,anchor="w",font=("Segoe UI",9,"bold"))
             score=o.get("proposal_score")
             tree.insert("","end",iid=str(i),values=(i+1,'非牌' if o['rank']=='junk' else '待辨认' if o['rank']=='unreadable' else o['rank'],
-                '你已确认' if human else '有疑点，请优先看' if o.get('needs_attention') else 'AI 已检查，待你确认' if o.get('assistant_visual_reviewed') else '自动预标注，待确认',f"{score:.3f}" if score is not None else '—'))
+                '点数已核，新框待核' if human and crop_pending else '新框待核' if crop_pending else '你已确认' if human else '有疑点，请优先看' if o.get('needs_attention') else 'AI 已检查，待你确认' if o.get('assistant_visual_reviewed') else '自动预标注，待确认',f"{score:.3f}" if score is not None else '—'))
         pages=store.documents[state['video']]['frames']
         total=sum(len(d['frames']) for d in store.documents);all_done=sum(labels_complete(f) for d in store.documents for f in d['frames'])
         active_total=sum(len(f['objects']) for f in pages)
         human_total=sum(o.get('label_provenance')=='human_reviewed' for f in pages for o in f['objects'])
+        crop_pending_total=sum(o.get('bbox_provenance')=='assistant_upper_corner_crop' for f in pages for o in f['objects'])
         elapsed=f.get('elapsed_s');stamp=f"{int(elapsed)//60:02d}:{int(elapsed)%60:02d}" if elapsed is not None else '未知时间'
-        status.set(f"录像 {entry['title']} · {stamp} · 第 {state['page']+1}/{len(pages)} 页 · 本段已核 {human_total}/{active_total} 项 · 全部已核 {all_done}/{total} 页 · 本页保留 {len(objects)}，另存排除 {len(f.get('excluded_objects',[]))} · {'已核完点数' if labels_complete(f) else '待你检查'}")
+        status.set(f"录像 {entry['title']} · {stamp} · 第 {state['page']+1}/{len(pages)} 页 · 点数已核 {human_total}/{active_total}，新框待核 {crop_pending_total} · 全部已核 {all_done}/{total} 页 · 本页保留 {len(objects)}，另存排除 {len(f.get('excluded_objects',[]))} · {'点数与框已核' if labels_complete(f) else '待你检查'}")
         chosen_video.set(titles[state['video']]); state['selected']=None;crop_label.configure(image='');detail.set('点选上角框可放大、改点数。已确认的点数保留；怀疑误排时可直接恢复旧框。')
         if visible:
-            pending=[i for i in visible if objects[i].get('label_provenance')!='human_reviewed']
+            pending=[i for i in visible if object_review_pending(objects[i])]
             options=pending or visible
             n=next((i for i in options if i >= (selected or 0)),options[0]);tree.selection_set(str(n));tree.focus(str(n));tree.see(str(n));select()
 

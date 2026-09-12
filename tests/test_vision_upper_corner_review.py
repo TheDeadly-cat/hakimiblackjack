@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from blackjack_lab.vision.corner_policy import UpperCornerSelector, corner_key
 from blackjack_lab.vision.deps import cv2_available
 from scripts.prepare_upper_review import select_frame
-from scripts.review_assisted_batch import first_pending_page, labels_complete
+from scripts.review_assisted_batch import first_pending_page, labels_complete, object_review_pending
 from tests import test_vision_assisted_review as fixture_helpers
 
 
@@ -73,6 +73,20 @@ class UpperReviewSelectionTests(unittest.TestCase):
         self.assertEqual(first_pending_page([empty, confirmed, pending]), 2)
         self.assertFalse(labels_complete(empty))
 
+    def test_old_page_and_rank_confirmation_cannot_skip_a_new_crop(self):
+        frame = {"complete": True, "objects": [{"rank": "Q", "label_provenance": "human_reviewed",
+                                              "bbox_provenance": "assistant_upper_corner_crop"}]}
+        original = copy.deepcopy(frame)
+        self.assertTrue(object_review_pending(frame["objects"][0]))
+        self.assertFalse(labels_complete(frame))
+        self.assertEqual(first_pending_page([{"complete":True,"objects":[]}, frame]),1)
+        self.assertEqual(frame,original)
+
+    def test_existing_confirmed_labels_and_empty_pages_are_not_reset(self):
+        self.assertTrue(labels_complete({"complete":True,"objects":[]}))
+        self.assertTrue(labels_complete({"complete":False,"objects":[{"label_provenance":"human_reviewed"}]}))
+        self.assertFalse(labels_complete({"complete":True,"objects":[{"label_provenance":"assistant_proposed"}]}))
+
 
 class UpperReviewStoreTests(unittest.TestCase):
     def setUp(self):
@@ -99,6 +113,23 @@ class UpperReviewStoreTests(unittest.TestCase):
         obj = self.store.documents[0]["frames"][0]["objects"][0]
         self.assertEqual(obj["bbox_provenance"], "human_reviewed")
         self.assertEqual(obj["upper_corner_selection"]["provenance"], "human_reviewed")
+
+    def test_new_crop_confirmation_retains_previous_human_rank_receipt(self):
+        frame=self.store.documents[0]["frames"][0]
+        for obj in frame["objects"]:
+            obj.update(label_provenance="human_reviewed",reviewed_by="Original fixture",reviewed_at="old-time")
+        first=frame["objects"][0]
+        first["bbox_provenance"]="assistant_upper_corner_crop"
+        frame["complete"]=True
+        original={k:first[k] for k in ("rank","label_provenance","reviewed_by","reviewed_at")}
+        self.store.save(0)
+        self.assertFalse(labels_complete(frame))
+        self.store.confirm(0,0,"New crop fixture",selected=0)
+        self.assertEqual(first["rank_review_before_bbox_confirmation"],original)
+        self.assertEqual(first["rank"],original["rank"])
+        self.assertEqual(first["bbox_provenance"],"human_reviewed")
+        self.assertTrue(labels_complete(frame))
+        self.assertFalse(frame["complete"],"Individual confirmation is not whole-frame completeness")
 
 
 @unittest.skipUnless(cv2_available(), "optional image dependencies unavailable")
