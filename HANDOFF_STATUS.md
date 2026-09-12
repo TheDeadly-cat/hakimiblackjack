@@ -1,5 +1,62 @@
 # 项目接手状态
 
+更新时间：2026-09-12（V0.3c 实时捕获落地：授权窗口 → 统一帧 → 现有识别管线）
+执行工具/模型：Cursor Claude Opus 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
+当前任务ID：V0.3c 实时窗口捕获（浏览器窗口只读捕获，不操控网站、不下注）
+产品显示仍为 `0.2.0b1`。不重做 T5–T10，不另建仓库，不开发录屏器，不改 SplitEngine / 公式 / 容差 / 5s / SQLite schema / 用户库。
+
+分支与基线：
+- 先把此前**未提交**的 V0.3a/V0.3b 成果落盘为回滚点：`vision/v0.3a-r0-r1` 上的 `7c7405a`（81 文件，6496 插入）。用户已授权本次提交。
+- 本轮工作分支：`vision/v0.3c-live`，从 `7c7405a` 新建。
+- 上游基线仍为 main `cdd0e8f2e34e27f9652575556b3d4b5c9f25603d`。
+- 未推送、未开 PR、未发运行包。
+
+## 本轮完成
+
+- `blackjack_lab/capture/`：`contracts.py`（FramePacket / GenerationToken / 状态常量 / 内容签名）、`window_list.py`（ctypes 枚举，不新增依赖，排除本进程窗口防预览回环）、`frame_intake.py`（采样、裁区、独占像素、重复帧、有界队列、换代）、`wgc_source.py`（WGC 适配层）。
+- `blackjack_lab/vision/live_input.py`：`LiveStyle` 归一化标定 + `layout_for_frame` + `recognize_frame`。修掉 `navy_live_felt_v1` 把裁区写死成 2560×1440 绝对像素的问题。
+- 模块边界双向加测：vision 不导入 capture，capture 不导入 vision/ledger/ui；没装 `windows-capture` 时识别侧仍可导入。
+- 脚本：`scripts/live_capture_probe.py`（列窗口 / 真捕获 / 报真实指标）、`scripts/verify_live_capture.py`（自建已知颜色测试窗口的实机自检）。
+- 文档：`docs/vision/V0.3c-实时捕获.md`（选型、实测数字、三条必须照做的性质、已知不支持）。
+
+## 命令（本机已跑）
+
+```
+python -m unittest tests.test_capture_intake tests.test_vision_live_input tests.test_vision_live_pipeline -q
+python scripts/verify_live_capture.py --output .local-evidence/live-selftest-20260912
+python scripts/live_capture_probe.py --list
+python scripts/live_capture_probe.py --window 14223860 --seconds 5 --fps 10
+python -m unittest discover -s tests -q
+```
+
+焦点 66 项 OK。实机自检 9 项全通过（像素与已知颜色一致、静止报「暂无新帧」而非 live、运行中窗口关闭报来源消失、停止后不留线程、对已消失窗口重开被拒绝）。
+全套 `discover` 519 项：**2 项失败是本轮之前就存在的**，已用 `git stash -u` 在 `7c7405a` 上复现确认，不是本轮引入：
+1. `test_vision_isolation.test_main_check_without_loading_vision_cv2`：子进程输出 UTF-8 中文，`subprocess.run(text=True)` 用本机 GBK 解码，读取线程抛 `UnicodeDecodeError`，`proc.stdout` 变成 `None`。断言消息被提前求值因而报 TypeError。修法是给 `subprocess.run` 加 `encoding="utf-8"`；本轮未改他人测试。
+2. `test_vision_navy_table.test_corner_ink_ranks_an_ace`：Hershey 字体模板把 A 认成 Q。这正是真实识别未达标的同一个根因。
+
+未改 SplitEngine.cs。未改他人测试。
+
+## 实测数字（一次本机测量，不是承诺速率）
+
+显示器捕获 2560×1440 BGRA，4.04 秒 184 帧，首帧 219ms；静止窗口 5 秒仅 1 帧；取帧时帧龄 p50=p95=15.6ms。
+依赖 `windows-capture==2.0.1`（MIT，`cp39-abi3` 轮子，Python 3.14 可直接装）。
+
+## 已知限制（不得写成已完成）
+
+- **真实牌桌点数识别仍未通过**：本机录像第 49222 帧检出 16 框、接受 0 点数。两个原因：牌太小（窗口 1218×840 时牌阵仅 730×140，点数约 10–14 像素高）；`navy_cards.py` 用 Hershey 字体当模板，与真实扑克字形无关。
+- 座位归属未核对：探针把 16 张牌全归到「玩家4/5/6」。
+- 实时预览界面、区域/座位标定界面、自动确认均未开工。
+- 未验证：多显示器、DPI 中途变化、受保护内容黑屏、长时间稳定性、真实牌桌窗口上的连续捕获。
+
+## 下一动作
+
+唯一下一任务：**M2 真实牌面识别**。前置条件已由用户确认——牌桌视频会全屏/最大化观看，牌面像素约增 4–5 倍。
+具体两步：(1) 用 `minAreaRect` 做旋转校正后再取角标，替换现在「取轴对齐框左上 55%」的做法（牌是扇形排开的，现做法必然取偏）；
+(2) 从真实画面裁角标、人工标注，建真实模板库，替换 Hershey 占位模板。
+在真实留出素材上出检出率/rank 准确率之前，不得开放任何自动确认。
+
+# 历史接手（V0.3b 旁观录像，保留）
+
 更新时间：2026-09-12（开发目标改为旁观录像闭环：理解录像，不生产录像）
 执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
 当前任务ID：V0.3b 旁观录像（本地录屏文件 → 选区/识牌 → 跨帧去重 → 人工确认 → 现有账本）
