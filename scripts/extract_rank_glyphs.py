@@ -91,25 +91,63 @@ def extract(cv2, np, path: Path, roi):
         if kind == "felt":
             cv2.rectangle(annotated, (x, y), (x + w, y + h), (0, 0, 255), 1)
             continue
+        upright, rotation = deskew_component(
+            cv2, np, region, labels, index, (x, y, w, h))
         glyphs.append({
             "bbox": [int(x + x0), int(y + y0), int(w), int(h)],
             "area": int(area),
             "fill": round(fill, 3),
             "aspect": round(w / h, 3),
             "ink": kind,
+            "rotation": rotation,
             "_crop": crop,
+            "_upright": upright,
         })
         cv2.rectangle(annotated, (x, y), (x + w, y + h), (0, 255, 0), 1)
     return glyphs, annotated
 
 
-def contact_sheet(cv2, np, glyphs, columns=16):
-    if not glyphs:
+def deskew_component(cv2, np, region, labels, index, bbox, pad=6):
+    """按连通块的最小外接矩形把字形摆正，长轴转到竖直。
+
+    只解决倾斜，不解决上下颠倒：牌的右下角标本来就是倒 180° 的，
+    那一步要靠「点数在上、花色在下」的相对位置另行判定。
+    """
+    x, y, w, h = bbox
+    y0 = max(0, y - pad)
+    x0 = max(0, x - pad)
+    y1 = min(region.shape[0], y + h + pad)
+    x1 = min(region.shape[1], x + w + pad)
+    patch = region[y0:y1, x0:x1]
+    mask = (labels[y0:y1, x0:x1] == index).astype(np.uint8)
+    if mask.sum() == 0:
+        return None, None
+
+    points = cv2.findNonZero(mask)
+    (cx, cy), (rw, rh), angle = cv2.minAreaRect(points)
+    if rw < 1 or rh < 1:
+        return None, None
+    # 长轴转竖直
+    rotation = angle if rw < rh else angle - 90
+    long_side, short_side = max(rw, rh), min(rw, rh)
+
+    matrix = cv2.getRotationMatrix2D((cx, cy), rotation, 1.0)
+    rotated = cv2.warpAffine(
+        patch, matrix, (patch.shape[1], patch.shape[0]),
+        flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    out_w, out_h = int(round(short_side)) + 4, int(round(long_side)) + 4
+    upright = cv2.getRectSubPix(rotated, (max(2, out_w), max(2, out_h)), (cx, cy))
+    return upright, round(rotation, 1)
+
+
+def contact_sheet(cv2, np, glyphs, columns=16, key="_crop"):
+    usable = [g for g in glyphs if g.get(key) is not None and g[key].size]
+    if not usable:
         return None
-    rows = (len(glyphs) + columns - 1) // columns
+    rows = (len(usable) + columns - 1) // columns
     sheet = np.full((rows * TILE, columns * TILE, 3), 40, dtype=np.uint8)
-    for index, glyph in enumerate(glyphs):
-        crop = glyph["_crop"]
+    for index, glyph in enumerate(usable):
+        crop = glyph[key]
         h, w = crop.shape[:2]
         scale = min((TILE - 8) / w, (TILE - 8) / h)
         resized = cv2.resize(crop, (max(1, int(w * scale)), max(1, int(h * scale))),
@@ -153,6 +191,11 @@ def main(argv=None) -> int:
     sheet_path = directory / "glyph-sheet.png"
     cv2.imwrite(str(sheet_path), sheet)
 
+    upright_sheet = contact_sheet(cv2, np, every, key="_upright")
+    if upright_sheet is not None:
+        cv2.imwrite(str(directory / "glyph-sheet-upright.png"), upright_sheet)
+        print(f"摆正后拼版图 {directory / 'glyph-sheet-upright.png'}")
+
     heights = [g["bbox"][3] for g in every]
     widths = [g["bbox"][2] for g in every]
     print(f"\n共 {len(every)} 个字形候选")
@@ -161,7 +204,7 @@ def main(argv=None) -> int:
     print(f"拼版图 {sheet_path}")
 
     (directory / "glyph-candidates.json").write_text(
-        json.dumps([{k: v for k, v in g.items() if k != "_crop"} for g in every],
+        json.dumps([{k: v for k, v in g.items() if not k.startswith("_")} for g in every],
                    ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     return 0
 
