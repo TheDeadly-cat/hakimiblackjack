@@ -1,26 +1,12 @@
-# Hakimi Blackjack Lab —— 可选识牌与实时捕获依赖（V0.3a / V0.3c）
+# Optional local image/video recognition and original-frame annotation.
+# Manual recording, SQLite recovery and math self-check remain stdlib-only.
+# Install: python -m pip install -r requirements-vision.txt
+# WGC capture is separate: python -m pip install -r requirements-capture.txt
 #
-# 不安装本文件时，手动录牌、会话恢复和数学自检必须仍可用。
-# 不要把这些包写进程序启动的全局必需导入路径。
-#
-# 本机实际试装（Windows 11 build 26200 / Python 3.14.6）：
-#   2026-09-12  opencv-python-headless==4.14.0.94
-#   2026-09-12  numpy==2.4.6（已存在，由 OpenCV 引用）
-#   2026-09-12  windows-capture==2.0.1
-#
-# 安装：
-#   python -m pip install -r requirements-vision.txt
-#
-# OpenCV matchTemplate 的返回值是匹配度，不是校准后的正确概率。
-
-opencv-python-headless==4.14.0.94
-
-# 实时窗口/显示器捕获（Windows Graphics Capture 的 Rust 绑定，MIT）。
-# 轮子为 cp39-abi3-win_amd64，因此在 Python 3.14 上可直接安装。
-# 本机实测：显示器捕获 2560x1440 BGRA，4.04 秒 184 帧；首帧 219ms。
-# 实测限制（不是缺陷，必须按此设计）：
-#   1. 变化驱动——画面不动就没有新帧，静止窗口只给一帧。
-#   2. 阻塞式 start() 在没有新帧时不返回，只能用 start_free_threaded()。
-#   3. 最小显示器序号是 1，传 0 会被后端拒绝。
-# 未安装时：实时捕获不可用并明确提示；录像回放与本地图识牌不受影响。
-windows-capture==2.0.1
+# Frozen to the actual Windows / Python 3.14 development environment on
+# 2026-09-12. Official PyPI binary dependency resolution checked on that date.
+# Use exactly one OpenCV distribution: windows-capture depends on opencv-python,
+# so installing opencv-python-headless alongside it would overwrite the same cv2.
+opencv-python==5.0.0.93
+numpy==2.4.6
+Pillow==12.2.0

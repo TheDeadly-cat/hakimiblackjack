@@ -59,6 +59,7 @@ def cmd_apply(args) -> int:
                     continue
                 validate_label(label)
                 by_id[ids[idx]].label = label
+                by_id[ids[idx]].label_provenance = "unspecified"
                 written += 1
     else:
         for crop_id, label in payload.items():
@@ -67,6 +68,7 @@ def cmd_apply(args) -> int:
                 continue
             validate_label(label)
             by_id[crop_id].label = label
+            by_id[crop_id].label_provenance = "unspecified"
             written += 1
 
     save_queue(items, queue_dir)
@@ -91,7 +93,8 @@ def cmd_ui(args) -> int:
         return 2
 
     queue_dir = Path(args.queue)
-    items = load_queue(queue_dir)
+    all_items = load_queue(queue_dir)
+    items = all_items
     if args.split:
         items = [i for i in items if i.split == args.split]
     if not items:
@@ -105,7 +108,8 @@ def cmd_ui(args) -> int:
         return items[cursor["i"]]
 
     def save():
-        save_queue(items, queue_dir)
+        # --split 只是视图过滤，保存必须保留另一侧标签。
+        save_queue(all_items, queue_dir)
 
     root = tk.Tk()
     root.title("角标标注")
@@ -136,8 +140,9 @@ def cmd_ui(args) -> int:
 
     def assign(label: str):
         item = current()
-        history.append((cursor["i"], item.label))
+        history.append((cursor["i"], item.label, item.label_provenance))
         item.label = label
+        item.label_provenance = "human_reviewed"
         save()
         if cursor["i"] + 1 < len(items):
             cursor["i"] += 1
@@ -151,8 +156,9 @@ def cmd_ui(args) -> int:
     def undo(_event=None):
         if not history:
             return
-        idx, old = history.pop()
+        idx, old, old_provenance = history.pop()
         items[idx].label = old
+        items[idx].label_provenance = old_provenance
         cursor["i"] = idx
         save()
         show()

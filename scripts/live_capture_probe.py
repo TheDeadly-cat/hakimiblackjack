@@ -55,9 +55,18 @@ def cmd_list() -> int:
 
 
 def cmd_capture(args) -> int:
+    style, runtime = None, None
+    if args.style:
+        from blackjack_lab.vision.live_input import LiveStyle
+        from blackjack_lab.vision.model_adapter import RecognitionRuntime, TrainedModelAdapter
+        style = LiveStyle.load(args.style)
+        if style.capture_crop is not None and args.crop:
+            raise SystemExit("样式已定义 capture_crop，不能再用 --crop 重复裁区")
+        adapter = TrainedModelAdapter(args.model, style_id=style.style_id) if args.model else None
+        runtime = RecognitionRuntime(adapter)
     if not wgc_available():
         print("未安装 windows-capture。录像回放与手动录牌不受影响。")
-        print("安装：pip install -r requirements-vision.txt")
+        print("安装：pip install -r requirements-capture.txt")
         return 2
 
     crop = parse_crop(args.crop)
@@ -82,6 +91,16 @@ def cmd_capture(args) -> int:
     statuses = {}
     saved = []
     first_frame_s = None
+    latest_result = None
+    recognition = {"frames": 0, "candidate_outputs": 0, "rank_outputs": 0,
+                   "stale_results_discarded": 0, "repeat_or_black_skipped": 0,
+                   "writes_ledger": False,
+                   "validation_scope": "开发候选；捕获运行不是识牌准确率验收"}
+    if runtime is not None:
+        recognition["style_id"] = style.style_id
+        if runtime.adapter is not None:
+            print(runtime.adapter.identity_text)
+            recognition.update(model_id=runtime.adapter.model_id, model_digest=runtime.adapter.digest)
 
     started = time.perf_counter()
     try:
@@ -100,6 +119,37 @@ def cmd_capture(args) -> int:
                 if first_frame_s is None:
                     first_frame_s = time.perf_counter() - started
                 latencies.append(packet.age_ms())
+                if runtime is not None:
+                    from blackjack_lab.vision.live_input import capture_crop_pixels, recognize_frame
+                    selected_crop = (capture_crop_pixels(style, *packet.source_size)
+                                     if style.capture_crop is not None else crop)
+                    if selected_crop is not None:
+                        expected_origin = selected_crop[:2]
+                        expected_size = selected_crop[2:]
+                    else:
+                        expected_origin, expected_size = (0, 0), packet.source_size
+                    version = style.layout_version(*expected_size)
+                    if (packet.crop_origin != expected_origin or packet.image_size != expected_size
+                            or packet.layout_version != version):
+                        runtime.invalidate("捕获区域或尺寸已变化")
+                        latest_result = None
+                        source.intake.set_crop(selected_crop)
+                        source.intake.set_layout_version(version)
+                        continue
+                    if packet.is_repeat or packet.is_black:
+                        recognition["repeat_or_black_skipped"] += 1
+                    else:
+                        result = recognize_frame(packet, style, runtime=runtime)
+                        if result is None or packet.token() != source.token():
+                            runtime.invalidate("采集代际已改变")
+                            latest_result = None
+                            recognition["stale_results_discarded"] += 1
+                        else:
+                            latest_result = result
+                            recognition["frames"] += 1
+                            recognition["candidate_outputs"] += len(result.observations)
+                            recognition["rank_outputs"] += sum(o.accepted_rank() is not None
+                                                               for o in result.observations)
                 if args.save_frames and len(saved) < args.save_frames:
                     saved.append(packet)
             time.sleep(0.01)
@@ -107,6 +157,10 @@ def cmd_capture(args) -> int:
         source.stop()
 
     report = source.report()
+    if runtime is not None:
+        recognition["generation"] = runtime.generation
+        report["recognition"] = recognition
+        print("识牌候选统计（不等于准确率）：" + json.dumps(recognition, ensure_ascii=False))
     report["probe"] = {
         "target": target_desc,
         "requested_seconds": args.seconds,
@@ -145,6 +199,8 @@ def cmd_capture(args) -> int:
         (out / "capture-report.json").write_text(
             json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True),
             encoding="utf-8")
+        if latest_result is not None:
+            (out / "latest-candidates.json").write_text(latest_result.to_json(), encoding="utf-8")
         for index, packet in enumerate(saved):
             _save_frame(out / f"frame-{index:02d}.png", packet)
         if saved:
@@ -170,10 +226,14 @@ def main(argv=None) -> int:
     parser.add_argument("--seconds", type=float, default=8.0)
     parser.add_argument("--fps", type=float, default=10.0, help="识别采样帧率，不是捕获上限")
     parser.add_argument("--crop", help="来源内的捕获区域 x,y,w,h")
+    parser.add_argument("--model", type=Path, help="本地训练模型目录；必须同时指定 --style")
+    parser.add_argument("--style", type=Path, help="归一化实时样式 JSON；开启同模型实时候选识别")
     parser.add_argument("--save-frames", type=int, default=0,
                         help="保存前 N 帧（只含选定区域）用于标定")
     parser.add_argument("--output", help="回执目录，建议放 .local-evidence/ 下")
     args = parser.parse_args(argv)
+    if args.model and not args.style:
+        parser.error("--model 必须同时指定 --style")
 
     if args.list:
         return cmd_list()

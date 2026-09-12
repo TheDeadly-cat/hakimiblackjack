@@ -27,7 +27,7 @@ TIMESPAN_TICK_NS = 100
 INSTALL_HINT = (
     "未安装实时捕获依赖（windows-capture）。"
     "录像回放、本地图识牌与手动录牌不受影响。"
-    "若要实时捕获：pip install -r requirements-vision.txt"
+    "若要实时捕获：pip install -r requirements-capture.txt"
 )
 
 

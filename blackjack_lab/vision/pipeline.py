@@ -6,7 +6,10 @@ import hashlib
 import json
 import time
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from .model_adapter import TrainedModelAdapter
 
 from .contracts import (
     FACE_SHOWN, FACE_UNREADABLE, MODEL_ID, RECOGNITION_SCHEMA_VERSION,
@@ -58,10 +61,18 @@ def infer_layout(loaded: LoadedImage) -> LayoutProfile:
 def recognize_loaded(loaded: LoadedImage, *,
                      layout: Optional[LayoutProfile] = None,
                      bank: Optional[TemplateBank] = None,
+                     adapter: Optional[TrainedModelAdapter] = None,
                      templates_dir: Optional[Path] = None,
                      source_declaration: Optional[str] = None) -> RecognitionResult:
     layout = layout or infer_layout(loaded)
     loaded = apply_layout_crops(loaded, layout)
+    if adapter is not None:
+        if bank is not None or templates_dir is not None:
+            raise ValueError("训练模型与模板只能明确选择一种")
+        result = adapter.recognize(
+            loaded, layout, source_declaration or SOURCE_OBSERVER_VIDEO)
+        result.recognized_at = time.time()
+        return result
     if layout.felt_kind == "navy":
         source_declaration = source_declaration or SOURCE_OBSERVER_VIDEO
         bank = bank or load_template_bank_optional(templates_dir)
@@ -138,10 +149,11 @@ def recognize_loaded(loaded: LoadedImage, *,
 
 def recognize_path(path, *,
                    layout: Optional[LayoutProfile] = None,
+                   adapter: Optional[TrainedModelAdapter] = None,
                    templates_dir: Optional[Path] = None,
-                   source_declaration: str = SOURCE_SYNTHETIC) -> RecognitionResult:
+                   source_declaration: Optional[str] = None) -> RecognitionResult:
     loaded = load_image(path, layout or default_layout())
     return recognize_loaded(
-        loaded, layout=layout, templates_dir=templates_dir,
+        loaded, layout=layout, adapter=adapter, templates_dir=templates_dir,
         source_declaration=source_declaration,
     )

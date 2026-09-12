@@ -1,0 +1,4 @@
+# Optional Windows Graphics Capture. Does not belong in the offline CI job.
+# Reuses one pinned OpenCV distribution; do not add opencv-python-headless.
+-r requirements-vision.txt
+windows-capture==2.0.1
