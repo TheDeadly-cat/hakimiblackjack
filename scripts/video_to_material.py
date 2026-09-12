@@ -22,6 +22,7 @@ def convert(video, output, *, interval_s=2.0, roi=None, max_frames=4000):
     if out.exists():
         raise ValueError("输出目录已存在，拒绝覆盖")
     cv2, np = load_cv2(), load_numpy()
+    source_before = Path(video).stat()
     with VideoReader(video) as reader:
         asset = reader.asset
         if asset.fps <= 0 or asset.frame_count <= 0:
@@ -48,6 +49,7 @@ def convert(video, output, *, interval_s=2.0, roi=None, max_frames=4000):
                 (out / "frames" / name).write_bytes(payload)
                 white = white_pixel_count(cv2, np, bgr)
                 frames.append({"file": name, "frame_id": index,
+                               "source_rgb_sha256": loaded.sha256,
                                "elapsed_s": index / asset.fps,
                                "media_time_ns": round(index / asset.fps * 1e9),
                                "signature": hashlib.sha256(bgr.tobytes()).hexdigest(),
@@ -58,6 +60,10 @@ def convert(video, output, *, interval_s=2.0, roi=None, max_frames=4000):
                 last_white = white
             except (VideoRejected, OSError) as exc:
                 errors.append({"frame_id": index, "elapsed_s": index / asset.fps, "error": str(exc)})
+        source_after = asset.path.stat()
+        source_stable = (source_before.st_size, source_before.st_mtime_ns) == (source_after.st_size, source_after.st_mtime_ns)
+        if not source_stable:
+            errors.append({"stage": "source_identity", "error": "录像在转换期间发生变化，不能绑定到起始摘要"})
         manifest = {"schema": "video-material-1", "session": f"video-{asset.sha256[:24]}",
                     "source_sha256": asset.sha256, "source_file": str(asset.path),
                     "window_size": [asset.width, asset.height], "roi": box,
@@ -66,6 +72,7 @@ def convert(video, output, *, interval_s=2.0, roi=None, max_frames=4000):
                     "truncated": len(indices) > max_frames,
                     "valid": not errors and len(indices) <= max_frames,
                     "original_preserved": True,
+                    "source_stable_during_conversion": source_stable,
                     "note": "固定时间采样；短暂出现的牌可能落在采样间隔之间，不等同连续视频全覆盖。"}
         (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
         return manifest

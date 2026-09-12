@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -26,12 +27,20 @@ def initialize(session, output, *, step=60):
     records = []
     for i in range(0, len(m["frames"]), step):
         f = m["frames"][i]
-        _, digest = read_frame(root, f["file"])
-        records.append({"file": f["file"], "sha256": digest, "round_id": rounds[i],
-                        "split": splits[rounds[i]], "complete": False, "objects": []})
+        bgr, digest = read_frame(root, f["file"])
+        record = {"file": f["file"], "sha256": digest, "round_id": rounds[i],
+                  "material_rgb_sha256": hashlib.sha256(bgr[:, :, ::-1].tobytes()).hexdigest(),
+                  "round_provenance": "automatic_white_pixel_segmentation",
+                  "split": splits[rounds[i]], "complete": False, "objects": []}
+        if m.get("schema") == "video-material-1":
+            record.update(frame_index=f["frame_id"], elapsed_s=f.get("elapsed_s"),
+                          source_rgb_sha256=f.get("source_rgb_sha256"))
+        records.append(record)
     data = {"schema": ANNOTATION_SCHEMA, "session": m["session"],
             "source_sha256": material_identity(root, m), "role": "development",
             "source_complete": not (m.get("valid") is False or m.get("decode_errors") or m.get("truncated")),
+            "coordinate_space": "material_roi",
+            "source_roi": m.get("roi"),
             "selection": {"method": "fixed_manifest_step", "step": step},
             "note": "未展示检测器预测。complete 表示该抽样帧全部目标已人工检查；不代表整段录像逐帧覆盖。",
             "frames": records}
@@ -63,6 +72,10 @@ def review_ui(session, annotation_file):
         ttk.Entry(bar, textvariable=var, width=width).pack(side="left")
     ttk.Combobox(bar, textvariable=rank, values=LABEL_RANKS + ("unreadable",), width=10, state="readonly").pack(side="left")
     status = tk.StringVar(); ttk.Label(root, textvariable=status).pack()
+    round_bar = ttk.Frame(root); round_bar.pack(fill="x")
+    round_id = tk.StringVar()
+    ttk.Label(round_bar, text="原帧局号（自动分段可能有误，请核对）").pack(side="left")
+    ttk.Entry(round_bar, textvariable=round_id, width=8).pack(side="left")
     selection_bar = ttk.Frame(root); selection_bar.pack(fill="x")
     selected = tk.StringVar()
     selector = ttk.Combobox(selection_bar, textvariable=selected, width=85, state="readonly")
@@ -82,6 +95,7 @@ def review_ui(session, annotation_file):
 
     def show():
         record = current()
+        round_id.set(str(record["round_id"]))
         bgr, digest = read_frame(session, record["file"])
         if record["sha256"] != digest:
             raise ValueError("原帧已改变，停止标注")
@@ -98,7 +112,7 @@ def review_ui(session, annotation_file):
         selector.configure(values=[f"{i} · {o['rank']} · {o['physical_card_id']} · {o.get('label_provenance','unspecified')}"
                                    for i,o in enumerate(record["objects"])])
         selected.set("")
-        status.set(f"{index[0]+1}/{len(data['frames'])} · {record['file']} · round {record['round_id']} · "
+        status.set(f"{index[0]+1}/{len(data['frames'])} · {record['file']} · 原视频帧 {record.get('frame_index','未知')} · round {record['round_id']} · "
                    f"{record['split']} · {len(record['objects'])}框 · 全帧核对 {record['complete']}")
 
     def begin(event):
@@ -139,6 +153,14 @@ def review_ui(session, annotation_file):
             messagebox.showinfo("填写身份", "请填写复核人。", parent=root); return
         if any(o.get("label_provenance") != "human_reviewed" for o in current()["objects"]):
             messagebox.showinfo("仍有待复核框", "请逐个核对现有框及点数，再确认整帧。", parent=root); return
+        try:
+            rid = int(round_id.get())
+            if rid < 0:
+                raise ValueError
+        except ValueError:
+            messagebox.showinfo("局号无效", "局号须为非负整数。", parent=root); return
+        current()["round_id"] = rid
+        current()["round_provenance"] = "human_reviewed"
         current()["complete"] = True
         current()["reviewed_by"] = reviewer.get().strip()
         current()["reviewed_at"] = datetime.now(timezone.utc).isoformat()
