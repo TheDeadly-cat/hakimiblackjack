@@ -70,9 +70,12 @@ class TrainedModelAdapter:
         self.feature_version = self.model.feature_version
         self.training_digest = self.model.training_digest
         self.extraction_version = EXTRACTION_VERSION
+        if self.model.orientation_policy == "upright_upper":
+            from .corner_policy import UPPER_CORNER_POLICY
+            self.extraction_version += "+" + UPPER_CORNER_POLICY
         # The manifest includes thresholds and style as well as blob identity.
         self.digest = hashlib.sha256(
-            manifest + b"\0" + blob + b"\0" + EXTRACTION_VERSION.encode("ascii")).hexdigest()
+            manifest + b"\0" + blob + b"\0" + self.extraction_version.encode("ascii")).hexdigest()
 
     @property
     def identity_text(self) -> str:
@@ -90,9 +93,18 @@ class TrainedModelAdapter:
                 f"模型要求样式 {self.style_id!r}，当前为 {layout.style_id!r}；请明确切换模型或样式")
         observations = []
         occupied = set()
-        # Exactly the extraction path used by the training queue, with full
-        # image context. Do not send resized whole-card boxes to a glyph model.
-        for glyph in extract_glyphs(rgb_to_bgr(loaded)):
+        bgr = rgb_to_bgr(loaded)
+        glyphs = extract_glyphs(bgr)
+        excluded_corners = 0
+        if self.model.orientation_policy == "upright_upper":
+            from .corner_policy import UpperCornerSelector
+            selector = UpperCornerSelector(bgr)
+            retained = [g for g in glyphs if selector.assess(list(g.bbox))["keep"]]
+            excluded_corners = len(glyphs)-len(retained)
+            glyphs = retained
+        # Shared raw extraction plus the model's explicit corner policy, using
+        # full image context. Never resize whole-card boxes into glyph inputs.
+        for glyph in glyphs:
             x, y, w, h = glyph.bbox
             cx, cy = x + w / 2.0, y + h / 2.0
             regions = [(name, region) for name, region in layout.regions.items()
@@ -143,6 +155,8 @@ class TrainedModelAdapter:
             warnings=[self.identity_text, "匹配度不是正确概率；全部候选等待人工确认，自动入账关闭。",
                       "当前输出单位是角标，不保证物理牌完整检出、身份或归属正确。"],
         )
+        if self.model.orientation_policy == "upright_upper":
+            result.warnings.append(f"正向上角策略：排除 {excluded_corners} 个下角/边缘不确定候选；不翻转下角补识别。")
         return validate_result(result)
 
 

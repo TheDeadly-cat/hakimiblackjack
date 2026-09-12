@@ -167,7 +167,7 @@ def _validation_split(train):
     return fit_items, val_items, {"mode": mode}
 
 
-def _tune_on_train(train, root, validation=None, *, style_id="navy-live-felt-v1"):
+def _tune_on_train(train, root, validation=None, *, style_id="navy-live-felt-v1", orientation_policy="all"):
     if validation:
         fit_items, val_items, split_info = train, validation, {"mode": "explicit_validation_queue"}
     else:
@@ -182,7 +182,7 @@ def _tune_on_train(train, root, validation=None, *, style_id="navy-live-felt-v1"
         audit["status"] = "defaults_insufficient_internal_validation"
         return default, audit
     pairs = pairs_from_items(fit_items, root)
-    model = RankClassifier(**default).fit(pairs, style_id=style_id)
+    model = RankClassifier(**default, orientation_policy=orientation_policy).fit(pairs, style_id=style_id)
     best, best_score = default, float("-inf")
     for vote in THRESHOLD_GRID["min_vote"]:
         for margin in THRESHOLD_GRID["min_margin"]:
@@ -248,6 +248,8 @@ def main(argv=None):
     parser.add_argument("--report", help="全新报告文件（拒绝覆盖）")
     parser.add_argument("--style-id", default="navy-live-felt-v1")
     parser.add_argument("--min-per-rank", type=int, default=3)
+    parser.add_argument("--orientation-policy", choices=("all", "upright_upper"), default="all")
+    parser.add_argument("--require-human-reviewed", action="store_true", help="所有输入标签必须有人审记录")
     args = parser.parse_args(argv)
     if not args.queue and not args.train_queue:
         parser.error("至少提供 queue 或 --train-queue")
@@ -270,6 +272,8 @@ def main(argv=None):
     train = labeled_only(all_items, split="train")
     validation = labeled_only(all_items, split="validation")
     holdout = labeled_only(all_items, split="holdout")
+    if args.require_human_reviewed and any(i.label_provenance != "human_reviewed" for i in train+validation+holdout):
+        raise ContractError("指定了仅人审训练，但输入仍含未复核标签")
     if not train:
         print("训练集没有标签。先运行 scripts/label_glyphs.py")
         return 1
@@ -283,12 +287,14 @@ def main(argv=None):
     source_status = _final_source_status(train, validation, holdout)
     if args.holdout_role == "final" and not source_status["source_independent"]:
         raise ContractError(f"final 留出必须整源独立：{source_status['reasons']}")
-    thresholds, tuning = _tune_on_train(train, Path(), validation, style_id=args.style_id)
+    thresholds, tuning = _tune_on_train(train, Path(), validation, style_id=args.style_id,
+                                      orientation_policy=args.orientation_policy)
     print(f"训练内部选择门槛 {thresholds}（未看留出集）")
     digest = _training_digest(train)
-    model = RankClassifier(**thresholds).fit(
+    model = RankClassifier(**thresholds, orientation_policy=args.orientation_policy).fit(
         pairs_from_items(train, Path()), origin=f"local labeled glyphs; run {run_id}",
-        style_id=args.style_id, training_digest=digest)
+        style_id=args.style_id, training_digest=digest,
+        label_review_status="human_reviewed" if all(i.label_provenance == "human_reviewed" for i in train) else "unverified")
     train_report = evaluate_items(model, train, Path())
     _print_report("训练自检（不是验收）", train_report)
     holdout_report = evaluate_items(model, holdout, Path()) if holdout else None
@@ -298,6 +304,7 @@ def main(argv=None):
         "schema": "0.3e-training-run-2", "run_id": run_id, "source_queues": source_queues,
         "model": str(model_dir), "model_id": model.model_id, "style_id": model.style_id,
         "training_digest": digest, "model_training_digest": model.training_digest,
+        "orientation_policy": args.orientation_policy,
         "n_train_labeled": len(train), "n_validation_labeled": len(validation),
         "n_holdout_labeled": len(holdout), "train_label_counts": counts,
         "holdout_label_counts": label_counts(holdout), "insufficient_training_ranks": insufficient,

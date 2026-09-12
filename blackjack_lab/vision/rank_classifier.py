@@ -25,7 +25,7 @@ DEFAULT_STYLE_ID = "navy-live-felt-v1"
 FEATURE_SIZE = 4 * 4 * 9 + 8 * 8
 PATCH_SIZE = 32
 K_NEIGHBORS = 3
-# 训练/推理共用的旋转增强。右下角标倒置 180° 必须覆盖到。
+# 旧模型的全方向增强；upright_upper 模型明确禁用倒向角度。
 AUGMENT_ANGLES = (0, 15, -15, 30, -30, 180, 165, 195)
 # 6 和 9 倒置后几乎互换。这两类只用接近直立的角度，宁拒识不写错。
 UPRIGHT_ANGLES = (0, 15, -15, 30, -30)
@@ -175,13 +175,17 @@ class RankClassifier:
     """HOG + numpy kNN：每个独立来源最多投一票，所有结果仍需人工确认。"""
 
     def __init__(self, *, k: int = K_NEIGHBORS, min_vote: int = MIN_VOTE,
-                 min_margin: float = MIN_MARGIN, min_similarity: float = MIN_SIMILARITY):
+                 min_margin: float = MIN_MARGIN, min_similarity: float = MIN_SIMILARITY,
+                 orientation_policy: str = "all"):
         if (not isinstance(k, int) or isinstance(k, bool) or k < 1
                 or not isinstance(min_vote, int) or isinstance(min_vote, bool)
                 or not 1 <= min_vote <= k
                 or not math.isfinite(min_margin) or not 0 <= min_margin <= 2
                 or not math.isfinite(min_similarity) or not -1 <= min_similarity <= 1):
             raise ImageRejected("无效的 kNN 拒识门槛")
+        if orientation_policy not in ("all", "upright_upper"):
+            raise ImageRejected("未知点数方向策略")
+        self.orientation_policy = orientation_policy
         self.k, self.min_vote = k, min_vote
         self.min_margin, self.min_similarity = float(min_margin), float(min_similarity)
         self.class_names: Tuple[str, ...] = LABEL_RANKS
@@ -197,7 +201,7 @@ class RankClassifier:
         self.model_id = ""
 
     def _identity(self) -> Dict[str, Any]:
-        return {
+        identity = {
             "schema": CLASSIFIER_SCHEMA, "feature_version": self.feature_version,
             "vote_grouping": VOTE_GROUPING,
             "style_id": self.style_id, "training_digest": self.training_digest,
@@ -210,6 +214,10 @@ class RankClassifier:
             "label_ids_sha256": _array_digest(self.label_ids),
             "origin_ids_sha256": _array_digest(self.origin_ids),
         }
+        # Omit the legacy default so existing v3 artifact identities stay valid.
+        if self.orientation_policy != "all":
+            identity["orientation_policy"] = self.orientation_policy
+        return identity
 
     def fit(self, pairs: Sequence[Tuple[Any, str]], *, origin: str = "",
             angles: Sequence[float] | None = None, sample_ids: Sequence[str] | None = None,
@@ -222,6 +230,10 @@ class RankClassifier:
             raise ImageRejected("无效的标签审核状态")
         if sample_ids is not None and len(sample_ids) != len(pairs):
             raise ImageRejected("sample_ids 必须与训练样本逐项对应")
+        if self.orientation_policy == "upright_upper":
+            angles = UPRIGHT_ANGLES if angles is None else tuple(angles)
+            if not angles or any(not math.isfinite(float(a)) or abs(((float(a)+180)%360)-180) > 45 for a in angles):
+                raise ImageRejected("正向上角模型不允许倒向训练增强")
         feats, ids, origins, records = [], [], [], []
         counts: Dict[str, int] = {}
         origin_labels: Dict[str, str] = {}
@@ -342,9 +354,12 @@ class RankClassifier:
     def predict_mask(self, mask, *, angles: Sequence[float] | None = None) -> RankGuess:
         if mask is None or mask.ndim != 2 or mask.size == 0:
             raise ImageRejected("推理掩膜必须是非空二维图像")
-        search = tuple(angles) if angles is not None else AUGMENT_ANGLES
+        default_angles = UPRIGHT_ANGLES if self.orientation_policy == "upright_upper" else AUGMENT_ANGLES
+        search = tuple(angles) if angles is not None else default_angles
         if not search or any(not math.isfinite(float(a)) for a in search):
             raise ImageRejected("推理旋转角必须是非空有限数值序列")
+        if self.orientation_policy == "upright_upper" and any(abs(((float(a)+180)%360)-180) > 45 for a in search):
+            raise ImageRejected("正向上角模型不允许翻转推理")
         guesses: List[RankGuess] = []
         for angle in search:
             guess = self._nearest(features_from_mask(mask, angle))
@@ -396,7 +411,8 @@ class RankClassifier:
             if hashlib.sha256((source / "model.npz").read_bytes()).hexdigest() != manifest["blob_sha256"]:
                 raise ValueError("模型文件摘要不匹配")
             model = cls(k=manifest["k"], min_vote=manifest["min_vote"],
-                        min_margin=manifest["min_margin"], min_similarity=manifest["min_similarity"])
+                        min_margin=manifest["min_margin"], min_similarity=manifest["min_similarity"],
+                        orientation_policy=manifest.get("orientation_policy", "all"))
             with np.load(source / "model.npz", allow_pickle=False) as blob:
                 if set(blob.files) != {"features", "label_ids", "origin_ids"}:
                     raise ValueError("模型数组集合不匹配")

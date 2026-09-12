@@ -162,6 +162,7 @@ class TrainingContractTests(unittest.TestCase):
 
         def evaluate(model, rows, root):
             self.assertEqual(rows, validation)
+            self.assertEqual(model.orientation_policy, "upright_upper")
             loose = model.min_similarity < 0.85
             return {"valid": True, "all_output_precision": 0.8 if loose else 1.0,
                     "accepted_correct": 4 if loose else 2, "accepted_wrong": 0,
@@ -171,7 +172,8 @@ class TrainingContractTests(unittest.TestCase):
         with patch.object(SCRIPT, "RankClassifier", FakeModel), \
                 patch.object(SCRIPT, "pairs_from_items", return_value=[]), \
                 patch.object(SCRIPT, "evaluate_items", side_effect=evaluate):
-            thresholds, audit = SCRIPT._tune_on_train(train, Path(), validation)
+            thresholds, audit = SCRIPT._tune_on_train(
+                train, Path(), validation, orientation_policy="upright_upper")
         self.assertEqual(thresholds["min_similarity"], 0.85)
         self.assertFalse(audit["holdout_used_for_selection"])
         self.assertEqual(len(audit["trials"]), 32)
