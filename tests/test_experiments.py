@@ -5,7 +5,7 @@ import unittest
 import uuid
 from pathlib import Path
 
-from blackjack_lab.experiments.contracts import KIND_HISTORY, KIND_SYNTHETIC
+from blackjack_lab.experiments.contracts import KIND_HISTORY, KIND_SYNTHETIC, ExperimentError
 from blackjack_lab.experiments.runner import ExperimentRunner
 from blackjack_lab.experiments.scenarios import config_from_mapping
 from blackjack_lab.ledger.events import CARD_DEALT, FACE_HIDDEN
@@ -51,6 +51,106 @@ class TestExperiments(unittest.TestCase):
             self.assertEqual(item["status"], "failed")
             self.assertEqual(item["reason_code"], "ILLEGAL_COMPOSITION")
             self.assertEqual(item["actions"], {})
+
+    def test_twenty_five_kings_on_six_decks_are_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            saved = self.run_config({
+                "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
+                "player_ranks": ("10", "6"), "dealer_up": "10",
+                "extra_removed": ("K",) * 25,
+            }, folder)
+            item = saved["record"]["items"][0]
+            self.assertEqual(item["status"], "failed")
+            self.assertEqual(item["reason_code"], "ILLEGAL_COMPOSITION")
+
+    def test_player_king_plus_twenty_four_kings_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            saved = self.run_config({
+                "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
+                "player_ranks": ("K", "6"), "dealer_up": "10",
+                "extra_removed": ("K",) * 24,
+            }, folder)
+            item = saved["record"]["items"][0]
+            self.assertEqual(item["status"], "failed")
+            self.assertEqual(item["reason_code"], "ILLEGAL_COMPOSITION")
+
+    def test_twenty_five_unspecified_tens_on_six_decks_remain_legal(self):
+        with tempfile.TemporaryDirectory() as folder:
+            saved = self.run_config({
+                "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
+                "player_ranks": ("10", "6"), "dealer_up": "10",
+                "extra_removed": ("T",) * 25,
+            }, folder)
+            item = saved["record"]["items"][0]
+            self.assertEqual(item["status"], "available", item.get("reason"))
+            self.assertEqual(item["n_decks"], 6)
+
+    def test_twenty_five_kings_on_eight_decks_remain_legal(self):
+        with tempfile.TemporaryDirectory() as folder:
+            saved = self.run_config({
+                "kind": KIND_SYNTHETIC, "n_decks": (8,), "template": "single",
+                "player_ranks": ("10", "6"), "dealer_up": "10",
+                "extra_removed": ("K",) * 25,
+            }, folder)
+            item = saved["record"]["items"][0]
+            self.assertEqual(item["status"], "available", item.get("reason"))
+
+    def test_false_peek_text_is_not_coerced_true(self):
+        config = config_from_mapping({
+            "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
+            "player_ranks": ("10", "6"), "dealer_up": "9",
+            "peek_negative": "false",
+        }, "peek-false")
+        self.assertIs(config.peek_negative, False)
+
+    def test_fractional_decks_are_rejected(self):
+        with self.assertRaises(ExperimentError) as error:
+            config_from_mapping({
+                "kind": KIND_SYNTHETIC, "n_decks": [6.9], "template": "single",
+                "player_ranks": ("10", "6"), "dealer_up": "10",
+            }, "bad-decks")
+        self.assertEqual(error.exception.code, "ILLEGAL_TYPE")
+
+    def test_repeat_output_keeps_the_first_experiment(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "shared"
+            first = ExperimentRunner().run(config_from_mapping({
+                "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
+                "player_ranks": ("10", "6"), "dealer_up": "10",
+                "extra_removed": ("A",) * 25,
+            }, "first-run"), out)
+            first_id = first["record"]["config"]["experiment_id"]
+            with self.assertRaises(ExperimentError) as error:
+                ExperimentRunner().run(config_from_mapping({
+                    "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
+                    "player_ranks": ("9", "7"), "dealer_up": "5",
+                }, "second-run"), out)
+            self.assertEqual(error.exception.code, "OUTPUT_EXISTS")
+            saved = json.loads((out / "experiment.json").read_text(encoding="utf-8"))
+            self.assertEqual(saved["config"]["experiment_id"], first_id)
+            self.assertEqual(saved["items"][0]["reason_code"], "ILLEGAL_COMPOSITION")
+
+    def test_cancel_keeps_finished_and_stops_later_decks(self):
+        runner = ExperimentRunner()
+        original = runner._calculate
+
+        def once(*args, **kwargs):
+            item = original(*args, **kwargs)
+            runner.cancel()
+            return item
+
+        runner._calculate = once
+        with tempfile.TemporaryDirectory() as folder:
+            config = config_from_mapping({
+                "kind": KIND_SYNTHETIC, "n_decks": (6, 7, 8), "template": "single",
+                "player_ranks": ("10", "6"), "dealer_up": "10",
+            }, uuid.uuid4().hex)
+            saved = runner.run(config, Path(folder) / "out")
+            items = saved["record"]["items"]
+            self.assertEqual(items[0]["status"], "available", items[0].get("reason"))
+            self.assertEqual(items[0]["n_decks"], 6)
+            self.assertTrue(all(item["status"] == "cancelled" for item in items[1:]))
+            self.assertEqual([item["n_decks"] for item in items], [6, 7, 8])
 
     def test_history_prefix_does_not_absorb_later_reveal(self):
         ledger = example(cards=("10", "6"), up="10")

@@ -10,7 +10,8 @@ from ..ledger.ledger import EventLedger
 from ..storage.database import LocalStore
 from .contracts import (
     KIND_HISTORY, KIND_SYNTHETIC, RANK_INDEX, REMOVAL_FIXED, REMOVAL_NONE, TEMPLATES,
-    ExperimentConfig, ExperimentError, parse_ranks, SUPPORTED_DECKS,
+    ExperimentConfig, ExperimentError, assert_original_composition, parse_decks,
+    parse_optional_bool, parse_ranks, parse_strict_int,
 )
 
 
@@ -28,26 +29,20 @@ def config_from_mapping(data, experiment_id):
     kind = data.get("kind")
     if kind not in (KIND_SYNTHETIC, KIND_HISTORY):
         raise ExperimentError("ILLEGAL_KIND", "输入类型必须是合成场景或历史前缀回放")
-    decks = data.get("n_decks") or data.get("decks")
-    if isinstance(decks, int):
-        n_decks = (decks,)
-    elif isinstance(decks, str):
-        n_decks = tuple(int(item) for item in decks.replace("，", ",").split(",") if item.strip())
-    else:
-        n_decks = tuple(int(item) for item in decks)
-    if not n_decks or any(item not in SUPPORTED_DECKS for item in n_decks):
-        raise ExperimentError("ILLEGAL_DECKS", "副数只支持 6、7、8")
+    n_decks = parse_decks(data.get("n_decks") if data.get("n_decks") not in (None, "") else data.get("decks"))
     template = data.get("template", "single")
     extra = parse_ranks(data.get("extra_removed") or data.get("removed") or ())
     player = parse_ranks(data.get("player_ranks") or data.get("player") or ())
     dealer = str(data.get("dealer_up") or data.get("up") or "").strip().upper()
     if dealer == "T":
         dealer = "T"
-    peek = data.get("peek_negative")
+    peek = parse_optional_bool(data.get("peek_negative"), "peek_negative")
     removal = REMOVAL_NONE if not extra else REMOVAL_FIXED
     through_seq = data.get("through_seq")
-    if through_seq is not None:
-        through_seq = int(through_seq)
+    if through_seq is not None and through_seq != "":
+        through_seq = parse_strict_int(through_seq, "事件序号")
+    else:
+        through_seq = None
     return ExperimentConfig(
         experiment_id=experiment_id,
         kind=kind,
@@ -56,7 +51,7 @@ def config_from_mapping(data, experiment_id):
         player_ranks=player,
         dealer_up=dealer,
         extra_removed=extra,
-        peek_negative=None if peek is None else bool(peek),
+        peek_negative=peek,
         seat=data.get("seat") or "玩家1",
         session_id=data.get("session_id"),
         through_seq=through_seq,
@@ -65,6 +60,11 @@ def config_from_mapping(data, experiment_id):
         removal_kind=removal,
         not_a_round_simulation=True,
     )
+
+
+def known_original_ranks(config):
+    dealer = (config.dealer_up,) if config.dealer_up else ()
+    return tuple(config.player_ranks) + dealer + tuple(config.extra_removed)
 
 
 def _live_ledger(n_decks, config):
@@ -93,7 +93,9 @@ def _live_ledger(n_decks, config):
     return ledger
 
 
-def apply_fixed_removals(snapshot, extra_ranks):
+def apply_fixed_removals(snapshot, extra_ranks, known_ranks=()):
+    if known_ranks:
+        assert_original_composition(snapshot.n_decks, known_ranks)
     if not extra_ranks:
         return snapshot
     counts = list(snapshot.counts)
@@ -114,13 +116,14 @@ def apply_fixed_removals(snapshot, extra_ranks):
 
 
 def snapshot_for_deck(config, n_decks):
+    assert_original_composition(n_decks, known_original_ranks(config))
     ledger = _live_ledger(n_decks, config)
     try:
         snapshot = build_input(ledger, config.seat)
     except InputUnavailable as error:
         raise ExperimentError(error.code, error.reason) from error
     try:
-        return apply_fixed_removals(snapshot, config.extra_removed), ledger
+        return apply_fixed_removals(snapshot, config.extra_removed, known_original_ranks(config)), ledger
     except ExperimentError:
         raise
     except ValueError as error:

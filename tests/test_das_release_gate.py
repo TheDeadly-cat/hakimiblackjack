@@ -114,15 +114,35 @@ class TestAttachedMatrixGate(unittest.TestCase):
             self.assertIn("source_mismatch", verdict["errors"])
             self.assertIn("empty_matrix", verdict["errors"])
 
-    def test_complete_synthetic_336_with_matching_numeric_hashes_is_accepted(self):
+    def test_status_only_336_files_are_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
             directory = self._packet(folder)
             verdict = validate_attached_matrix(directory, spec=self.spec, current_numeric=self.numeric)
-            self.assertEqual(verdict["errors"], [], verdict["errors"])
-            self.assertTrue(verdict["passed"])
-            self.assertEqual(verdict["count"], 336)
-            self.assertEqual(verdict["completed"], 336)
-            self.assertLessEqual(verdict["p95_seconds"], 2.0)
+            self.assertFalse(verdict["passed"])
+            self.assertTrue({"incomplete_result", "missing_result_source"} & set(verdict["errors"]))
+
+    def test_shared_result_file_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [_row(case) for case in self.spec["cases"]]
+            for row in rows:
+                row["result_file"] = "shell.json"
+            directory = self._packet(folder, rows=rows, write_results=False)
+            (directory / "shell.json").write_text(json.dumps({"status": "available"}), encoding="utf-8")
+            verdict = validate_attached_matrix(directory, spec=self.spec, current_numeric=self.numeric)
+            self.assertFalse(verdict["passed"])
+            self.assertIn("shared_result_file", verdict["errors"])
+
+    def test_illegal_ev_and_hit_bust_are_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            directory = self._packet(folder)
+            (directory / "pre-6-A-A.json").write_text(json.dumps({
+                "status": "available",
+                "actions": {"stand": {"status": "available", "ev": 999}},
+                "probabilities": {"hit_bust": 12},
+            }), encoding="utf-8")
+            verdict = validate_attached_matrix(directory, spec=self.spec, current_numeric=self.numeric)
+            self.assertFalse(verdict["passed"])
+            self.assertIn("illegal_result_values", verdict["errors"])
 
     def test_claimed_p95_is_recomputed_from_rows(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -134,6 +154,7 @@ class TestAttachedMatrixGate(unittest.TestCase):
             self.assertFalse(verdict["passed"])
             self.assertGreater(verdict["p95_seconds"], 2.0)
             self.assertFalse(verdict["target_met"])
+            self.assertIn("incomplete_result", verdict["errors"])
 
     def test_missing_result_file_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -166,7 +187,7 @@ class TestAttachedMatrixGate(unittest.TestCase):
             directory = self._packet(folder, digest="ab" * 32)
             verdict = validate_attached_matrix(directory, spec=self.spec, current_numeric=self.numeric)
             self.assertFalse(verdict["passed"])
-            self.assertIn("result_source_mismatch", verdict["errors"])
+            self.assertTrue({"result_source_mismatch", "incomplete_result"} & set(verdict["errors"]))
 
 
 class TestVerifyDasReleaseAttachment(unittest.TestCase):
@@ -225,6 +246,23 @@ class TestOriginal336MaterialsIfPresent(unittest.TestCase):
         self.assertEqual(verdict["count"], 336)
         self.assertEqual(verdict["completed"], 336)
         self.assertLessEqual(verdict["p95_seconds"], 2.0)
+
+    def test_opt3_file_cannot_stand_in_for_a_different_case(self):
+        path = ROOT / ".local-evidence" / "das-cold-20260912-t9-opt3"
+        if not path.is_dir() or not (path / "receipt.json").is_file():
+            self.skipTest("original 336 materials are not on this machine")
+        with tempfile.TemporaryDirectory() as folder:
+            directory = Path(folder) / "matrix"
+            directory.mkdir()
+            receipt = json.loads((path / "receipt.json").read_text(encoding="utf-8"))
+            source = (path / "pre-6-A-A.json").read_text(encoding="utf-8")
+            for row in receipt["cases"]:
+                name = row["result_file"]
+                (directory / name).write_text(source, encoding="utf-8")
+            (directory / "receipt.json").write_text(json.dumps(receipt), encoding="utf-8")
+            verdict = validate_attached_matrix(directory)
+            self.assertFalse(verdict["passed"])
+            self.assertIn("result_input_mismatch", verdict["errors"])
 
 
 if __name__ == "__main__":

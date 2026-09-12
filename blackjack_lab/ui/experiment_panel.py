@@ -105,7 +105,7 @@ class ExperimentWindow(tk.Toplevel):
             "extra_removed": self.var_removed.get(),
             "seat": "玩家1",
             "session_id": self.var_session.get().strip() or None,
-            "through_seq": int(self.var_seq.get()) if self.var_seq.get().strip() else None,
+            "through_seq": self.var_seq.get().strip() or None,
             "db_path": str(self.app.ctrl.store.db_path) if mode == KIND_HISTORY else None,
         }
         return config_from_mapping(data, uuid.uuid4().hex)
@@ -151,7 +151,7 @@ class ExperimentWindow(tk.Toplevel):
     def cancel(self):
         if self.runner:
             self.runner.cancel()
-            self.var_status.set("已请求取消；已完成项会保留。")
+            self.var_status.set("已请求取消：当前计算会停，后续场景不再跑，已完成项会保留。")
 
     def export_folder(self):
         if not self.saved:

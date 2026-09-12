@@ -1,10 +1,12 @@
 """Persist experiment outputs without touching the event database."""
 import csv
+import io
 import json
 from pathlib import Path
 
 from ..analysis.contracts import canonical
-from .contracts import SCHEMA
+from ..storage.safe_files import atomic_write
+from .contracts import SCHEMA, ExperimentError
 
 
 def _source_identity(root):
@@ -27,12 +29,24 @@ def experiment_record(config, items, elapsed=0.0):
     }
 
 
+def claim_output_dir(output_dir):
+    directory = Path(output_dir)
+    try:
+        directory.mkdir(parents=True, exist_ok=False)
+    except FileExistsError as error:
+        raise ExperimentError("OUTPUT_EXISTS", f"输出目录已存在，拒绝覆盖已有实验: {directory}") from error
+    return directory
+
+
 def write_experiment(output_dir, record):
     directory = Path(output_dir)
-    directory.mkdir(parents=True, exist_ok=True)
+    if not directory.is_dir():
+        directory = claim_output_dir(directory)
     json_path = directory / "experiment.json"
     csv_path = directory / "experiment.csv"
-    json_path.write_text(json.dumps(record, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
+    if json_path.exists() or csv_path.exists():
+        raise ExperimentError("OUTPUT_EXISTS", f"输出目录已有实验文件，拒绝覆盖: {directory}")
+    json_bytes = json.dumps(record, ensure_ascii=False, indent=2, allow_nan=False).encode("utf-8")
     rows = []
     for item in record["items"]:
         actions = item.get("actions") or {}
@@ -47,19 +61,21 @@ def write_experiment(output_dir, record):
                 "engine_version": item.get("engine_version") or "",
             })
             continue
-        for action, payload in actions.items():
+        for action, action_payload in actions.items():
             rows.append({
                 "n_decks": item.get("n_decks"),
                 "status": item.get("status"),
                 "reason": item.get("reason"),
                 "action": action,
-                "action_status": payload.get("status"),
-                "ev": payload.get("ev", ""),
+                "action_status": action_payload.get("status"),
+                "ev": action_payload.get("ev", ""),
                 "engine_version": item.get("engine_version") or "",
             })
-    with csv_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["n_decks", "status", "reason", "action",
-                                                    "action_status", "ev", "engine_version"])
-        writer.writeheader()
-        writer.writerows(rows)
+    stream = io.StringIO()
+    writer = csv.DictWriter(stream, fieldnames=["n_decks", "status", "reason", "action",
+                                                "action_status", "ev", "engine_version"])
+    writer.writeheader()
+    writer.writerows(rows)
+    atomic_write(json_path, json_bytes, overwrite=False)
+    atomic_write(csv_path, stream.getvalue().encode("utf-8"), overwrite=False)
     return {"json": json_path, "csv": csv_path, "record": record, "canonical": canonical(record)}

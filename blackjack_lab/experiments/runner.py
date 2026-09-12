@@ -1,12 +1,11 @@
 """Run declared experiments sequentially on the existing analysis service."""
 import threading
-import uuid
-from time import time
+from time import sleep, time
 
-from ..analysis.service import calculate
+from ..analysis.service import AnalysisService
 from .contracts import KIND_HISTORY, KIND_SYNTHETIC, ExperimentError
+from .results import claim_output_dir, experiment_record, write_experiment
 from .scenarios import snapshot_for_deck, snapshot_from_history
-from .results import experiment_record, write_experiment
 
 
 class ExperimentRunner:
@@ -20,14 +19,18 @@ class ExperimentRunner:
     def run(self, config, output_dir, budget_seconds=5.0):
         self._cancel.clear()
         self.progress = []
+        claim_output_dir(output_dir)
         started = time()
         items = []
         if config.kind == KIND_HISTORY:
-            try:
-                snapshot, ledger, later = snapshot_from_history(config)
-                item = self._calculate(config, snapshot, ledger, later=later, budget_seconds=budget_seconds)
-            except ExperimentError as error:
-                item = self._failed(config, None, error)
+            if self._cancel.is_set():
+                item = self._cancelled(config, config.n_decks[0] if config.n_decks else None)
+            else:
+                try:
+                    snapshot, ledger, later = snapshot_from_history(config)
+                    item = self._calculate(config, snapshot, ledger, later=later, budget_seconds=budget_seconds)
+                except ExperimentError as error:
+                    item = self._failed(config, None, error)
             items.append(item)
             self.progress.append(item)
         elif config.kind == KIND_SYNTHETIC:
@@ -49,11 +52,24 @@ class ExperimentRunner:
         return write_experiment(output_dir, record)
 
     def _calculate(self, config, snapshot, ledger, *, n_decks=None, later=None, budget_seconds=5.0):
+        decks = n_decks or snapshot.n_decks
         if self._cancel.is_set():
-            return self._cancelled(config, n_decks or snapshot.n_decks)
-        result = calculate(snapshot, request_id=uuid.uuid4().hex, budget_seconds=budget_seconds)
+            return self._cancelled(config, decks)
+        service = AnalysisService()
+        try:
+            service.start(snapshot, budget_seconds)
+            while True:
+                if self._cancel.is_set():
+                    service.cancel()
+                    return self._cancelled(config, decks)
+                result = service.poll()
+                if result is not None:
+                    break
+                sleep(0.003)
+        finally:
+            service.close()
         return {
-            "n_decks": n_decks or snapshot.n_decks,
+            "n_decks": decks,
             "status": result.get("status"),
             "reason": result.get("reason"),
             "reason_code": result.get("reason_code"),
@@ -93,7 +109,7 @@ class ExperimentRunner:
         return {
             "n_decks": n_decks,
             "status": "cancelled",
-            "reason": "实验已取消；已完成项保留",
+            "reason": "已取消：当前计算已停止，尚未开始的场景不再运行，已完成项保留",
             "reason_code": "CANCELLED",
             "actions": {},
             "not_a_round_simulation": True,
