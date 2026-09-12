@@ -10,6 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from blackjack_lab.vision.frame_annotations import read_frame
+from blackjack_lab.vision.contracts import CROP_ONLY_REVIEW_SCOPE
 from blackjack_lab.vision.glyph_dataset import LABEL_RANKS
 
 LABELS = LABEL_RANKS + ("unreadable",)
@@ -24,7 +25,7 @@ def labels_complete(frame):
     objects = frame.get("objects", [])
     if any(object_review_pending(obj) for obj in objects):
         return False  # An older page/rank review does not confirm a new crop.
-    return bool(frame.get("complete") or objects)
+    return bool(frame.get("complete") or frame.get("crop_review_complete") or objects)
 
 
 def first_pending_page(frames):
@@ -65,6 +66,9 @@ class ReviewStore:
         """A failed disk save must not leave an apparently successful in-memory edit."""
         before = copy.deepcopy(self.documents[video]["frames"][page])
         try:
+            if self.documents[video].get("review_scope") == CROP_ONLY_REVIEW_SCOPE:
+                for key in ("crop_review_complete", "crop_reviewed_by", "crop_reviewed_at"):
+                    self.documents[video]["frames"][page].pop(key, None)
             action(self.documents[video]["frames"][page])
             self.save(video)
         except Exception:
@@ -84,6 +88,7 @@ class ReviewStore:
         if any((rank if selected is not None and rank is not None else obj.get("rank")) not in LABELS for obj in chosen):
             raise ValueError("有未填写点数的框")
         now = datetime.now(timezone.utc).isoformat()
+        crop_only = self.documents[video].get("review_scope") == CROP_ONLY_REVIEW_SCOPE
         def update(record):
             for obj in chosen:
                 obj.setdefault("proposed_rank", obj["rank"])
@@ -100,8 +105,11 @@ class ReviewStore:
                     obj["bbox_provenance"] = "human_reviewed"
                 if obj.get("upper_corner_selection"):
                     obj["upper_corner_selection"].update(provenance="human_reviewed", reviewed_by=reviewer.strip(), reviewed_at=now)
-            record["complete"] = selected is None
-            if selected is None:
+            record["complete"] = selected is None and not crop_only
+            if selected is None and crop_only:
+                record.update(crop_review_complete=True, crop_reviewed_by=reviewer.strip(), crop_reviewed_at=now)
+                record.pop("reviewed_at", None); record.pop("reviewed_by", None)
+            elif selected is None:
                 record.update(reviewed_by=reviewer.strip(), reviewed_at=now)
             else:
                 record.pop("reviewed_at", None); record.pop("reviewed_by", None)
@@ -168,6 +176,8 @@ def run_ui(bundle):
     ttk.Label(root, textvariable=status, padding=5).pack(fill="x")
     if store.bundle.get("review_policy"):
         ttk.Label(root, text="本批只核每张牌上方／左上方的正向点数；下角与倒向项另存，可用“查看排除项”检查或恢复。", padding=3).pack(fill="x")
+    if any(d.get("review_scope") == CROP_ONLY_REVIEW_SCOPE for d in store.documents):
+        ttk.Label(root, text="此包仅确认新裁框：本页通过只记录框确认，不把整幅画面或跨帧身份标为已审核。", padding=3).pack(fill="x")
     ttk.Label(root, text="看整图与预填标签；点框或列表查看放大图。按 2–9 / A J Q K / 0=10 / N=非牌 / U=看不清 即可改错；Enter 确认下一项，Ctrl+Enter 整页通过。",
               padding=5).pack(fill="x")
     canvas = tk.Canvas(root, background="#172033", highlightthickness=0); canvas.pack(fill="x", padx=10)

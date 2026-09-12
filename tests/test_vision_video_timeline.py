@@ -73,6 +73,14 @@ def run(annotation_data, detections, *, bindings=None, failing=None):
 
 
 class VideoTimelineTests(unittest.TestCase):
+    def test_crop_only_scope_cannot_be_used_as_complete_temporal_truth(self):
+        from blackjack_lab.vision.contracts import CROP_ONLY_REVIEW_SCOPE
+        data=annotation([truth_frame(0,[obj("one")])],review_scope=CROP_ONLY_REVIEW_SCOPE)
+        report,_,_=run(data,[[(10,"8","seat")]])
+        self.assertFalse(report["valid"])
+        self.assertIsNone(report["metrics"])
+        self.assertIn("crop_only_review_not_full_frame_truth",report["incomplete_reasons"])
+
     def test_two_equal_ranks_survive_unannotated_frames_and_short_occlusion(self):
         truth = annotation([truth_frame(0, [obj("a"), obj("b", 130)]),
                             truth_frame(4, [obj("a"), obj("b", 130)])])

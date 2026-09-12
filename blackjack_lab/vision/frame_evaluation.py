@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Callable, Mapping
 
-from .contracts import ContractError, RANKS_13
+from .contracts import ContractError, RANKS_13, CROP_ONLY_REVIEW_SCOPE
 
 TRUTH_LABELS = RANKS_13 + ("junk", "unreadable")
 
@@ -81,6 +81,8 @@ def evaluate_annotated_frames(annotation, predictor: Callable, *, iou_threshold=
     frames = annotation.get("frames", [])
     reasons = (list(source_errors) + source_completeness_reasons(source_manifest or {})
                + source_completeness_reasons(annotation))
+    if annotation.get("review_scope") == CROP_ONLY_REVIEW_SCOPE:
+        reasons.append("crop_only_review_not_full_frame_truth")
     if not frames:
         reasons.append("no_annotation_frames")
     if not annotation.get("source_sha256"):

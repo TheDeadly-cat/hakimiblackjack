@@ -131,6 +131,24 @@ class UpperReviewStoreTests(unittest.TestCase):
         self.assertTrue(labels_complete(frame))
         self.assertFalse(frame["complete"],"Individual confirmation is not whole-frame completeness")
 
+    def test_crop_only_page_confirmation_never_promotes_whole_frame_truth(self):
+        from blackjack_lab.vision.contracts import CROP_ONLY_REVIEW_SCOPE
+        self.store.documents[0]["review_scope"]=CROP_ONLY_REVIEW_SCOPE
+        self.store.save(0)
+        self.store.confirm(0,0,"Crop-only fixture")
+        frame=self.store.documents[0]["frames"][0]
+        self.assertTrue(frame["crop_review_complete"])
+        self.assertTrue(labels_complete(frame))
+        self.assertFalse(frame["complete"])
+        self.assertNotIn("reviewed_by",frame)
+        self.store.delete(0,0,0)
+        self.assertNotIn("crop_review_complete",frame)
+        self.store.delete(0,0,0)
+        self.assertFalse(labels_complete(frame))
+        self.store.confirm(0,0,"Crop-only fixture")
+        self.assertTrue(labels_complete(frame))
+        self.assertFalse(frame["complete"])
+
 
 @unittest.skipUnless(cv2_available(), "optional image dependencies unavailable")
 class UpperEdgeGeometryTests(unittest.TestCase):

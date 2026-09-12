@@ -20,6 +20,7 @@ LAYOUT_PROFILE_ID = "synthetic-felt-v1"
 STYLE_ID = "synthetic-felt-v1"
 SOURCE_SYNTHETIC = "自建合成样式"
 REVIEW_PENDING = "图像待核对"
+CROP_ONLY_REVIEW_SCOPE = "new_crop_confirmation_only_not_temporal_truth"
 
 FACE_SHOWN = "shown"
 FACE_BACK = "back"

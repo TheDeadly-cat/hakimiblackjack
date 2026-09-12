@@ -10,7 +10,7 @@ from collections import Counter, defaultdict
 import hashlib
 from typing import Mapping
 
-from .contracts import ContractError, RANKS_13
+from .contracts import ContractError, RANKS_13, CROP_ONLY_REVIEW_SCOPE
 from .frame_evaluation import _bbox, _match, source_completeness_reasons
 from .tracker import FrameTracker
 from .image_io import crop_rgb
@@ -101,6 +101,8 @@ def evaluate_timeline(annotation, *, source_sha256, first_frame, last_frame,
     bindings = _operator_bindings(round_bindings, source_sha256)
     tracker = tracker or FrameTracker()
     errors = list(source_completeness_reasons(annotation))
+    if annotation.get("review_scope") == CROP_ONLY_REVIEW_SCOPE:
+        errors.append("crop_only_review_not_full_frame_truth")
     if annotation.get("source_sha256") != source_sha256:
         errors.append("annotation_source_mismatch")
     space = annotation.get("coordinate_space", "source_frame")

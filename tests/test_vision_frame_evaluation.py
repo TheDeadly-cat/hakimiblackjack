@@ -35,6 +35,16 @@ def candidate(rank, x=0, **kwargs):
 
 
 class OriginalFrameEvaluationTests(unittest.TestCase):
+    def test_crop_only_scope_cannot_become_full_truth_through_complete_flags(self):
+        from blackjack_lab.vision.contracts import CROP_ONLY_REVIEW_SCOPE
+        data=annotation([frame([obj("Q")])])
+        data["review_scope"]=CROP_ONLY_REVIEW_SCOPE
+        report=evaluate_annotated_frames(data,lambda _: [candidate("Q")])
+        self.assertFalse(report["valid"])
+        self.assertEqual(report["correct"],1)
+        self.assertIsNone(report["all_output_precision"])
+        self.assertIn("crop_only_review_not_full_frame_truth",report["incomplete_reasons"])
+
     def test_missing_detection_and_all_false_outputs_enter_denominators(self):
         truth = [obj("Q"), obj("A", 20, "two"), obj("K", 40, "three"), obj("J", 60, "four"),
                  obj("junk", 80, "junk")]
