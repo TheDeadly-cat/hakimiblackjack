@@ -46,15 +46,23 @@ class LocalCornerGeometryTests(unittest.TestCase):
 class SeparateGeometryReviewTests(unittest.TestCase):
     setUp = fixtures.CornerStageTests.setUp
 
-    def result(self):
+    def result(self, *, only_uncertain=False):
         bgr=adapter_fixtures.scene()[0]
         cv2=load_cv2()
         # A left/bottom glyph is ambiguous; a right/bottom glyph is clearly lower.
         for x in (10,130):
+            if only_uncertain:
+                cv2.rectangle(bgr,(x+10,25),(x+45,55),(250,250,250),-1)
             cv2.putText(bgr,"8",(x+14,112),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,0),3,cv2.LINE_8)
         rgb=bgr[:,:,::-1].copy().tobytes()
         loaded=replace(self.loaded,rgb=rgb,sha256=adapter_fixtures.sha256_bytes(rgb))
         return loaded,recognize_loaded(loaded,layout=adapter_fixtures.layout(),adapter=self.adapter)
+
+    def test_only_uncertain_evidence_never_claims_an_empty_region(self):
+        _,result=self.result(only_uncertain=True)
+        self.assertEqual(result.observations,[])
+        self.assertEqual(len(result.geometry_review),2)
+        self.assertEqual(result.empty_regions,[])
 
     def test_policy_versions_change_adapter_digest_without_changing_model(self):
         old=TrainedModelAdapter(self.model,style_id="test-style",corner_policy_version=LEGACY_UPPER_CORNER_POLICY)

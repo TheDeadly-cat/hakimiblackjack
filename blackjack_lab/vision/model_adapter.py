@@ -112,6 +112,11 @@ class TrainedModelAdapter:
                 if decision["keep"]:
                     retained.append(glyph)
                 elif decision.get("state") == "uncertain":
+                    x, y, w, h = glyph.bbox
+                    # Unclassified evidence is not evidence of an empty region.
+                    occupied.update(name for name, region in layout.regions.items()
+                                    if region.x <= x+w/2 < region.x+region.w
+                                    and region.y <= y+h/2 < region.y+region.h)
                     geometry_review.append({
                         "candidate_id": corner_key("frame", loaded.sha256, glyph.bbox),
                         "asset_sha256": loaded.sha256,
