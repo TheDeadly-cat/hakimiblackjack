@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """V0.3a 识牌候选契约。识别器只产生观察，不产生账本事实。"""
 from __future__ import annotations
+from copy import deepcopy
 
 import json
 from dataclasses import asdict, dataclass, field
@@ -159,6 +160,8 @@ class RecognitionResult:
     recognized_at: Optional[float] = None
     clock_note: str = "未知拍摄时钟时不得用模型运行时间冒充采集时间"
     observations: List[CardObservation] = field(default_factory=list)
+    # Evidence only: never fed to tracking, rank metrics, or confirmation IDs.
+    geometry_review: List[Dict[str, Any]] = field(default_factory=list)
     empty_regions: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     reject_reason: Optional[str] = None
@@ -178,6 +181,7 @@ class RecognitionResult:
             "recognized_at": self.recognized_at,
             "clock_note": self.clock_note,
             "observations": [o.as_dict() for o in self.observations],
+            **({"geometry_review": deepcopy(self.geometry_review)} if self.geometry_review else {}),
             "empty_regions": list(self.empty_regions),
             "warnings": list(self.warnings),
             "reject_reason": self.reject_reason,
@@ -304,6 +308,23 @@ def validate_result(result: RecognitionResult) -> RecognitionResult:
         seen.add(obs.observation_id)
         if obs.asset_sha256 != result.asset_sha256:
             raise ContractError("观察与任务的图片哈希不一致")
+    for candidate in result.geometry_review:
+        cid = candidate.get("candidate_id")
+        if not isinstance(cid, str) or not cid or cid in seen:
+            raise ContractError("几何待核身份缺失或重复")
+        seen.add(cid)
+        if (candidate.get("state") != "uncertain" or candidate.get("rank") is not None
+                or any(candidate.get(k) is not False for k in
+                       ("accepted", "classification_performed", "writes_ledger"))):
+            raise ContractError("几何待核不能含已识别点数或自动写入声明")
+        if (candidate.get("asset_sha256") != result.asset_sha256
+                or candidate.get("model_id") != result.model_id
+                or candidate.get("model_digest") != result.model_digest):
+            raise ContractError("几何待核与当前图片或模型身份不一致")
+        bbox = candidate.get("bbox", {})
+        if any(type(bbox.get(k)) is not int or bbox[k] < (1 if k in ("w","h") else 0)
+               or bbox[k] > MAX_SIDE for k in ("x","y","w","h")):
+            raise ContractError("非法几何待核 bbox")
     return result
 
 
@@ -350,6 +371,7 @@ def result_from_dict(data: Mapping[str, Any]) -> RecognitionResult:
         recognized_at=data.get("recognized_at"),
         clock_note=data.get("clock_note", ""),
         observations=observations,
+        geometry_review=deepcopy(list(data.get("geometry_review") or [])),
         empty_regions=list(data.get("empty_regions") or []),
         warnings=list(data.get("warnings") or []),
         reject_reason=data.get("reject_reason"),

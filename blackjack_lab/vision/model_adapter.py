@@ -48,7 +48,7 @@ def prepare_style_image(loaded: LoadedImage, style=None):
 class TrainedModelAdapter:
     """One immutable, verified model artifact, bound to one explicit style."""
 
-    def __init__(self, directory: Path | str, *, style_id: str):
+    def __init__(self, directory: Path | str, *, style_id: str, corner_policy_version=None):
         from .rank_classifier import RankClassifier
         from .real_cards import EXTRACTION_VERSION
 
@@ -70,9 +70,15 @@ class TrainedModelAdapter:
         self.feature_version = self.model.feature_version
         self.training_digest = self.model.training_digest
         self.extraction_version = EXTRACTION_VERSION
+        self.corner_policy_version = None
         if self.model.orientation_policy == "upright_upper":
-            from .corner_policy import UPPER_CORNER_POLICY
-            self.extraction_version += "+" + UPPER_CORNER_POLICY
+            from .corner_policy import UPPER_CORNER_POLICY, CORNER_POLICY_VERSIONS
+            self.corner_policy_version = corner_policy_version or UPPER_CORNER_POLICY
+            if self.corner_policy_version not in CORNER_POLICY_VERSIONS:
+                raise ImageRejected("未知上角几何策略")
+            self.extraction_version += "+" + self.corner_policy_version
+        elif corner_policy_version is not None:
+            raise ImageRejected("旧全方向模型不能声明上角策略")
         # The manifest includes thresholds and style as well as blob identity.
         self.digest = hashlib.sha256(
             manifest + b"\0" + blob + b"\0" + self.extraction_version.encode("ascii")).hexdigest()
@@ -96,10 +102,25 @@ class TrainedModelAdapter:
         bgr = rgb_to_bgr(loaded)
         glyphs = extract_glyphs(bgr)
         excluded_corners = 0
+        geometry_review = []
         if self.model.orientation_policy == "upright_upper":
-            from .corner_policy import UpperCornerSelector
-            selector = UpperCornerSelector(bgr)
-            retained = [g for g in glyphs if selector.assess(list(g.bbox))["keep"]]
+            from .corner_policy import UpperCornerSelector, corner_key
+            selector = UpperCornerSelector(bgr, version=self.corner_policy_version)
+            retained = []
+            for glyph in glyphs:
+                decision = selector.assess(list(glyph.bbox))
+                if decision["keep"]:
+                    retained.append(glyph)
+                elif decision.get("state") == "uncertain":
+                    geometry_review.append({
+                        "candidate_id": corner_key("frame", loaded.sha256, glyph.bbox),
+                        "asset_sha256": loaded.sha256,
+                        "bbox": dict(zip(("x","y","w","h"), glyph.bbox)),
+                        "model_id": self.model_id, "model_digest": self.digest,
+                        "corner_policy": self.corner_policy_version,
+                        "state": "uncertain", "reason": decision["reason"],
+                        "selection": decision, "rank": None, "accepted": False,
+                        "classification_performed": False, "writes_ledger": False})
             excluded_corners = len(glyphs)-len(retained)
             glyphs = retained
         # Shared raw extraction plus the model's explicit corner policy, using
@@ -151,12 +172,14 @@ class TrainedModelAdapter:
             layout_profile_id=layout.layout_profile_id, model_id=self.model_id,
             model_digest=self.digest, source_declaration=source_declaration,
             platform_claim=layout.platform_claim, observations=observations,
+            geometry_review=geometry_review,
             empty_regions=[name for name in layout.regions if name not in occupied],
             warnings=[self.identity_text, "匹配度不是正确概率；全部候选等待人工确认，自动入账关闭。",
                       "当前输出单位是角标，不保证物理牌完整检出、身份或归属正确。"],
         )
         if self.model.orientation_policy == "upright_upper":
-            result.warnings.append(f"正向上角策略：排除 {excluded_corners} 个下角/边缘不确定候选；不翻转下角补识别。")
+            result.warnings.append(f"正向上角策略：{excluded_corners-len(geometry_review)} 个排除，"
+                                   f"{len(geometry_review)} 个几何待核；待核项未分类，不翻转下角补识别。")
         return validate_result(result)
 
 

@@ -96,6 +96,10 @@ class VisionReviewWindow(tk.Toplevel):
         ttk.Label(bar, textvariable=self.var_info, wraplength=640).pack(side=tk.LEFT, padx=8)
         self.list_frame = ttk.Frame(self)
         self.list_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=6)
+        self._geometry_dialog = None
+        self.geometry_button = ttk.Button(self, text="几何待核（0）：未分类",
+                                          command=self.show_geometry_review, state=tk.DISABLED)
+        self.geometry_button.pack(anchor="w", padx=8, pady=4)
         form = ttk.LabelFrame(self, text="对选中候选的人工决定")
         form.pack(fill=tk.X, padx=8, pady=4)
         self.var_obs = tk.StringVar()
@@ -320,6 +324,12 @@ class VisionReviewWindow(tk.Toplevel):
         self.var_info.set(REVIEW_PENDING + "  未确认前账本不变。")
 
     def _render_observations(self):
+        if self._geometry_dialog is not None:
+            self._geometry_dialog.destroy()
+            self._geometry_dialog = None
+        pending = self.session.result.geometry_review if self.session else []
+        self.geometry_button.configure(text=f"几何待核（{len(pending)}）：未分类、未计入识别",
+                                       state=tk.NORMAL if pending else tk.DISABLED)
         for child in self.list_frame.winfo_children():
             child.destroy()
         self.photos.clear()
@@ -344,15 +354,66 @@ class VisionReviewWindow(tk.Toplevel):
                 justify=tk.CENTER,
             ).pack()
             ids.append(obs.observation_id)
-        if ids:
-            self.cmb_obs.configure(values=ids)
-            self.var_obs.set(ids[0])
+        self.cmb_obs.configure(values=ids)
+        self.var_obs.set(ids[0] if ids else "")
         if self.session.result.observations:
             first = self.session.result.observations[0]
             if first.accepted_rank():
                 self.var_rank.set(first.accepted_rank())
             if first.seat_hint:
                 self.var_seat.set(first.seat_hint)
+
+    def show_geometry_review(self):
+        """Separate evidence viewer; none of these IDs enter ledger confirmation."""
+        if not self.session or not self.loaded or not self.session.result.geometry_review:
+            return
+        if self._geometry_dialog is not None and self._geometry_dialog.winfo_exists():
+            self._geometry_dialog.lift()
+            return
+        from ..vision.image_io import crop_rgb
+        window = self._geometry_dialog = tk.Toplevel(self)
+        window.title("几何待核：请对照原图判断上角，下角不补数")
+        window.geometry("850x420")
+        ttk.Label(window, text="这些框尚未确认方向，未送入点数分类，也没有加入记牌候选。",
+                  wraplength=800).pack(anchor="w", padx=10, pady=8)
+        body = ttk.Frame(window)
+        body.pack(fill=tk.BOTH, expand=True, padx=10, pady=4)
+        listing = tk.Listbox(body, width=40, exportselection=False)
+        listing.pack(side=tk.LEFT, fill=tk.BOTH)
+        image_label = tk.Label(body)
+        image_label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=8)
+        details = ttk.Label(window, wraplength=820)
+        details.pack(fill=tk.X, padx=10, pady=8)
+        rows = self.session.result.geometry_review
+        loaded = self.loaded
+        for i, row in enumerate(rows):
+            listing.insert(tk.END, f"{i+1}. {row['candidate_id'][:8]}  牌缘/方向不确定")
+        def select(_event=None):
+            if not listing.curselection():
+                return
+            row = rows[listing.curselection()[0]]
+            x,y,w,h = (row["bbox"][k] for k in ("x","y","w","h"))
+            left,top = max(0,x-65),max(0,y-55)
+            width = min(loaded.width,x+w+85)-left
+            height = min(loaded.height,y+h+70)-top
+            rgb = crop_rgb(loaded,left,top,width,height)
+            # Mark the candidate on a display copy; original pixels stay intact.
+            pixels = bytearray(rgb)
+            for yy in range(y-top,y-top+h):
+                for xx in range(x-left,x-left+w):
+                    if yy in (y-top,y-top+h-1) or xx in (x-left,x-left+w-1):
+                        offset=(yy*width+xx)*3
+                        pixels[offset:offset+3]=b"\xff\xb4\x00"
+            _ppm(image_label,bytes(pixels),width,height,max_side=380)
+            details.configure(text=f"框 {row['bbox']}  策略 {row['corner_policy']}\n"
+                                   "只查看证据；已有人工标注保持原样。")
+        listing.bind("<<ListboxSelect>>",select)
+        listing.selection_set(0)
+        select()
+        def close():
+            self._geometry_dialog = None
+            window.destroy()
+        window.protocol("WM_DELETE_WINDOW",close)
 
     def _decision(self, operation=None, face=None, rank=None) -> ConfirmDecision:
         if not self.session:

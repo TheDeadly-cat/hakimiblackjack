@@ -78,6 +78,7 @@ def main(argv=None):
     parser.add_argument("session", help="冻结的manifest/frames会话目录")
     parser.add_argument("annotations", help="original-frame-annotations-1原帧标注")
     parser.add_argument("--model", required=True, help="明确选择本地模型目录")
+    parser.add_argument("--corner-policy", help="明确指定几何版本，用于固定模型的 A/B")
     parser.add_argument("--layout", required=True, help="明确选择静态布局或normalized实时样式JSON")
     parser.add_argument("--style-id", required=True, help="必须与布局和模型一致")
     parser.add_argument("--output", required=True, help="新的JSON结果文件，拒绝覆盖")
@@ -93,7 +94,8 @@ def main(argv=None):
     layout = load_style(Path(args.layout))
     if layout.style_id != args.style_id:
         raise ContractError("Explicit style does not match layout")
-    adapter = TrainedModelAdapter(args.model, style_id=args.style_id)
+    adapter = TrainedModelAdapter(args.model, style_id=args.style_id,
+                                  corner_policy_version=args.corner_policy)
     errors = []
     try:
         if material_identity(args.session, manifest) != annotation.get("source_sha256"):

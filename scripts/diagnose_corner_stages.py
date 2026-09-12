@@ -32,6 +32,7 @@ def main(argv=None):
     parser.add_argument("--cases", required=True, help="JSON list: session, annotations")
     parser.add_argument("--model", required=True)
     parser.add_argument("--layout", required=True)
+    parser.add_argument("--corner-policy", help="Explicit version for frozen A/B")
     parser.add_argument("--focus", help="Existing missed-corner diagnostic; no invented targets")
     parser.add_argument("--output", required=True)
     args = parser.parse_args(argv)
@@ -39,7 +40,8 @@ def main(argv=None):
     if out.exists():
         raise ContractError("Diagnostic output already exists; originals must be preserved")
     layout = load_style(args.layout)
-    adapter = TrainedModelAdapter(args.model, style_id=layout.style_id)
+    adapter = TrainedModelAdapter(args.model, style_id=layout.style_id,
+                                  corner_policy_version=args.corner_policy)
     cases_bytes = Path(args.cases).read_bytes()
     cases = json.loads(cases_bytes)
     focus_bytes = Path(args.focus).read_bytes() if args.focus else b""
@@ -95,6 +97,7 @@ def main(argv=None):
             totals["raw"] += len(trace["candidates"])
             totals["retained"] += len(kept)
             totals["excluded"] += len(trace["candidates"])-len(kept)
+            totals["geometry_review"] += len(actual.geometry_review)
             for target in focus:
                 if (target["source_index"] != trace["source_index"] or
                         target["frame"] != frame["file"]):

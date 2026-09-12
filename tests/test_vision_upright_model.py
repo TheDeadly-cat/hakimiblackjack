@@ -93,7 +93,8 @@ class UprightModelTests(unittest.TestCase):
                 self.assertFalse(result.as_dict()["writes_ledger"])
                 if policy == "upright_upper":
                     self.assertTrue(all(o.bbox["y"] < 60 for o in result.observations))
-                    self.assertIn("upper-upright-corner-1", adapter.extraction_version)
+                    from blackjack_lab.vision.corner_policy import UPPER_CORNER_POLICY
+                    self.assertIn(UPPER_CORNER_POLICY, adapter.extraction_version)
 
     def test_training_cli_keeps_human_status_and_saved_policy(self):
         cv2 = load_cv2()
