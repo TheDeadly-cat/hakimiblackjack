@@ -60,6 +60,26 @@ class FrameTracker:
         self.max_center_distance = max_center_distance
         self.tracks: List[PhysicalTrack] = []
         self._seq = 0
+        self.round_key = "initial"
+        self._round_groups = {}
+
+    def confirm_round_boundary(self, boundary_key: str) -> bool:
+        """Explicitly bind a user-confirmed round, preserving past identities.
+
+        Neither time gaps nor empty detector output proves that a new round
+        started. Callers must obtain a real round decision (for example the
+        controller's already-opened round), and never invoke this on a timeout.
+        Rebinding the same round is idempotent; revisiting one restores its
+        committed tracks instead of permitting a second ledger debit.
+        """
+        if not isinstance(boundary_key, str) or not boundary_key.strip():
+            raise ValueError("需要明确的已确认轮次身份")
+        if boundary_key == self.round_key:
+            return False
+        self._round_groups[self.round_key] = (self.tracks, self._seq)
+        self.tracks, self._seq = self._round_groups.get(boundary_key, ([], 0))
+        self.round_key = boundary_key
+        return True
 
     def mark_committed(self, observation_id: str) -> None:
         for track in self.tracks:
@@ -107,6 +127,8 @@ class FrameTracker:
                 continue
             self._seq += 1
             seed = f"{frame_index}:{video_time_ms}:{self._seq}:{det.region_id}:{det.bbox}:{det.crop_sha256}"
+            if self.round_key != "initial":
+                seed = f"round:{self.round_key}:" + seed
             observation_id, visual_track_id = _new_ids(seed)
             self.tracks.append(PhysicalTrack(
                 observation_id=observation_id,
@@ -180,5 +202,6 @@ class FrameTracker:
         result.observations = rewritten
         extra = list(result.warnings)
         extra.append("跨帧同一物理牌共用 observation_id；重复播放已确认观察不得再入账。")
+        extra.append("空牌区或时间间隔不能证明新一局；新局请先在主窗开轮，再人工绑定当前轮。")
         result.warnings = extra
         return result

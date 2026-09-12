@@ -17,7 +17,7 @@ from .contracts import ContractError, RANKS_13
 LABEL_SCHEMA = "0.3e-glyph-labels-1"
 JUNK_LABEL = "junk"
 LABEL_RANKS = RANKS_13 + (JUNK_LABEL,)
-SPLITS = ("train", "holdout")
+SPLITS = ("train", "validation", "holdout")
 
 # 白像素骤降 ≈ 收牌。连续几帧的同一波收牌合并为一局结束。
 DEFAULT_DROP_THRESHOLD = -15000
@@ -55,6 +55,19 @@ class GlyphItem:
     mask_file: str
     label: Optional[str] = None
     elapsed_s: Optional[float] = None
+    # Optional evidence is never invented when reading legacy queues. A capture
+    # signature is not necessarily the SHA256 of the actual saved frame.
+    source_sha256: str = ""
+    frame_sha256: str = ""
+    crop_sha256: str = ""
+    mask_sha256: str = ""
+    mask_content_sha256: str = ""
+    origin_crop_id: str = ""
+    physical_card_id: str = ""
+    label_provenance: str = "unspecified"
+    extraction_method: str = ""
+    rejection_reason: str = ""
+    orientation_deg: Optional[float] = None
 
     def as_dict(self) -> Dict[str, Any]:
         data = asdict(self)
@@ -78,6 +91,17 @@ class GlyphItem:
             mask_file=str(raw.get("mask_file") or ""),
             label=raw.get("label"),
             elapsed_s=raw.get("elapsed_s"),
+            source_sha256=str(raw.get("source_sha256") or ""),
+            frame_sha256=str(raw.get("frame_sha256") or ""),
+            crop_sha256=str(raw.get("crop_sha256") or ""),
+            mask_sha256=str(raw.get("mask_sha256") or ""),
+            mask_content_sha256=str(raw.get("mask_content_sha256") or ""),
+            origin_crop_id=str(raw.get("origin_crop_id") or ""),
+            physical_card_id=str(raw.get("physical_card_id") or ""),
+            label_provenance=str(raw.get("label_provenance") or "unspecified"),
+            extraction_method=str(raw.get("extraction_method") or ""),
+            rejection_reason=str(raw.get("rejection_reason") or ""),
+            orientation_deg=raw.get("orientation_deg"),
         )
         if item.split not in SPLITS:
             raise ContractError(f"非法 split {item.split!r}")
@@ -132,25 +156,109 @@ def assign_splits(
     return {rid: ("holdout" if rid in holdout else "train") for rid in unique}
 
 
+def round_key(item: GlyphItem) -> Tuple[str, int]:
+    """Round numbers restart in each session; bare round_id is not identity."""
+    return item.session, item.round_id
+
+
+def sample_origin_id(item: GlyphItem) -> str:
+    """Stable independent-neighbor identity; augmentation never changes this.
+
+    Physical-card IDs are scoped to the recording (or legacy session), not the
+    rank: two equal-rank cards remain separate when the annotation says so.
+    """
+    if item.physical_card_id:
+        scope = ("source", item.source_sha256.lower()) if item.source_sha256 else ("session", item.session)
+        parts = ("physical", *scope, item.physical_card_id)
+    else:
+        parts = ("crop", item.origin_crop_id or item.crop_id)
+    return json.dumps(parts, ensure_ascii=False, separators=(",", ":"))
+
+
+def leakage_keys(item: GlyphItem) -> set[tuple]:
+    """All available identities, not a fallback that drops stronger evidence.
+
+    Source SHA alone deliberately is not a key: same-source disjoint rounds are
+    useful development sets. Independent final-source admission is separate.
+    """
+    keys = {("round", *round_key(item)), ("crop", item.crop_id)}
+    if item.origin_crop_id:
+        keys.add(("crop", item.origin_crop_id))
+    if item.physical_card_id:
+        keys.add(("physical", sample_origin_id(item)))
+    if item.frame_sha256:
+        keys.add(("frame_sha256", item.frame_sha256.lower()))
+    if item.frame_signature:
+        keys.add(("frame_signature", item.frame_signature))
+    if not item.frame_sha256 and not item.frame_signature:
+        keys.add(("frame", item.session, item.frame))
+    if item.crop_sha256:
+        keys.add(("crop_sha256", item.crop_sha256.lower()))
+    if item.mask_sha256:
+        keys.add(("mask_sha256", item.mask_sha256.lower()))
+    if item.mask_content_sha256:
+        keys.add(("mask_content_sha256", item.mask_content_sha256.lower()))
+    if item.source_sha256:
+        source = item.source_sha256.lower()
+        keys.add(("source_round", source, item.round_id))
+        keys.add(("source_frame", source, item.frame))
+    return keys
+
+
 def assert_no_leakage(items: Sequence[GlyphItem]) -> None:
-    """同一帧签名、同一裁片不得同时出现在 train 与 holdout。"""
-    train_frames = {i.frame_signature or i.frame for i in items if i.split == "train"}
-    holdout_frames = {i.frame_signature or i.frame for i in items if i.split == "holdout"}
-    leaked_frames = train_frames & holdout_frames
-    if leaked_frames:
-        raise ContractError(
-            f"同一帧被拆进训练与留出：{sorted(leaked_frames)[:5]}"
-        )
-    train_ids = {i.crop_id for i in items if i.split == "train"}
-    holdout_ids = {i.crop_id for i in items if i.split == "holdout"}
-    leaked_ids = train_ids & holdout_ids
-    if leaked_ids:
-        raise ContractError(f"同一裁片被拆进训练与留出：{sorted(leaked_ids)[:5]}")
-    train_rounds = {i.round_id for i in items if i.split == "train"}
-    holdout_rounds = {i.round_id for i in items if i.split == "holdout"}
-    leaked_rounds = train_rounds & holdout_rounds
-    if leaked_rounds:
-        raise ContractError(f"同一局被拆进训练与留出：{sorted(leaked_rounds)}")
+    """Reject shared round/frame/crop/card identity across any split pair."""
+    seen: Dict[tuple, str] = {}
+    for item in items:
+        if item.split not in SPLITS:
+            raise ContractError(f"非法 split {item.split!r}")
+        for key in sorted(leakage_keys(item)):
+            previous = seen.setdefault(key, item.split)
+            if previous != item.split:
+                raise ContractError(f"同一数据身份被拆进 {previous} 与 {item.split}：{key}")
+
+
+def independent_groups(items: Sequence[GlyphItem]) -> List[List[int]]:
+    """Connected components keep transitive card/crop/frame identities together."""
+    parents = list(range(len(items)))
+
+    def find(index):
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    seen: Dict[tuple, int] = {}
+    for index, item in enumerate(items):
+        for key in leakage_keys(item):
+            if key in seen:
+                parents[find(index)] = find(seen[key])
+            else:
+                seen[key] = index
+    grouped: Dict[int, List[int]] = {}
+    for index in range(len(items)):
+        grouped.setdefault(find(index), []).append(index)
+    return sorted(grouped.values(), key=lambda group: min(
+        (items[i].session, items[i].round_id, items[i].crop_id) for i in group))
+
+
+def group_summary(items: Sequence[GlyphItem]) -> Dict[str, Any]:
+    groups = independent_groups(items)
+    return {
+        "n_items": len(items),
+        "n_independent_groups": len(groups),
+        "n_origin_ids": len({sample_origin_id(item) for item in items}),
+        "n_items_with_physical_card_id": sum(bool(i.physical_card_id) for i in items),
+        "n_items_with_source_sha256": sum(bool(i.source_sha256) for i in items),
+        "sessions": sorted({i.session for i in items}),
+        "source_sha256": sorted({i.source_sha256 for i in items if i.source_sha256}),
+        "rounds": [list(key) for key in sorted({round_key(i) for i in items})],
+        "label_provenance_counts": {
+            value: sum(i.label_provenance == value for i in items)
+            for value in sorted({i.label_provenance for i in items})
+        },
+        "groups": [[items[i].crop_id for i in indices] for indices in groups],
+        "note": "Origin IDs fall back to crop IDs when physical-card evidence is absent; counts are not proof of distinct physical cards.",
+    }
 
 
 def load_queue(path: Path | str) -> List[GlyphItem]:

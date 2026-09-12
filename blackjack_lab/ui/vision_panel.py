@@ -15,7 +15,7 @@ from ..vision.video_contracts import (
 from .vision_bridge import (
     FACE_HIDDEN_LEDGER, FACE_SHOWN_LEDGER, FACE_UNKNOWN_LEDGER,
     OP_CORRECT, OP_NEW, OP_REJECT, OP_REVEAL, ConfirmDecision,
-    VisionBridgeError, VisionReviewSession,
+    VisionBridgeError, VisionReviewSession, capture_bind_context,
 )
 
 SEATS = [DEALER] + [player_seat_name(i) for i in range(1, 8)]
@@ -56,16 +56,27 @@ class VisionReviewWindow(tk.Toplevel):
         self.photos = []
         self.video_reader = None
         self.tracker = None
+        from ..vision.model_adapter import RecognitionRuntime
+        self.runtime = RecognitionRuntime()
+        self.selected_style = None
+        self._source_key = ""
         banner = ttk.Label(
             self,
-            text="旁观录像或截图：候选留在工作区。同一张牌多帧只确认一次。确认前不入账。匹配度不是正确概率。",
+            text="旁观录像或截图：同一张牌多帧只确认一次。新局须先在主窗开轮，再绑定当前轮。确认前不入账。匹配度不是正确概率。",
             wraplength=940, foreground="#7a1f1f")
         banner.pack(fill=tk.X, padx=8, pady=6)
         bar = ttk.Frame(self)
         bar.pack(fill=tk.X, padx=8)
         ttk.Button(bar, text="打开本地 PNG/JPEG", command=self.open_image).pack(side=tk.LEFT)
         ttk.Button(bar, text="打开本地录像", command=self.open_video).pack(side=tk.LEFT, padx=4)
-        ttk.Button(bar, text="绑定到当前轮", command=self.rebind).pack(side=tk.LEFT, padx=6)
+        ttk.Button(bar, text="绑定到当前轮（确认新轮）", command=self.rebind).pack(side=tk.LEFT, padx=6)
+        model_bar = ttk.Frame(self)
+        model_bar.pack(fill=tk.X, padx=8, pady=2)
+        ttk.Button(model_bar, text="选择样式/区域 JSON", command=self.choose_style).pack(side=tk.LEFT)
+        ttk.Button(model_bar, text="选择本地训练模型", command=self.choose_model).pack(side=tk.LEFT, padx=4)
+        ttk.Button(model_bar, text="使用原模板", command=self.use_templates).pack(side=tk.LEFT)
+        self.var_model = tk.StringVar(value="原模板候选；训练模型需先明确选择样式和本地模型目录。")
+        ttk.Label(self, textvariable=self.var_model, wraplength=940).pack(fill=tk.X, padx=8)
         video_bar = ttk.Frame(self)
         video_bar.pack(fill=tk.X, padx=8, pady=2)
         ttk.Label(video_bar, text="开靴").pack(side=tk.LEFT)
@@ -85,6 +96,10 @@ class VisionReviewWindow(tk.Toplevel):
         ttk.Label(bar, textvariable=self.var_info, wraplength=640).pack(side=tk.LEFT, padx=8)
         self.list_frame = ttk.Frame(self)
         self.list_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=6)
+        self._geometry_dialog = None
+        self.geometry_button = ttk.Button(self, text="几何待核（0）：未分类",
+                                          command=self.show_geometry_review, state=tk.DISABLED)
+        self.geometry_button.pack(anchor="w", padx=8, pady=4)
         form = ttk.LabelFrame(self, text="对选中候选的人工决定")
         form.pack(fill=tk.X, padx=8, pady=4)
         self.var_obs = tk.StringVar()
@@ -111,21 +126,93 @@ class VisionReviewWindow(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def on_close(self):
+        self._withdraw("识牌窗口已关闭")
         if self.video_reader is not None:
             self.video_reader.close()
             self.video_reader = None
         self.app._vision_win = None
         self.destroy()
 
+    def _withdraw(self, reason):
+        self.runtime.invalidate(reason)
+        if self.session is not None:
+            self.session.invalidate(reason)
+        self.session = None
+        self.app.vision_session = None
+        self.loaded = None
+        self.var_obs.set("")
+        self.cmb_obs.configure(values=[])
+        self._render_observations()
+        self.app.refresh_vision_banner()
+        self.var_info.set(reason + "；旧候选已撤回，请重新识别。")
+
+    def choose_style(self):
+        path = filedialog.askopenfilename(
+            parent=self, title="选择明确的牌桌样式与区域", filetypes=[("JSON", "*.json")])
+        if path:
+            try:
+                self.select_style_path(path)
+            except Exception as exc:
+                messagebox.showerror("样式未切换", str(exc), parent=self)
+
+    def select_style_path(self, path):
+        from ..vision.model_adapter import load_style
+        style = load_style(path)
+        self._withdraw("样式或区域已改变")
+        self.selected_style = style
+        self.runtime.select_model(None)
+        self.var_model.set(f"样式 {style.style_id}；请明确选择匹配的训练模型（当前为原模板候选）。")
+
+    def choose_model(self):
+        directory = filedialog.askdirectory(parent=self, title="选择含 manifest.json 与 model.npz 的本地目录")
+        if directory:
+            try:
+                self.select_model_path(directory)
+            except Exception as exc:
+                messagebox.showerror("模型未切换", str(exc), parent=self)
+
+    def select_model_path(self, directory):
+        from ..vision.model_adapter import TrainedModelAdapter
+        if self.selected_style is None:
+            raise VisionBridgeError("请先选择明确的样式/区域 JSON，再选择与它匹配的模型。")
+        adapter = TrainedModelAdapter(directory, style_id=self.selected_style.style_id)
+        self._withdraw("识别模型已改变")
+        self.runtime.select_model(adapter)
+        self.var_model.set(adapter.identity_text)
+
+    def use_templates(self):
+        self._withdraw("切换至原模板")
+        self.runtime.select_model(None)
+        self.var_model.set("原模板候选；当前未使用训练分类器，仍须人工确认。")
+
+    def _layout_canvas(self, loaded):
+        from ..vision.model_adapter import prepare_style_image
+        return prepare_style_image(loaded, self.selected_style)
+
     def _shoe_note(self) -> str:
         label = self.var_shoe_start.get()
         kind = next((k for k, v in SHOE_START_LABELS.items() if v == label), SHOE_START_UNCERTAIN)
         return shoe_start_intent(kind).note
 
+    def _tracker_round_key(self, current):
+        import json
+        return json.dumps({**current, "video_source": self._source_key},
+                          ensure_ascii=False, sort_keys=True)
+
     def rebind(self):
-        if not self.session:
-            return
         try:
+            if self.tracker is not None and self.video_reader is not None:
+                current = capture_bind_context(self.app.ctrl)
+                if not current["shoe_id"] or not current["round_id"]:
+                    raise VisionBridgeError("请先在主窗口开靴、开轮，再确认录像的新轮边界。")
+                key = self._tracker_round_key(current)
+                if key != self.tracker.round_key:
+                    self._withdraw("已人工确认新轮边界")
+                    self.tracker.confirm_round_boundary(key)
+                    self.recognize_current_frame()
+                    return
+            if not self.session:
+                return
             self.session.rebind_current_round()
             self.var_info.set("已绑定当前牌靴/轮次。旧分析在确认入账前不得当作已考虑本图。")
             self.app.refresh_vision_banner()
@@ -138,18 +225,19 @@ class VisionReviewWindow(tk.Toplevel):
             filetypes=[("图像", "*.png;*.jpg;*.jpeg"), ("全部", "*.*")])
         if not path:
             return
+        self._withdraw("图像来源已改变")
         if self.video_reader is not None:
             self.video_reader.close()
             self.video_reader = None
         try:
             from ..vision.evidence_store import EvidenceStore
             from ..vision.image_io import load_image
-            from ..vision.pipeline import infer_layout, recognize_loaded
-            from ..vision.table_crop import apply_layout_crops
             loaded = load_image(path)
-            layout = infer_layout(loaded)
-            canvas = apply_layout_crops(loaded, layout)
-            result = recognize_loaded(canvas, layout=layout)
+            self._source_key = str(Path(path).resolve()) + ":" + loaded.sha256
+            layout, canvas = self._layout_canvas(loaded)
+            result = self.runtime.recognize_loaded(canvas, layout=layout, source_key=self._source_key)
+            if result is None:
+                return
             db = Path(self.app.ctrl.store.db_path)
             evidence = Path(str(db) + ".vision") / result.asset_sha256[:16]
             EvidenceStore(evidence).save_result(canvas, result)
@@ -175,13 +263,18 @@ class VisionReviewWindow(tk.Toplevel):
         self.open_video_path(path)
 
     def open_video_path(self, path, frame=0):
+        self._withdraw("录像来源已改变")
         try:
             from ..vision.tracker import FrameTracker
             from ..vision.video_io import VideoReader
             if self.video_reader is not None:
                 self.video_reader.close()
             self.video_reader = VideoReader(path)
+            self._source_key = "video:" + self.video_reader.asset.sha256
             self.tracker = FrameTracker()
+            current = capture_bind_context(self.app.ctrl)
+            if current["shoe_id"] and current["round_id"]:
+                self.tracker.confirm_round_boundary(self._tracker_round_key(current))
             self.session = None
             self.app.vision_session = None
             last = max(0, self.video_reader.asset.frame_count - 1)
@@ -196,13 +289,12 @@ class VisionReviewWindow(tk.Toplevel):
             return
         try:
             from ..vision.evidence_store import EvidenceStore
-            from ..vision.pipeline import infer_layout, recognize_loaded
-            from ..vision.table_crop import apply_layout_crops
             frame_index = int(float(self.var_frame.get()))
             loaded = self.video_reader.seek(frame_index)
-            layout = infer_layout(loaded)
-            canvas = apply_layout_crops(loaded, layout)
-            result = recognize_loaded(canvas, layout=layout)
+            layout, canvas = self._layout_canvas(loaded)
+            result = self.runtime.recognize_loaded(canvas, layout=layout, source_key=self._source_key)
+            if result is None:
+                return
             result = self.tracker.apply_to_result(
                 result, frame_index, self.video_reader.asset.time_ms(frame_index))
             db = Path(self.app.ctrl.store.db_path)
@@ -213,15 +305,14 @@ class VisionReviewWindow(tk.Toplevel):
                 self.session = VisionReviewSession(self.app.ctrl, result, evidence)
                 self.app.vision_session = self.session
             else:
-                for obs in result.observations:
-                    self.session.register_observation(obs)
-                self.session.result.warnings = result.warnings
+                self.session.present_frame(result)
             for track in self.tracker.tracks:
                 if track.committed:
                     continue
                 if track.observation_id in self.session.commits:
                     self.tracker.mark_committed(track.observation_id)
         except Exception as exc:
+            self._withdraw("当前帧识别失败")
             messagebox.showerror("识牌失败", str(exc), parent=self)
             return
         asset = self.video_reader.asset
@@ -233,10 +324,18 @@ class VisionReviewWindow(tk.Toplevel):
         self.var_info.set(REVIEW_PENDING + "  未确认前账本不变。")
 
     def _render_observations(self):
+        if self._geometry_dialog is not None:
+            self._geometry_dialog.destroy()
+            self._geometry_dialog = None
+        pending = self.session.result.geometry_review if self.session else []
+        self.geometry_button.configure(text=f"几何待核（{len(pending)}）：未分类、未计入识别",
+                                       state=tk.NORMAL if pending else tk.DISABLED)
         for child in self.list_frame.winfo_children():
             child.destroy()
         self.photos.clear()
         if not self.session or not self.loaded:
+            self.cmb_obs.configure(values=[])
+            self.var_obs.set("")
             return
         from ..vision.image_io import crop_rgb
         ids = []
@@ -255,15 +354,66 @@ class VisionReviewWindow(tk.Toplevel):
                 justify=tk.CENTER,
             ).pack()
             ids.append(obs.observation_id)
-        if ids:
-            self.cmb_obs.configure(values=ids)
-            self.var_obs.set(ids[0])
+        self.cmb_obs.configure(values=ids)
+        self.var_obs.set(ids[0] if ids else "")
         if self.session.result.observations:
             first = self.session.result.observations[0]
             if first.accepted_rank():
                 self.var_rank.set(first.accepted_rank())
             if first.seat_hint:
                 self.var_seat.set(first.seat_hint)
+
+    def show_geometry_review(self):
+        """Separate evidence viewer; none of these IDs enter ledger confirmation."""
+        if not self.session or not self.loaded or not self.session.result.geometry_review:
+            return
+        if self._geometry_dialog is not None and self._geometry_dialog.winfo_exists():
+            self._geometry_dialog.lift()
+            return
+        from ..vision.image_io import crop_rgb
+        window = self._geometry_dialog = tk.Toplevel(self)
+        window.title("几何待核：请对照原图判断上角，下角不补数")
+        window.geometry("850x420")
+        ttk.Label(window, text="这些框尚未确认方向，未送入点数分类，也没有加入记牌候选。",
+                  wraplength=800).pack(anchor="w", padx=10, pady=8)
+        body = ttk.Frame(window)
+        body.pack(fill=tk.BOTH, expand=True, padx=10, pady=4)
+        listing = tk.Listbox(body, width=40, exportselection=False)
+        listing.pack(side=tk.LEFT, fill=tk.BOTH)
+        image_label = tk.Label(body)
+        image_label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=8)
+        details = ttk.Label(window, wraplength=820)
+        details.pack(fill=tk.X, padx=10, pady=8)
+        rows = self.session.result.geometry_review
+        loaded = self.loaded
+        for i, row in enumerate(rows):
+            listing.insert(tk.END, f"{i+1}. {row['candidate_id'][:8]}  牌缘/方向不确定")
+        def select(_event=None):
+            if not listing.curselection():
+                return
+            row = rows[listing.curselection()[0]]
+            x,y,w,h = (row["bbox"][k] for k in ("x","y","w","h"))
+            left,top = max(0,x-65),max(0,y-55)
+            width = min(loaded.width,x+w+85)-left
+            height = min(loaded.height,y+h+70)-top
+            rgb = crop_rgb(loaded,left,top,width,height)
+            # Mark the candidate on a display copy; original pixels stay intact.
+            pixels = bytearray(rgb)
+            for yy in range(y-top,y-top+h):
+                for xx in range(x-left,x-left+w):
+                    if yy in (y-top,y-top+h-1) or xx in (x-left,x-left+w-1):
+                        offset=(yy*width+xx)*3
+                        pixels[offset:offset+3]=b"\xff\xb4\x00"
+            _ppm(image_label,bytes(pixels),width,height,max_side=380)
+            details.configure(text=f"框 {row['bbox']}  策略 {row['corner_policy']}\n"
+                                   "只查看证据；已有人工标注保持原样。")
+        listing.bind("<<ListboxSelect>>",select)
+        listing.selection_set(0)
+        select()
+        def close():
+            self._geometry_dialog = None
+            window.destroy()
+        window.protocol("WM_DELETE_WINDOW",close)
 
     def _decision(self, operation=None, face=None, rank=None) -> ConfirmDecision:
         if not self.session:

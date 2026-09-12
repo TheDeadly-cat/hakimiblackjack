@@ -79,9 +79,19 @@ class VisionReviewSession:
         self.commits: Dict[str, CommitResult] = {}
         self.rejected: Dict[str, ConfirmDecision] = {}
         self._by_id = {o.observation_id: o for o in result.observations}
+        self.invalidated_reason: Optional[str] = None
+
+    def invalidate(self, reason: str) -> None:
+        """Withdraw candidates after a model/source/ROI change, even via old references."""
+        self.invalidated_reason = reason or "识牌配置已改变"
+
+    def _require_active(self) -> None:
+        if self.invalidated_reason is not None:
+            raise VisionBridgeError(f"旧候选已撤回：{self.invalidated_reason}。请重新识别并核对。")
 
     def register_observation(self, obs) -> None:
         """录像逐帧更新同一观察身份；已确认的 id 保持，避免跳转后当成新牌。"""
+        self._require_active()
         existing = self._by_id.get(obs.observation_id)
         self._by_id[obs.observation_id] = obs
         if existing is None:
@@ -92,7 +102,20 @@ class VisionReviewSession:
                 self.result.observations[index] = obs
                 return
 
+    def present_frame(self, result: RecognitionResult) -> None:
+        """Only current-frame crops may be confirmed; committed identities persist."""
+        self._require_active()
+        if (result.model_id != self.result.model_id
+                or result.model_digest != self.result.model_digest
+                or result.layout_profile_id != self.result.layout_profile_id):
+            self.invalidate("帧的模型或区域已改变")
+            self._require_active()
+        self.result = result
+        self._by_id = {obs.observation_id: obs for obs in result.observations}
+
     def has_pending(self) -> bool:
+        if self.invalidated_reason is not None:
+            return False
         done = set(self.commits) | set(self.rejected)
         return any(oid not in done for oid in self._by_id)
 
@@ -100,6 +123,8 @@ class VisionReviewSession:
         return any(c.status in {"committed", "duplicate"} and c.event for c in self.commits.values())
 
     def review_status(self) -> str:
+        if self.invalidated_reason is not None:
+            return "旧识牌候选已撤回"
         if self.has_pending():
             return REVIEW_PENDING
         if self.rejected and not self.has_committed():
@@ -107,6 +132,7 @@ class VisionReviewSession:
         return "识牌候选已处理"
 
     def rebind_current_round(self) -> None:
+        self._require_active()
         if self.has_committed():
             raise VisionBridgeError("已有入账记录，不能把旧任务改绑到新轮；请重新打开图片")
         self.bound = capture_bind_context(self.ctrl)
@@ -211,6 +237,7 @@ class VisionReviewSession:
         return float(obs.captured_at)
 
     def confirm(self, decision: ConfirmDecision) -> CommitResult:
+        self._require_active()
         if decision.operation not in OPS:
             raise VisionBridgeError(f"不支持的确认操作: {decision.operation}")
         obs = self._observation(decision.observation_id)
