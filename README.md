@@ -73,7 +73,11 @@ python scripts/split_benchmarks.py
 python scripts/das_benchmarks.py
 python scripts/make_portable_copy.py --require-clean
 python scripts/verify_das_release.py
+python scripts/fetch_possibly_wrong.py
+python scripts/compare_possibly_wrong.py --output .local-evidence/external-pw-<唯一目录>
 ```
+
+后两步下载并运行 GPL 的官方 `strategy.exe`，**不是产品的一部分**，也不进入 CI。缺少该二进制时 unittest 仍应通过。做法见 [V0.2b2 外部对照](docs/V0.2b2-外部对照.md)。
 
 原 V0.2a 回归与截图验收脚本（不能代替新增分牌工作流/性能验收，截图使用可选开发依赖 Pillow）：
 

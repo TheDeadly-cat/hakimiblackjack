@@ -118,6 +118,7 @@ class BlackjackLabApp(tk.Tk):
         self._build_bottom()
         self._bind_keys()
         self.refresh_all()
+        self.experiment_window = None
 
     # ============================================================
     # 界面构建
@@ -189,10 +190,11 @@ class BlackjackLabApp(tk.Tk):
         template_menu.add_command(label="V0.2b2 两手顺序分牌DAS模板", command=lambda: self.act_research_template(das=True))
         template_button.configure(menu=template_menu)
         template_button.grid(row=0, column=4, padx=6)
+        ttk.Button(bar, text="对照实验", command=self.act_experiments).grid(row=0, column=5, padx=6)
 
         self.var_topinfo = tk.StringVar()
         ttk.Label(bar, textvariable=self.var_topinfo, foreground="#1a3c6e"
-                  ).grid(row=2, column=0, columnspan=5, sticky="w", padx=4)
+                  ).grid(row=2, column=0, columnspan=6, sticky="w", padx=4)
 
     def _build_body(self) -> None:
         body = ttk.Frame(self)
@@ -416,6 +418,13 @@ class BlackjackLabApp(tk.Tk):
         excluded = {"n_decks", "dealer_soft17", "blackjack_payout", "split_match", "double_after_split", "surrender", "confirm_status"}
         self.rule_details = {k: v for k, v in asdict(rules).items() if k not in excluded}
         self.set_status("已载入自建研究模板（非平台桌规）：" + scope + "请新建牌靴使用；当前规则快照不变。")
+
+    def act_experiments(self):
+        if self.experiment_window is not None and self.experiment_window.winfo_exists():
+            self.experiment_window.lift()
+            return
+        from .experiment_panel import ExperimentWindow
+        self.experiment_window = ExperimentWindow(self)
 
     @tracked_operation
     def act_refresh(self):
@@ -1040,6 +1049,8 @@ class BlackjackLabApp(tk.Tk):
 
     def on_close(self):
         self.analysis_panel.close()
+        if self.experiment_window is not None and self.experiment_window.winfo_exists():
+            self.experiment_window.destroy()
         self.ctrl.close()
         self.destroy()
 

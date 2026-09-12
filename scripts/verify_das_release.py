@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from scripts.source_identity import source_identity
 from scripts.verify_release import source_manifest, sha
+from scripts.das_matrix_gate import validate_attached_matrix
 
 
 def main():
@@ -62,7 +63,9 @@ def main():
     run("das-focus", ["-m", "unittest",
                       "tests.test_das_pending_hit", "tests.test_das_split_reference",
                       "tests.test_das_split_engine", "tests.test_das_workflow",
-                      "tests.test_das_benchmark_contract", "tests.test_das_history_roundtrip", "-v"])
+                      "tests.test_das_benchmark_contract", "tests.test_das_history_roundtrip",
+                      "tests.test_das_release_gate", "tests.test_das_optimization_diff",
+                      "tests.test_portable_copy", "tests.test_portable_runtime", "-v"])
     run("compile", ["-m", "compileall", "-q", "blackjack_lab", "tests", "scripts"])
     run("original-5-48-4", ["scripts/verify_review_handoff.py", "--output", str(output / "original-5-48-4")])
     run("original-n1-four", ["-m", "unittest", "discover",
@@ -98,17 +101,31 @@ socket._hakimi_offline_guard=True
             raise SystemExit("矩阵目录缺少 receipt.json")
         attached = output / "performance"
         shutil.copytree(source, attached, dirs_exist_ok=False)
-        matrix_receipt = json.loads((attached / "receipt.json").read_text(encoding="utf-8"))
-        checks.append(dict(name="das-cold-matrix", command=["attached", str(source)],
-                           exit_code=0 if matrix_receipt.get("passed") else 1,
-                           elapsed_seconds=0.0, output="performance/receipt.json",
-                           sha256=sha(attached / "receipt.json")))
-        print(f"das-cold-matrix: attached passed={matrix_receipt.get('passed')}", flush=True)
+        verdict = validate_attached_matrix(attached)
+        (attached / "matrix-gate.json").write_text(
+            json.dumps(verdict, ensure_ascii=False, indent=2), encoding="utf-8")
+        matrix_receipt = verdict
+        checks.append(dict(name="das-cold-matrix", command=["attached-verified", str(source)],
+                           exit_code=0 if verdict["passed"] else 1,
+                           elapsed_seconds=0.0, output="performance/matrix-gate.json",
+                           sha256=sha(attached / "matrix-gate.json"),
+                           claimed_passed=verdict.get("claimed_passed"),
+                           gate_errors=verdict.get("errors")))
+        print("das-cold-matrix: attached claimed=%s verified=%s errors=%s" % (
+            verdict.get("claimed_passed"), verdict["passed"], verdict.get("errors")), flush=True)
     else:
         run("das-cold-matrix", ["scripts/das_benchmarks.py", "--output", str(output / "performance")], timeout=1200)
         receipt_path = output / "performance" / "receipt.json"
         if receipt_path.is_file():
-            matrix_receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            verdict = validate_attached_matrix(output / "performance")
+            (output / "performance" / "matrix-gate.json").write_text(
+                json.dumps(verdict, ensure_ascii=False, indent=2), encoding="utf-8")
+            matrix_receipt = verdict
+            if not verdict["passed"]:
+                checks[-1]["exit_code"] = 1
+                checks[-1]["gate_errors"] = verdict.get("errors")
+                print("das-cold-matrix: live claimed ignored; verified=%s errors=%s" % (
+                    verdict["passed"], verdict.get("errors")), flush=True)
     receipt = dict(
         schema="hakimi-v02b2-das-acceptance-v1",
         timestamp_utc=datetime.now(timezone.utc).isoformat(),
@@ -119,7 +136,7 @@ socket._hakimi_offline_guard=True
         matrix=None if matrix_receipt is None else {
             k: matrix_receipt.get(k) for k in (
                 "count", "completed", "failed", "timed_out", "p50_seconds", "p95_seconds",
-                "max_seconds", "passed", "statuses")
+                "max_seconds", "passed", "statuses", "errors", "claimed_passed")
         },
         network_scope=("Python socket guard includes spawned Python workers; "
                        "native code uses local stdin/stdout only. This is not an OS firewall."),

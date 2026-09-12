@@ -1,5 +1,45 @@
 # 项目接手状态
 
+更新时间：2026-09-12（T9-H1/H2/H3 复核 + T10-A/B 最小实验入口已落地；未授权不合入/不推送/不发运行包）
+执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
+当前任务ID：T9 发布校验与优化复核，随后 T10 V0.2c 最小实验
+产品显示仍为 `0.2.0b1`。不重做 T5–T8，也不从头重做 T9 的 336 矩阵 / DAS 优化 / Windows 打包骨架。
+审查冻结提交：`6f3b2560be91b655d628045918d3afd54d0f52b1`（PR **#12 开放未合并**）。`origin/main` 仍为 T8 `137bcdc`。候选 CI 333 项 / 1 skip 不能换签 336。
+本轮未改 C# 公式、容差、5 秒预算或 p95=2s 门槛。未授权不 merge / force-push / 分发运行包。
+
+## 本轮完成
+
+- **T9-H1**：`scripts/das_matrix_gate.py` 复核附件 336；`receipt.passed` 只是声明。空 `passed:true`、错源码、漏文件、篡改结果、重算后超 p95 均拒绝。本地 opt3 原 336 目录按数值范围哈希复核通过。
+- **T9-H2**：`make_portable_copy.py` 从 git HEAD + 允许清单打包。临时仓库覆盖干净/脏/忽略文件；`docs/.env` 与 `fixtures/session.sqlite3` 不进包。`BUILD_INFO.json` 区分 `source_manifest` 与覆盖 fixtures 的 `package_manifest`。符号链接拒绝。
+- **T9-H3（审查定义）**：`tests/test_das_optimization_diff.py` 对照 Fraction：63/64/65/66 剩余、peek A/T、软多 A、注额、首手爆牌、第二手 DAS、三类待牌；逐格联合/合计分布，容差仍 1e-10。未改 SplitEngine。`tests/test_portable_runtime.py` 在仓库外副本、清空 PYTHONPATH、核验 `__file__` 后录牌→分析→保存→新进程复算。
+- **T10-A/B**：`blackjack_lab/experiments/` + `scripts/run_experiment.py` + 主界面「对照实验」。6/7/8 副合成对照与历史前缀回放；非法组成失败保留；历史不吸收后续揭牌。固定移除 ≠ 整轮模拟。
+
+## 命令（本机已跑）
+
+```
+python -m unittest tests.test_das_release_gate tests.test_portable_copy -v
+python -m unittest tests.test_das_optimization_diff tests.test_portable_runtime -v
+python -m unittest tests.test_experiments tests.test_experiment_ui -v
+```
+
+336 的 p95 1.756s 仍是开发机 opt3 记录，由门禁按当前 SplitEngine 字节绑定复核，不是本轮重跑矩阵。未提交，故没有新 HEAD 的 GitHub CI。
+
+## 下一动作
+
+工作树有未提交的 H1/H2/H3/T10。需要你授权才会 commit / 推送 / 合入 PR #12。不要把当前未提交工作树生成的运行包直接发给别人。V0.3 识牌与真正的前三/六轮模拟未开工。
+
+# 历史接手（T9-H3 外部对照，保留）
+
+更新时间：2026-09-12（possibly-wrong v7.6 已实跑对照；名称曾与审查包 T9-H3 冲突，审查包的 H3 以优化差分与副本运行为准）
+执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
+当前任务ID：外部数学对照（小而完整的首批）
+产品显示仍为 `0.2.0b1`。DAS 336 与 unittest 项数不能换签为本对照。GPL 二进制不入库。
+钉住：`possibly-wrong/blackjack` `v7.6` / `a1f7dbb74266fb39296292bdff568b076120a61c`，`strategy.exe` sha256 `48b0f45c3a2096c11487b4f1d7dd1e1dc0569ff18421971d648a2dfc6b464d6e`。
+本机回执：`.local-evidence/external-pw-20260912-t9h3/`，66/66 通过，动作 EV max abs 4.97e-12，庄家 max abs 7.45e-6（对方五位小数）。分牌只记录不门禁。
+命令：`python scripts/fetch_possibly_wrong.py`；`python scripts/compare_possibly_wrong.py --output .local-evidence/external-pw-<唯一目录>`；`python -m unittest tests.test_external_pw_compare -v`。
+
+# 历史接手（T9）
+
 更新时间：2026-09-12（T9 完成：336 门禁与 Windows 验收回执已落地；PR #11 未授权不合入、本分支未推送）
 执行工具/模型：Cursor Grok 4.6（执行质量以本文件命令与日志为准，不由模型名称证明）
 当前任务ID：T9 DAS 专属性能与研究版交付

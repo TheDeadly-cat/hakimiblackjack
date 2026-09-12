@@ -1,0 +1,168 @@
+{
+  "schema": "hakimi-external-pw-cases-v1",
+  "status": "FROZEN",
+  "purpose": "First complete possibly-wrong/blackjack live compare: dealer distributions and unsplit stand/hit/double. Split/DAS are recorded only when the action exists and are never a pass/fail gate.",
+  "engine": {
+    "project": "possibly-wrong/blackjack",
+    "release": "v7.6",
+    "source_commit": "a1f7dbb74266fb39296292bdff568b076120a61c",
+    "strategy_url": "https://github.com/possibly-wrong/blackjack/releases/download/v7.6/strategy.exe",
+    "strategy_exe_sha256": "48b0f45c3a2096c11487b4f1d7dd1e1dc0569ff18421971d648a2dfc6b464d6e",
+    "strategy_exe_bytes": 1404928,
+    "license": "GPL-3.0-or-later",
+    "not_vendored": true
+  },
+  "rules": {
+    "hit_soft_17": false,
+    "double_any_total": true,
+    "double_soft": true,
+    "double_after_hit": false,
+    "double_after_split": false,
+    "resplit": false,
+    "cdz": false,
+    "cdp1": true,
+    "late_surrender": true,
+    "bj_payoff": 1.5,
+    "skip_round_pdf_reason": "CDZ- versus CDP1 changes post-split policy only. Unsplit stand/hit/double do not use that policy. Answering CDZ=n skips possibly-wrong compute_pdf so a shoe can finish in batch."
+  },
+  "adapter_notes": [
+    "BJDealer.computeProbabilities and BJPlayer keep the dealer upcard in the shoe. Hakimi remaining counts already exclude the upcard and the player's cards, and still include the unknown hole.",
+    "possibly-wrong action values are a fraction of the original wager, conditioned on the dealer not having blackjack. Hakimi net EV uses the same unit. For A/T, Hakimi peek_negative=true.",
+    "The released strategy.exe dealer table prints five decimals. EV queries print nine decimals in percent.",
+    "Split EV uses CDZ-/CDP1/CDP, not Hakimi sequential two-hand total net. Those cells are not_directly_comparable."
+  ],
+  "tolerances": {
+    "ev_abs": 1e-8,
+    "dealer_raw_abs": 6e-6,
+    "dealer_peek_abs": 1.5e-5,
+    "internal_abs": 1e-10,
+    "dealer_print_decimals": 5
+  },
+  "expected_counts": {
+    "dealer_raw": 20,
+    "dealer_peek": 10,
+    "ev": 36,
+    "total": 66
+  },
+  "shoes": [
+    {"id": "full-6", "kind": "ndecks", "decks": 6},
+    {"id": "full-7", "kind": "ndecks", "decks": 7},
+    {"id": "full-8", "kind": "ndecks", "decks": 8},
+    {
+      "id": "dep-6-t16",
+      "kind": "counts",
+      "counts": [24, 24, 24, 24, 24, 24, 24, 24, 24, 80],
+      "note": "Six-deck shoe after 16 tens were removed in earlier rounds. Queried cards must still remain in this shoe."
+    },
+    {
+      "id": "dep-6-a8",
+      "kind": "counts",
+      "counts": [16, 24, 24, 24, 24, 24, 24, 24, 24, 96],
+      "note": "Six-deck shoe after 8 aces were removed in earlier rounds."
+    }
+  ],
+  "dealer_ups": [2, 6, 10, 1],
+  "hands": [
+    {
+      "id": "h16-t",
+      "player": [10, 6],
+      "up": 10,
+      "shoes": ["full-6", "full-7", "full-8", "dep-6-t16"],
+      "actions": {"stand": "comparable", "hit": "comparable", "double": "comparable"}
+    },
+    {
+      "id": "h16-6",
+      "player": [10, 6],
+      "up": 6,
+      "shoes": ["full-6", "full-7", "full-8"],
+      "actions": {"stand": "comparable", "hit": "comparable", "double": "comparable"}
+    },
+    {
+      "id": "h11-6",
+      "player": [5, 6],
+      "up": 6,
+      "shoes": ["full-6", "full-7", "full-8"],
+      "actions": {"stand": "comparable", "hit": "comparable", "double": "comparable"}
+    },
+    {
+      "id": "s18-9",
+      "player": [1, 7],
+      "up": 9,
+      "shoes": ["full-6", "full-7", "full-8", "dep-6-a8"],
+      "actions": {"stand": "comparable", "hit": "comparable", "double": "comparable"}
+    },
+    {
+      "id": "h20-6",
+      "player": [10, 10],
+      "up": 6,
+      "shoes": ["full-6", "full-7", "full-8"],
+      "actions": {"stand": "comparable", "hit": "comparable", "double": "comparable"}
+    },
+    {
+      "id": "h12-4",
+      "player": [10, 2],
+      "up": 4,
+      "shoes": ["full-6", "full-7", "full-8"],
+      "actions": {"stand": "comparable", "hit": "comparable", "double": "comparable"}
+    },
+    {
+      "id": "h9-2",
+      "player": [4, 5],
+      "up": 2,
+      "shoes": ["full-6", "full-7", "full-8"],
+      "actions": {"stand": "comparable", "hit": "comparable", "double": "comparable"}
+    },
+    {
+      "id": "s17-A",
+      "player": [1, 6],
+      "up": 1,
+      "shoes": ["full-6", "full-7", "full-8", "dep-6-a8"],
+      "actions": {"stand": "comparable", "hit": "comparable", "double": "comparable"}
+    },
+    {
+      "id": "h12-A",
+      "player": [10, 2],
+      "up": 1,
+      "shoes": ["dep-6-a8"],
+      "actions": {"stand": "comparable", "hit": "comparable", "double": "comparable"}
+    },
+    {
+      "id": "3c16-6",
+      "player": [10, 2, 4],
+      "up": 6,
+      "shoes": ["full-6", "full-7", "full-8"],
+      "actions": {"stand": "comparable", "hit": "comparable"},
+      "note": "Three-card hard 16. Double is illegal when DAN is false; nCards is part of the rule, not a pending-hit flag."
+    },
+    {
+      "id": "p88-6",
+      "player": [8, 8],
+      "up": 6,
+      "shoes": ["full-6", "full-7", "full-8"],
+      "actions": {
+        "stand": "comparable",
+        "hit": "comparable",
+        "double": "comparable",
+        "split": "not_directly_comparable"
+      },
+      "incomparable_reason": "split_cdz_cdp_vs_sequential_two_hand_total_net",
+      "note": "Unsplit stand/hit/double on this pair remain comparable. Split EV is recorded and not gated."
+    },
+    {
+      "id": "bj-6",
+      "player": [1, 10],
+      "up": 6,
+      "shoes": ["full-6"],
+      "actions": {"stand": "comparable"},
+      "note": "Natural blackjack stand is 3:2 when the dealer cannot have blackjack."
+    },
+    {
+      "id": "bj-T",
+      "player": [1, 10],
+      "up": 10,
+      "shoes": ["full-6"],
+      "actions": {"stand": "comparable"},
+      "note": "After a US peek, natural blackjack stand is 1.5 because dealer blackjack was already excluded."
+    }
+  ]
+}

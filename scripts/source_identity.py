@@ -5,6 +5,20 @@ from pathlib import Path
 import subprocess
 
 
+def sha256_file(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def package_files_on_disk(root):
+    root = Path(root)
+    files = {}
+    for path in root.rglob("*"):
+        if not path.is_file() or path.name == "BUILD_INFO.json":
+            continue
+        files[path.relative_to(root).as_posix()] = sha256_file(path)
+    return files
+
+
 def source_identity(root):
     root = Path(root).resolve()
     try:
@@ -25,6 +39,11 @@ def source_identity(root):
             if not path.is_relative_to(root) or not path.is_file():
                 valid = False
                 continue
-            valid = valid and hashlib.sha256(path.read_bytes()).hexdigest() == expected
+            valid = valid and sha256_file(path) == expected
+        package = info.get("package_manifest")
+        if type(package) is dict and package:
+            on_disk = package_files_on_disk(root)
+            if on_disk != package:
+                valid = False
         return {"commit": info.get("source_commit"), "dirty_worktree": not valid, "kind": "portable-package-manifest"}
     return {"commit": None, "dirty_worktree": True, "kind": "unversioned-directory"}
