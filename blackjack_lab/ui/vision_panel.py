@@ -50,7 +50,8 @@ class VisionReviewWindow(tk.Toplevel):
         super().__init__(app)
         self.app = app
         self.title("识牌核对（图像待核对，确认前不入账）")
-        self.geometry("980x640")
+        self.geometry("1100x850")
+        self.minsize(980,760)
         self.session: VisionReviewSession | None = None
         self.loaded = None
         self.photos = []
@@ -97,8 +98,25 @@ class VisionReviewWindow(tk.Toplevel):
         ttk.Label(self, textvariable=self.var_video, wraplength=940).pack(fill=tk.X, padx=8)
         self.var_info = tk.StringVar(value=REVIEW_PENDING)
         ttk.Label(bar, textvariable=self.var_info, wraplength=640).pack(side=tk.LEFT, padx=8)
-        self.list_frame = ttk.Frame(self)
-        self.list_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=6)
+        body = ttk.Frame(self)
+        body.pack(fill=tk.BOTH, expand=True, padx=8, pady=6)
+        ttk.Label(body,text='原图与选中位置 · 点击下方裁片或使用观察列表选择候选').pack(anchor='w')
+        self.source_canvas = tk.Canvas(body,height=260,background='#10202a',highlightthickness=0)
+        self.source_canvas.pack(fill=tk.BOTH,expand=True,pady=(3,6))
+        self._review_image_key = None
+        self._review_photo = None
+        self._review_image_item = self.source_canvas.create_image(0,0,anchor='nw')
+        self._review_box_item = self.source_canvas.create_rectangle(0,0,0,0,outline='#ffb44b',width=2,state='hidden')
+        self.source_canvas.bind('<Configure>',lambda _event:self._draw_review_source())
+        self.thumb_canvas = tk.Canvas(body,height=150,highlightthickness=0)
+        self.thumb_canvas.pack(fill=tk.X)
+        thumb_scroll = ttk.Scrollbar(body,orient=tk.HORIZONTAL,command=self.thumb_canvas.xview)
+        thumb_scroll.pack(fill=tk.X)
+        self.thumb_canvas.configure(xscrollcommand=thumb_scroll.set)
+        self.list_frame = ttk.Frame(self.thumb_canvas)
+        self.thumb_canvas.create_window(0,0,window=self.list_frame,anchor='nw')
+        self.list_frame.bind('<Configure>',lambda _event:self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox('all')))
+        self._thumb_widgets = {}
         self._geometry_dialog = None
         self.geometry_button = ttk.Button(self, text="几何待核（0）：未分类",
                                           command=self.show_geometry_review, state=tk.DISABLED)
@@ -469,9 +487,11 @@ class VisionReviewWindow(tk.Toplevel):
         for child in self.list_frame.winfo_children():
             child.destroy()
         self.photos.clear()
+        self._thumb_widgets.clear()
         if not self.session or not self.loaded:
             self.cmb_obs.configure(values=[])
             self.var_obs.set("")
+            self._draw_review_source()
             return
         from ..vision.image_io import crop_rgb
         ids = []
@@ -481,14 +501,20 @@ class VisionReviewWindow(tk.Toplevel):
             lbl = tk.Label(box)
             lbl.pack()
             crop = crop_rgb(self.loaded, obs.bbox["x"], obs.bbox["y"], obs.bbox["w"], obs.bbox["h"])
-            _ppm(lbl, crop, obs.bbox["w"], obs.bbox["h"])
-            rank = obs.accepted_rank() or obs.face_state_candidate
+            _ppm(lbl, crop, obs.bbox["w"], obs.bbox["h"],max_side=80)
+            rank = obs.accepted_rank() or {'unreadable':'未知','back':'牌背','shown':'待核'}.get(obs.face_state_candidate,'未知')
             score = f"{obs.rank_candidates[0].match_score:.3f}" if obs.rank_candidates else "-"
             ttk.Label(
                 box,
-                text=f"{obs.observation_id[:8]}\n{rank} 匹配度 {score}\n{obs.reject_reason or '待确认'}\n{obs.seat_hint or ''}",
-                justify=tk.CENTER,
+                text=f"{obs.observation_id[:8]}  {rank}\n匹配度 {score}\n{obs.reject_reason or '待确认'}",
+                justify=tk.CENTER,wraplength=150,
             ).pack()
+            self._thumb_widgets[obs.observation_id] = box
+            def choose(_event, oid=obs.observation_id):
+                self.var_obs.set(oid)
+                self._selected_observation()
+            box.bind('<Button-1>',choose)
+            for child in box.winfo_children():child.bind('<Button-1>',choose)
             ids.append(obs.observation_id)
         self.cmb_obs.configure(values=ids)
         self.var_obs.set(ids[0] if ids else "")
@@ -500,6 +526,38 @@ class VisionReviewWindow(tk.Toplevel):
         self.var_rank.set((obs.accepted_rank() or '未知') if obs else '')
         self.var_seat.set((obs.seat_hint or '') if obs else '')
         self.var_target.set('')
+        self._draw_review_source()
+        box=self._thumb_widgets.get(self.var_obs.get())
+        if box is not None:
+            extent=self.thumb_canvas.bbox('all')
+            left=self.thumb_canvas.canvasx(0)
+            if extent and extent[2]>0 and (box.winfo_x()<left or box.winfo_x()+box.winfo_width()>left+self.thumb_canvas.winfo_width()):
+                self.thumb_canvas.xview_moveto(box.winfo_x()/extent[2])
+
+    def _draw_review_source(self):
+        if self.loaded is None:
+            self.source_canvas.itemconfigure(self._review_image_item,image='')
+            self.source_canvas.itemconfigure(self._review_box_item,state='hidden')
+            self._review_image_key=self._review_photo=None
+            return
+        from PIL import Image,ImageTk
+        loaded=self.loaded
+        width,height=max(1,self.source_canvas.winfo_width()),max(1,self.source_canvas.winfo_height())
+        scale=min(1.,width/loaded.width,height/loaded.height)
+        size=(max(1,round(loaded.width*scale)),max(1,round(loaded.height*scale)))
+        key=(id(loaded),size)
+        if key!=self._review_image_key:
+            image=Image.frombytes('RGB',(loaded.width,loaded.height),loaded.rgb)
+            self._review_photo=ImageTk.PhotoImage(image.resize(size,Image.Resampling.BILINEAR),master=self)
+            self.source_canvas.itemconfigure(self._review_image_item,image=self._review_photo)
+            self._review_image_key=key
+        obs=next((o for o in self.session.result.observations if o.observation_id==self.var_obs.get()),None) if self.session else None
+        if obs is None:
+            self.source_canvas.itemconfigure(self._review_box_item,state='hidden')
+        else:
+            x,y,w,h=(obs.bbox[k]*scale for k in ('x','y','w','h'))
+            self.source_canvas.coords(self._review_box_item,x,y,x+w,y+h)
+            self.source_canvas.itemconfigure(self._review_box_item,state='normal')
 
     def show_geometry_review(self):
         """Separate evidence viewer; none of these IDs enter ledger confirmation."""

@@ -95,6 +95,8 @@ class VideoSnapshotTests(unittest.TestCase):
                     row.packet.pixels[0,0,0]+=1
                 elif change=='stopped':owner.stop()
                 elif change=='foreign':row.timings['candidate_ready_ns']+=1
+                if change in ('index','timestamp'):
+                    owner.records.clear();owner.records.append(row.metadata())
                 with self.assertRaises(VisionBridgeError):freeze_video_result(owner,row,'a'*64)
 
 
