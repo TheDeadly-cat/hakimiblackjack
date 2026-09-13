@@ -83,6 +83,25 @@ class IdentityLinkTests(unittest.TestCase):
         self.assertEqual(self.ctrl.commit_revision,revision)
         self.assertEqual(self.ctrl.state().current.shoe.exact_out['A'],2)
 
+    def test_reused_visual_id_on_changed_pixels_needs_fresh_manual_association(self):
+        original=_obs('same-id');sess=self.review(original)
+        first=self.link(sess,'same-id',self.a)
+        changed=_obs('same-id','6');changed.asset_sha256='b'*64;changed.bbox['x']+=60
+        sess.present_frame(_result(changed))
+        self.assertTrue(sess.has_pending());self.assertFalse(sess.link_evidence_matches('same-id'))
+        with self.assertRaises(VisionBridgeError):
+            sess.confirm(ConfirmDecision('same-id',OP_CORRECT,seat='玩家1',confirmed_rank='6',target_event_id=self.a.event_id))
+        revision=self.ctrl.commit_revision
+        second=self.link(sess,'same-id',self.b)
+        self.assertNotEqual(first.request_id,second.request_id)
+        self.assertTrue(sess.link_evidence_matches('same-id'));self.assertFalse(sess.has_pending())
+        self.assertEqual(self.ctrl.commit_revision,revision)
+        # Reopening the original image must not silently inherit the later link.
+        reopened=self.review(original)
+        self.assertTrue(reopened.has_pending())
+        with self.assertRaises(VisionBridgeError):
+            reopened.confirm(ConfirmDecision('same-id',OP_NEW,seat='玩家1',confirmed_rank='A'))
+
     def test_replacement_and_rejection_keep_immutable_history(self):
         sess=self.review(_obs('one'))
         first=self.link(sess,'one',self.a)

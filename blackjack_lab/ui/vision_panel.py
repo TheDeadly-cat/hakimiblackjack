@@ -559,6 +559,8 @@ class VisionReviewWindow(tk.Toplevel):
             self._refresh_targets()
             self.var_target.set(next((label for label,event_id in self._target_choices.items()
                 if event_id==linked.event.event_id),linked.event.event_id))
+            if not self.session.link_evidence_matches(self.var_obs.get()):
+                self.var_info.set('先前关联保留；识别帧已改变，请复核同牌关联，不凭相同 ID 自动认定身份。')
         self._draw_review_source()
         box=self._thumb_widgets.get(self.var_obs.get())
         if box is not None:

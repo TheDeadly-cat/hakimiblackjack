@@ -84,6 +84,7 @@ class VisionReviewSession:
         self.rejected: Dict[str, ConfirmDecision] = {}
         self.links: Dict[str, CommitResult] = {}
         self._link_history: Dict[str, str] = {}
+        self._link_proofs: Dict[str, dict] = {}
         self._by_id = {o.observation_id: o for o in result.observations}
         self.invalidated_reason: Optional[str] = None
         for obs in result.observations:self._restore_link(obs)
@@ -117,12 +118,12 @@ class VisionReviewSession:
                 or result.layout_profile_id != self.result.layout_profile_id):
             self.invalidate("帧的模型或区域已改变")
             self._require_active()
-        previous_links,previous_history = dict(self.links),dict(self._link_history)
+        previous_links,previous_history,previous_proofs = dict(self.links),dict(self._link_history),dict(self._link_proofs)
         try:
             for obs in result.observations:
                 if obs.observation_id not in self.links:self._restore_link(obs)
         except VisionBridgeError:
-            self.links,self._link_history = previous_links,previous_history
+            self.links,self._link_history,self._link_proofs = previous_links,previous_history,previous_proofs
             raise
         self.result = result
         self._by_id = {obs.observation_id: obs for obs in result.observations}
@@ -135,7 +136,7 @@ class VisionReviewSession:
         occupied = Counter(self._dealt_target(c.event) for oid,c in {**self.links,**self.commits}.items()
             if oid in self._by_id and c.event is not None)
         valid_links = {oid for oid,link in self.links.items()
-            if link.event.event_id in targets and occupied[link.event.event_id]==1}
+            if link.event.event_id in targets and occupied[link.event.event_id]==1 and self.link_evidence_matches(oid)}
         done = set(self.commits) | set(self.rejected) | valid_links
         return any(oid not in done for oid in self._by_id)
 
@@ -318,6 +319,18 @@ class VisionReviewSession:
         key = _sha({'bound':self.bound,'observation_id':observation_id})
         return self.evidence_root/'identity-links'/f'current-{key}.json'
 
+    @staticmethod
+    def _observation_proof(observation):
+        # The manual frame tracker is not a verified physical-identity oracle.
+        # A reused ID on a different image must not inherit a confirmed link.
+        keys=('asset_sha256','crop_sha256','bbox','region_id','frame_index','relative_time_ms',
+            'model_id','model_digest','layout_profile_id')
+        return {key:observation.get(key) for key in keys}
+
+    def link_evidence_matches(self, observation_id):
+        obs=self._by_id.get(observation_id)
+        return obs is not None and self._link_proofs.get(observation_id)==self._observation_proof(obs.as_dict())
+
     def _restore_link(self, obs):
         if self.evidence_root is None:return
         head = self._link_head(obs.observation_id)
@@ -339,6 +352,7 @@ class VisionReviewSession:
                 raise ValueError('link target context mismatch')
             self.links[obs.observation_id] = CommitResult('linked',request_id,obs.observation_id,True,event,
                 '已恢复此前人工关联；未新增发牌。')
+            self._link_proofs[obs.observation_id] = self._observation_proof(record['observation'])
         except (OSError,ValueError,KeyError,TypeError,StopIteration) as exc:
             raise VisionBridgeError('既有人工关联凭据不完整，不能假装没有关联并再次扣牌。') from exc
 
@@ -354,7 +368,7 @@ class VisionReviewSession:
             if oid != obs.observation_id and oid in self._by_id and self._dealt_target(commit.event) == target['event_id']:
                 raise VisionBridgeError('本帧另一个候选已对应此牌，不能把两个候选合成同一条发牌记录。')
         previous = self.links.get(obs.observation_id)
-        if previous and previous.event.event_id == target['event_id']:
+        if previous and previous.event.event_id == target['event_id'] and self.link_evidence_matches(obs.observation_id):
             return CommitResult('linked',previous.request_id,obs.observation_id,True,previous.event,
                 '该人工关联已保存，未再次扣牌。')
         request_id = self._save_identity_action('link',decision,obs,target)
@@ -362,6 +376,7 @@ class VisionReviewSession:
         result = CommitResult('linked',request_id,obs.observation_id,False,event,
             f"已关联已有发牌 #{target['seq']}（{target['seat']} / {target['rank']}）；未新增发牌、未改牌面。")
         self.links[obs.observation_id] = result
+        self._link_proofs[obs.observation_id] = self._observation_proof(obs.as_dict())
         self.rejected.pop(obs.observation_id,None)
         return result
 
@@ -380,6 +395,7 @@ class VisionReviewSession:
             if linked is not None:
                 self._save_identity_action('unlink-and-reject',decision,obs,{'event_id':linked.event.event_id})
                 self.links.pop(obs.observation_id)
+                self._link_proofs.pop(obs.observation_id,None)
             self.rejected[decision.observation_id] = decision
             result = CommitResult(
                 status="rejected", request_id=self.request_id(decision),
@@ -401,6 +417,8 @@ class VisionReviewSession:
         if linked is not None:
             if decision.operation == OP_NEW:
                 raise VisionBridgeError('该观察已关联已有牌，不能再次作为新牌扣除；关联错误时先撤回关联。')
+            if not self.link_evidence_matches(obs.observation_id):
+                raise VisionBridgeError('识别帧已改变，不能只凭相同跟踪 ID 沿用旧关联；请先复核当前帧的同牌关联。')
             if decision.target_event_id != linked.event.event_id:
                 raise VisionBridgeError('揭示或纠错必须针对该观察已关联的原发牌记录。')
         if previous and decision.operation == OP_NEW and previous.event.etype != CARD_DEALT:
