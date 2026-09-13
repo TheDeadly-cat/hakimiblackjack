@@ -44,6 +44,13 @@ def mapped_timeline(run, receipt):
         raise ValueError('Source display clocks must be strictly ordered')
     if raw[0]['media_time_ns'] != 0:
         raise ValueError('Missing initial source display')
+    request_count = sum('display_request_ns' in frame for frame in raw)
+    if request_count not in (0, len(raw)):
+        raise ValueError('Source request timing must cover every raw display')
+    if request_count and any(frame['display_request_ns'] > frame['display_submitted_ns']
+                             or (i and frame['display_request_ns'] <= raw[i-1]['display_request_ns'])
+                             for i, frame in enumerate(raw)):
+        raise ValueError('Invalid source draw-request clock')
     media_span = (raw[-1]['media_time_ns'] - raw[0]['media_time_ns']) / 1e9
     wall_span = (raw[-1]['display_submitted_ns'] - raw[0]['display_submitted_ns']) / 1e9
     if media_span <= 0 or abs(wall_span - media_span) > max(.5, media_span * .02):
@@ -115,6 +122,8 @@ def mapped_timeline(run, receipt):
                              'current_tracks': sum(bool(t.get('current')) for t in original['tracks'])})
             continue
         source = candidates[0]
+        if source.get('display_request_ns', frame['observed_ns']) > frame['observed_ns']:
+            raise ValueError('Matching source pixels were captured before their draw request')
         if original['source_media_time_ns'] != frame['wgc_media_time_ns']:
             raise ValueError('WGC source media timestamp mismatch')
         if frame['observed_ns'] > original['display_submitted_ns']:
@@ -139,6 +148,9 @@ def mapped_timeline(run, receipt):
                 'mapped_render_updates': len(updates), 'unmapped_render_updates': unmapped,
                 'ambiguous_raw_signatures': sum(len(v) > 1 for v in by_signature.values()),
                 'raw_display_span_s': wall_span, 'raw_media_span_s': media_span,
+                'source_request_timing_complete': request_count == len(raw),
+                'max_source_request_to_receipt_ms': (max(frame['display_submitted_ns']-frame['display_request_ns']
+                    for frame in raw)/1e6 if request_count else None),
                 'result_window_scales': sorted({u['source_display_scale'] for u in run.get('display_updates', [])}),
                 'max_observed_raw_receipt_lag_ms': max(late_receipts, default=0) / 1e6,
                 'mapping': mapping}
@@ -157,7 +169,10 @@ def score_wgc(run, receipt, reference):
         'Source mapping requires a unique sampled pixel signature and full-pixel spot checks; signatures are not full hashes.',
         'Unmapped display updates remain ungraded; all eligible events remain in denominators.',
         'Raw source timestamps are after-idle receipts, not hardware scanout. Measured capture/receipt inversions are reported.',
-        'Onset intervals do not bound all software callback jitter or ungraded reference positions.',
+        ('Source onset lower bounds use timestamps before raw canvas submission; upper bounds use after-idle receipts.'
+         if evidence['source_request_timing_complete'] else
+         'Legacy receipt-only onset intervals do not bound source callback jitter; deadline counts are provisional.'),
+        'Onset timing intervals do not resolve ungraded reference positions or hardware display scanout.',
     ])
     return result
 

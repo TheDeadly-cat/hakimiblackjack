@@ -65,9 +65,12 @@ def _score_timeline(run,reference,source_displays,display_updates,*,source_sha25
         e=dict(original);e['_positions']={p['quarter']:p for p in e['quarter_positions']};events.append(e)
         lo,hi=e['first_readable_interval_s']
         before=max(0,bisect_right(media,lo)-1);after=min(len(displays)-1,bisect_left(media,hi))
+        onset_lower=displays[before].get('display_request_ns',displays[before]['display_submitted_ns'])
+        onset_upper=displays[after]['display_submitted_ns']
+        if onset_lower>onset_upper:raise ValueError('Invalid source display interval')
         result[e['physical_id_proposal']]={'event_id':e['physical_id_proposal'],'rank':e['rank'],'cohort':e['cohort'],
             'first_readable_media_interval_s':[lo,hi],
-            'first_readable_display_interval_ns':[displays[before]['display_submitted_ns'],displays[after]['display_submitted_ns']],
+            'first_readable_display_interval_ns':[onset_lower,onset_upper],
             'first_candidate':None,'first_accepted':None,'first_correct_candidate':None,
             'first_stable':None,'first_correct_stable':None,'first_wrong_candidate':None,'first_wrong_stable':None,
             'candidate_correction':None,'stable_correction':None,'track_ids':set(),'wrong_rank_labels':set(),

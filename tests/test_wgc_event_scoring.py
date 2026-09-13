@@ -75,6 +75,20 @@ class WgcEventScoringTests(unittest.TestCase):
         self.assertEqual(result['all_events']['eligible_events'], 3)
         self.assertEqual(result['all_events']['first_correct_stable']['observed_events'], 1)
 
+    def test_delayed_source_receipt_does_not_shorten_verified_latency(self):
+        run, receipt, ref = self.fixture()
+        for frame in receipt['raw_displays']:
+            frame['display_request_ns'] = frame['display_submitted_ns'] - 200_000_000
+        result = score_wgc(run, receipt, ref)
+        stable = result['new_visibility_events']['first_correct_stable']
+        self.assertEqual(stable['conditional_p95_interval_ms'], [750, 1200])
+        self.assertEqual(stable['deadline_counts']['1000']['verified_within'], 0)
+        self.assertEqual(stable['deadline_counts']['1000']['within_if_onset_at_later_bound'], 1)
+        self.assertTrue(result['wgc_mapping']['source_request_timing_complete'])
+        del receipt['raw_displays'][0]['display_request_ns']
+        with self.assertRaises(ValueError):
+            score_wgc(run, receipt, ref)
+
     def test_rendered_source_metadata_maps_frames_absent_from_probe_and_inference(self):
         run, receipt, ref = self.fixture()
         second = deepcopy(run['display_updates'][0])
