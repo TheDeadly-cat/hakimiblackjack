@@ -88,7 +88,9 @@ python scripts/vision_benchmarks.py
 python scripts/verify_vision_v03a.py --rebuild-holdout
 ```
 
-主窗口「识牌核对」可打开本地图/旁观录像、选择样式与训练模型，确认/改正/拒绝后经控制器入账。未确认时账本不变，匹配度不是正确概率。授权窗口实时捕获沿用 WGC 探针 CLI，尚无持续捕获的 Tk 主循环。模型、来源、ROI 切换会撤回旧候选。当前进展和验收边界见 [V0.3e 审查整改](docs/vision/V0.3e-审查整改验收.md)，操作见 [指定模型与 CLI](docs/vision/V0.3e-指定模型与CLI.md)。原 [V0.3e 训练留出记录](docs/vision/V0.3e-标注训练留出集.md) 保留为历史开发记录，其中标签和分数不构成独立真实验收。
+主窗口「识牌核对」可打开本地图/旁观录像、选择样式与训练模型，确认/改正/拒绝后经控制器入账。未确认时账本不变，匹配度不是正确概率。另有 `scripts/realtime_preview.py` 持续 Tk 预览，共用现有最新帧入口，支持真实 1 倍速录像及授权 WGC 窗口，自动显示候选、短时稳定值和过期状态；它不自动记账。模型、来源、ROI 切换会撤回旧候选。本机已有私有素材与模型时可双击 `Start_Realtime_Preview.cmd`，启动方法及旧／RGB 实测见 [实时启动与当前回归](docs/WGC_AND_CURRENT_REGRESSIONS_20260914.md)。RGB 未通过替代门槛，旧方案也仍有误收；不能宣称可靠秒级识牌或只识别上角已经全面验收。
+
+既有人工流程和验收边界见 [V0.3e 审查整改](docs/vision/V0.3e-审查整改验收.md)，操作见 [指定模型与 CLI](docs/vision/V0.3e-指定模型与CLI.md)。原 [V0.3e 训练留出记录](docs/vision/V0.3e-标注训练留出集.md) 保留为历史开发记录，其中标签和分数不构成独立真实验收。
 
 原 V0.2a 回归与截图验收脚本（不能代替新增分牌工作流/性能验收，截图使用可选开发依赖 Pillow）：
 
