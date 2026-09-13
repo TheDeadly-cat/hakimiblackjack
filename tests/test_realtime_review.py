@@ -40,7 +40,7 @@ def fixture(index=120, style=None, adapter=None):
             observation_id=f'input-{i}',asset_sha256=loaded.sha256,crop_sha256=str(i)*64,
             bbox={'x':x,'y':10,'w':20,'h':25},region_id='all',layout_profile_id=layout.layout_profile_id,
             model_id=adapter.model_id,model_digest=adapter.digest,recognition_schema_version=RECOGNITION_SCHEMA_VERSION,
-            rank_candidates=[RankHypothesis('8',.95,'fixture')],reject_reason=None,face_state_candidate='shown',
+            rank_candidates=[RankHypothesis('8',.95,'8')],reject_reason=None,face_state_candidate='shown',
             source_declaration='旁观录像人工确认',captured_at=packet.observed_at))
     source = SimpleNamespace(asset=asset,is_live=False,finished=True,error=None,
         token=intake.token,report=intake.report,stop=intake.mark_stopped)
@@ -205,11 +205,30 @@ class VideoSnapshotTkTests(unittest.TestCase):
             refresh.assert_not_called()
             self.assertEqual(self.win.session.links[obs.observation_id].event.event_id,event.event_id)
         self.assertEqual(self.app.ctrl.commit_revision,revision)
+        saved=Path(self.win.session.result.image_path).parent/'handoff.json'
+        ids=[o.observation_id for o in observations]
+        self.win.open_review_snapshot_path(saved)
+        self.assertEqual(set(self.win.session.links),set(ids))
+        self.assertFalse(self.win.session.has_pending())
+        self.assertEqual(self.app.ctrl.commit_revision,revision)
         self.win.var_op.set('新的可见牌');self.win._operation_changed();self.win.var_seat.set('玩家1')
         with patch('blackjack_lab.ui.vision_panel.messagebox.showerror') as error:
             self.win.confirm_button.invoke()
         error.assert_called_once()
         self.assertEqual(self.app.ctrl.commit_revision,revision)
+
+    def test_saved_snapshot_tampering_and_wrong_context_preserve_current_review(self):
+        self.win.accept_realtime_snapshot(self.owner,self.row,self.win._preview_context());self.pump()
+        previous=self.win.session
+        saved=Path(previous.result.image_path).parent/'handoff.json'
+        candidates=saved.parent/'candidates.json';original=candidates.read_bytes()
+        candidates.write_bytes(original+b' ')
+        with self.assertRaises(VisionBridgeError):self.win.open_review_snapshot_path(saved)
+        self.assertIs(self.win.session,previous)
+        candidates.write_bytes(original)
+        self.app.ctrl.end_round_unsettled('test','complete');self.app.ctrl.start_round(['玩家1'])
+        with self.assertRaises(VisionBridgeError):self.win.open_review_snapshot_path(saved)
+        self.assertIs(self.win.session,previous)
 
 
 if __name__=='__main__':unittest.main()

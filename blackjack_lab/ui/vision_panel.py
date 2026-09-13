@@ -73,6 +73,7 @@ class VisionReviewWindow(tk.Toplevel):
         bar.pack(fill=tk.X, padx=8)
         ttk.Button(bar, text="打开本地 PNG/JPEG", command=self.open_image).pack(side=tk.LEFT)
         ttk.Button(bar, text="打开本地录像", command=self.open_video).pack(side=tk.LEFT, padx=4)
+        ttk.Button(bar,text='打开核对快照',command=self.open_review_snapshot).pack(side=tk.LEFT,padx=4)
         ttk.Button(bar, text="绑定到当前轮（确认新轮）", command=self.rebind).pack(side=tk.LEFT, padx=6)
         model_bar = ttk.Frame(self)
         model_bar.pack(fill=tk.X, padx=8, pady=2)
@@ -307,6 +308,31 @@ class VisionReviewWindow(tk.Toplevel):
         if not path:
             return
         self.open_video_path(path)
+
+    def open_review_snapshot(self):
+        path=filedialog.askopenfilename(parent=self,title='选择已冻结的 handoff.json',filetypes=[('JSON','*.json')])
+        if not path:return
+        try:self.open_review_snapshot_path(path)
+        except Exception as exc:messagebox.showerror('快照未打开',str(exc),parent=self)
+
+    def open_review_snapshot_path(self,path):
+        from .realtime_review import load_video_review_snapshot
+        snapshot,evidence=load_video_review_snapshot(path)
+        if snapshot.metadata.get('requested_bind_context')!=capture_bind_context(self.app.ctrl):
+            raise VisionBridgeError('快照属于另一会话、牌靴或轮次，不能导入当前账本核对。')
+        review=VisionReviewSession(self.app.ctrl,snapshot.result,evidence)
+        self._withdraw('已切换到保存的核对快照')
+        if self.video_reader is not None:self.video_reader.close()
+        self.video_reader=self.tracker=None
+        self.runtime.select_model(None);self.selected_style=None
+        self._source_key='snapshot:'+snapshot.metadata['snapshot_id']
+        self.loaded=snapshot.loaded;self.session=self.app.vision_session=review
+        self.var_frame.set(snapshot.frame_index)
+        self.var_op.set('')
+        self.var_video.set(f'保存的原录像帧 {snapshot.frame_index} · {snapshot.video_time_ms/1000:.3f} 秒；未重新推理。')
+        self.var_model.set(f'保存时模型 {snapshot.result.model_id} · {snapshot.result.model_digest[:16]}；保留原候选，未重新识别。')
+        self.var_info.set('已打开冻结证据与既有人工关联；没有新增发牌。')
+        self._render_observations();self.app.refresh_vision_banner()
 
     def open_video_path(self, path, frame=0):
         self._withdraw("录像来源已改变")

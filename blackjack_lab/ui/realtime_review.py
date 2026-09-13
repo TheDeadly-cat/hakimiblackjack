@@ -37,8 +37,53 @@ class VideoReviewSnapshot:
         self.metadata['original_recognition'] = original
         self.metadata['manual_review_observation_ids'] = [o.observation_id for o in self.result.observations]
         self.metadata['source_png_sha256'] = hashlib.sha256((folder/'source.png').read_bytes()).hexdigest()
+        self.metadata['candidates_json_sha256'] = hashlib.sha256((folder/'candidates.json').read_bytes()).hexdigest()
         (folder/'handoff.json').write_text(json.dumps(self.metadata,ensure_ascii=False,indent=2),encoding='utf-8')
         return folder
+
+
+def load_video_review_snapshot(path):
+    """Open saved evidence without decoding the video or running a new model."""
+    from ..vision.contracts import result_from_dict
+    from ..vision.image_io import LoadedImage, load_image, validate_local_image_path
+    path = validate_local_image_path(path)
+    folder = path.parent
+    if path.name!='handoff.json' or folder.parent.name!='realtime':
+        raise VisionBridgeError('请选择已冻结快照目录内的 handoff.json。')
+    def read_json(file):
+        if file.stat().st_size>20*1024*1024:raise VisionBridgeError('快照元数据超过大小限制。')
+        return json.loads(file.read_text(encoding='utf-8'))
+    metadata = read_json(path)
+    if metadata.get('schema')!='realtime-video-manual-handoff-1' or metadata.get('snapshot_id')!=folder.name:
+        raise VisionBridgeError('不是受支持的已冻结录像快照。')
+    source,candidates = folder/'source.png',folder/'candidates.json'
+    for file,key in [(source,'source_png_sha256'),(candidates,'candidates_json_sha256')]:
+        if file.resolve().parent!=folder or not metadata.get(key):
+            raise VisionBridgeError('快照缺少完整摘要或引用了目录外文件，请查看原图或重新冻结。')
+        if file.stat().st_size>20*1024*1024:raise VisionBridgeError('快照文件超过大小限制。')
+        if hashlib.sha256(file.read_bytes()).hexdigest()!=metadata[key]:
+            raise VisionBridgeError('快照文件与保存时摘要不一致，未导入。')
+    image = load_image(source)
+    if hashlib.sha256(image.rgb).hexdigest()!=metadata['source_rgb_sha256']:
+        raise VisionBridgeError('快照原始像素与保存时不一致。')
+    result = result_from_dict(read_json(candidates))
+    if (result.model_id!=metadata['model_id'] or result.model_digest!=metadata['model_digest']
+            or [o.observation_id for o in result.observations]!=metadata['manual_review_observation_ids']):
+        raise VisionBridgeError('快照模型或核对身份不一致。')
+    prefix = folder.relative_to(folder.parent.parent).as_posix()
+    for obs in result.observations:
+        if len(obs.observation_id)!=32 or any(c not in '0123456789abcdef' for c in obs.observation_id):
+            raise VisionBridgeError('非法快照观察身份。')
+        obs.crop_relpath=prefix+'/crops/'+obs.observation_id+'.png'
+    for box in [o.bbox for o in result.observations]+[o['bbox'] for o in result.geometry_review]:
+        if (any(type(box[k]) is not int for k in ('x','y','w','h'))
+                or box['x']+box['w']>image.width or box['y']+box['h']>image.height):
+            raise VisionBridgeError('快照裁片坐标超出原图。')
+    result.image_path=str(source)
+    loaded=LoadedImage(source,image.width,image.height,result.asset_sha256,image.rgb,image.byte_size,'frozen-review-source')
+    index=metadata['source_frame_index']
+    if type(index) is not int or index<0:raise VisionBridgeError('快照缺少原录像帧号。')
+    return VideoReviewSnapshot(loaded,result,index,round(metadata['media_time_ns']/1e6),metadata),folder.parent.parent
 
 
 def freeze_video_result(owner, row, expected_source_sha256):
