@@ -57,6 +57,7 @@ class VisionReviewWindow(tk.Toplevel):
         self.loaded = None
         self.photos = []
         self.video_reader = None
+        self.selected_window = None
         self.tracker = None
         from ..vision.model_adapter import RecognitionRuntime
         self.runtime = RecognitionRuntime()
@@ -80,6 +81,7 @@ class VisionReviewWindow(tk.Toplevel):
         ttk.Button(model_bar, text="选择样式/区域 JSON", command=self.choose_style).pack(side=tk.LEFT)
         ttk.Button(model_bar, text="选择本地训练模型", command=self.choose_model).pack(side=tk.LEFT, padx=4)
         ttk.Button(model_bar, text="使用原模板", command=self.use_templates).pack(side=tk.LEFT)
+        ttk.Button(model_bar, text='选择窗口实时预览', command=self.open_window_preview).pack(side=tk.LEFT,padx=8)
         self.var_model = tk.StringVar(value="原模板候选；训练模型需先明确选择样式和本地模型目录。")
         ttk.Label(self, textvariable=self.var_model, wraplength=940).pack(fill=tk.X, padx=8)
         video_bar = ttk.Frame(self)
@@ -182,6 +184,9 @@ class VisionReviewWindow(tk.Toplevel):
         self._review_callback = self.after(25, run)
 
     def _withdraw(self, reason):
+        from .realtime_preview import RealtimePreviewWindow
+        for child in self.winfo_children():
+            if isinstance(child,RealtimePreviewWindow):child.stop()
         self.runtime.invalidate(reason)
         if self.session is not None:
             self.session.invalidate(reason)
@@ -274,6 +279,7 @@ class VisionReviewWindow(tk.Toplevel):
         if not path:
             return
         self._withdraw("图像来源已改变")
+        self.selected_window = None
         if self.video_reader is not None:
             self.video_reader.close()
             self.video_reader = None
@@ -325,18 +331,20 @@ class VisionReviewWindow(tk.Toplevel):
         self._withdraw('已切换到保存的核对快照')
         if self.video_reader is not None:self.video_reader.close()
         self.video_reader=self.tracker=None
+        self.selected_window=None
         self.runtime.select_model(None);self.selected_style=None
         self._source_key='snapshot:'+snapshot.metadata['snapshot_id']
         self.loaded=snapshot.loaded;self.session=self.app.vision_session=review
-        self.var_frame.set(snapshot.frame_index)
+        self.var_frame.set(snapshot.frame_index or 0)
         self.var_op.set('')
-        self.var_video.set(f'保存的原录像帧 {snapshot.frame_index} · {snapshot.video_time_ms/1000:.3f} 秒；未重新推理。')
+        self.var_video.set(f'保存的{snapshot.source_description}；未重新推理。')
         self.var_model.set(f'保存时模型 {snapshot.result.model_id} · {snapshot.result.model_digest[:16]}；保留原候选，未重新识别。')
         self.var_info.set('已打开冻结证据与既有人工关联；没有新增发牌。')
         self._render_observations();self.app.refresh_vision_banner()
 
     def open_video_path(self, path, frame=0):
         self._withdraw("录像来源已改变")
+        self.selected_window = None
         try:
             from ..vision.tracker import FrameTracker
             from ..vision.video_io import VideoReader
@@ -396,19 +404,51 @@ class VisionReviewWindow(tk.Toplevel):
         self.app.refresh_vision_banner()
         self.var_info.set(REVIEW_PENDING + "  未确认前账本不变。")
 
+    def open_window_preview(self):
+        from ..vision.live_input import LiveStyle
+        if self.runtime.adapter is None or not isinstance(self.selected_style,LiveStyle):
+            messagebox.showinfo('窗口实时预览','请先选择归一化样式和匹配的本地训练模型。',parent=self)
+            return
+        from .window_source_picker import WindowSourcePicker
+        return WindowSourcePicker(self,self.select_window_source)
+
+    def select_window_source(self,info):
+        from uuid import uuid4
+        from ..capture.window_list import describe_window
+        from ..capture.wgc_source import load_wgc
+        from ..vision.live_input import LiveStyle
+        if self.runtime.adapter is None or not isinstance(self.selected_style,LiveStyle):
+            raise VisionBridgeError('请先选择归一化样式和匹配的本地训练模型。')
+        current=describe_window(info.hwnd)
+        if current.process_id!=info.process_id or current.minimized:
+            raise VisionBridgeError('所选窗口已经改变或最小化，请刷新列表。')
+        load_wgc()  # Missing optional dependencies must not discard current review.
+        self._withdraw('已选择窗口实时来源')
+        if self.video_reader is not None:self.video_reader.close()
+        self.video_reader=self.tracker=None
+        self.selected_window=current
+        self._source_key=f'window:{current.hwnd}:{current.process_id}:{uuid4().hex}'
+        self.scale.configure(to=0);self.var_frame.set(0)
+        self.var_video.set(f'所选窗口：{current.title}；按当前样式裁区，冻结后可人工核对。')
+        return self.open_realtime_preview()
+
     def open_realtime_preview(self):
         """The new continuous viewer shares the selected source/model, not ledger writes."""
-        if self.video_reader is None or self.runtime.adapter is None or self.selected_style is None:
-            messagebox.showinfo("实时预览", "请先选择归一化样式、训练模型和本地录像。", parent=self)
+        if (self.video_reader is None and self.selected_window is None) or self.runtime.adapter is None or self.selected_style is None:
+            messagebox.showinfo("实时预览", "请先选择归一化样式、训练模型和本地录像或捕获窗口。", parent=self)
             return
         try:
-            from ..realtime_preview import RealtimeVideoSource, RealtimePreviewSession
+            from ..realtime_preview import RealtimeVideoSource, RealtimeWgcSource, RealtimePreviewSession
             from .realtime_preview import RealtimePreviewWindow
-            source = RealtimeVideoSource(self.video_reader.path, self.selected_style,
-                first_frame=int(float(self.var_frame.get())))
+            if self.selected_window is not None:
+                source=RealtimeWgcSource(self.selected_window.hwnd,self.selected_style,
+                    expected_process_id=self.selected_window.process_id)
+            else:
+                source = RealtimeVideoSource(self.video_reader.path, self.selected_style,
+                    first_frame=int(float(self.var_frame.get())))
             session = RealtimePreviewSession(source, self.selected_style, self.runtime.adapter)
             context = self._preview_context()
-            RealtimePreviewWindow(self, session,
+            return RealtimePreviewWindow(self, session,
                 on_review=lambda owner, row: self.accept_realtime_snapshot(owner, row, context))
         except Exception as exc:
             messagebox.showerror("实时预览未启动", str(exc), parent=self)
@@ -419,33 +459,43 @@ class VisionReviewWindow(tk.Toplevel):
         style = self.selected_style
         return (self.video_reader, self.runtime.adapter, self.runtime.generation,
             json.dumps(style.as_dict() if hasattr(style, 'as_dict') else asdict(style), sort_keys=True) if style is not None else None,
-            self._source_key, capture_bind_context(self.app.ctrl))
+            self._source_key, (self.selected_window.hwnd,self.selected_window.process_id) if self.selected_window else None,
+            capture_bind_context(self.app.ctrl))
 
     def accept_realtime_snapshot(self, owner, row, launch_context):
         """An explicit click freezes one result; background preview never commits."""
         from copy import deepcopy
         import threading
         import time
-        from .realtime_review import freeze_video_result
+        from .realtime_review import freeze_video_result,freeze_window_result
         if self._preview_review_pending:
             raise VisionBridgeError('上一张识别帧还在保存，请稍候。')
-        if launch_context != self._preview_context() or self.video_reader is None or self.tracker is None:
-            raise VisionBridgeError('录像、模型、区域或轮次已改变，请从当前核对窗口重新启动预览。')
-        snapshot = freeze_video_result(owner, row, self.video_reader.asset.sha256)
+        if launch_context != self._preview_context():
+            raise VisionBridgeError('来源、模型、区域或轮次已改变，请从当前核对窗口重新启动预览。')
+        if self.selected_window is not None:
+            import hashlib
+            snapshot=freeze_window_result(owner,row,self.selected_window.hwnd,self.selected_window.process_id)
+            evidence_key='window-'+hashlib.sha256(self._source_key.encode()).hexdigest()[:16]
+        else:
+            if self.video_reader is None or self.tracker is None:
+                raise VisionBridgeError('请重新选择录像或捕获窗口。')
+            snapshot = freeze_video_result(owner, row, self.video_reader.asset.sha256)
+            evidence_key=self.video_reader.asset.sha256[:16]
         context = self._preview_context()
         previous_session = self.session
         previous_result = self.session.result if self.session else None
         revision = self.app.ctrl.commit_revision
         snapshot.metadata['requested_bind_context'] = dict(context[-1])
         snapshot.metadata['requested_commit_revision'] = revision
-        snapshot.metadata['review_identity_scope'] = 'existing manual frame association; not verified physical identity'
+        snapshot.metadata['review_identity_scope'] = ('independent window snapshot; same-card links require explicit review'
+            if self.selected_window else 'existing manual frame association; not verified physical identity')
         tracker = deepcopy(self.tracker)
-        evidence = Path(str(Path(self.app.ctrl.store.db_path)) + '.vision') / self.video_reader.asset.sha256[:16]
+        evidence = Path(str(Path(self.app.ctrl.store.db_path)) + '.vision') / evidence_key
         if self.session is not None and self.session.evidence_root != evidence:
-            raise VisionBridgeError('原人工核对证据目录不一致，请重新打开该录像。')
+            raise VisionBridgeError('原人工核对证据目录不一致，请重新选择来源。')
         if self.session is not None and any(getattr(self.session.result, field) != getattr(snapshot.result, field)
                 for field in ('model_id', 'model_digest', 'layout_profile_id')):
-            raise VisionBridgeError('当前人工核对的模型或区域与预览不同，请重新打开该录像。')
+            raise VisionBridgeError('当前人工核对的模型或区域与预览不同，请重新选择来源。')
         self._preview_review_pending = True
         self.var_info.set('正在冻结识别帧；播放将停止，账本尚未改变。')
         owner.stop()
@@ -485,8 +535,8 @@ class VisionReviewWindow(tk.Toplevel):
             self.tracker = tracker
             self.loaded = snapshot.loaded
             self.app.vision_session = self.session
-            self.var_frame.set(snapshot.frame_index)
-            self.var_video.set(f'已冻结原录像帧 {snapshot.frame_index} · {snapshot.video_time_ms/1000:.3f} 秒；不是播放器后来显示的画面。')
+            self.var_frame.set(snapshot.frame_index or 0)
+            self.var_video.set(f'已冻结{snapshot.source_description}；保留对应识别输入。')
             self.var_info.set('冻结帧待人工核对；请确认新牌或已有事件，预览临时 ID 不入账。')
             self.var_op.set('')
             self.var_target.set('')

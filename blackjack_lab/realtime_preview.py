@@ -150,9 +150,11 @@ class RealtimeWgcSource:
     is_live = True
     source_declaration = SOURCE_LIVE_CAPTURE
 
-    def __init__(self, hwnd, style, *, preview_fps=20.):
+    def __init__(self, hwnd, style, *, preview_fps=20., expected_process_id=None):
         if not isinstance(style,LiveStyle):raise ValueError('实时窗口需要归一化样式')
         self.hwnd,self.style,self.preview_fps=int(hwnd),style,float(preview_fps)
+        self.expected_process_id = expected_process_id
+        self.window_info = None
         self.backend=self.intake=None
         self.finished=False
         self.error=None
@@ -169,7 +171,16 @@ class RealtimeWgcSource:
         self._region_observer=observer
 
     def clone(self):
-        return type(self)(self.hwnd,self.style,preview_fps=self.preview_fps)
+        return type(self)(self.hwnd,self.style,preview_fps=self.preview_fps,
+                          expected_process_id=self.expected_process_id)
+
+    def verify_selected_window(self):
+        if self.expected_process_id is None:return
+        from .capture.window_list import describe_window
+        info = describe_window(self.hwnd)
+        if info.process_id != self.expected_process_id or info.minimized:
+            raise ValueError('所选窗口已关闭、最小化或更换进程，请重新选择。')
+        self.window_info = info.as_dict()
 
     def start(self):
         if self._thread is not None:raise RuntimeError('Capture preview already started')
@@ -183,12 +194,14 @@ class RealtimeWgcSource:
         from .capture.wgc_source import open_window_source
         from .capture.contracts import STATUS_DENIED,STATUS_SOURCE_LOST
         try:
+            self.verify_selected_window()
             self.backend=open_window_source(self.hwnd,target_fps=self.preview_fps,queue_length=2)
             self.intake=self.backend.intake
             if self._stop.is_set():return
             self.backend.start()
             self.base_ns=time.perf_counter_ns()
             while not self._stop.wait(.05):
+                self.verify_selected_window()
                 status=self.backend.status()
                 if status in (STATUS_DENIED,STATUS_SOURCE_LOST):
                     self.error='窗口捕获停止：'+status
@@ -235,7 +248,8 @@ class RealtimeWgcSource:
     def report(self):
         return {**(self.backend.report() if self.backend else {}),'backend':'windows-graphics-capture',
                 'finished':self.finished,'error':self.error,'playback_base_ns':self.base_ns,
-                'window_hwnd':self.hwnd,'preview_target_fps':self.preview_fps,'is_live':True}
+                'window_hwnd':self.hwnd,'selected_window':self.window_info,
+                'preview_target_fps':self.preview_fps,'is_live':True}
 
 
 @dataclass

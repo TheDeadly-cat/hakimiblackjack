@@ -12,7 +12,8 @@ class RealtimePreviewWindow(tk.Toplevel):
         super().__init__(master)
         self.session, self.on_review = session, on_review
         self.adapters=adapters or {'当前检测器':session.adapter}
-        self.title("哈基米 · 1倍速识牌预览")
+        is_live=getattr(session.source,'is_live',False)
+        self.title('哈基米 · 窗口实时识牌' if is_live else "哈基米 · 1倍速识牌预览")
         self.geometry("1450x880")
         self.minsize(1000, 680)
         self._closed = False
@@ -25,7 +26,7 @@ class RealtimePreviewWindow(tk.Toplevel):
         self._displayed_result = None
         self._ui_updates = 0
         self._last_painted_ns = None
-        self.var_state = tk.StringVar(value="正在校验源文件并启动 1 倍速播放…")
+        self.var_state = tk.StringVar(value='正在启动所选窗口捕获…' if is_live else "正在校验源文件并启动 1 倍速播放…")
         self.var_metrics = tk.StringVar(value="等待第一帧；延迟从真实取帧与界面提交记录计算")
         bar = ttk.Frame(self, padding=8)
         bar.pack(fill=tk.X)
@@ -34,7 +35,7 @@ class RealtimePreviewWindow(tk.Toplevel):
         ttk.Combobox(bar,textvariable=self.var_detector,values=tuple(self.adapters),state='readonly',width=12).pack(side=tk.LEFT,padx=4)
         ttk.Label(bar,text="识别 FPS").pack(side=tk.LEFT)
         ttk.Combobox(bar,textvariable=self.var_fps,values=("5","8","10","15"),state="readonly",width=4).pack(side=tk.LEFT,padx=4)
-        ttk.Button(bar,text="重新播放",command=self.restart).pack(side=tk.LEFT,padx=4)
+        ttk.Button(bar,text='重新捕获' if is_live else "重新播放",command=self.restart).pack(side=tk.LEFT,padx=4)
         ttk.Label(bar, textvariable=self.var_state).pack(side=tk.LEFT)
         ttk.Button(bar, text="停止", command=self.stop).pack(side=tk.RIGHT)
         ttk.Button(bar, text="保存运行记录", command=self.export).pack(side=tk.RIGHT, padx=6)
@@ -101,7 +102,8 @@ class RealtimePreviewWindow(tk.Toplevel):
                 self.canvas.itemconfigure(rectangle,state="hidden")
                 self.canvas.itemconfigure(text,state="hidden")
             for iid in self.table.get_children():self.table.delete(iid)
-            self.var_state.set("正在校验来源；本轮记录从新播放开始，模型继续常驻")
+            self.var_state.set('正在校验窗口并重新捕获，模型继续常驻' if getattr(source,'is_live',False)
+                               else "正在校验来源；本轮记录从新播放开始，模型继续常驻")
             self.session.start()
         start_when_stopped()
 

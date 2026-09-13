@@ -132,6 +132,7 @@ class RealtimeWindowLifecycleTests(unittest.TestCase):
         class Session:
             recognition_fps = 8
             adapter = SimpleNamespace(identity_text='lifecycle fixture')
+            source = SimpleNamespace(is_live=False)
             def __init__(self):
                 self.cancel = threading.Event()
                 self.worker = threading.Thread(target=self.cancel.wait, daemon=True)
