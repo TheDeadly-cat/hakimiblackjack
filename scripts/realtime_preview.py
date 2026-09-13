@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--evidence-limit',type=int,default=1200,help='Bounded metadata rows; use a larger explicit bound for a complete long benchmark')
     parser.add_argument('--output',type=Path)
     parser.add_argument('--close-after',type=float,help='Controlled UI check duration; does not speed up playback')
+    parser.add_argument('--close-on-finish',action='store_true',help='Close after the full source and final expiry repaint; never accelerates playback')
+    parser.add_argument('--geometry',help='Optional Tk window geometry, for example 2000x1120 for native ROI display')
     args=parser.parse_args()
     from blackjack_lab.vision.model_adapter import TrainedModelAdapter,load_style
     from blackjack_lab.realtime_preview import RealtimeVideoSource,RealtimeWgcSource,RealtimePreviewSession
@@ -40,6 +42,7 @@ def main():
     session=RealtimePreviewSession(source,style,adapter,recognition_fps=args.fps,evidence_limit=args.evidence_limit)
     root=tk.Tk();root.withdraw()
     window=RealtimePreviewWindow(root,session,adapters=adapters)
+    if args.geometry:window.geometry(args.geometry)
     def close():
         window.close()
         # The UI itself never waits for a worker to join.
@@ -47,6 +50,13 @@ def main():
     window.protocol('WM_DELETE_WINDOW',close)
     if args.close_after:
         window.after(round(args.close_after*1000),close)
+    if args.close_on_finish:
+        def check_finished():
+            if window.session.finished and window.session.source.finished:
+                window.after(800,close)
+            else:
+                window.after(100,check_finished)
+        window.after(100,check_finished)
     root.mainloop()
     session=window.session
     if session._thread:

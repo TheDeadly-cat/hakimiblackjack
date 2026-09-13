@@ -9,6 +9,7 @@ import json
 import math
 import threading
 import time
+from copy import deepcopy
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -255,6 +256,9 @@ class RealtimePreviewSession:
         self._latest = None
         self.records = deque(maxlen=evidence_limit)
         self.source_displays = deque(maxlen=evidence_limit)
+        self.display_updates = deque(maxlen=evidence_limit)
+        self._display_key = None
+        self.display_update_evictions = 0
         self.error = None
         self.finished = False
         self.processed = self.stale_results = self.repeat_or_black = 0
@@ -371,6 +375,27 @@ class RealtimePreviewSession:
                     row["displayed_tracks"] = [display_state(t, submitted_ns) for t in row["tracks"]]
                     return
 
+    def note_rendered_state(self, row_id, tracks, source_packet, submitted_ns, scale):
+        """Record the state actually drawn, including later expiry-only repaints."""
+        if self.stopped or source_packet is None or source_packet.token() != self.source.token():
+            return
+        key=(row_id,source_packet.frame_id,tuple((t['track_id'],t['observed_rank'],
+            t['stable_rank'],t['identity_state'],t['current']) for t in tracks))
+        with self._lock:
+            if key == self._display_key:return
+            self._display_key=key
+            if len(self.display_updates)==self.display_updates.maxlen:
+                self.display_update_evictions+=1
+            actual=deepcopy(tracks)
+            self.display_updates.append({'row_id':row_id,'display_submitted_ns':submitted_ns,
+                'source_frame_id':source_packet.frame_id,'source_media_time_ns':source_packet.media_time_ns,
+                'source_token':source_packet.token().as_dict(),'source_display_scale':scale,'tracks':actual})
+            for row in reversed(self.records):
+                if row['row_id']==row_id and row['display_submitted_ns'] is None:
+                    row['display_submitted_ns']=submitted_ns
+                    row['displayed_tracks']=deepcopy(actual)
+                    break
+
     def stop(self):
         self._stop.set()
         self.runtime.invalidate('实时预览已停止')
@@ -384,10 +409,12 @@ class RealtimePreviewSession:
                 "stale_results_discarded": self.stale_results, "repeat_or_black_skipped": self.repeat_or_black,
                 "evidence_evictions": self.evidence_evictions, "finished": self.finished,
                 "source_display_evictions": self.source_display_evictions,
+                "display_update_evictions": self.display_update_evictions,
                 "track_capacity_drops": self.tracker.capacity_drops,
                 "error": self.error or getattr(self.source, "error", None),
                 "model_id": self.adapter.model_id, "model_digest": self.adapter.digest,
                 "rows": [dict(row) for row in self.records], "source_displays": list(self.source_displays),
+                "display_updates": list(self.display_updates),
                 "latency_scope": "monotonic frame arrival to application display submission; readable-event ground truth is separate",
                 "stable_fusion_implemented": True, "temporal_policy": POLICY_VERSION,
                 "identity_scope": "session-local preview associations, not verified physical or ledger IDs",

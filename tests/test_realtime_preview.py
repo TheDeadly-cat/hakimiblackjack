@@ -84,5 +84,32 @@ class RealtimePreviewTests(unittest.TestCase):
         session.stop();session._thread.join(1)
         self.assertFalse(session._thread.is_alive())
 
+    def test_render_evidence_preserves_actual_state_and_records_expiry(self):
+        from types import SimpleNamespace
+        intake=FrameIntake('render',target_fps=100)
+        packet=intake.offer(np.full((10,10,3),100,dtype=np.uint8),now_ns=1_000_000_000)
+        source=SimpleNamespace(token=intake.token,report=intake.report)
+        adapter=SimpleNamespace(model_id='fixture',digest='fixture')
+        style=LiveStyle('test',{'all':NormalizedBox(0,0,1,1)})
+        session=RealtimePreviewSession(source,style,adapter,evidence_limit=2)
+        session.records.append({'row_id':1,'display_submitted_ns':None})
+        tracks=[{'track_id':'one','observed_rank':'Q','stable_rank':'Q',
+                 'identity_state':'temporally_associated','current':True,'bbox':{'x':1}}]
+        session.note_rendered_state(1,tracks,packet,1_600_000_000,1.)
+        tracks[0]['bbox']['x']=99
+        session.note_rendered_state(1,tracks,packet,1_610_000_000,1.)
+        self.assertEqual(len(session.display_updates),1)
+        self.assertEqual(session.records[0]['displayed_tracks'][0]['bbox']['x'],1)
+        tracks[0].update(stable_rank=None,observed_rank=None,identity_state='expired',current=False)
+        session.note_rendered_state(1,tracks,packet,1_700_000_000,1.)
+        self.assertEqual(len(session.display_updates),2)
+        self.assertEqual(session.display_updates[-1]['tracks'][0]['identity_state'],'expired')
+        session.note_rendered_state(2,tracks,packet,1_710_000_000,1.)
+        self.assertEqual(session.display_update_evictions,1)
+        intake.new_epoch('changed')
+        session.note_rendered_state(3,tracks,packet,1_720_000_000,1.)
+        self.assertEqual(len(session.display_updates),2)
+        self.assertEqual(session.display_updates[-1]['row_id'],2)
+
 
 if __name__=='__main__':unittest.main()

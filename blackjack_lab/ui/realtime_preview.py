@@ -121,7 +121,7 @@ class RealtimePreviewWindow(tk.Toplevel):
         image = Image.fromarray(rgb)
         width = max(1, self.canvas.winfo_width())
         height = max(1, self.canvas.winfo_height())
-        self._scale = min(width/image.width, height/image.height)
+        self._scale = min(1.0, width/image.width, height/image.height)
         size = (max(1, round(image.width*self._scale)), max(1, round(image.height*self._scale)))
         image = image.resize(size, Image.Resampling.BILINEAR)
         self._photo = ImageTk.PhotoImage(image)
@@ -171,9 +171,11 @@ class RealtimePreviewWindow(tk.Toplevel):
         for iid in self.table.get_children():
             if iid not in ids:
                 self.table.delete(iid)
-        if row.row_id != self._row_id:
-            self._row_id=row.row_id
-            self.after_idle(lambda rid=row.row_id,owner=self.session: owner.note_result_display(rid,time.perf_counter_ns()))
+        self._row_id=row.row_id
+        # Keep the values submitted to Tk rather than recomputing freshness later.
+        self.after_idle(lambda rid=row.row_id,owner=self.session,drawn=tracks,
+            source=self._displayed_packet,scale=self._scale:
+            owner.note_rendered_state(rid,drawn,source,time.perf_counter_ns(),scale))
 
     def _poll(self):
         if self._closed:
