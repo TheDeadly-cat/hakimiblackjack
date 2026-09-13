@@ -139,6 +139,7 @@ class FrameIntake:
 
     def offer(self, array, *,
               media_time_ns: Optional[int] = None,
+              source_frame_index: Optional[int] = None,
               now_ns: Optional[int] = None,
               wall_time: Optional[float] = None) -> Optional[FramePacket]:
         """接收一帧原始 BGRA 缓冲。
@@ -146,6 +147,8 @@ class FrameIntake:
         array 是采集后端的可复用内存视图；本方法负责复制出独占像素，
         调用方返回后可以随意覆盖该缓冲。
         """
+        if source_frame_index is not None and (type(source_frame_index) is not int or source_frame_index < 0):
+            raise CaptureRejected("原录像帧号必须是非负整数")
         now = time.perf_counter_ns() if now_ns is None else now_ns
         np = _load_numpy()
 
@@ -221,6 +224,7 @@ class FrameIntake:
                 is_black=is_black,
                 dropped_before=pending,
                 pixels=pixels,
+                source_frame_index=source_frame_index,
             )
             if len(self._queue) == self._queue.maxlen:
                 self.stats.dropped_by_queue += 1

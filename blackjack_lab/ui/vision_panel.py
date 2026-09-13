@@ -60,6 +60,8 @@ class VisionReviewWindow(tk.Toplevel):
         self.runtime = RecognitionRuntime()
         self.selected_style = None
         self._source_key = ""
+        self._preview_review_pending = False
+        self._review_callback = None
         banner = ttk.Label(
             self,
             text="旁观录像或截图：同一张牌多帧只确认一次。新局须先在主窗开轮，再绑定当前轮。确认前不入账。匹配度不是正确概率。",
@@ -111,6 +113,7 @@ class VisionReviewWindow(tk.Toplevel):
         ttk.Label(form, text="观察").grid(row=0, column=0, sticky="e")
         self.cmb_obs = ttk.Combobox(form, textvariable=self.var_obs, width=36, state="readonly")
         self.cmb_obs.grid(row=0, column=1, sticky="w", padx=4)
+        self.cmb_obs.bind('<<ComboboxSelected>>', lambda _event: self._selected_observation())
         ttk.Label(form, text="操作").grid(row=0, column=2, sticky="e")
         ttk.Combobox(form, textvariable=self.var_op, width=32, state="readonly",
                      values=list(OPS_ZH)).grid(row=0, column=3, sticky="w", padx=4)
@@ -133,6 +136,25 @@ class VisionReviewWindow(tk.Toplevel):
             self.video_reader = None
         self.app._vision_win = None
         self.destroy()
+
+    def destroy(self):
+        if self._review_callback is not None:
+            try:self.after_cancel(self._review_callback)
+            except tk.TclError:pass
+            self._review_callback = None
+        self._preview_review_pending = False
+        if self.session is not None:self.session.invalidate('识牌窗口已关闭')
+        self.runtime.invalidate('识牌窗口已关闭')
+        if self.video_reader is not None:
+            self.video_reader.close()
+            self.video_reader = None
+        super().destroy()
+
+    def _schedule_review(self, callback):
+        def run():
+            self._review_callback = None
+            callback()
+        self._review_callback = self.after(25, run)
 
     def _withdraw(self, reason):
         self.runtime.invalidate(reason)
@@ -335,9 +357,107 @@ class VisionReviewWindow(tk.Toplevel):
             source = RealtimeVideoSource(self.video_reader.path, self.selected_style,
                 first_frame=int(float(self.var_frame.get())))
             session = RealtimePreviewSession(source, self.selected_style, self.runtime.adapter)
-            RealtimePreviewWindow(self, session)
+            context = self._preview_context()
+            RealtimePreviewWindow(self, session,
+                on_review=lambda owner, row: self.accept_realtime_snapshot(owner, row, context))
         except Exception as exc:
             messagebox.showerror("实时预览未启动", str(exc), parent=self)
+
+    def _preview_context(self):
+        import json
+        from dataclasses import asdict
+        style = self.selected_style
+        return (self.video_reader, self.runtime.adapter, self.runtime.generation,
+            json.dumps(style.as_dict() if hasattr(style, 'as_dict') else asdict(style), sort_keys=True) if style is not None else None,
+            self._source_key, capture_bind_context(self.app.ctrl))
+
+    def accept_realtime_snapshot(self, owner, row, launch_context):
+        """An explicit click freezes one result; background preview never commits."""
+        from copy import deepcopy
+        import threading
+        import time
+        from .realtime_review import freeze_video_result
+        if self._preview_review_pending:
+            raise VisionBridgeError('上一张识别帧还在保存，请稍候。')
+        if launch_context != self._preview_context() or self.video_reader is None or self.tracker is None:
+            raise VisionBridgeError('录像、模型、区域或轮次已改变，请从当前核对窗口重新启动预览。')
+        snapshot = freeze_video_result(owner, row, self.video_reader.asset.sha256)
+        context = self._preview_context()
+        previous_session = self.session
+        previous_result = self.session.result if self.session else None
+        revision = self.app.ctrl.commit_revision
+        snapshot.metadata['requested_bind_context'] = dict(context[-1])
+        snapshot.metadata['requested_commit_revision'] = revision
+        snapshot.metadata['review_identity_scope'] = 'existing manual frame association; not verified physical identity'
+        tracker = deepcopy(self.tracker)
+        evidence = Path(str(Path(self.app.ctrl.store.db_path)) + '.vision') / self.video_reader.asset.sha256[:16]
+        if self.session is not None and self.session.evidence_root != evidence:
+            raise VisionBridgeError('原人工核对证据目录不一致，请重新打开该录像。')
+        if self.session is not None and any(getattr(self.session.result, field) != getattr(snapshot.result, field)
+                for field in ('model_id', 'model_digest', 'layout_profile_id')):
+            raise VisionBridgeError('当前人工核对的模型或区域与预览不同，请重新打开该录像。')
+        self._preview_review_pending = True
+        self.var_info.set('正在冻结识别帧；播放将停止，账本尚未改变。')
+        owner.stop()
+        stop_deadline = time.monotonic() + 5
+        status = {'done': False, 'error': None, 'folder': None}
+
+        def current():
+            return (self.winfo_exists() and context == self._preview_context()
+                and self.session is previous_session
+                and (self.session is None or self.session.result is previous_result)
+                and self.app.ctrl.commit_revision == revision)
+
+        def save_snapshot():
+            try:status['folder'] = snapshot.save(evidence, tracker)
+            except Exception as exc:status['error'] = str(exc)
+            finally:status['done'] = True
+
+        def finish():
+            if not status['done']:
+                self._schedule_review(finish)
+                return
+            self._preview_review_pending = False
+            if not current():
+                self.var_info.set('保存期间核对上下文已改变，旧快照未进入当前核对；账本未自动写入。')
+                return
+            if status['error']:
+                messagebox.showerror('冻结帧未保存', status['error'], parent=self)
+                return
+            if self.session is None:
+                self.session = VisionReviewSession(self.app.ctrl, snapshot.result, evidence)
+            else:
+                self.session.present_frame(snapshot.result)
+            self.tracker = tracker
+            self.loaded = snapshot.loaded
+            self.app.vision_session = self.session
+            self.var_frame.set(snapshot.frame_index)
+            self.var_video.set(f'已冻结原录像帧 {snapshot.frame_index} · {snapshot.video_time_ms/1000:.3f} 秒；不是播放器后来显示的画面。')
+            self.var_info.set('冻结帧待人工核对；请确认新牌或已有事件，预览临时 ID 不入账。')
+            self.var_op.set('')
+            self.var_target.set('')
+            self._render_observations()
+            self.app.refresh_vision_banner()
+            self.deiconify()
+            self.lift()
+
+        def wait_for_worker():
+            if not current():
+                self._preview_review_pending = False
+                self.var_info.set('核对上下文已改变，取消旧识别帧导入。')
+                return
+            if not owner.finished or not owner.source.finished:
+                if time.monotonic() > stop_deadline:
+                    self._preview_review_pending = False
+                    messagebox.showerror('预览仍在释放', '后台未及时结束，本次没有导入或写入账本。', parent=self)
+                    return
+                self._schedule_review(wait_for_worker)
+                return
+            threading.Thread(target=save_snapshot, name='blackjack-review-evidence', daemon=True).start()
+            self._schedule_review(finish)
+
+        self._schedule_review(wait_for_worker)
+        return True
 
     def _render_observations(self):
         if self._geometry_dialog is not None:
@@ -372,12 +492,14 @@ class VisionReviewWindow(tk.Toplevel):
             ids.append(obs.observation_id)
         self.cmb_obs.configure(values=ids)
         self.var_obs.set(ids[0] if ids else "")
-        if self.session.result.observations:
-            first = self.session.result.observations[0]
-            if first.accepted_rank():
-                self.var_rank.set(first.accepted_rank())
-            if first.seat_hint:
-                self.var_seat.set(first.seat_hint)
+        self._selected_observation()
+
+    def _selected_observation(self):
+        if self.session is None:return
+        obs = next((o for o in self.session.result.observations if o.observation_id == self.var_obs.get()), None)
+        self.var_rank.set((obs.accepted_rank() or '未知') if obs else '')
+        self.var_seat.set((obs.seat_hint or '') if obs else '')
+        self.var_target.set('')
 
     def show_geometry_review(self):
         """Separate evidence viewer; none of these IDs enter ledger confirmation."""
@@ -435,7 +557,9 @@ class VisionReviewWindow(tk.Toplevel):
         if not self.session:
             raise VisionBridgeError("尚未打开图片")
         zh = self.var_op.get()
-        op, face_default = OPS_ZH[zh]
+        if zh not in OPS_ZH and operation != OP_REJECT:
+            raise VisionBridgeError('请明确选择新牌、揭示或纠正已有事件，再确认入账。')
+        op, face_default = OPS_ZH.get(zh, (OP_REJECT, FACE_SHOWN_LEDGER))
         if operation:
             op = operation
         if face is None:

@@ -118,6 +118,12 @@ class RealtimePreviewTests(unittest.TestCase):
 
 
 class RealtimeWindowLifecycleTests(unittest.TestCase):
+    def tearDown(self):
+        import gc
+        # Tcl variables from destroyed roots must be finalized on the Tk thread
+        # before a later asynchronous test can trigger cyclic collection.
+        gc.collect()
+
     def test_destroying_preview_or_its_owner_stops_background_work(self):
         import tkinter as tk
         from types import SimpleNamespace
@@ -143,11 +149,15 @@ class RealtimeWindowLifecycleTests(unittest.TestCase):
                     parent.withdraw()
                     preview = RealtimePreviewWindow(parent, session)
                     preview.withdraw()
+                    pending = set(preview._pending_callbacks)
+                    root.update_idletasks()
                     self.assertTrue(session.worker.is_alive())
                     {'preview': preview, 'parent': parent, 'root': root}[route].destroy()
                     session.worker.join(.5)
                     self.assertFalse(session.worker.is_alive(), f'{route} left preview work alive')
                     self.assertTrue(preview._closed)
+                    self.assertEqual(preview._pending_callbacks,set())
+                    self.assertTrue(pending.isdisjoint(root.tk.call('after','info')))
                 finally:
                     session.stop()
                     session.worker.join(1)

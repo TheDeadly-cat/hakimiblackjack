@@ -16,11 +16,13 @@ class RealtimePreviewWindow(tk.Toplevel):
         self.geometry("1450x880")
         self.minsize(1000, 680)
         self._closed = False
+        self._pending_callbacks = set()
         self._frame_key = self._row_id = None
         self._overlay_items = []
         self._photo = None
         self._scale = 1.0
         self._displayed_packet = None
+        self._displayed_result = None
         self._ui_updates = 0
         self._last_painted_ns = None
         self.var_state = tk.StringVar(value="正在校验源文件并启动 1 倍速播放…")
@@ -37,7 +39,7 @@ class RealtimePreviewWindow(tk.Toplevel):
         ttk.Button(bar, text="停止", command=self.stop).pack(side=tk.RIGHT)
         ttk.Button(bar, text="保存运行记录", command=self.export).pack(side=tk.RIGHT, padx=6)
         if on_review is not None:
-            ttk.Button(bar, text="送当前结果到人工核对", command=self.review).pack(side=tk.RIGHT, padx=6)
+            ttk.Button(bar, text="冻结识别帧并核对", command=self.review).pack(side=tk.RIGHT, padx=6)
         ttk.Label(self, textvariable=self.var_metrics, padding=(8, 4)).pack(fill=tk.X)
         self.var_quality=tk.StringVar(value='正在观察标定区域的画面变化…')
         ttk.Label(self,textvariable=self.var_quality,padding=(8,2),wraplength=1400).pack(fill=tk.X)
@@ -61,12 +63,20 @@ class RealtimePreviewWindow(tk.Toplevel):
         self.var_model=tk.StringVar(value=session.adapter.identity_text)
         ttk.Label(self, textvariable=self.var_model, wraplength=1400, padding=8).pack(fill=tk.X)
         self.protocol("WM_DELETE_WINDOW", self.close)
-        self.after(20, self._poll)
+        self._schedule(20, self._poll)
         self.session.start()
 
     def stop(self):
         self.session.stop()
         self.var_state.set("已停止；画面与候选不再作为新的观察证据")
+
+    def _schedule(self, delay, callback):
+        pending = {}
+        def run():
+            self._pending_callbacks.discard(pending['id'])
+            if not self._closed:callback()
+        pending['id'] = self.after(delay, run)
+        self._pending_callbacks.add(pending['id'])
 
     def restart(self):
         from ..realtime_preview import RealtimePreviewSession
@@ -77,7 +87,7 @@ class RealtimePreviewWindow(tk.Toplevel):
             if self._closed or self.session is not old:
                 return
             if not old.finished or not getattr(old.source,'finished',True):
-                self.after(25,start_when_stopped)
+                self._schedule(25,start_when_stopped)
                 return
             source=old.source.clone()
             adapter=self.adapters[self.var_detector.get()]
@@ -86,6 +96,7 @@ class RealtimePreviewWindow(tk.Toplevel):
             self.var_model.set(adapter.identity_text)
             self._frame_key=None
             self._row_id=None
+            self._displayed_result=None
             for rectangle,text in self._overlay_items:
                 self.canvas.itemconfigure(rectangle,state="hidden")
                 self.canvas.itemconfigure(text,state="hidden")
@@ -104,6 +115,10 @@ class RealtimePreviewWindow(tk.Toplevel):
             return
         self._closed = True
         self.session.stop()
+        for callback in self._pending_callbacks:
+            try:self.after_cancel(callback)
+            except tk.TclError:pass
+        self._pending_callbacks.clear()
         super().destroy()
 
     def export(self):
@@ -117,9 +132,15 @@ class RealtimePreviewWindow(tk.Toplevel):
             messagebox.showerror("未保存", str(exc), parent=self)
 
     def review(self):
-        row = self.session.latest_result()
-        if row is not None and self.on_review is not None:
-            self.on_review(row)
+        row = self._displayed_result
+        if row is None or not self.session.can_review_result(row):
+            messagebox.showinfo('尚无可核对的识别帧', '请等待候选显示；来源改变或已停止的旧结果不能继续核对。', parent=self)
+            return
+        if self.on_review is not None:
+            try:
+                if self.on_review(self.session, row):self.close()
+            except Exception as exc:
+                messagebox.showerror('未送入人工核对', str(exc), parent=self)
 
     def _draw_source(self, packet):
         from PIL import Image, ImageTk
@@ -136,7 +157,7 @@ class RealtimePreviewWindow(tk.Toplevel):
         self._displayed_packet = packet
         self._ui_updates += 1
         # Explicitly a Tk display submission timestamp, not a hardware scanout claim.
-        self.after_idle(lambda p=packet,owner=self.session: self._source_painted(owner,p))
+        self._schedule('idle',lambda p=packet,owner=self.session: self._source_painted(owner,p))
 
     def _source_painted(self, owner, packet):
         if not self._closed and owner is self.session:
@@ -179,8 +200,9 @@ class RealtimePreviewWindow(tk.Toplevel):
             if iid not in ids:
                 self.table.delete(iid)
         self._row_id=row.row_id
+        self._displayed_result=row
         # Keep the values submitted to Tk rather than recomputing freshness later.
-        self.after_idle(lambda rid=row.row_id,owner=self.session,drawn=tracks,
+        self._schedule('idle',lambda rid=row.row_id,owner=self.session,drawn=tracks,
             source=self._displayed_packet,scale=self._scale:
             owner.note_rendered_state(rid,drawn,source,time.perf_counter_ns(),scale))
 
@@ -253,4 +275,4 @@ class RealtimePreviewWindow(tk.Toplevel):
                 from ..capture.contracts import STATUS_LABELS
                 origin+='　'+STATUS_LABELS.get(report.get('status'),'等待窗口帧')
             self.var_state.set(f"{origin}　目标识别 {self.session.recognition_fps:g} FPS　队列丢帧 {report.get('dropped_by_queue',0)}　源跳帧 {report.get('source_frames_skipped_for_preview',0)}")
-        self.after(33,self._poll)
+        self._schedule(33,self._poll)

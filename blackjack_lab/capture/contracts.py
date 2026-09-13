@@ -150,6 +150,9 @@ class FramePacket:
     # 采集后端已到达但被采样率丢弃的帧数，以及队列挤掉的帧数。
     dropped_before: int = 0
     pixels: Any = field(default=None, repr=False, compare=False)
+    # Exact decoded video index, when supplied by a video producer. WGC time
+    # and the intake sequence must never be mistaken for this index.
+    source_frame_index: Optional[int] = None
 
     @property
     def width(self) -> int:
@@ -183,6 +186,8 @@ class FramePacket:
             "is_black": self.is_black,
             "dropped_before": self.dropped_before,
             "has_pixels": self.pixels is not None,
+            **({"source_frame_index": self.source_frame_index}
+               if self.source_frame_index is not None else {}),
         }
 
 

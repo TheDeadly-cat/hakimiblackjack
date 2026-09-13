@@ -97,6 +97,7 @@ class RealtimeVideoSource:
                     loaded = first if index == self.first_frame else reader.advance(index)
                     self.skipped_source_frames += max(0, index-previous-1)
                     packet = self.intake.offer(rgb_to_bgr(loaded),
+                        source_frame_index=index,
                         media_time_ns=round(index/self.asset.fps*1_000_000_000))
                     if packet is not None and self._region_observer is not None:
                         self._region_observer.observe(packet,self.token)
@@ -420,6 +421,17 @@ class RealtimePreviewSession:
         with self._lock:
             return next((row["display_submitted_ns"] for row in reversed(self.records)
                          if row["row_id"] == row_id), None)
+
+    def can_review_result(self, row):
+        """Accept only a retained result owned by this still-current session."""
+        if row is None or self.stopped or self.error or self.source.error or row.packet.token() != self.source.token():
+            return False
+        with self._lock:
+            return any(record['row_id'] == row.row_id
+                and record['packet'] == row.packet.as_dict()
+                and record['timings']['candidate_ready_ns'] == row.timings['candidate_ready_ns']
+                and record['model_digest'] == row.recognition.model_digest
+                for record in self.records)
 
     @property
     def stopped(self):
