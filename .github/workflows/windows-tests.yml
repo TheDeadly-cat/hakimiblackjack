@@ -70,6 +70,6 @@ jobs:
       - name: Backend-free capture ownership and generation contracts
         run: python -m unittest discover -s tests -p 'test_capture*.py' -v
       - name: Realtime preview ownership and stale-result contracts
-        run: python -m unittest tests.test_realtime_preview tests.test_realtime_event_scoring -v
+        run: python -m unittest tests.test_realtime_preview tests.test_realtime_event_scoring tests.test_wgc_event_scoring -v
       - name: State validation boundary
         run: python -c "print('Synthetic and temporary-local fixtures only. No real media, trained user models, Windows capture runtime, recognition accuracy, or automatic ledger acceptance is certified by this job.')"

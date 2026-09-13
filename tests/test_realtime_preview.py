@@ -92,6 +92,11 @@ class RealtimePreviewTests(unittest.TestCase):
         adapter=SimpleNamespace(model_id='fixture',digest='fixture')
         style=LiveStyle('test',{'all':NormalizedBox(0,0,1,1)})
         session=RealtimePreviewSession(source,style,adapter,evidence_limit=2)
+        session.note_source_display(packet,1_500_000_000)
+        shown=session.source_displays[-1]
+        self.assertEqual(shown['frame_content_signature'],packet.frame_content_signature)
+        self.assertEqual(shown['image_size'],[10,10])
+        self.assertNotIn('pixels',shown)
         session.records.append({'row_id':1,'display_submitted_ns':None})
         tracks=[{'track_id':'one','observed_rank':'Q','stable_rank':'Q',
                  'identity_state':'temporally_associated','current':True,'bbox':{'x':1}}]

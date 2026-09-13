@@ -32,21 +32,33 @@ def source_position(event,media_s):
     return dict(zip(('x','y','w','h'),p['bbox']))
 
 def score(run,reference):
+    updates=run.get('display_updates',[])
+    if any(abs(u['source_display_scale']-1)>1e-6 for u in updates):
+        raise ValueError('Native-size source reference requires native-size preview')
+    return _score_timeline(run,reference,run['source_displays'],updates,
+                           source_sha256=run['source']['source_sha256'])
+
+
+def _score_timeline(run,reference,source_displays,display_updates,*,source_sha256):
+    """Shared event arithmetic; callers must validate their source/display mapping.
+
+    Direct replay validates native preview scale. WGC validates the separately
+    rendered native source and captured-pixel mapping before calling this helper.
+    Neither path rewrites the saved run or replaces WinRT timestamps in it.
+    """
     if not reference.get('ready_for_scoring') or reference.get('model_outputs_used'):
         raise ValueError('An independently frozen scoring reference is required')
-    if run['source']['source_sha256']!=reference['source_sha256']:
+    if source_sha256!=reference['source_sha256']:
         raise ValueError('Source identity mismatch')
     if run.get('writes_ledger') is not False:raise ValueError('This evaluator is preview-only')
     for key in ('evidence_evictions','source_display_evictions','display_update_evictions'):
         if run.get(key,0):raise ValueError(f'Incomplete bounded evidence: {key}')
-    displays=sorted(run['source_displays'],key=lambda d:d['media_time_ns'])
+    displays=sorted(source_displays,key=lambda d:d['media_time_ns'])
     media=[d['media_time_ns']/1e9 for d in displays]
     if not media or media[-1]<reference['playback_last_frame']/reference['source_fps']-.1:
         raise ValueError('Incomplete source playback')
-    updates=sorted(run.get('display_updates',[]),key=lambda d:d['display_submitted_ns'])
+    updates=sorted(display_updates,key=lambda d:d['display_submitted_ns'])
     if not updates:raise ValueError('Actual rendered-state updates are required')
-    if any(abs(u['source_display_scale']-1)>1e-6 for u in updates):
-        raise ValueError('Native-size source reference requires native-size preview')
     events=[];result={};by_track=defaultdict(set);unmatched=Counter();unmatched_examples={}
     merged=defaultdict(set);matched_updates=0;ungraded_updates=0;duplicate_matches=[]
     for original in reference['events']:
@@ -62,9 +74,12 @@ def score(run,reference):
             'matched_render_updates':0,'unknown_rank_render_updates':0,'simultaneous_duplicate_render_updates':0,
             'first_visible_interval_s':e.get('first_visible_interval_s')}
     def receipt(update,t):
-        return {'display_ns':update['display_submitted_ns'],'source_media_s':update['source_media_time_ns']/1e9,
+        value={'display_ns':update['display_submitted_ns'],'source_media_s':update['source_media_time_ns']/1e9,
                 'row_id':update['row_id'],'track_id':t['track_id'],'observed_rank':t.get('observed_rank'),
                 'stable_rank':t.get('stable_rank'),'bbox':t['bbox']}
+        for key in ('wgc_source_frame_id','wgc_source_media_time_ns','source_mapping_signature'):
+            if key in update:value[key]=update[key]
+        return value
     for update in updates:
         s=update['source_media_time_ns']/1e9
         truth=[(e,source_position(e,s)) for e in events]
@@ -147,7 +162,7 @@ def score(run,reference):
         stages[name]={'median_ms':quantile(values,.5),'p95_ms':quantile(values),'samples':len(values)}
     span=(displays[-1]['display_submitted_ns']-displays[0]['display_submitted_ns'])/1e9
     return {'schema':'real-display-readable-event-score-1','run_id':run['run_id'],'model_digest':run['model_digest'],
-        'source_sha256':run['source']['source_sha256'],'temporal_policy':run['temporal_policy'],
+        'source_sha256':source_sha256,'temporal_policy':run['temporal_policy'],
         'target_fps':run['target_recognition_fps'],'processed_frames':run['processed_frames'],
         'source_display_span_s':span,'source_media_span_s':media[-1]-media[0],
         'effective_processed_fps':run['processed_frames']/span,'all_events':cohort(rows),

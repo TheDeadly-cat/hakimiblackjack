@@ -365,7 +365,10 @@ class RealtimePreviewSession:
                 self.source_display_evictions += 1
             self.source_displays.append({"frame_id": packet.frame_id, "media_time_ns": packet.media_time_ns,
                 "display_submitted_ns": submitted_ns, "observed_monotonic_ns": packet.observed_monotonic_ns,
-                "source_token": packet.token().as_dict()})
+                "source_token": packet.token().as_dict(),
+                "frame_content_signature": packet.frame_content_signature,
+                "image_size": [packet.width, packet.height], "source_size": packet.source_size,
+                "crop_origin": packet.crop_origin})
 
     def note_result_display(self, row_id, submitted_ns):
         with self._lock:
