@@ -14,7 +14,7 @@ from ..vision.video_contracts import (
 )
 from .vision_bridge import (
     FACE_HIDDEN_LEDGER, FACE_SHOWN_LEDGER, FACE_UNKNOWN_LEDGER,
-    OP_CORRECT, OP_NEW, OP_REJECT, OP_REVEAL, ConfirmDecision,
+    OP_CORRECT, OP_NEW, OP_REJECT, OP_REVEAL, OP_LINK, ConfirmDecision,
     VisionBridgeError, VisionReviewSession, capture_bind_context,
 )
 
@@ -25,6 +25,7 @@ OPS_ZH = {
     "新的暗牌（庄家底牌）": (OP_NEW, FACE_HIDDEN_LEDGER),
     "揭示已有暗牌/未知牌": (OP_REVEAL, FACE_SHOWN_LEDGER),
     "纠正已有发牌事件": (OP_CORRECT, FACE_SHOWN_LEDGER),
+    "同一张已记录的牌（仅关联）": (OP_LINK, FACE_SHOWN_LEDGER),
     "拒绝（假检测，不入账）": (OP_REJECT, FACE_SHOWN_LEDGER),
 }
 
@@ -128,23 +129,27 @@ class VisionReviewWindow(tk.Toplevel):
         self.var_seat = tk.StringVar(value="玩家1")
         self.var_rank = tk.StringVar(value="A")
         self.var_target = tk.StringVar()
+        self._target_choices = {}
         ttk.Label(form, text="观察").grid(row=0, column=0, sticky="e")
         self.cmb_obs = ttk.Combobox(form, textvariable=self.var_obs, width=36, state="readonly")
         self.cmb_obs.grid(row=0, column=1, sticky="w", padx=4)
         self.cmb_obs.bind('<<ComboboxSelected>>', lambda _event: self._selected_observation())
         ttk.Label(form, text="操作").grid(row=0, column=2, sticky="e")
-        ttk.Combobox(form, textvariable=self.var_op, width=32, state="readonly",
-                     values=list(OPS_ZH)).grid(row=0, column=3, sticky="w", padx=4)
+        self.cmb_operation = ttk.Combobox(form, textvariable=self.var_op, width=32, state="readonly",values=list(OPS_ZH))
+        self.cmb_operation.grid(row=0, column=3, sticky="w", padx=4)
+        self.cmb_operation.bind('<<ComboboxSelected>>',lambda _event:self._operation_changed())
         ttk.Label(form, text="座位").grid(row=1, column=0, sticky="e")
-        ttk.Combobox(form, textvariable=self.var_seat, width=12, state="readonly",
-                     values=SEATS).grid(row=1, column=1, sticky="w", padx=4)
+        self.cmb_seat = ttk.Combobox(form,textvariable=self.var_seat,width=12,state='readonly',values=SEATS)
+        self.cmb_seat.grid(row=1,column=1,sticky='w',padx=4)
         ttk.Label(form, text="牌面").grid(row=1, column=2, sticky="e")
-        ttk.Combobox(form, textvariable=self.var_rank, width=8, state="readonly",
-                     values=list(RANKS) + [TEN_BUCKET, "未知"]).grid(row=1, column=3, sticky="w", padx=4)
-        ttk.Label(form, text="原事件ID（揭示/纠错）").grid(row=2, column=0, sticky="e")
-        ttk.Entry(form, textvariable=self.var_target, width=38).grid(row=2, column=1, columnspan=2, sticky="w", padx=4)
-        ttk.Button(form, text="确认写入账本", command=self.commit_selected).grid(row=2, column=3, sticky="w", padx=4)
-        ttk.Button(form, text="拒绝该候选", command=self.reject_selected).grid(row=3, column=3, sticky="w", padx=4, pady=4)
+        self.cmb_rank = ttk.Combobox(form,textvariable=self.var_rank,width=8,state='readonly',values=list(RANKS)+[TEN_BUCKET,'未知'])
+        self.cmb_rank.grid(row=1,column=3,sticky='w',padx=4)
+        ttk.Label(form,text='原发牌记录').grid(row=2,column=0,sticky='e')
+        self.cmb_target = ttk.Combobox(form,textvariable=self.var_target,width=62,postcommand=self._refresh_targets)
+        self.cmb_target.grid(row=2,column=1,columnspan=2,sticky='w',padx=4)
+        self.confirm_button = ttk.Button(form,text='确认写入账本',command=self.commit_selected)
+        self.confirm_button.grid(row=2,column=3,sticky='w',padx=4)
+        ttk.Button(form,text='拒绝候选 / 撤回关联',command=self.reject_selected).grid(row=3,column=3,sticky='w',padx=4,pady=4)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def on_close(self):
@@ -350,7 +355,7 @@ class VisionReviewWindow(tk.Toplevel):
             for track in self.tracker.tracks:
                 if track.committed:
                     continue
-                if track.observation_id in self.session.commits:
+                if track.observation_id in self.session.commits or track.observation_id in self.session.links:
                     self.tracker.mark_committed(track.observation_id)
         except Exception as exc:
             self._withdraw("当前帧识别失败")
@@ -442,10 +447,14 @@ class VisionReviewWindow(tk.Toplevel):
             if status['error']:
                 messagebox.showerror('冻结帧未保存', status['error'], parent=self)
                 return
-            if self.session is None:
-                self.session = VisionReviewSession(self.app.ctrl, snapshot.result, evidence)
-            else:
-                self.session.present_frame(snapshot.result)
+            try:
+                if self.session is None:
+                    self.session = VisionReviewSession(self.app.ctrl, snapshot.result, evidence)
+                else:
+                    self.session.present_frame(snapshot.result)
+            except VisionBridgeError as exc:
+                messagebox.showerror('冻结帧未导入',str(exc),parent=self)
+                return
             self.tracker = tracker
             self.loaded = snapshot.loaded
             self.app.vision_session = self.session
@@ -492,6 +501,7 @@ class VisionReviewWindow(tk.Toplevel):
             self.cmb_obs.configure(values=[])
             self.var_obs.set("")
             self._draw_review_source()
+            self._operation_changed()
             return
         from ..vision.image_io import crop_rgb
         ids = []
@@ -519,6 +529,24 @@ class VisionReviewWindow(tk.Toplevel):
         self.cmb_obs.configure(values=ids)
         self.var_obs.set(ids[0] if ids else "")
         self._selected_observation()
+        self._operation_changed()
+
+    def _refresh_targets(self):
+        self._target_choices = {}
+        if self.session is not None:
+            try:
+                for target in self.session.existing_card_targets():
+                    label=f"#{target['seq']} {target['seat']} / {target['hand_id']} / {target['rank']} · {target['event_id']}"
+                    self._target_choices[label]=target['event_id']
+            except VisionBridgeError:pass
+        self.cmb_target.configure(values=list(self._target_choices))
+
+    def _operation_changed(self):
+        linking=OPS_ZH.get(self.var_op.get(),(None,None))[0]==OP_LINK
+        self.confirm_button.configure(text='确认关联（不扣牌）' if linking else '确认写入账本')
+        self.cmb_rank.configure(state='disabled' if linking else 'readonly')
+        self.cmb_seat.configure(state='disabled' if linking else 'readonly')
+        self._refresh_targets()
 
     def _selected_observation(self):
         if self.session is None:return
@@ -526,6 +554,11 @@ class VisionReviewWindow(tk.Toplevel):
         self.var_rank.set((obs.accepted_rank() or '未知') if obs else '')
         self.var_seat.set((obs.seat_hint or '') if obs else '')
         self.var_target.set('')
+        linked=self.session.links.get(self.var_obs.get())
+        if linked is not None:
+            self._refresh_targets()
+            self.var_target.set(next((label for label,event_id in self._target_choices.items()
+                if event_id==linked.event.event_id),linked.event.event_id))
         self._draw_review_source()
         box=self._thumb_widgets.get(self.var_obs.get())
         if box is not None:
@@ -627,23 +660,26 @@ class VisionReviewWindow(tk.Toplevel):
             chosen_rank = None
             if op == OP_NEW:
                 face = FACE_UNKNOWN_LEDGER
+        target=self.var_target.get().strip()
+        target=self._target_choices.get(target,target) or None
         return ConfirmDecision(
             observation_id=self.var_obs.get(),
             operation=op,
-            seat=self.var_seat.get(),
-            confirmed_rank=chosen_rank,
+            seat=None if op==OP_LINK else self.var_seat.get(),
+            confirmed_rank=None if op==OP_LINK else chosen_rank,
             face_state=face,
-            target_event_id=self.var_target.get().strip() or None,
+            target_event_id=target,
         )
 
     def commit_selected(self):
         self.app._operation_start_revision = self.app.ctrl.commit_revision
         try:
             result = self.session.confirm(self._decision())
-            if self.tracker is not None and result.status in {"committed", "duplicate"}:
+            if self.tracker is not None and result.status in {"committed", "duplicate", "linked"}:
                 self.tracker.mark_committed(result.observation_id)
             self.var_info.set(result.message)
-            self.app.refresh_all()
+            if result.status=='linked':self.app.refresh_vision_banner()
+            else:self.app.refresh_all()
             if result.already_saved:
                 messagebox.showinfo("未重复入账", result.message, parent=self)
         except VisionBridgeError as exc:

@@ -17,7 +17,7 @@ except ImportError:
 from blackjack_lab.capture.frame_intake import FrameIntake
 from blackjack_lab.realtime_preview import PreviewResult, RealtimePreviewSession
 from blackjack_lab.ui.realtime_review import freeze_video_result
-from blackjack_lab.ui.vision_bridge import ConfirmDecision, OP_NEW, VisionBridgeError, capture_bind_context
+from blackjack_lab.ui.vision_bridge import ConfirmDecision, OP_NEW, OP_LINK, VisionBridgeError, capture_bind_context
 from blackjack_lab.vision.contracts import CardObservation, RankHypothesis, RecognitionResult, RECOGNITION_SCHEMA_VERSION
 from blackjack_lab.vision.live_input import LiveStyle, NormalizedBox, frame_to_loaded, layout_for_frame
 from blackjack_lab.vision.tracker import FrameTracker
@@ -185,6 +185,31 @@ class VideoSnapshotTkTests(unittest.TestCase):
             preview.review()
             self.assertEqual(calls,[(self.owner,self.row)])
             preview.close()
+
+    def test_manual_link_button_chooses_existing_events_without_ledger_or_analysis_writes(self):
+        a=self.app.ctrl.deal_shown('玩家1','8');b=self.app.ctrl.deal_shown('玩家1','8')
+        self.win.accept_realtime_snapshot(self.owner,self.row,self.win._preview_context());self.pump()
+        revision=self.app.ctrl.commit_revision
+        self.win.var_op.set('同一张已记录的牌（仅关联）');self.win._operation_changed()
+        self.assertEqual(str(self.win.cmb_rank.cget('state')),'disabled')
+        self.assertIn('不扣牌',self.win.confirm_button.cget('text'))
+        observations=list(self.win.session.result.observations)
+        for obs,event in zip(observations,(a,b)):
+            self.win.var_obs.set(obs.observation_id);self.win._selected_observation()
+            label=next(label for label,target in self.win._target_choices.items() if target==event.event_id)
+            self.win.var_target.set(label)
+            decision=self.win._decision()
+            self.assertEqual(decision.operation,OP_LINK);self.assertIsNone(decision.confirmed_rank)
+            with patch.object(self.app,'refresh_all') as refresh:
+                self.win.confirm_button.invoke()
+            refresh.assert_not_called()
+            self.assertEqual(self.win.session.links[obs.observation_id].event.event_id,event.event_id)
+        self.assertEqual(self.app.ctrl.commit_revision,revision)
+        self.win.var_op.set('新的可见牌');self.win._operation_changed();self.win.var_seat.set('玩家1')
+        with patch('blackjack_lab.ui.vision_panel.messagebox.showerror') as error:
+            self.win.confirm_button.invoke()
+        error.assert_called_once()
+        self.assertEqual(self.app.ctrl.commit_revision,revision)
 
 
 if __name__=='__main__':unittest.main()
