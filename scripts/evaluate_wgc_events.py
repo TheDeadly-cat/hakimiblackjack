@@ -59,6 +59,15 @@ def mapped_timeline(run, receipt):
     by_signature = defaultdict(list)
     for frame in raw:
         by_signature[frame['signature']].append(frame)
+
+    def source_candidates(frame):
+        if frame is None:
+            return []
+        # An identical source image may be submitted again later. It cannot
+        # explain a capture whose arrival preceded that later draw request.
+        return [candidate for candidate in by_signature.get(frame['signature'], [])
+                if candidate.get('display_request_ns', frame['observed_ns']) <= frame['observed_ns']]
+
     captures = {}
     for frame in receipt['capture_frames']:
         if frame['image_size'] != NATIVE_SIZE or list(frame['source_size']) != NATIVE_SIZE:
@@ -71,11 +80,11 @@ def mapped_timeline(run, receipt):
         raise ValueError('Native captured pixels need nonempty full-hash spot checks')
     for check in full_checks:
         frame = captures.get(check['frame_id'])
-        matches = by_signature.get(frame['signature'], []) if frame else []
-        if (len(matches) != 1 or check.get('equal') is not True
+        matches = source_candidates(frame)
+        if (not matches or check.get('equal') is not True
                 or not check.get('actual') or check['actual'] != check.get('expected')
                 or check['actual'] != frame.get('full_bgr_sha256')
-                or check['actual'] != matches[0].get('full_bgr_sha256')):
+                or not any(check['actual'] == match.get('full_bgr_sha256') for match in matches)):
             raise ValueError('Native full-pixel check mismatch')
 
     input_matches = 0
@@ -90,7 +99,7 @@ def mapped_timeline(run, receipt):
         if previous and any(previous[k] != frame[k] for k in frame):
             raise ValueError('Inference and captured frame metadata disagree')
         captures.setdefault(frame['frame_id'], frame)
-        if len(by_signature.get(frame['signature'], [])) == 1:
+        if len(source_candidates(frame)) == 1:
             input_matches += 1
         else:
             input_unmapped.append(row['row_id'])
@@ -114,7 +123,7 @@ def mapped_timeline(run, receipt):
     updates, unmapped, mapping = [], [], []
     for original in run.get('display_updates', []):
         frame = captures.get(original['source_frame_id'])
-        candidates = by_signature.get(frame['signature'], []) if frame else []
+        candidates = source_candidates(frame)
         if len(candidates) != 1:
             unmapped.append({'row_id': original['row_id'], 'display_ns': original['display_submitted_ns'],
                              'wgc_source_frame_id': original['source_frame_id'],

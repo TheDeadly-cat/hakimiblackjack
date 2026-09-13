@@ -89,6 +89,17 @@ class WgcEventScoringTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             score_wgc(run, receipt, ref)
 
+    def test_later_identical_source_submission_cannot_explain_an_earlier_capture(self):
+        run, receipt, ref = self.fixture()
+        for frame in receipt['raw_displays']:
+            frame['display_request_ns'] = frame['display_submitted_ns'] - 200_000_000
+        receipt['raw_displays'][8]['signature'] = 'sig-6'
+        result = score_wgc(run, receipt, ref)
+        self.assertEqual(result['wgc_mapping']['ambiguous_raw_signatures'], 1)
+        self.assertEqual(result['wgc_mapping']['input_rows_matched'], 1)
+        self.assertEqual(result['wgc_mapping']['unmapped_render_updates'], [])
+        self.assertEqual(result['events'][0]['first_correct_stable']['source_media_s'], 1.5)
+
     def test_rendered_source_metadata_maps_frames_absent_from_probe_and_inference(self):
         run, receipt, ref = self.fixture()
         second = deepcopy(run['display_updates'][0])
