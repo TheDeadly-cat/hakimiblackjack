@@ -194,6 +194,7 @@ class CaptureStats:
     accepted: int = 0
     dropped_by_sampling: int = 0
     dropped_by_queue: int = 0
+    dropped_by_generation: int = 0
     repeats: int = 0
     black_frames: int = 0
     # None = 尚未发生。不要用 0 当哨兵：注入的测试时钟可以合法地等于 0。
@@ -222,6 +223,7 @@ class CaptureStats:
             "accepted": self.accepted,
             "dropped_by_sampling": self.dropped_by_sampling,
             "dropped_by_queue": self.dropped_by_queue,
+            "dropped_by_generation": self.dropped_by_generation,
             "repeats": self.repeats,
             "black_frames": self.black_frames,
             "resize_events": self.resize_events,

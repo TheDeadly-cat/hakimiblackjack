@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 from .tracker import bbox_iou
 
-POLICY_VERSION = "preview-motion-rgb-expiry-1"
+POLICY_VERSION = "preview-motion-rgb-expiry-2"
 
 
 def _center(box):
@@ -82,6 +82,8 @@ class PreviewTrack:
     matches: int = 1
     current: bool = True
     conflict_count: int = 0
+    last_support_signature: object = None
+    new_support: bool = False
 
 
 def display_state(state, now_ns, *, rank_ttl_ns=550_000_000, identity_ttl_ns=650_000_000):
@@ -93,9 +95,9 @@ def display_state(state, now_ns, *, rank_ttl_ns=550_000_000, identity_ttl_ns=650
     if support is None or now_ns-support > rank_ttl_ns:
         row["stable_rank"] = None
     if age > identity_ttl_ns:
-        row.update(identity_state="expired", stable_rank=None, observed_rank=None)
+        row.update(identity_state="expired", stable_rank=None, observed_rank=None, current=False)
     elif not row["current"] or age > rank_ttl_ns:
-        row.update(identity_state="temporarily_unseen", observed_rank=None)
+        row.update(identity_state="temporarily_unseen", observed_rank=None, current=False)
     return row
 
 
@@ -136,9 +138,13 @@ class TemporalPreviewTracker:
 
     def _observe(self, track, rank, now_ns, signature):
         track.observed_rank = rank
-        track.evidence.append((now_ns, rank, signature))
         while track.evidence and now_ns-track.evidence[0][0] > 800_000_000:
             track.evidence.popleft()
+        track.new_support = (signature != track.last_support_signature
+                             and all(s != signature for _, _, s in track.evidence))
+        if track.new_support:
+            track.evidence.append((now_ns, rank, signature))
+            track.last_support_signature = signature
         if track.stable_supported_ns is not None and now_ns-track.stable_supported_ns > self.rank_ttl_ns:
             track.stable_rank = None
             track.stable_supported_ns = None
@@ -206,7 +212,7 @@ class TemporalPreviewTracker:
                 t = PreviewTrack(f"preview-{self.sequence:06d}", dict(obs.bbox), appearances[j],
                                  now_ns, now_ns, obs.region_id)
                 self.tracks.append(t)
-            self._observe(t, obs.accepted_rank(), now_ns, sample_key)
+            self._observe(t, obs.accepted_rank(), now_ns, getattr(obs,'crop_sha256',None) or sample_key)
             # These IDs are scoped to a preview session, never ledger IDs.
             obs.observation_id = t.track_id
         return self.snapshot(now_ns)
@@ -216,6 +222,8 @@ class TemporalPreviewTracker:
             "observed_rank": t.observed_rank, "stable_rank": t.stable_rank,
             "stable_supported_ns": t.stable_supported_ns, "last_seen_ns": t.last_seen_ns,
             "first_seen_ns": t.first_seen_ns, "region_id": t.region_id, "current": t.current,
+            "new_rank_support": t.new_support if t.current else False,
+            "evidence_count": len(t.evidence),
             "identity_state": "rank_conflict" if t.conflict_count else
                 "temporally_associated" if t.matches >= 2 else "new_unverified",
             "support_count": sum(v == t.stable_rank for _, v, _ in t.evidence) if t.stable_rank else 0},

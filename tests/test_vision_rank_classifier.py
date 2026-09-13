@@ -89,6 +89,21 @@ class TestRoundSplit(unittest.TestCase):
 
 @unittest.skipUnless(HAVE_CV2, "未安装识牌依赖")
 class TestRankClassifier(unittest.TestCase):
+    def test_batch_cache_does_not_merge_outputs_or_reuse_changed_thresholds(self):
+        from blackjack_lab.vision.rank_classifier import RankClassifier
+        mask=self._mask_for('8')
+        model=RankClassifier(k=1,min_vote=1,min_margin=.01,orientation_policy='upright_upper').fit(
+            [(mask,'8'),(self._mask_for('A'),'A')],angles=(0,),label_review_status='synthetic')
+        stats={}
+        first=model.predict_masks([mask,mask],angles=(0,),stats=stats)
+        self.assertEqual([g.rank for g in first],['8','8'])
+        self.assertIsNot(first[0],first[1])
+        self.assertEqual(stats['classification_computed_crops'],1)
+        first[0].rank=None
+        self.assertEqual(model.predict_masks([mask],angles=(0,))[0].rank,'8')
+        model.min_margin=2
+        self.assertIsNone(model.predict_masks([mask],angles=(0,))[0].rank)
+
     def _mask_for(self, rank: str, *, jitter: int = 0):
         from blackjack_lab.vision.deps import load_cv2, load_numpy
         cv2, np = load_cv2(), load_numpy()

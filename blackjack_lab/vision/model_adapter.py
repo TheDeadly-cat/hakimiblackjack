@@ -98,7 +98,6 @@ class TrainedModelAdapter:
         if layout.style_id != self.style_id:
             raise ImageRejected(
                 f"模型要求样式 {self.style_id!r}，当前为 {layout.style_id!r}；请明确切换模型或样式")
-        observations = []
         occupied = set()
         if timings is not None:
             timings["detection_start_ns"] = time.perf_counter_ns()
@@ -131,13 +130,27 @@ class TrainedModelAdapter:
                         "classification_performed": False, "writes_ledger": False})
             excluded_corners = len(glyphs)-len(retained)
             glyphs = retained
+        result = self._recognize_glyphs(loaded, layout, source_declaration, glyphs,
+            geometry_review=geometry_review, occupied=occupied, timings=timings)
+        if self.model.orientation_policy == "upright_upper":
+            result.warnings.append(f"正向上角策略：{excluded_corners-len(geometry_review)} 个排除，"
+                                   f"{len(geometry_review)} 个几何待核；待核项未分类，不翻转下角补识别。")
+        return result
+
+    def _recognize_glyphs(self, loaded, layout, source_declaration, glyphs, *,
+                          geometry_review=(), occupied=None, timings=None):
+        """Shared frozen point classifier and review contract for both detectors."""
+        observations = []
+        occupied = set() if occupied is None else occupied
         if timings is not None:
             timings["detection_end_ns"] = time.perf_counter_ns()
             timings["classification_start_ns"] = time.perf_counter_ns()
             timings["classification_calls"] = len(glyphs)
+            timings["classification_batch_version"] = "within-frame-dot-matrix-1"
+        guesses = self.model.predict_masks([glyph.mask for glyph in glyphs],stats=timings)
         # Shared raw extraction plus the model's explicit corner policy, using
         # full image context. Never resize whole-card boxes into glyph inputs.
-        for glyph in glyphs:
+        for glyph, guess in zip(glyphs, guesses):
             x, y, w, h = glyph.bbox
             cx, cy = x + w / 2.0, y + h / 2.0
             regions = [(name, region) for name, region in layout.regions.items()
@@ -158,7 +171,6 @@ class TrainedModelAdapter:
             payload = json.dumps([loaded.sha256, region_id, bbox, crop_digest], sort_keys=True)
             # Identity is spatial, never rank-based. Two eights remain separate.
             observation_id = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
-            guess = self.model.predict_mask(glyph.mask)
             rank = guess.raw_label if guess.raw_label in RANKS_13 else None
             accepted = bool(guess.accepted and guess.rank in RANKS_13)
             notes = [
@@ -186,14 +198,11 @@ class TrainedModelAdapter:
             layout_profile_id=layout.layout_profile_id, model_id=self.model_id,
             model_digest=self.digest, source_declaration=source_declaration,
             platform_claim=layout.platform_claim, observations=observations,
-            geometry_review=geometry_review,
+            geometry_review=list(geometry_review),
             empty_regions=[name for name in layout.regions if name not in occupied],
             warnings=[self.identity_text, "匹配度不是正确概率；全部候选等待人工确认，自动入账关闭。",
                       "当前输出单位是角标，不保证物理牌完整检出、身份或归属正确。"],
         )
-        if self.model.orientation_policy == "upright_upper":
-            result.warnings.append(f"正向上角策略：{excluded_corners-len(geometry_review)} 个排除，"
-                                   f"{len(geometry_review)} 个几何待核；待核项未分类，不翻转下角补识别。")
         return validate_result(result)
 
 
@@ -248,7 +257,7 @@ class RecognitionRuntime:
     def recognize_loaded(self, loaded: LoadedImage, *, layout: LayoutProfile,
                          source_key: str,
                          source_declaration: str = SOURCE_OBSERVER_VIDEO,
-                         templates_dir=None) -> Optional[RecognitionResult]:
+                         templates_dir=None, timings=None) -> Optional[RecognitionResult]:
         from .pipeline import recognize_loaded
 
         context = json.dumps([source_key, asdict(layout), loaded.width, loaded.height],
@@ -264,7 +273,7 @@ class RecognitionRuntime:
             self._result = None
         result = recognize_loaded(loaded, layout=layout, adapter=adapter,
                                   templates_dir=templates_dir,
-                                  source_declaration=source_declaration)
+                                  source_declaration=source_declaration,timings=timings)
         with self._lock:
             if generation != self._generation or request != self._request:
                 return None

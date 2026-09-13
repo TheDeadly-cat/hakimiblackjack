@@ -1,0 +1,6 @@
+# Optional experimental RGB detector, tested in an isolated Python 3.12 venv.
+# The ordinary recorder and HOG-only recognition do not import torch.
+-r requirements-vision.txt
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.11.0+cu128
+torchvision==0.26.0+cu128

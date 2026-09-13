@@ -8,9 +8,10 @@ from tkinter import filedialog, messagebox, ttk
 
 
 class RealtimePreviewWindow(tk.Toplevel):
-    def __init__(self, master, session, *, on_review=None):
+    def __init__(self, master, session, *, on_review=None, adapters=None):
         super().__init__(master)
         self.session, self.on_review = session, on_review
+        self.adapters=adapters or {'当前检测器':session.adapter}
         self.title("哈基米 · 1倍速识牌预览")
         self.geometry("1450x880")
         self.minsize(1000, 680)
@@ -27,6 +28,8 @@ class RealtimePreviewWindow(tk.Toplevel):
         bar = ttk.Frame(self, padding=8)
         bar.pack(fill=tk.X)
         self.var_fps=tk.StringVar(value=f"{session.recognition_fps:g}")
+        self.var_detector=tk.StringVar(value=next(k for k,v in self.adapters.items() if v is session.adapter))
+        ttk.Combobox(bar,textvariable=self.var_detector,values=tuple(self.adapters),state='readonly',width=12).pack(side=tk.LEFT,padx=4)
         ttk.Label(bar,text="识别 FPS").pack(side=tk.LEFT)
         ttk.Combobox(bar,textvariable=self.var_fps,values=("5","8","10","15"),state="readonly",width=4).pack(side=tk.LEFT,padx=4)
         ttk.Button(bar,text="重新播放",command=self.restart).pack(side=tk.LEFT,padx=4)
@@ -53,7 +56,8 @@ class RealtimePreviewWindow(tk.Toplevel):
             self.table.column(key, width=width, anchor="center")
         self.table.pack(side=tk.LEFT, fill=tk.X, expand=True)
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        ttk.Label(self, text=session.adapter.identity_text, wraplength=1400, padding=8).pack(fill=tk.X)
+        self.var_model=tk.StringVar(value=session.adapter.identity_text)
+        ttk.Label(self, textvariable=self.var_model, wraplength=1400, padding=8).pack(fill=tk.X)
         self.protocol("WM_DELETE_WINDOW", self.close)
         self.after(20, self._poll)
         self.session.start()
@@ -63,19 +67,21 @@ class RealtimePreviewWindow(tk.Toplevel):
         self.var_state.set("已停止；画面与候选不再作为新的观察证据")
 
     def restart(self):
-        from ..realtime_preview import RealtimeVideoSource,RealtimePreviewSession
+        from ..realtime_preview import RealtimePreviewSession
         old=self.session
         old.stop()
         self.var_state.set("正在停止上一轮处理…")
         def start_when_stopped():
             if self._closed or self.session is not old:
                 return
-            if not old.finished:
+            if not old.finished or not getattr(old.source,'finished',True):
                 self.after(25,start_when_stopped)
                 return
-            source=RealtimeVideoSource(old.source.path,old.style,first_frame=old.source.first_frame,
-                last_frame=old.source.last_frame,preview_fps=old.source.preview_fps)
-            self.session=RealtimePreviewSession(source,old.style,old.adapter,recognition_fps=float(self.var_fps.get()))
+            source=old.source.clone()
+            adapter=self.adapters[self.var_detector.get()]
+            self.session=RealtimePreviewSession(source,old.style,adapter,recognition_fps=float(self.var_fps.get()),
+                evidence_limit=old.records.maxlen)
+            self.var_model.set(adapter.identity_text)
             self._frame_key=None
             self._row_id=None
             for rectangle,text in self._overlay_items:
@@ -198,6 +204,10 @@ class RealtimePreviewWindow(tk.Toplevel):
                 self.table.delete(iid)
         report=self.session.source.report()
         media=(packet.media_time_ns/1_000_000_000) if packet is not None and packet.media_time_ns is not None else 0
+        is_live=getattr(self.session.source,'is_live',False)
+        if is_live:
+            base=getattr(self.session.source,'base_ns',None)
+            media=(now-base)/1_000_000_000 if base is not None else 0
         error=self.session.error or report.get('error')
         if self.session.stopped:
             self.var_state.set("已停止；保留的画面仅供回看，旧候选已撤回")
@@ -206,5 +216,9 @@ class RealtimePreviewWindow(tk.Toplevel):
         elif self.session.finished:
             self.var_state.set(f"播放已结束　源时刻 {media:.2f}s　记录仍可保存；完整事件准确率待评估")
         elif packet is not None:
-            self.var_state.set(f"1倍速播放　源时刻 {media:.2f}s　目标识别 {self.session.recognition_fps:g} FPS　队列丢帧 {report.get('dropped_by_queue',0)}　源跳帧 {report.get('source_frames_skipped_for_preview',0)}")
+            origin=f"WGC 窗口　运行 {media:.1f}s" if is_live else f"1倍速播放　源时刻 {media:.2f}s"
+            if is_live:
+                from ..capture.contracts import STATUS_LABELS
+                origin+='　'+STATUS_LABELS.get(report.get('status'),'等待窗口帧')
+            self.var_state.set(f"{origin}　目标识别 {self.session.recognition_fps:g} FPS　队列丢帧 {report.get('dropped_by_queue',0)}　源跳帧 {report.get('source_frames_skipped_for_preview',0)}")
         self.after(33,self._poll)

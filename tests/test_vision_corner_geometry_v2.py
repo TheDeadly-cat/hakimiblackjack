@@ -71,11 +71,12 @@ class SeparateGeometryReviewTests(unittest.TestCase):
         self.assertEqual(self.adapter.corner_policy_version,UPPER_CORNER_POLICY)
 
     def test_uncertain_never_classified_tracked_or_accepted_in_result_json(self):
-        with patch.object(self.adapter.model,"predict_mask",wraps=self.adapter.model.predict_mask) as predict:
+        with patch.object(self.adapter.model,"predict_masks",wraps=self.adapter.model.predict_masks) as predict:
             loaded,result=self.result()
         self.assertEqual(len(result.observations),2)
         self.assertEqual(len(result.geometry_review),2)
-        self.assertEqual(predict.call_count,2)
+        self.assertEqual(predict.call_count,1)
+        self.assertEqual(len(predict.call_args.args[0]),2)
         restored=result_from_dict(json.loads(result.to_json()))
         self.assertEqual(restored.geometry_review,result.geometry_review)
         tracker=FrameTracker()

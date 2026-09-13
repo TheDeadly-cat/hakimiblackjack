@@ -10,6 +10,9 @@ import hashlib
 import json
 import math
 import zipfile
+import threading
+from collections import OrderedDict
+from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -199,6 +202,12 @@ class RankClassifier:
         self.training_digest = ""
         self.label_review_status = "unverified"
         self.model_id = ""
+        self._prediction_cache = OrderedDict()
+        self._prediction_cache_lock = threading.RLock()
+
+    def clear_prediction_cache(self):
+        with self._prediction_cache_lock:
+            self._prediction_cache.clear()
 
     def _identity(self) -> Dict[str, Any]:
         identity = {
@@ -317,6 +326,10 @@ class RankClassifier:
         if self.features is None or self.label_ids is None or self.origin_ids is None:
             raise ImageRejected("分类器尚未训练")
         dots = self.features @ feat
+        return self._guess_from_dots(dots)
+
+    def _guess_from_dots(self, dots) -> RankGuess:
+        np = load_numpy()
         # 每个原裁片/物理牌仅保留最近增强向量；重复帧和旋转数不增加票数。
         order = np.argsort(-dots, kind="stable")
         distinct, seen = [], set()
@@ -370,6 +383,80 @@ class RankClassifier:
             guesses.append(guess)
         # 保留最佳匹配原始预测的拒识；不能找一个更弱却刚好过门槛的角度来提高覆盖。
         return max(guesses, key=lambda g: (g.score, g.margin))
+
+    def predict_masks(self, masks, *, angles: Sequence[float] | None = None, stats=None):
+        """Cache unchanged binary crops without coupling their physical identities."""
+        np = load_numpy()
+        masks=list(masks)
+        search=tuple(angles) if angles is not None else (
+            UPRIGHT_ANGLES if self.orientation_policy=='upright_upper' else AUGMENT_ANGLES)
+        scope=(self.model_id,self.k,self.min_vote,self.min_margin,self.min_similarity,self.orientation_policy,search)
+        keys=[];pending={};output=[None]*len(masks);hits=0
+        for i,mask in enumerate(masks):
+            if mask is None or mask.ndim!=2 or mask.size==0:raise ImageRejected('推理掩膜必须是非空二维图像')
+            binary=np.ascontiguousarray(mask>0)
+            key=(scope,binary.shape,hashlib.sha256(binary.tobytes()).digest())
+            keys.append(key)
+            with self._prediction_cache_lock:
+                cached=self._prediction_cache.get(key)
+                if cached is not None:
+                    output[i]=copy(cached);hits+=1;self._prediction_cache.move_to_end(key)
+                else:pending.setdefault(key,mask)
+        guesses=self._predict_masks_uncached(list(pending.values()),angles=search)
+        computed=dict(zip(pending,guesses))
+        with self._prediction_cache_lock:
+            for key,guess in computed.items():
+                self._prediction_cache[key]=copy(guess)
+                self._prediction_cache.move_to_end(key)
+                while len(self._prediction_cache)>512:self._prediction_cache.popitem(last=False)
+        for i,key in enumerate(keys):
+            if output[i] is None:output[i]=copy(computed[key])
+        if stats is not None:
+            stats.update(classification_requested_crops=len(masks),classification_cache_hits=hits,
+                         classification_computed_crops=len(pending),
+                         classification_deduplicated_crops=len(masks)-hits-len(pending))
+        return output
+
+    def _predict_masks_uncached(self, masks, *, angles: Sequence[float] | None = None):
+        """One within-frame similarity matrix; same HOG, votes and thresholds.
+
+        No frame accumulation and no model reload. A scalar fallback preserves
+        decisions at rejection boundaries where BLAS rounding can matter.
+        """
+        np = load_numpy()
+        masks = list(masks)
+        if not masks:
+            return []
+        if self.features is None or self.label_ids is None or self.origin_ids is None:
+            raise ImageRejected("分类器尚未训练")
+        search = tuple(angles) if angles is not None else (
+            UPRIGHT_ANGLES if self.orientation_policy == "upright_upper" else AUGMENT_ANGLES)
+        if not search or any(not math.isfinite(float(a)) for a in search):
+            raise ImageRejected("推理旋转角必须是非空有限数值序列")
+        if self.orientation_policy == "upright_upper" and any(abs(((float(a)+180)%360)-180)>45 for a in search):
+            raise ImageRejected("正向上角模型不允许翻转推理")
+        if any(mask is None or mask.ndim != 2 or mask.size == 0 for mask in masks):
+            raise ImageRejected("推理掩膜必须是非空二维图像")
+        queries = np.stack([features_from_mask(mask, angle) for mask in masks for angle in search])
+        # A single-thread contraction keeps each query contiguous and avoids
+        # adding a competing BLAS worker pool to the realtime pipeline.
+        similarities = np.einsum("qf,mf->qm", queries, self.features, optimize=False)
+        output = []
+        for i, mask in enumerate(masks):
+            guesses = []
+            for j, angle in enumerate(search):
+                guess = self._guess_from_dots(similarities[i*len(search)+j])
+                guess.angle = float(angle)
+                if _is_inverted(angle) and guess.raw_label in CONFUSABLE_FLIP:
+                    guess.accepted, guess.rank = False, None
+                    guess.rejection_reason = "six_nine_orientation_unverified"
+                guesses.append(guess)
+            best = max(guesses, key=lambda g: (g.score, g.margin))
+            if (abs(best.similarity-self.min_similarity)<1e-5 or abs(best.margin-self.min_margin)<1e-5
+                    or any(g.raw_label != best.raw_label and abs(g.score-best.score)<1e-5 for g in guesses)):
+                best = self.predict_mask(mask, angles=search)
+            output.append(best)
+        return output
 
     def save(self, directory: Path | str) -> Path:
         np = load_numpy()

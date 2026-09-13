@@ -2,6 +2,7 @@
 import threading
 import time
 import unittest
+from unittest.mock import patch
 
 from blackjack_lab.capture.frame_intake import FrameIntake
 from blackjack_lab.vision.live_input import LiveStyle,NormalizedBox
@@ -16,6 +17,20 @@ except ImportError:
 
 @unittest.skipIf(np is None,"optional numpy dependency")
 class RealtimePreviewTests(unittest.TestCase):
+    def test_copy_finishing_after_stop_or_epoch_change_cannot_repopulate_intake(self):
+        for change in (lambda i:i.mark_stopped(),lambda i:i.new_epoch('changed')):
+            intake=FrameIntake('test')
+            entered,release=threading.Event(),threading.Event()
+            def signature(_):entered.set();release.wait(1);return 'pixels'
+            output=[]
+            with patch('blackjack_lab.capture.frame_intake.frame_signature',side_effect=signature):
+                worker=threading.Thread(target=lambda:output.append(intake.offer(np.full((20,30,3),100,dtype=np.uint8))))
+                worker.start();self.assertTrue(entered.wait(1));change(intake);release.set();worker.join(1)
+            self.assertEqual(output,[None])
+            self.assertIsNone(intake.preview())
+            self.assertIsNone(intake.latest())
+            self.assertEqual(intake.stats.dropped_by_generation,1)
+
     def test_preview_does_not_consume_frames_or_repeat_evidence(self):
         intake=FrameIntake('test',target_fps=100)
         pixels=np.full((20,30,3),100,dtype=np.uint8)

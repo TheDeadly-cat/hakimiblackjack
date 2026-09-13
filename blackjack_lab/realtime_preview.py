@@ -18,13 +18,17 @@ from uuid import uuid4
 from .capture.frame_intake import FrameIntake
 from .vision.contracts import SOURCE_OBSERVER_VIDEO
 from .vision.image_io import rgb_to_bgr
-from .vision.live_input import LiveStyle, frame_to_loaded, layout_for_frame, capture_crop_pixels
+from .vision.live_input import LiveStyle, SOURCE_LIVE_CAPTURE, frame_to_loaded, layout_for_frame, capture_crop_pixels
 from .vision.temporal_preview import TemporalPreviewTracker, POLICY_VERSION, display_state
+from .vision.model_adapter import RecognitionRuntime
 from .vision.video_io import VideoReader
 
 
 class RealtimeVideoSource:
     """Wall-clock paced adapter around the existing readonly VideoReader."""
+
+    is_live = False
+    source_declaration = SOURCE_OBSERVER_VIDEO
 
     def __init__(self, path, style, *, first_frame=0, last_frame=None, preview_fps=20.0):
         if first_frame < 0 or not 1 <= preview_fps <= 60:
@@ -50,6 +54,10 @@ class RealtimeVideoSource:
         self._thread = threading.Thread(target=self._run, name="blackjack-video-preview", daemon=True)
         self._thread.start()
 
+    def clone(self):
+        return type(self)(self.path,self.style,first_frame=self.first_frame,
+                          last_frame=self.last_frame,preview_fps=self.preview_fps)
+
     def _run(self):
         try:
             with VideoReader(self.path) as reader:
@@ -61,8 +69,11 @@ class RealtimeVideoSource:
                     raise ValueError("播放范围超出录像")
                 crop = capture_crop_pixels(self.style, self.asset.width, self.asset.height)
                 width, height = crop[2:] if crop else (self.asset.width, self.asset.height)
+                cadence_fps=min(self.preview_fps,self.asset.fps)
                 self.intake = FrameIntake("video:"+self.asset.sha256,
-                    target_fps=self.preview_fps+1, queue_length=2, crop=crop,
+                    # Playback is already paced. A second nearly identical rate
+                    # limit discarded valid jittered frames and capped 15 FPS tests.
+                    target_fps=max(self.asset.fps,cadence_fps*4), queue_length=2, crop=crop,
                     layout_version=self.style.layout_version(width, height))
                 # Startup file verification is outside playback, not hidden in frame latency.
                 first = reader.seek(self.first_frame)
@@ -80,8 +91,8 @@ class RealtimeVideoSource:
                     if index >= last:
                         break
                     elapsed = (time.perf_counter_ns()-self.base_ns)/1_000_000_000
-                    next_tick = math.floor(elapsed*self.preview_fps)+1
-                    deadline = self.base_ns+round(next_tick/self.preview_fps*1_000_000_000)
+                    next_tick = math.floor(elapsed*cadence_fps)+1
+                    deadline = self.base_ns+round(next_tick/cadence_fps*1_000_000_000)
                     if self._stop.wait(max(0, (deadline-time.perf_counter_ns())/1_000_000_000)):
                         break
                     elapsed = (time.perf_counter_ns()-self.base_ns)/1_000_000_000
@@ -114,7 +125,89 @@ class RealtimeVideoSource:
             "playback_ended_ns": self.playback_ended_ns,
             "source_fps": self.asset.fps if self.asset else None,
             "first_frame": self.first_frame, "last_frame": self.last_frame,
-            "preview_target_fps": self.preview_fps}
+            "preview_target_fps": self.preview_fps,
+            "preview_paced_fps": min(self.preview_fps,self.asset.fps) if self.asset else None}
+
+
+class RealtimeWgcSource:
+    """Lifecycle adapter over the existing WGC backend and its FrameIntake."""
+
+    is_live = True
+    source_declaration = SOURCE_LIVE_CAPTURE
+
+    def __init__(self, hwnd, style, *, preview_fps=20.):
+        if not isinstance(style,LiveStyle):raise ValueError('实时窗口需要归一化样式')
+        self.hwnd,self.style,self.preview_fps=int(hwnd),style,float(preview_fps)
+        self.backend=self.intake=None
+        self.finished=False
+        self.error=None
+        self.base_ns=None
+        self._stop=threading.Event()
+        self._lock=threading.Lock()
+        self._configured_size=None
+        self._thread=None
+
+    def clone(self):
+        return type(self)(self.hwnd,self.style,preview_fps=self.preview_fps)
+
+    def start(self):
+        if self._thread is not None:raise RuntimeError('Capture preview already started')
+        self._thread=threading.Thread(target=self._run,name='blackjack-wgc-preview',daemon=True)
+        self._thread.start()
+
+    def _run(self):
+        from .capture.wgc_source import open_window_source
+        from .capture.contracts import STATUS_DENIED,STATUS_SOURCE_LOST
+        try:
+            self.backend=open_window_source(self.hwnd,target_fps=self.preview_fps,queue_length=2)
+            self.intake=self.backend.intake
+            if self._stop.is_set():return
+            self.backend.start()
+            self.base_ns=time.perf_counter_ns()
+            while not self._stop.wait(.05):
+                status=self.backend.status()
+                if status in (STATUS_DENIED,STATUS_SOURCE_LOST):
+                    self.error='窗口捕获停止：'+status
+                    break
+        except Exception as exc:
+            self.error=f'{type(exc).__name__}: {exc}'
+        finally:
+            self._stop.set()
+            if self.intake:self.intake.new_epoch('窗口预览来源结束')
+            if self.backend:self.backend.stop()
+            self.finished=True
+
+    def _packet(self, preview=False):
+        if self._stop.is_set() or self.intake is None:return None
+        packet=self.intake.preview() if preview else self.intake.latest()
+        if packet is None:return None
+        with self._lock:
+            if packet.source_size!=self._configured_size:
+                crop=capture_crop_pixels(self.style,*packet.source_size)
+                self.intake.set_crop(crop)
+                width,height=crop[2:] if crop else packet.source_size
+                self.intake.set_layout_version(self.style.layout_version(width,height))
+                self._configured_size=packet.source_size
+            if packet.token()!=self.intake.token():return None
+        return packet
+
+    def latest(self):return self._packet()
+
+    def preview(self):return self._packet(preview=True)
+
+    def token(self):return self.intake.token() if self.intake else None
+
+    def stop(self):
+        # UI only invalidates the intake; the background owner releases WGC.
+        self._stop.set()
+        if self.intake:
+            self.intake.new_epoch('窗口预览停止')
+            self.intake.mark_stopped()
+
+    def report(self):
+        return {**(self.backend.report() if self.backend else {}),'backend':'windows-graphics-capture',
+                'finished':self.finished,'error':self.error,'playback_base_ns':self.base_ns,
+                'window_hwnd':self.hwnd,'preview_target_fps':self.preview_fps,'is_live':True}
 
 
 @dataclass
@@ -149,6 +242,10 @@ class RealtimePreviewSession:
         if not 1 <= recognition_fps <= 60 or evidence_limit < 1:
             raise ValueError("Invalid realtime preview settings")
         self.source, self.style, self.adapter = source, style, adapter
+        self.runtime = RecognitionRuntime(adapter)
+        rank_model=getattr(adapter,'model',None)
+        if rank_model is not None and hasattr(rank_model,'clear_prediction_cache'):
+            rank_model.clear_prediction_cache()
         self.run_id = uuid4().hex
         self.recognition_fps = float(recognition_fps)
         self.tracker = TemporalPreviewTracker()
@@ -192,6 +289,7 @@ class RealtimePreviewSession:
                     continue
                 if packet.token() != self._token:
                     self._token = packet.token()
+                    self.runtime.invalidate('实时来源代次改变')
                     self.tracker = TemporalPreviewTracker()
                     with self._lock:
                         self._latest = None
@@ -202,7 +300,17 @@ class RealtimePreviewSession:
                 loaded = frame_to_loaded(packet)
                 layout = layout_for_frame(self.style, packet.width, packet.height)
                 timings["preprocessing_end_ns"] = time.perf_counter_ns()
-                result = self.adapter.recognize(loaded, layout, SOURCE_OBSERVER_VIDEO, timings=timings)
+                result = self.runtime.recognize_loaded(loaded,layout=layout,
+                    source_key=json.dumps(packet.token().as_dict(),sort_keys=True),
+                    source_declaration=getattr(self.source,'source_declaration',SOURCE_OBSERVER_VIDEO),
+                    timings=timings)
+                if result is None:
+                    self.stale_results += 1
+                    continue
+                result.captured_at=packet.observed_at
+                result.clock_note='captured_at 来自本机接帧时刻；媒体时刻单独保留在 FramePacket。'
+                for observation in result.observations:
+                    observation.captured_at=packet.observed_at
                 timings["tracking_start_ns"] = time.perf_counter_ns()
                 states = self.tracker.update(result, packet.pixels, packet.observed_monotonic_ns,
                     (packet.token(), packet.frame_content_signature))
@@ -223,10 +331,14 @@ class RealtimePreviewSession:
         except Exception as exc:
             self.error = f"{type(exc).__name__}: {exc}"
         finally:
+            if self.error:self.source.stop()
             self.finished = True
 
     def latest_result(self):
         if self._stop.is_set():
+            return None
+        if self._token is not None and self._token != self.source.token():
+            self.runtime.invalidate('实时来源已经改变，撤回旧结果')
             return None
         with self._lock:
             row = self._latest
@@ -261,6 +373,7 @@ class RealtimePreviewSession:
 
     def stop(self):
         self._stop.set()
+        self.runtime.invalidate('实时预览已停止')
         self.source.stop()
 
     def snapshot(self):

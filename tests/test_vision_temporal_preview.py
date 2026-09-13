@@ -47,6 +47,20 @@ class TemporalPreviewTests(unittest.TestCase):
         aged=display_state(state[0],1_300_000_000)
         self.assertIsNone(aged['stable_rank'])
         self.assertEqual(aged['identity_state'],'expired')
+        self.assertFalse(aged['current'])
+
+    def test_unchanged_card_crop_with_changing_background_does_not_add_votes(self):
+        obs=observation(20);obs.crop_sha256='unchanged-card'
+        for ms in (0,125,250):state=self.update(ms,[obs])
+        self.assertIsNone(state[0]['stable_rank'])
+        self.assertEqual(state[0]['evidence_count'],1)
+        self.assertEqual(state[0]['last_seen_ns'],250_000_000)
+        obs.crop_sha256='changed-card-pixels-1';self.update(375,[obs])
+        obs.crop_sha256='changed-card-pixels-2';state=self.update(500,[obs])
+        self.assertEqual(state[0]['stable_rank'],'8')
+        state=self.update(625,[obs])
+        self.assertFalse(state[0]['new_rank_support'])
+        self.assertEqual(state[0]['stable_supported_ns'],625_000_000)
 
     def test_lost_seven_cannot_donate_id_to_nearby_unclassified_new_card(self):
         old=self.update(0,[observation(40,50,rank='7')])[0]['track_id']

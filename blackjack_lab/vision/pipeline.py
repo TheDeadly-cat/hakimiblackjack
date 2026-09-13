@@ -63,14 +63,16 @@ def recognize_loaded(loaded: LoadedImage, *,
                      bank: Optional[TemplateBank] = None,
                      adapter: Optional[TrainedModelAdapter] = None,
                      templates_dir: Optional[Path] = None,
-                     source_declaration: Optional[str] = None) -> RecognitionResult:
+                     source_declaration: Optional[str] = None,
+                     timings=None) -> RecognitionResult:
     layout = layout or infer_layout(loaded)
     loaded = apply_layout_crops(loaded, layout)
     if adapter is not None:
         if bank is not None or templates_dir is not None:
             raise ValueError("训练模型与模板只能明确选择一种")
         result = adapter.recognize(
-            loaded, layout, source_declaration or SOURCE_OBSERVER_VIDEO)
+            loaded, layout, source_declaration or SOURCE_OBSERVER_VIDEO,
+            **({"timings": timings} if timings is not None else {}))
         result.recognized_at = time.time()
         return result
     if layout.felt_kind == "navy":

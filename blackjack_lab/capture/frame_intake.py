@@ -152,7 +152,8 @@ class FrameIntake:
         with self._lock:
             self.stats.arrived += 1
             self.stats.last_frame_monotonic_ns = now
-            if self._stopped or self._denied_reason:
+            if self._stopped or self._denied_reason or self._source_lost:
+                self.stats.dropped_by_generation += 1
                 return None
 
             height, width = int(array.shape[0]), int(array.shape[1])
@@ -197,6 +198,10 @@ class FrameIntake:
         is_black = looks_black(pixels)
 
         with self._lock:
+            if (self._stopped or self._denied_reason or self._source_lost
+                    or stream_epoch != self._stream_epoch or layout_version != self._layout_version):
+                self.stats.dropped_by_generation += 1
+                return None
             self._frame_seq += 1
             is_repeat = signature == self._last_signature
             self._last_signature = signature

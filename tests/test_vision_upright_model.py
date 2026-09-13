@@ -85,9 +85,10 @@ class UprightModelTests(unittest.TestCase):
                 directory = self.root / policy
                 self.model(policy).save(directory)
                 adapter = TrainedModelAdapter(directory, style_id="test-style")
-                with patch.object(adapter.model, "predict_mask", wraps=adapter.model.predict_mask) as predict:
+                with patch.object(adapter.model, "predict_masks", wraps=adapter.model.predict_masks) as predict:
                     result = fixtures.recognize_loaded(loaded, layout=fixtures.layout(), adapter=adapter)
-                self.assertEqual(predict.call_count, count)
+                self.assertEqual(predict.call_count, 1)
+                self.assertEqual(len(predict.call_args.args[0]), count)
                 self.assertEqual(len(result.observations), count)
                 self.assertEqual(len({o.observation_id for o in result.observations}), count)
                 self.assertFalse(result.as_dict()["writes_ledger"])
