@@ -44,7 +44,7 @@ class WindowSnapshotTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             folder=snapshot.save(directory)
             restored,root=load_video_review_snapshot(folder/'handoff.json')
-            self.assertEqual(root,Path(directory))
+            self.assertTrue(root.samefile(directory))
             self.assertEqual(restored.loaded.rgb,snapshot.loaded.rgb)
             self.assertEqual(row.recognition.as_dict(),original)
             self.assertNotIn('source_frame_index',restored.metadata['packet'])
