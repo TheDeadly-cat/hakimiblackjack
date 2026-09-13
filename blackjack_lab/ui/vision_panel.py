@@ -117,7 +117,8 @@ class VisionReviewWindow(tk.Toplevel):
         self.thumb_canvas.configure(xscrollcommand=thumb_scroll.set)
         self.list_frame = ttk.Frame(self.thumb_canvas)
         self.thumb_canvas.create_window(0,0,window=self.list_frame,anchor='nw')
-        self.list_frame.bind('<Configure>',lambda _event:self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox('all')))
+        self.list_frame.bind('<Configure>',self._update_candidate_extent)
+        self.thumb_canvas.bind('<Configure>',lambda _event:self._ensure_candidate_visible())
         self._thumb_widgets = {}
         self._geometry_dialog = None
         self.geometry_button = ttk.Button(self, text="几何待核（0）：未分类",
@@ -588,6 +589,14 @@ class VisionReviewWindow(tk.Toplevel):
             if not self.session.link_evidence_matches(self.var_obs.get()):
                 self.var_info.set('先前关联保留；识别帧已改变，请复核同牌关联，不凭相同 ID 自动认定身份。')
         self._draw_review_source()
+        self._ensure_candidate_visible()
+
+    def _update_candidate_extent(self,_event=None):
+        self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox('all'))
+        self._ensure_candidate_visible()
+
+    def _ensure_candidate_visible(self):
+        if not hasattr(self,'var_obs'):return
         box=self._thumb_widgets.get(self.var_obs.get())
         if box is not None:
             extent=self.thumb_canvas.bbox('all')
