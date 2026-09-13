@@ -112,3 +112,19 @@ class VideoReader:
             path=self.path, width=int(width), height=int(height),
             sha256=frame_digest, rgb=rgb, byte_size=len(rgb), format="video-frame",
         )
+
+    def advance(self, frame_index: int) -> LoadedImage:
+        """Decode forward without repeatedly seeking back to a codec keyframe.
+
+        Skipped frames are decoded/discarded, not materialized as RGB evidence.
+        Random access remains in seek(); the realtime scheduler uses this path.
+        """
+        if self._cap is None or frame_index <= self._index:
+            raise VideoRejected("前进读帧需要已打开录像和递增帧号")
+        if self.asset.frame_count and frame_index >= self.asset.frame_count:
+            raise VideoRejected("超过录像末尾")
+        while self._index+1 < frame_index:
+            if not self._cap.grab():
+                raise VideoRejected("跳帧解码失败，不能假装该区间已观察")
+            self._index += 1
+        return self.seek(frame_index)

@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import threading
+import time
 from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
@@ -91,7 +92,7 @@ class TrainedModelAdapter:
                 f"training={self.training_digest[:16]}；未通过独立人工真值验收")
 
     def recognize(self, loaded: LoadedImage, layout: LayoutProfile,
-                  source_declaration: str) -> RecognitionResult:
+                  source_declaration: str, *, timings=None) -> RecognitionResult:
         from .real_cards import extract_glyphs
 
         if layout.style_id != self.style_id:
@@ -99,6 +100,8 @@ class TrainedModelAdapter:
                 f"模型要求样式 {self.style_id!r}，当前为 {layout.style_id!r}；请明确切换模型或样式")
         observations = []
         occupied = set()
+        if timings is not None:
+            timings["detection_start_ns"] = time.perf_counter_ns()
         bgr = rgb_to_bgr(loaded)
         glyphs = extract_glyphs(bgr)
         excluded_corners = 0
@@ -128,6 +131,10 @@ class TrainedModelAdapter:
                         "classification_performed": False, "writes_ledger": False})
             excluded_corners = len(glyphs)-len(retained)
             glyphs = retained
+        if timings is not None:
+            timings["detection_end_ns"] = time.perf_counter_ns()
+            timings["classification_start_ns"] = time.perf_counter_ns()
+            timings["classification_calls"] = len(glyphs)
         # Shared raw extraction plus the model's explicit corner policy, using
         # full image context. Never resize whole-card boxes into glyph inputs.
         for glyph in glyphs:
@@ -172,6 +179,8 @@ class TrainedModelAdapter:
                 face_state_candidate=FACE_SHOWN if accepted else FACE_UNREADABLE,
                 source_declaration=source_declaration, seat_hint=seat_hint, notes=notes,
             ))
+        if timings is not None:
+            timings["classification_end_ns"] = time.perf_counter_ns()
         result = RecognitionResult(
             asset_sha256=loaded.sha256, image_path=str(loaded.path),
             layout_profile_id=layout.layout_profile_id, model_id=self.model_id,

@@ -90,6 +90,7 @@ class VisionReviewWindow(tk.Toplevel):
             length=280, command=lambda _v: None)
         self.scale.pack(side=tk.LEFT, padx=8)
         ttk.Button(video_bar, text="识别本帧", command=self.recognize_current_frame).pack(side=tk.LEFT)
+        ttk.Button(video_bar, text="1倍速实时预览", command=self.open_realtime_preview).pack(side=tk.LEFT, padx=4)
         self.var_video = tk.StringVar(value="未打开录像。录屏请用 NVIDIA / Windows 现成工具。")
         ttk.Label(self, textvariable=self.var_video, wraplength=940).pack(fill=tk.X, padx=8)
         self.var_info = tk.StringVar(value=REVIEW_PENDING)
@@ -322,6 +323,21 @@ class VisionReviewWindow(tk.Toplevel):
         self._render_observations()
         self.app.refresh_vision_banner()
         self.var_info.set(REVIEW_PENDING + "  未确认前账本不变。")
+
+    def open_realtime_preview(self):
+        """The new continuous viewer shares the selected source/model, not ledger writes."""
+        if self.video_reader is None or self.runtime.adapter is None or self.selected_style is None:
+            messagebox.showinfo("实时预览", "请先选择归一化样式、训练模型和本地录像。", parent=self)
+            return
+        try:
+            from ..realtime_preview import RealtimeVideoSource, RealtimePreviewSession
+            from .realtime_preview import RealtimePreviewWindow
+            source = RealtimeVideoSource(self.video_reader.path, self.selected_style,
+                first_frame=int(float(self.var_frame.get())))
+            session = RealtimePreviewSession(source, self.selected_style, self.runtime.adapter)
+            RealtimePreviewWindow(self, session)
+        except Exception as exc:
+            messagebox.showerror("实时预览未启动", str(exc), parent=self)
 
     def _render_observations(self):
         if self._geometry_dialog is not None:
