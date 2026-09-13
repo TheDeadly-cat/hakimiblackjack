@@ -95,11 +95,16 @@ class RealtimePreviewWindow(tk.Toplevel):
         start_when_stopped()
 
     def close(self):
+        self.destroy()
+
+    def destroy(self):
+        # Tk destroys children directly when their owner closes; that route
+        # does not invoke this window's WM_DELETE_WINDOW callback.
         if self._closed:
             return
         self._closed = True
         self.session.stop()
-        self.destroy()
+        super().destroy()
 
     def export(self):
         path = filedialog.asksaveasfilename(parent=self, title="保存本次实时计时记录", defaultextension=".json",

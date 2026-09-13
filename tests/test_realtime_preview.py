@@ -1,4 +1,4 @@
-"""Focused asynchronous preview contracts, without a desktop or ledger."""
+"""Asynchronous preview contracts and optional Tk lifecycle checks; no ledger."""
 import threading
 import time
 import unittest
@@ -115,6 +115,44 @@ class RealtimePreviewTests(unittest.TestCase):
         session.note_rendered_state(3,tracks,packet,1_720_000_000,1.)
         self.assertEqual(len(session.display_updates),2)
         self.assertEqual(session.display_updates[-1]['row_id'],2)
+
+
+class RealtimeWindowLifecycleTests(unittest.TestCase):
+    def test_destroying_preview_or_its_owner_stops_background_work(self):
+        import tkinter as tk
+        from types import SimpleNamespace
+        from blackjack_lab.ui.realtime_preview import RealtimePreviewWindow
+
+        class Session:
+            recognition_fps = 8
+            adapter = SimpleNamespace(identity_text='lifecycle fixture')
+            def __init__(self):
+                self.cancel = threading.Event()
+                self.worker = threading.Thread(target=self.cancel.wait, daemon=True)
+            def start(self):self.worker.start()
+            def stop(self):self.cancel.set()
+
+        for route in ('preview', 'parent', 'root'):
+            with self.subTest(route=route):
+                try:root = tk.Tk()
+                except tk.TclError as exc:self.skipTest(f'Tk unavailable: {exc}')
+                root.withdraw()
+                session = Session()
+                try:
+                    parent = tk.Toplevel(root)
+                    parent.withdraw()
+                    preview = RealtimePreviewWindow(parent, session)
+                    preview.withdraw()
+                    self.assertTrue(session.worker.is_alive())
+                    {'preview': preview, 'parent': parent, 'root': root}[route].destroy()
+                    session.worker.join(.5)
+                    self.assertFalse(session.worker.is_alive(), f'{route} left preview work alive')
+                    self.assertTrue(preview._closed)
+                finally:
+                    session.stop()
+                    session.worker.join(1)
+                    try:root.destroy()
+                    except tk.TclError:pass
 
 
 if __name__=='__main__':unittest.main()
