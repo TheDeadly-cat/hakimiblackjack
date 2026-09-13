@@ -51,7 +51,7 @@
 | comparison-1/rgb-legacy | `7a0f80ea0298bae2f5c866536bfe7a8c9b3d0984031c2ed3be51aaf7f62f87f2` |
 | wgc-baseline-1 | `c4718d2215832431a9af98abc5a6252683f20304e46fffa95b63e372d54bcd11` |
 
-后续边界明确：变化区局部检测、经过验证的可读性判断、完整额外输出真值与物理身份／手牌归属尚未完成；预览没有接通正式人工确认适配器。此前 [新片段事件结果](REALTIME_EVENT_MATRIX_20260913.md) 和 [下角、桌布误收反例](WGC_AND_CURRENT_REGRESSIONS_20260914.md)仍成立。新提示与相等性检查没有消除这些错误，不自动入账。
+后续边界明确：变化区局部检测、经过验证的可读性判断、完整额外输出真值与物理身份／手牌归属尚未完成。本地录像后续已接通 [冻结识别帧到人工核对](REALTIME_MANUAL_HANDOFF_20260914.md)，WGC 人工入口仍未接通。此前 [新片段事件结果](REALTIME_EVENT_MATRIX_20260913.md) 和 [下角、桌布误收反例](WGC_AND_CURRENT_REGRESSIONS_20260914.md)仍成立。新提示与相等性检查没有消除这些错误，不自动入账。
 
 ## 后续窗口销毁修复
 
