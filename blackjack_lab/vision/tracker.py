@@ -93,9 +93,10 @@ class FrameTracker:
                 track.rejected = True
 
     def ingest(self, frame_index: int, video_time_ms: int,
-               detections: Sequence[Detection]) -> List[PhysicalTrack]:
+               detections: Sequence[Detection], *,
+               uncertain_boxes: Sequence[Dict[str, int]] = ()) -> List[PhysicalTrack]:
         live = [t for t in self.tracks if not t.rejected]
-        pairs = self._associate(live, detections)
+        pairs = self._associate(live, detections, uncertain_boxes=uncertain_boxes)
         used_tracks = set()
         used_dets = set()
         for track_i, det_i, _score in pairs:
@@ -149,13 +150,21 @@ class FrameTracker:
         return list(self.tracks)
 
     def _associate(self, tracks: Sequence[PhysicalTrack],
-                   detections: Sequence[Detection]) -> List[Tuple[int, int, float]]:
+                   detections: Sequence[Detection], *,
+                   uncertain_boxes: Sequence[Dict[str, int]] = ()) -> List[Tuple[int, int, float]]:
         scored: List[Tuple[float, int, int]] = []
         for ti, track in enumerate(tracks):
+            # An unresolved glyph at the old location is not a detection or a
+            # new track. It only prevents a nearby new card from borrowing this
+            # track through distance alone when the old corner was filtered.
+            old_location_unresolved = any(
+                bbox_iou(track.bbox, box) >= self.iou_min for box in uncertain_boxes)
             for di, det in enumerate(detections):
                 iou = bbox_iou(track.bbox, det.bbox)
                 dist = _distance(track.bbox, det.bbox)
                 same_region = track.region_id == det.region_id
+                if old_location_unresolved and iou < self.iou_min:
+                    continue
                 if iou >= self.iou_min or (same_region and dist <= self.max_center_distance):
                     score = iou * 10.0 + (1.0 if same_region else 0.0) - dist / 1000.0
                     scored.append((score, ti, di))
@@ -178,7 +187,15 @@ class FrameTracker:
 
     def apply_to_result(self, result: RecognitionResult, frame_index: int,
                         video_time_ms: int) -> RecognitionResult:
-        self.ingest(frame_index, video_time_ms, detections_from_observations(result.observations))
+        uncertain_boxes = [item["bbox"] for item in result.geometry_review
+            if item.get("state") == "uncertain" and item.get("rank") is None
+            and item.get("accepted") is False and item.get("classification_performed") is False
+            and item.get("writes_ledger") is False
+            and item.get("asset_sha256") == result.asset_sha256
+            and item.get("model_id") == result.model_id
+            and item.get("model_digest") == result.model_digest]
+        self.ingest(frame_index, video_time_ms, detections_from_observations(result.observations),
+                    uncertain_boxes=uncertain_boxes)
         rewritten = []
         used = set()
         for obs in result.observations:

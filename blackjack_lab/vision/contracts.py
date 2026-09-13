@@ -161,7 +161,8 @@ class RecognitionResult:
     recognized_at: Optional[float] = None
     clock_note: str = "未知拍摄时钟时不得用模型运行时间冒充采集时间"
     observations: List[CardObservation] = field(default_factory=list)
-    # Evidence only: never fed to tracking, rank metrics, or confirmation IDs.
+    # Never creates a track, rank, or confirmation ID. Its location may veto
+    # distance-only reassignment of an existing track while that glyph is unresolved.
     geometry_review: List[Dict[str, Any]] = field(default_factory=list)
     empty_regions: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)

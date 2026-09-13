@@ -4,7 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from blackjack_lab.vision.contracts import FACE_BACK, FACE_SHOWN
+from blackjack_lab.vision.contracts import (FACE_BACK, FACE_SHOWN, CardObservation,
+    RankHypothesis, RecognitionResult, RECOGNITION_SCHEMA_VERSION, SOURCE_SYNTHETIC)
 from blackjack_lab.vision.deps import cv2_available
 from blackjack_lab.vision.tracker import FrameTracker
 from blackjack_lab.vision.video_contracts import (
@@ -100,6 +101,73 @@ class TestFrameTracker(unittest.TestCase):
         self.assertEqual(replay[0].observation_id, first[0].observation_id)
         self.assertTrue(replay[0].committed)
         self.assertFalse(replay[0].may_write_ledger())
+
+
+class TestUncertainCornerAssociation(unittest.TestCase):
+    @staticmethod
+    def result(entries=(), uncertain=()):
+        result = RecognitionResult("frame", "synthetic.png", "layout", "model", "digest")
+        result.observations = [CardObservation(
+            f"det:{i}", "frame", f"crop:{x}", _box(x), "player_target", "layout", "model", "digest",
+            RECOGNITION_SCHEMA_VERSION, [RankHypothesis(rank, 1.0, rank)] if rank else [],
+            None if rank else "rejected", FACE_SHOWN if rank else "unreadable", SOURCE_SYNTHETIC)
+            for i, (x, rank) in enumerate(entries)]
+        result.geometry_review = [{"bbox": _box(x), "state": "uncertain", "rank": None,
+            "accepted": False, "classification_performed": False, "writes_ledger": False,
+            "asset_sha256": "frame", "model_id": "model", "model_digest": "digest"} for x in uncertain]
+        return result
+
+    def test_new_hit_does_not_inherit_committed_id_from_unresolved_old_corner(self):
+        tracker = FrameTracker()
+        first = tracker.apply_to_result(self.result([(20, "5")]), 0, 0)
+        old_id = first.observations[0].observation_id
+        tracker.mark_committed(old_id)
+        hit = tracker.apply_to_result(self.result([(80, "7")], uncertain=[20]), 1, 40)
+        new_id = hit.observations[0].observation_id
+        self.assertNotEqual(new_id, old_id)
+        self.assertEqual(len(tracker.tracks), 2)
+        self.assertTrue(tracker.tracks[0].committed)
+        self.assertTrue(tracker.tracks[0].occluded)
+        self.assertEqual(tracker.tracks[0].last_seen_frame, 0)
+        self.assertEqual(hit.geometry_review[0]["rank"], None)
+        self.assertEqual([track.observation_id for track in tracker.ledger_candidates()], [new_id])
+        recovered = tracker.apply_to_result(self.result([(21, "5"), (81, "7")]), 2, 80)
+        self.assertEqual([obs.observation_id for obs in recovered.observations], [old_id, new_id])
+        self.assertTrue(tracker.tracks[0].committed)
+
+    def test_uncertain_only_frame_creates_no_observation_track_or_ledger_candidate(self):
+        tracker = FrameTracker()
+        result = tracker.apply_to_result(self.result(uncertain=[20, 80]), 0, 0)
+        self.assertEqual(result.observations, [])
+        self.assertEqual(tracker.tracks, [])
+        self.assertEqual(list(tracker.ledger_candidates()), [])
+
+    def test_overlapping_real_observation_keeps_id_despite_uncertain_nearby_box(self):
+        tracker = FrameTracker()
+        first = tracker.apply_to_result(self.result([(20, "5")]), 0, 0)
+        again = tracker.apply_to_result(self.result([(22, "7")], uncertain=[20]), 1, 40)
+        self.assertEqual(first.observations[0].observation_id, again.observations[0].observation_id)
+        self.assertEqual(len(tracker.tracks), 1)  # A rank fluctuation does not itself create identity.
+
+    def test_unrelated_uncertain_box_does_not_block_split_movement(self):
+        tracker = FrameTracker()
+        first = tracker.ingest(0, 0, [_det(20)])
+        moved = tracker.ingest(1, 40, [_det(200, region="player_split")], uncertain_boxes=[_box(600)])
+        self.assertEqual(len(moved), 1)
+        self.assertEqual(moved[0].observation_id, first[0].observation_id)
+
+    def test_stale_or_classified_hint_cannot_change_current_association(self):
+        for key, value in (("asset_sha256", "old-frame"), ("model_id", "old-model"),
+                           ("model_digest", "old-digest"), ("accepted", True),
+                           ("classification_performed", True), ("writes_ledger", True)):
+            with self.subTest(key=key):
+                tracker = FrameTracker()
+                first = tracker.apply_to_result(self.result([(20, "5")]), 0, 0)
+                second = self.result([(80, "7")], uncertain=[20])
+                second.geometry_review[0][key] = value
+                second = tracker.apply_to_result(second, 1, 40)
+                self.assertEqual(len(tracker.tracks), 1)
+                self.assertEqual(first.observations[0].observation_id, second.observations[0].observation_id)
 
 
 class TestVideoPath(unittest.TestCase):
