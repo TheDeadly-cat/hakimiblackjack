@@ -23,6 +23,7 @@ from .vision.live_input import LiveStyle, SOURCE_LIVE_CAPTURE, frame_to_loaded, 
 from .vision.temporal_preview import TemporalPreviewTracker, POLICY_VERSION, display_state
 from .vision.model_adapter import RecognitionRuntime
 from .vision.video_io import VideoReader
+from .vision.region_observer import RegionObserver, inference_fingerprints, same_as_completed_inference, SCHEDULING_POLICY
 
 
 class RealtimeVideoSource:
@@ -48,6 +49,12 @@ class RealtimeVideoSource:
         self.skipped_source_frames = 0
         self._stop = threading.Event()
         self._thread = None
+        self._region_observer = None
+
+    def set_region_observer(self, observer):
+        if self._thread is not None:
+            raise RuntimeError('Attach region observation before starting playback')
+        self._region_observer = observer
 
     def start(self):
         if self._thread is not None:
@@ -60,6 +67,9 @@ class RealtimeVideoSource:
                           last_frame=self.last_frame,preview_fps=self.preview_fps)
 
     def _run(self):
+        if self._stop.is_set():
+            self.finished=True
+            return
         try:
             with VideoReader(self.path) as reader:
                 self.asset = reader.asset
@@ -86,8 +96,10 @@ class RealtimeVideoSource:
                 while not self._stop.is_set():
                     loaded = first if index == self.first_frame else reader.advance(index)
                     self.skipped_source_frames += max(0, index-previous-1)
-                    self.intake.offer(rgb_to_bgr(loaded),
+                    packet = self.intake.offer(rgb_to_bgr(loaded),
                         media_time_ns=round(index/self.asset.fps*1_000_000_000))
+                    if packet is not None and self._region_observer is not None:
+                        self._region_observer.observe(packet,self.token)
                     previous = index
                     if index >= last:
                         break
@@ -115,6 +127,7 @@ class RealtimeVideoSource:
 
     def stop(self):
         self._stop.set()
+        if self._thread is None:self.finished=True
         if self.intake:
             self.intake.mark_stopped()
 
@@ -147,6 +160,12 @@ class RealtimeWgcSource:
         self._lock=threading.Lock()
         self._configured_size=None
         self._thread=None
+        self._region_observer=None
+
+    def set_region_observer(self, observer):
+        if self._thread is not None:
+            raise RuntimeError('Attach region observation before starting capture')
+        self._region_observer=observer
 
     def clone(self):
         return type(self)(self.hwnd,self.style,preview_fps=self.preview_fps)
@@ -157,6 +176,9 @@ class RealtimeWgcSource:
         self._thread.start()
 
     def _run(self):
+        if self._stop.is_set():
+            self.finished=True
+            return
         from .capture.wgc_source import open_window_source
         from .capture.contracts import STATUS_DENIED,STATUS_SOURCE_LOST
         try:
@@ -170,6 +192,9 @@ class RealtimeWgcSource:
                 if status in (STATUS_DENIED,STATUS_SOURCE_LOST):
                     self.error='窗口捕获停止：'+status
                     break
+                if self._region_observer is not None:
+                    packet=self.preview()
+                    if packet is not None:self._region_observer.observe(packet,self.token)
         except Exception as exc:
             self.error=f'{type(exc).__name__}: {exc}'
         finally:
@@ -201,6 +226,7 @@ class RealtimeWgcSource:
     def stop(self):
         # UI only invalidates the intake; the background owner releases WGC.
         self._stop.set()
+        if self._thread is None:self.finished=True
         if self.intake:
             self.intake.new_epoch('窗口预览停止')
             self.intake.mark_stopped()
@@ -219,6 +245,7 @@ class PreviewResult:
     row_id: int
     display_ns: int | None = None
     tracks: list = field(default_factory=list)
+    region_observation: dict | None = None
 
     def display_tracks(self, now_ns):
         return [display_state(row, now_ns) for row in self.tracks]
@@ -233,13 +260,14 @@ class PreviewResult:
             "tracks": [dict(row) for row in self.tracks],
             "geometry_review_count": len(self.recognition.geometry_review),
             "model_id": self.recognition.model_id, "model_digest": self.recognition.model_digest,
+            "region_observation": deepcopy(self.region_observation),
             "writes_ledger": False}
 
 
 class RealtimePreviewSession:
     """Single resident model, latest-frame inference and bounded timing evidence."""
 
-    def __init__(self, source, style, adapter, *, recognition_fps=8.0, evidence_limit=1200):
+    def __init__(self, source, style, adapter, *, recognition_fps=8.0, evidence_limit=1200, observe_regions=True):
         if not 1 <= recognition_fps <= 60 or evidence_limit < 1:
             raise ValueError("Invalid realtime preview settings")
         self.source, self.style, self.adapter = source, style, adapter
@@ -265,6 +293,13 @@ class RealtimePreviewSession:
         self.evidence_evictions = 0
         self.source_display_evictions = 0
         self._token = None
+        self.region_observer = (RegionObserver(style,evidence_limit=evidence_limit,
+            expected_size=getattr(adapter,'expected_input_size',None)) if observe_regions else None)
+        if hasattr(source,'set_region_observer'):source.set_region_observer(self.region_observer)
+        self._completed_roi_hashes = {}
+        self._last_input_arrival_ns = None
+        self.unchanged_regions_skipped = 0
+        self.input_gaps = 0
 
     def start(self):
         if self._thread is not None:
@@ -274,6 +309,8 @@ class RealtimePreviewSession:
 
     def _run(self):
         try:
+            if self.region_observer is not None:self.region_observer.warmup()
+            if self._stop.is_set():return
             self.source.start()
             deadline = 0
             while not self._stop.is_set():
@@ -295,12 +332,40 @@ class RealtimePreviewSession:
                     self._token = packet.token()
                     self.runtime.invalidate('实时来源代次改变')
                     self.tracker = TemporalPreviewTracker()
+                    self._completed_roi_hashes = {}
+                    self._last_input_arrival_ns = None
                     with self._lock:
                         self._latest = None
-                if packet.is_black or packet.is_repeat:
+                timings = {"picked_ns": picked, "source_quality_start_ns": time.perf_counter_ns()}
+                quality = (self.region_observer.observe(packet,self.source.token,origin='inference')
+                           if self.region_observer is not None else None)
+                timings['source_quality_end_ns']=time.perf_counter_ns()
+                if self.region_observer is not None and quality is None:
+                    self.stale_results += 1
+                    continue
+                if (self.region_observer is not None and self._last_input_arrival_ns is not None and packet.observed_monotonic_ns-
+                        self._last_input_arrival_ns > self.tracker.identity_ttl_ns):
+                    self._completed_roi_hashes = {}
+                    self.tracker.invalidate_observation_gap()
+                    self.input_gaps += 1
+                    with self._lock:self._latest=None
+                self._last_input_arrival_ns=packet.observed_monotonic_ns
+                if packet.is_black:
+                    self._completed_roi_hashes = {}
+                    if self.region_observer is not None:
+                        self.tracker.invalidate_observation_gap()
+                        with self._lock:self._latest=None
                     self.repeat_or_black += 1
                     continue
-                timings = {"picked_ns": picked, "preprocessing_start_ns": time.perf_counter_ns()}
+                if quality is not None and same_as_completed_inference(quality,self._completed_roi_hashes):
+                    # Reuse the existing displayed snapshot and its expiry; no
+                    # new rank votes, identity, freshness or ready timestamp.
+                    self.unchanged_regions_skipped += 1
+                    continue
+                if quality is None and packet.is_repeat:
+                    self.repeat_or_black += 1
+                    continue
+                timings['preprocessing_start_ns']=time.perf_counter_ns()
                 loaded = frame_to_loaded(packet)
                 layout = layout_for_frame(self.style, packet.width, packet.height)
                 timings["preprocessing_end_ns"] = time.perf_counter_ns()
@@ -316,15 +381,18 @@ class RealtimePreviewSession:
                 for observation in result.observations:
                     observation.captured_at=packet.observed_at
                 timings["tracking_start_ns"] = time.perf_counter_ns()
+                sample_identity=(quality['detector_context_digest'] if quality is not None
+                                 else packet.frame_content_signature)
                 states = self.tracker.update(result, packet.pixels, packet.observed_monotonic_ns,
-                    (packet.token(), packet.frame_content_signature))
+                    (packet.token(), sample_identity))
                 timings["candidate_ready_ns"] = time.perf_counter_ns()
                 if self._stop.is_set() or packet.token() != self.source.token():
                     self.stale_results += 1
                     continue
                 self.processed += 1
-                row = PreviewResult(packet, result, timings, self.processed, tracks=states)
+                row = PreviewResult(packet, result, timings, self.processed, tracks=states,region_observation=quality)
                 with self._lock:
+                    if quality is not None:self._completed_roi_hashes=inference_fingerprints(quality)
                     self._latest = row
                     if len(self.records) == self.records.maxlen:
                         self.evidence_evictions += 1
@@ -356,6 +424,14 @@ class RealtimePreviewSession:
     @property
     def stopped(self):
         return self._stop.is_set()
+
+    def latest_region_observation(self):
+        if self.stopped or self.region_observer is None:return None
+        row=self.region_observer.latest(self.source.token)
+        if row is not None:
+            with self._lock:
+                row['same_as_completed_inference']=same_as_completed_inference(row,self._completed_roi_hashes)
+        return row
 
     def note_source_display(self, packet, submitted_ns):
         with self._lock:
@@ -413,6 +489,9 @@ class RealtimePreviewSession:
                 "evidence_evictions": self.evidence_evictions, "finished": self.finished,
                 "source_display_evictions": self.source_display_evictions,
                 "display_update_evictions": self.display_update_evictions,
+                "region_observation": self.region_observer.snapshot() if self.region_observer is not None else None,
+                "scheduling_policy": SCHEDULING_POLICY if self.region_observer is not None else 'fixed-rate-legacy-repeat-1',
+                "unchanged_regions_skipped": self.unchanged_regions_skipped, "input_gaps": self.input_gaps,
                 "track_capacity_drops": self.tracker.capacity_drops,
                 "error": self.error or getattr(self.source, "error", None),
                 "model_id": self.adapter.model_id, "model_digest": self.adapter.digest,

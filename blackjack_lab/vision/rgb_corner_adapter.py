@@ -23,6 +23,7 @@ def require_calibrated_input(width,height):
 
 
 class RgbCornerAdapter(TrainedModelAdapter):
+    expected_input_size = (1850,520)
     def __init__(self, rank_directory, detector_directory, *, style_id, device='cuda'):
         super().__init__(rank_directory,style_id=style_id)
         if self.model.orientation_policy!='upright_upper':

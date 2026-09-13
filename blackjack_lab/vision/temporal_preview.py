@@ -111,6 +111,11 @@ class TemporalPreviewTracker:
         self.sequence = self.capacity_drops = 0
         self._last_sample = None
 
+    def invalidate_observation_gap(self):
+        """Forget uncertain state without recycling IDs within this session."""
+        self.tracks.clear()
+        self._last_sample = None
+
     def _cost(self, track, box, appearance, now_ns):
         import numpy as np
         gap = (now_ns-track.last_seen_ns)/1e9

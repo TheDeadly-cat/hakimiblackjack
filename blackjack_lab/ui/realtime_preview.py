@@ -39,6 +39,8 @@ class RealtimePreviewWindow(tk.Toplevel):
         if on_review is not None:
             ttk.Button(bar, text="送当前结果到人工核对", command=self.review).pack(side=tk.RIGHT, padx=6)
         ttk.Label(self, textvariable=self.var_metrics, padding=(8, 4)).pack(fill=tk.X)
+        self.var_quality=tk.StringVar(value='正在观察标定区域的画面变化…')
+        ttk.Label(self,textvariable=self.var_quality,padding=(8,2),wraplength=1400).pack(fill=tk.X)
         ttk.Label(self, text="橙色＝本帧候选　绿色＝短时稳定　灰色＝待核或暂失　稳定值会过期；正式记录仍需人工确认。",
             padding=(8, 2)).pack(fill=tk.X)
         self.canvas = tk.Canvas(self, background="#10202a", highlightthickness=0, height=410)
@@ -80,7 +82,7 @@ class RealtimePreviewWindow(tk.Toplevel):
             source=old.source.clone()
             adapter=self.adapters[self.var_detector.get()]
             self.session=RealtimePreviewSession(source,old.style,adapter,recognition_fps=float(self.var_fps.get()),
-                evidence_limit=old.records.maxlen)
+                evidence_limit=old.records.maxlen,observe_regions=old.region_observer is not None)
             self.var_model.set(adapter.identity_text)
             self._frame_key=None
             self._row_id=None
@@ -205,6 +207,29 @@ class RealtimePreviewWindow(tk.Toplevel):
             for iid in self.table.get_children():
                 self.table.delete(iid)
         report=self.session.source.report()
+        quality=self.session.latest_region_observation()
+        if self.session.region_observer is None:
+            self.var_quality.set('区域观察未启用；使用固定频率对照路径')
+        elif self.session.stopped:
+            self.var_quality.set('区域观察已停止；旧结果不作为新的证据')
+        elif self.session.finished:
+            self.var_quality.set(f'区域观察已结束；跳过 {self.session.unchanged_regions_skipped} 次相同画面的重复识别')
+        elif quality is not None:
+            age=max(0,(now-quality['observed_monotonic_ns'])/1e6)
+            states=[r['detail_state'] for r in quality['regions']]
+            if quality['calibrated_size_matches'] is False:
+                message='来源尺寸与检测器标定不一致，请恢复已标定来源'
+            elif age>550:
+                message='暂未收到新的区域画面；旧结果仍会过期'
+            elif 'little_detail' in states:
+                message='部分区域缺少画面细节，请检查来源；这不表示桌面没有牌'
+            elif 'detail_decreased' in states:
+                message='部分区域的画面细节明显下降，请检查清晰度；候选仍须核对'
+            elif quality['same_as_completed_inference']:
+                message='识别画面与上次相同；复用已有显示，不增加稳定票数'
+            else:
+                message='收到新画面；按最新帧进行识别'
+            self.var_quality.set(message+f'　已跳过重复识别 {self.session.unchanged_regions_skipped} 次')
         media=(packet.media_time_ns/1_000_000_000) if packet is not None and packet.media_time_ns is not None else 0
         is_live=getattr(self.session.source,'is_live',False)
         if is_live:

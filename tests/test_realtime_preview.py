@@ -72,7 +72,7 @@ class RealtimePreviewTests(unittest.TestCase):
                 now=time.perf_counter_ns()
                 timings.update(detection_start_ns=now,detection_end_ns=now,classification_start_ns=now,classification_end_ns=now)
                 return RecognitionResult(loaded.sha256,str(loaded.path),layout.layout_profile_id,'test','test')
-        source=Source();session=RealtimePreviewSession(source,style,Adapter(),recognition_fps=60)
+        source=Source();session=RealtimePreviewSession(source,style,Adapter(),recognition_fps=60,observe_regions=False)
         session.start();source.intake.offer(np.full((10,10,3),100,dtype=np.uint8))
         self.assertTrue(entered.wait(1))
         source.intake.new_epoch('crop changed');release.set()
