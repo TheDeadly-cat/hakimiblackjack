@@ -155,6 +155,9 @@ class QuickRecordPanel(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.app.ctrl.add_context_listener(self.context_changed)
         self.refresh()
+        # Install the observation style before mapping, not after a first
+        # frame that could activate the newly created tool window.
+        self.native_status = style_owned_window(self, editing=False)
         self.deiconify()
         self.native_status = style_owned_window(self, editing=False)
         if register_hotkey:
