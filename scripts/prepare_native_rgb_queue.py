@@ -19,9 +19,13 @@ def prepare(queue,bundle_path,output):
     if output.exists():raise ValueError('Preserve earlier queue; use a new directory')
     original=load_queue(queue);bundle=json.loads(bundle_path.read_text(encoding='utf-8'))
     sources={s['source_sha256']:s for s in bundle['sessions']}
-    frames={};checked=[]
+    frames={};checked=[];identifiers=set()
     # Validate every source before producing a new queue.
     for item in original:
+        if (not item.crop_id or any(c in item.crop_id for c in '/\\:')
+                or item.crop_id in identifiers):
+            raise ValueError('RGB output requires unique plain crop identifiers')
+        identifiers.add(item.crop_id)
         spec=sources[item.source_sha256]
         path=(Path(spec['session'])/'frames'/item.frame).resolve()
         frame_root=(Path(spec['session'])/'frames').resolve()
