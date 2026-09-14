@@ -11,7 +11,8 @@ def main():
     parser.add_argument('--plan',type=Path,required=True);parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args()
     plan_bytes=args.plan.read_bytes();plan=json.loads(plan_bytes)
-    if plan['schema']!='rank-cnn-experiment-1':raise ValueError('Unknown experiment plan')
+    if plan['schema'] not in ('rank-cnn-experiment-1','rank-cnn-reviewed-update-1'):
+        raise ValueError('Unknown experiment plan')
     if args.output.exists():raise ValueError('Preserve existing experiment; choose a new output directory')
     from scripts.train_rank_classifier import _load_inputs,_training_digest,_sha256
     from blackjack_lab.vision.glyph_dataset import labeled_only,LABEL_RANKS,label_counts
@@ -34,7 +35,21 @@ def main():
     if any(i.label_provenance!='human_reviewed' for i in items):raise ValueError('Unreviewed label in CNN inputs')
     train=labeled_only(items,split='train')
     if _training_digest(train)!=plan['training_digest']:raise ValueError('Training content or provenance changed')
-    if len(train)!=270 or set(label_counts(train))!=set(LABEL_RANKS):raise ValueError('Training coverage changed')
+    if plan['schema']=='rank-cnn-reviewed-update-1':
+        update=plan['review_update']
+        if _sha256(update['path'])!=update['sha256']:raise ValueError('Rank review update receipt changed')
+        receipt=json.loads(Path(update['path']).read_text(encoding='utf-8'))
+        train_queues=[s for s in plan['queues'] if s['split']=='train']
+        if (receipt['schema']!='reviewed-rank-update-1' or len(train_queues)!=1
+                or receipt['queue_sha256']!=train_queues[0]['sha256']
+                or receipt['training_digest']!=plan['training_digest']
+                or receipt['labels']!=label_counts(train)
+                or {i.source_sha256 for i in train}!={receipt['source_sha256']}):
+            raise ValueError('Reviewed rank update differs from frozen training content')
+        expected_count=receipt['items']
+    else:expected_count=270
+    if len(train)!=expected_count or set(label_counts(train))!=set(LABEL_RANKS):
+        raise ValueError('Training coverage changed')
     for source in plan['frozen_artifacts']:
         if _sha256(source['path'])!=source['sha256']:raise ValueError('Frozen baseline artifact changed')
     os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG',':4096:8')
