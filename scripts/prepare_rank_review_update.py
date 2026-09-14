@@ -127,6 +127,8 @@ def main():
     plan_path=args.detector/'plan.json'
     manifest=json.loads((args.detector/'detector-manifest.json').read_text(encoding='utf-8'))
     plan=json.loads(plan_path.read_text(encoding='utf-8'))
+    if len(plan.get('training_source_sha256s',[]))>1:
+        raise ValueError('This rank preparation requires a single-source detector selection; do not collapse multi-source review provenance')
     annotation=json.loads(args.annotations.read_text(encoding='utf-8'))
     if (args.supplement_crop_observations
             and annotation.get('review_scope')!='new_crop_confirmation_only_not_temporal_truth'):

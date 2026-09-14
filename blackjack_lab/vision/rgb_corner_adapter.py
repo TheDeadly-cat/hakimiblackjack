@@ -49,7 +49,7 @@ class RgbCornerAdapter(TrainedModelAdapter):
         if self.model.orientation_policy!='upright_upper':
             raise ImageRejected('RGB 上角原型需要明确的正向点数模型')
         self.rank_model_id,self.rank_model_digest=self.model_id,self.digest
-        from .rgb_corner_model import ARCHITECTURE,create_model
+        from .rgb_corner_model import ARCHITECTURE,create_model,detector_training_sources
         import torch
         source=Path(detector_directory)
         try:
@@ -62,6 +62,7 @@ class RgbCornerAdapter(TrainedModelAdapter):
                     or hashlib.sha256(blob).hexdigest()!=manifest['checkpoint_sha256']
                     or hashlib.sha256(plan).hexdigest()!=manifest['plan_sha256']):
                 raise ValueError('Detector identity mismatch')
+            detector_training_sources(manifest)
             checkpoint=torch.load(io.BytesIO(blob),map_location='cpu',weights_only=True)
             if checkpoint['architecture']!=ARCHITECTURE:raise ValueError('Architecture mismatch')
             if device not in ('cpu','cuda'):raise ValueError('Explicit device must be cpu or cuda')

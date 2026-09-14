@@ -18,6 +18,22 @@ def digest(path):
     with Path(path).open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
 
 
+def select_training_sessions(bundle, training_titles, validation_title, reserved_source):
+    """Keep every training file out of validation/reserved evaluation, including aliases."""
+    sessions=bundle['sessions'];by_title={s['title']:s for s in sessions}
+    if (len(by_title)!=len(sessions) or not training_titles
+            or len(set(training_titles))!=len(training_titles)):
+        raise ValueError('Ambiguous or duplicate training session selection')
+    try:
+        training=[by_title[name] for name in training_titles];validation=by_title[validation_title]
+    except KeyError as exc:raise ValueError('Unknown training or validation session') from exc
+    sources=[s['source_sha256'] for s in training+[validation]]
+    if (any(not isinstance(s,str) or not s for s in sources+[reserved_source])
+            or len(set(sources))!=len(sources) or reserved_source in sources):
+        raise ValueError('All training, validation and reserved sources must be disjoint')
+    return training,validation
+
+
 def apply_orientation_review(entries, metadata, document):
     """Apply an attributed training-only overlay; never rewrite human rank labels."""
     if (document.get('schema')!='detector-orientation-review-1'
@@ -212,11 +228,15 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--bundle',type=Path,required=True)
     p.add_argument('--train-session',required=True)
+    p.add_argument('--additional-train-session',action='append',default=[],
+                   help='Explicitly promote an additional reviewed development source to training')
     p.add_argument('--validation-session',required=True)
     p.add_argument('--negative-queue',action='append',default=[],type=Path)
     p.add_argument('--negative-regions',action='append',default=[],type=Path)
     p.add_argument('--orientation-review',type=Path,
                    help='Explicit assistant-reviewed training overlay; source labels remain unchanged')
+    p.add_argument('--additional-orientation-review',type=Path,action='append',default=[],
+                   help='Source-bound orientation overlay for an additional training session')
     p.add_argument('--reserved-source',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--steps',type=int,default=1200)
@@ -229,9 +249,8 @@ def main():
     if args.steps<1 or args.batch_size<1 or not 0<args.threshold<1:raise ValueError('Invalid training settings')
     bundle=json.loads(args.bundle.read_text(encoding='utf-8'))
     reserved=json.loads(args.reserved_source.read_text(encoding='utf-8'))['sha256']
-    chosen=[next(s for s in bundle['sessions'] if s['title']==name)['source_sha256']
-            for name in (args.train_session,args.validation_session)]
-    if chosen[0]==chosen[1] or reserved in chosen:raise ValueError('Training, validation and reserved source must be disjoint')
+    selected,_=select_training_sessions(bundle,[args.train_session,*args.additional_train_session],
+                                       args.validation_session,reserved)
     train,train_meta=read_entries(bundle,args.train_session,args.negative_queue,args.negative_regions)
     orientation_review=None
     if args.orientation_review:
@@ -239,6 +258,23 @@ def main():
         train,train_meta=apply_orientation_review(train,train_meta,document)
         orientation_review=dict(path=str(args.orientation_review.resolve()),sha256=digest(args.orientation_review),
                                 provenance=document['provenance'],human_confirmed=False)
+    extra_reviews={}
+    for path in args.additional_orientation_review:
+        document=json.loads(path.read_text(encoding='utf-8'));source=document.get('source_sha256')
+        if source in extra_reviews:raise ValueError('Duplicate additional orientation review source')
+        extra_reviews[source]=(path,document)
+    additional_training=[]
+    for session in selected[1:]:
+        extra,metadata=read_entries(bundle,session['title'],args.negative_queue)
+        review=None
+        if session['source_sha256'] in extra_reviews:
+            path,document=extra_reviews.pop(session['source_sha256'])
+            extra,metadata=apply_orientation_review(extra,metadata,document)
+            review=dict(path=str(path.resolve()),sha256=digest(path),
+                        provenance=document['provenance'],human_confirmed=False)
+        if not metadata['positives']:raise ValueError('Additional training source has no usable upper targets')
+        train.extend(extra);additional_training.append(dict(metadata=metadata,orientation_review=review))
+    if extra_reviews:raise ValueError('Orientation review does not belong to an additional training source')
     validation,val_meta=read_entries(bundle,args.validation_session,[])
     if any(e['image'].shape[:2]!=(520,1850) for e in train+validation):
         raise ValueError('This prototype is calibrated to native 1850x520 material only')
@@ -247,6 +283,11 @@ def main():
     from blackjack_lab.vision.rgb_corner_model import ARCHITECTURE,create_model,training_loss
     args.output.mkdir(parents=True)
     spec=dict(architecture=ARCHITECTURE,style_id='navy-live-felt-v1',train=train_meta,validation=val_meta,reserved_source_sha256=reserved,
+              additional_training=additional_training,
+              training_source_sha256s=[s['source_sha256'] for s in selected],
+              training_totals=dict(sources=len(selected),frames=len(train),
+                                   positives=sum(len(e['positives']) for e in train),
+                                   negatives=sum(len(e['negatives']) for e in train)),
               steps=args.steps,batch_size=args.batch_size,seed=args.seed,threshold=args.threshold,
               initialization='torchvision MobileNet_V3_Small_Weights.IMAGENET1K_V1, truncated features 0..8',
               policy='Existing selected positive boxes, explicit junk, separately attributed assistant-reviewed empty/lower regions and explicitly complete frames receive loss; all other pixels ignored. Human rank review does not establish orientation truth.',
@@ -257,7 +298,8 @@ def main():
               orientation_review=orientation_review,
               training_frames=[{k:v for k,v in e.items() if k!='image'} for e in train])
     (args.output/'plan.json').write_text(json.dumps(spec,ensure_ascii=False,indent=2),encoding='utf-8')
-    print(json.dumps(dict(train=train_meta,validation=val_meta),ensure_ascii=False),flush=True)
+    print(json.dumps(dict(train=train_meta,additional_training=additional_training,
+                          training_totals=spec['training_totals'],validation=val_meta),ensure_ascii=False),flush=True)
     if args.prepare_only:return
     import numpy as np
     import torch
@@ -298,7 +340,8 @@ def main():
     manifest=dict(schema='rgb-index-detector-1',architecture=ARCHITECTURE,style_id=spec['style_id'],
                   checkpoint_sha256=digest(checkpoint),plan_sha256=digest(args.output/'plan.json'),
                   threshold=args.threshold,rank_model_changed=False,training_steps=args.steps,
-                  source_sha256=train_meta['source_sha256'],reserved_source_sha256=reserved,
+                  source_sha256=train_meta['source_sha256'] if len(selected)==1 else None,
+                  training_source_sha256s=spec['training_source_sha256s'],reserved_source_sha256=reserved,
                   parameter_count=report['parameter_count'],validation_scope=report['scope'])
     (args.output/'detector-manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps({k:v for k,v in report.items() if k not in ('rows','training_trace')},ensure_ascii=False),flush=True)

@@ -16,6 +16,7 @@ from blackjack_lab.vision.rgb_corner_adapter import RgbCornerAdapter
 from blackjack_lab.vision.contracts import LayoutProfile, RegionBox, SOURCE_OBSERVER_VIDEO
 from blackjack_lab.vision.image_io import LoadedImage
 from blackjack_lab.vision.tracker import bbox_iou
+from blackjack_lab.vision.rgb_corner_model import detector_training_sources
 
 
 def score(observations, targets, ranks):
@@ -59,7 +60,7 @@ def main():
                 detector_plan_sha256=adapters['rgb'].detector_manifest['plan_sha256'],sessions=[])
     for title in args.sessions:
         entries,meta=read_entries(bundle,title,[])
-        if meta['source_sha256']==adapters['rgb'].detector_manifest['source_sha256']:
+        if meta['source_sha256'] in detector_training_sources(adapters['rgb'].detector_manifest):
             raise ValueError('Paired evaluation must not use detector training source')
         spec=next(s for s in bundle['sessions'] if s['title']==title)
         annotation=json.loads(Path(spec['annotations']).read_text(encoding='utf-8'))

@@ -13,6 +13,19 @@ TILE_SIZE = 320
 TILE_STEP = 160
 
 
+def detector_training_sources(manifest):
+    """Read both legacy and explicit multi-source metadata without dropping a source."""
+    primary=manifest.get('source_sha256')
+    sources=manifest.get('training_source_sha256s')
+    if sources is None:sources=[primary]
+    if (not isinstance(sources,list) or not sources
+            or any(not isinstance(s,str) or not s for s in sources)
+            or len(set(sources))!=len(sources)
+            or (primary is not None and primary not in sources)):
+        raise ValueError('Invalid detector training source identities')
+    return frozenset(sources)
+
+
 def create_model(*, pretrained=False):
     import torch
     from torch import nn
