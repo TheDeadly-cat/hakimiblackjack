@@ -184,6 +184,9 @@ class TableState:
         if seat_name != DEALER and seat_name not in self.participants:
             raise TableError("该座位本轮未参与，请在开轮时选择参与座位")
         seat = self.seat(seat_name)
+        if hand_id and any(h.hand_id == hand_id for s in [self.dealer, *self.players.values()]
+                           if s is not seat for h in s.hands):
+            raise TableError("手牌身份属于其他座位，请选择目标座位自己的手牌")
         card_rank = UNKNOWN if hidden else rank
         card = Card(rank=card_rank, suit=suit, track_id=track_id, event_id=event_id)
         if not seat.hands:

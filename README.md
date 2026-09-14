@@ -6,6 +6,8 @@
 
 ## 开始使用
 
+辅助记牌开发版：双击 **Start_Assisted_Recording.cmd**，或在主窗口点击“悬浮记牌”。可用置顶小面板快速补牌、人工确认连续候选、回看原图及修正账本；默认不自动入账。操作方法、录像压力检查和尚未完成的全屏/人工效率验收见 [辅助记牌工作台](docs/ASSISTED_RECORDING_20260914.md)。
+
 Windows 64 位 / Python 3.10+（含 Tkinter）。Python 主程序使用标准库；分牌数值程序另使用系统 .NET Framework 4 编译器和运行时，无新增 pip 运行依赖、API Key、网络服务或下载步骤。目标验收环境为 Windows 11 / Python 3.14.6；分牌加速器当前仅交付 Windows。
 
 双击 **启动界面.bat**，或在项目根目录运行：

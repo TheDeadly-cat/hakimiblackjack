@@ -114,6 +114,7 @@ class BlackjackLabApp(tk.Tk):
         self._hand_ids = {}
         self.vision_session = None
         self._vision_win = None
+        self._quick_panel = None
 
         self._build_top()
         self._build_body()
@@ -364,6 +365,8 @@ class BlackjackLabApp(tk.Tk):
             ("导入 JSON / CSV", self.act_import), ("恢复历史会话", self.act_recover),
             ("备份数据库", self.act_backup), ("旧会话诊断", self.act_diagnose),
             ("识牌核对", self.act_open_vision),
+            ("悬浮记牌", self.act_quick_record),
+            ("牌记录详细纠错", self.act_detailed_card_correction),
             ("刷新界面", self.act_refresh),
         ]:
             ttk.Button(more, text=text, command=cmd).pack(side=tk.LEFT, padx=3)
@@ -437,6 +440,27 @@ class BlackjackLabApp(tk.Tk):
         from .vision_panel import open_vision_window
         open_vision_window(self)
         self.refresh_vision_banner()
+
+    def act_quick_record(self):
+        from .quick_record_panel import QuickRecordPanel
+        if self._quick_panel is None or not self._quick_panel.winfo_exists():
+            self._quick_panel = QuickRecordPanel(self)
+        return self._quick_panel
+
+    def act_detailed_card_correction(self):
+        try:
+            event = self._selected_event()
+            if event.etype == CARD_REVEALED:
+                event = self.ctrl.ledger._find(event.payload["target_event_id"])
+            if event.etype != CARD_DEALT:
+                raise LedgerError("请先选中一条发牌或揭示事件")
+            panel = self.act_quick_record()
+            panel.work.history(event.event_id)
+            panel.refresh()
+            if not panel.expanded:
+                panel.toggle()
+        except Exception as exc:
+            self.fail(exc)
 
     @tracked_operation
     def act_refresh(self):
@@ -1073,6 +1097,8 @@ class BlackjackLabApp(tk.Tk):
         return status
 
     def on_close(self):
+        if self._quick_panel is not None:
+            self._quick_panel.destroy()
         win = getattr(self, "_vision_win", None)
         if win is not None:
             try:

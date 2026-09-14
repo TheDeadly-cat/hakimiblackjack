@@ -35,7 +35,7 @@ class LedgerError(Exception):
 
 
 CORRECTABLE_FIELDS = {
-    CARD_DEALT: {"rank", "suit", "face_state"},
+    CARD_DEALT: {"rank", "suit", "face_state", "seat", "hand_id", "withdrawn"},
     CARD_REVEALED: {"rank", "suit"},
     BURN_CARDS: {"count", "note"},
     OBSERVATION_GAP: {"reason", "resolved"},
@@ -60,6 +60,7 @@ class ShoeSegment:
     round_id: Optional[str] = None
     unresolved: Dict[str, dict] = field(default_factory=dict)
     unallocated_unknown: int = 0
+    round_tables: Dict[str, TableState] = field(default_factory=dict)
 
 
 @dataclass
@@ -155,9 +156,8 @@ class EventLedger:
         for i, ev in enumerate(self.events):
             if ev.etype == SHOE_CREATED:
                 start = i
-        voided = self._voided_ids()
         for ev in self.events[start:]:
-            if ev.event_id in voided or ev.etype != CARD_DEALT:
+            if ev.etype != CARD_DEALT or self.is_voided(ev.event_id):
                 continue
             if ev.payload.get("track_id") == track_id:
                 return True
@@ -210,10 +210,11 @@ class EventLedger:
         target = self._find(target_event_id)
         if target.etype != CARD_DEALT:
             raise LedgerError("只能揭示发牌事件")
+        effective = self.effective_payload(target_event_id)
         payload = {
             "target_event_id": target_event_id,
-            "seat": target.payload["seat"],
-            "hand_id": target.payload.get("hand_id"),
+            "seat": effective["seat"],
+            "hand_id": effective.get("hand_id"),
             "track_id": target.payload.get("track_id"),
             "rank": rank, "suit": suit,
         }
@@ -286,7 +287,9 @@ class EventLedger:
         target = self._find(target_event_id)
         allowed = CORRECTABLE_FIELDS
         if target.etype not in allowed or not payload_fix or set(payload_fix) - allowed[target.etype]:
-            raise LedgerError("仅允许纠正牌面/花色/未知状态、烧牌、缺口或检查结果；规则修改请新建牌靴")
+            raise LedgerError("仅允许纠正牌面/归属/重复发牌、烧牌、缺口或检查结果；规则修改请新建牌靴")
+        if set(payload_fix) & {"seat", "hand_id", "withdrawn"} and not reason.strip():
+            raise LedgerError("修正归属或撤回重复牌必须填写原因")
         if self.is_voided(target_event_id):
             raise LedgerError("已撤销事件不可纠错")
         payload = {
@@ -334,9 +337,14 @@ class EventLedger:
                 fix = ev.payload.get("payload_fix")
                 if original.etype not in CORRECTABLE_FIELDS or not isinstance(fix, dict) or not fix or set(fix) - CORRECTABLE_FIELDS[original.etype]:
                     raise LedgerError("纠错包含不允许改写的身份、规则或操作字段")
-                for name in ("resolved", "invalidated"):
+                for name in ("resolved", "invalidated", "withdrawn"):
                     if name in fix and type(fix[name]) is not bool:
                         raise LedgerError("纠错状态必须为布尔值")
+                for name in ("seat", "hand_id"):
+                    if name in fix and (not isinstance(fix[name], str) or not fix[name].strip()):
+                        raise LedgerError("纠错归属必须使用明确的座位和手牌身份")
+                if set(fix) & {"seat", "hand_id", "withdrawn"} and not ev.payload.get("reason", "").strip():
+                    raise LedgerError("修正归属或撤回重复牌必须填写原因")
                 if "count" in fix and (type(fix["count"]) is not int or fix["count"] < 0):
                     raise LedgerError("烧牌纠错数量必须为非负整数")
                 if "observation_status" in fix and fix["observation_status"] not in OBSERVATION_STATUSES:
@@ -357,6 +365,8 @@ class EventLedger:
             payload = dict(ev.payload)
             if ev.event_id in corrections:
                 payload.update(corrections[ev.event_id])
+            if ev.etype == CARD_DEALT and payload.get("withdrawn"):
+                continue  # An append-only correction; dependent reveals/actions still validate.
 
             if ev.etype == SHOE_CREATED:
                 if ev.shoe_id != payload["shoe_id"] or ev.round_id is not None:
@@ -398,6 +408,8 @@ class EventLedger:
             if ev.etype == ROUND_STARTED:
                 if ev.round_id != payload["round_id"]:
                     raise LedgerError("开轮事件身份与负载不一致")
+                if cur.round_id is not None:
+                    cur.round_tables[cur.round_id] = copy.deepcopy(table)
                 table.start_round(payload.get("participants"))
                 cur.round_id = payload["round_id"]
                 if payload.get("round_no") != table.round_no:
@@ -455,7 +467,10 @@ class EventLedger:
                 target = cur.unresolved.get(target_id)
                 if target is None or target["round_id"] != cur.round_id:
                     raise LedgerError("目标牌未处于本轮待揭示状态；历史牌请追加纠错")
-                if payload["seat"] != target["seat"] or any(payload.get(k) is not None and payload[k] != target[k] for k in ("hand_id", "track_id")):
+                # A reveal follows the same dealt event when its ownership was
+                # corrected later. Validate its identity at the time of writing.
+                identity_then = self.effective_payload(target_id, through_seq=ev.seq)
+                if payload["seat"] != identity_then["seat"] or any(payload.get(k) is not None and payload[k] != identity_then.get(k) for k in ("hand_id", "track_id")):
                     raise LedgerError("揭示事件身份与目标发牌不一致")
                 if payload["rank"] not in (*RANKS, TEN_BUCKET):
                     raise LedgerError("揭示需要有效已知牌面")
@@ -555,7 +570,17 @@ class EventLedger:
         return voided
 
     def is_voided(self, event_id: str) -> bool:
-        return event_id in self._voided_ids()
+        return event_id in self._voided_ids() or bool(self.effective_payload(event_id).get("withdrawn"))
+
+    def effective_payload(self, event_id: str, through_seq: Optional[int] = None) -> dict:
+        """A copied effective payload; never mutate the original event or prefix."""
+        events = self.events if through_seq is None else [e for e in self.events if e.seq <= through_seq]
+        voided = {e.payload["target_event_id"] for e in events if e.etype == UNDO}
+        result = copy.deepcopy(self._find(event_id).payload)
+        for ev in events:
+            if ev.etype == CORRECTION and ev.event_id not in voided and ev.payload["target_event_id"] == event_id:
+                result.update(copy.deepcopy(ev.payload["payload_fix"]))
+        return result
 
     # ---------- 序列化 ----------
     def to_list(self) -> List[dict]:

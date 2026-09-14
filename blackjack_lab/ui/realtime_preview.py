@@ -8,7 +8,7 @@ from tkinter import filedialog, messagebox, ttk
 
 
 class RealtimePreviewWindow(tk.Toplevel):
-    def __init__(self, master, session, *, on_review=None, adapters=None):
+    def __init__(self, master, session, *, on_review=None, adapters=None, on_assist=None):
         super().__init__(master)
         self.session, self.on_review = session, on_review
         self.adapters=adapters or {'当前检测器':session.adapter}
@@ -41,6 +41,8 @@ class RealtimePreviewWindow(tk.Toplevel):
         ttk.Button(bar, text="保存运行记录", command=self.export).pack(side=tk.RIGHT, padx=6)
         if on_review is not None:
             ttk.Button(bar, text="冻结识别帧并核对", command=self.review).pack(side=tk.RIGHT, padx=6)
+        if on_assist is not None:
+            ttk.Button(bar, text="持续核对（采集不停）", command=lambda: on_assist(self.session)).pack(side=tk.RIGHT, padx=6)
         ttk.Label(self, textvariable=self.var_metrics, padding=(8, 4)).pack(fill=tk.X)
         self.var_quality=tk.StringVar(value='正在观察标定区域的画面变化…')
         ttk.Label(self,textvariable=self.var_quality,padding=(8,2),wraplength=1400).pack(fill=tk.X)

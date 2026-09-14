@@ -28,6 +28,7 @@ venv/
 *.vision/
 fixtures/vision/synthetic-v1/holdout/
 *.analysis/
+*.assisted/
 /BUILD_INFO.json
 
 # Source-addressed local numerical accelerator build cache.

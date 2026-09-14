@@ -449,7 +449,8 @@ class VisionReviewWindow(tk.Toplevel):
             session = RealtimePreviewSession(source, self.selected_style, self.runtime.adapter)
             context = self._preview_context()
             return RealtimePreviewWindow(self, session,
-                on_review=lambda owner, row: self.accept_realtime_snapshot(owner, row, context))
+                on_review=lambda owner, row: self.accept_realtime_snapshot(owner, row, context),
+                on_assist=self.connect_assisted)
         except Exception as exc:
             messagebox.showerror("实时预览未启动", str(exc), parent=self)
 
@@ -461,6 +462,20 @@ class VisionReviewWindow(tk.Toplevel):
             json.dumps(style.as_dict() if hasattr(style, 'as_dict') else asdict(style), sort_keys=True) if style is not None else None,
             self._source_key, (self.selected_window.hwnd,self.selected_window.process_id) if self.selected_window else None,
             capture_bind_context(self.app.ctrl))
+
+    def connect_assisted(self, owner):
+        if owner.adapter is not self.runtime.adapter or owner.style is not self.selected_style:
+            raise VisionBridgeError("模型或区域已改变，请从当前配置重新启动预览")
+        if self.selected_window is not None:
+            if (getattr(owner.source, 'hwnd', None), getattr(owner.source, 'expected_process_id', None)) != (self.selected_window.hwnd, self.selected_window.process_id):
+                raise VisionBridgeError("捕获窗口已改变，请重新启动预览")
+        elif self.video_reader is None or Path(getattr(owner.source, 'path', '')) != self.video_reader.path:
+            raise VisionBridgeError("录像来源已改变，请重新启动预览")
+        context = self._preview_context()
+        panel = self.app.act_quick_record()
+        panel.attach(owner, lambda: self.winfo_exists() and context == self._preview_context())
+        panel.reconnect = lambda: self.connect_assisted(owner)
+        return panel
 
     def accept_realtime_snapshot(self, owner, row, launch_context):
         """An explicit click freezes one result; background preview never commits."""
