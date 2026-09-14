@@ -1,8 +1,9 @@
 import copy
 import unittest
 from types import SimpleNamespace
-from scripts.prepare_rank_review_update import select_rows,as_crop_observation
+from scripts.prepare_rank_review_update import select_rows,as_crop_observation,geometry_corrections,expand_reviewed_crop
 from blackjack_lab.vision.glyph_dataset import sample_origin_id
+from blackjack_lab.vision.deps import cv2_available
 
 
 class ReviewedRankSelectionTests(unittest.TestCase):
@@ -45,6 +46,56 @@ class ReviewedRankSelectionTests(unittest.TestCase):
         copied=as_crop_observation(dict(first,crop_id='same-crop-copy'))
         self.assertEqual(sample_origin_id(SimpleNamespace(**a)),sample_origin_id(SimpleNamespace(**copied)))
         with self.assertRaises(ValueError):as_crop_observation(dict(first,physical_identity_confirmed=True))
+
+
+class CropGeometryReviewTests(unittest.TestCase):
+    def fixture(self):
+        row=dict(crop_id='partial-k',origin_crop_id='original-observation',physical_card_id='',
+                 frame='one.png',bbox=[14,5,10,16],label='K',label_provenance='human_reviewed',
+                 source_sha256='source',frame_sha256='frame')
+        decision=dict(crop_id='partial-k',label='K',frame='one.png',frame_sha256='frame',
+                      original_bbox=[14,5,10,16],bbox=[6,5,18,16],reason='Include the visible missing left stem')
+        document=dict(schema='rank-crop-geometry-review-1',provenance='assistant_visual_review',
+                      human_confirmed=False,source_sha256='source',queue_sha256s={'base':'queue'},decisions=[decision])
+        return row,document
+
+    def test_expansion_preserves_input_and_requires_exact_review_context(self):
+        row,document=self.fixture();before=copy.deepcopy(row)
+        self.assertIn('partial-k',geometry_corrections([row],document,{'base':'queue'},'source'))
+        self.assertEqual(row,before)
+        for field,value in [('source_sha256','other'),('queue_sha256s',{}),('human_confirmed',True)]:
+            with self.subTest(field=field),self.assertRaises(ValueError):
+                geometry_corrections([row],dict(document,**{field:value}),{'base':'queue'},'source')
+
+    def test_relabel_shrink_shift_duplicate_and_changed_frame_are_rejected(self):
+        for change in ({'label':'A'},{'bbox':[16,5,8,16]},{'bbox':[26,5,18,16]},
+                       {'bbox':[6,5,True,16]},{'frame_sha256':'other'},{'original_bbox':[1,2,3,4]}):
+            row,document=self.fixture();document['decisions'][0].update(change)
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                geometry_corrections([row],document,{'base':'queue'},'source')
+        row,document=self.fixture();document['decisions']*=2
+        with self.assertRaises(ValueError):geometry_corrections([row],document,{'base':'queue'},'source')
+
+    @unittest.skipUnless(cv2_available(),'optional OpenCV/numpy dependency')
+    def test_recrop_uses_source_pixels_preserves_origin_and_checks_source_digest(self):
+        import tempfile,hashlib
+        from pathlib import Path
+        import cv2,numpy as np
+        row,document=self.fixture();decision=document['decisions'][0]
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);frame=root/'one.png'
+            bgr=np.full((30,35,3),255,dtype=np.uint8);bgr[7:19,7:9]=0;bgr[7:19,18:21]=0
+            ok,encoded=cv2.imencode('.png',bgr);self.assertTrue(ok);frame.write_bytes(encoded.tobytes())
+            raw=frame.read_bytes();row['frame_sha256']=hashlib.sha256(raw).hexdigest()
+            updated=expand_reviewed_crop(row,decision,frame,root/'derived')
+            self.assertEqual(updated['label'],'K');self.assertFalse(updated['geometry_human_confirmed'])
+            self.assertEqual(updated['source_bbox'],row['bbox'])
+            self.assertEqual(sample_origin_id(SimpleNamespace(**row)),sample_origin_id(SimpleNamespace(**updated)))
+            crop=cv2.imread(updated['crop_file'])
+            self.assertTrue(np.array_equal(crop,bgr[5:21,6:24]))
+            self.assertEqual(frame.read_bytes(),raw)
+            with self.assertRaises(ValueError):
+                expand_reviewed_crop(dict(row,frame_sha256='changed'),decision,frame,root/'bad')
 
 
 if __name__=='__main__':unittest.main()

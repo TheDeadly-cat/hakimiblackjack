@@ -51,6 +51,66 @@ def select_rows(tagged_rows, selected, source_sha256):
     return kept,excluded
 
 
+def geometry_corrections(rows, document, queue_sha256s, source_sha256):
+    """Validate explicit missing-stroke expansions, keeping human rank evidence separate."""
+    if (document.get('schema')!='rank-crop-geometry-review-1'
+            or document.get('provenance')!='assistant_visual_review'
+            or document.get('human_confirmed') is not False
+            or document.get('source_sha256')!=source_sha256
+            or document.get('queue_sha256s')!=queue_sha256s):
+        raise ValueError('Geometry review provenance or queue identity mismatch')
+    decisions=document.get('decisions')
+    if not isinstance(decisions,list) or not decisions:
+        raise ValueError('Geometry review needs explicit decisions')
+    originals={row['crop_id']:row for row in rows}
+    if len(originals)!=len(rows):raise ValueError('Ambiguous crop identifiers')
+    result={}
+    for decision in decisions:
+        row=originals.get(decision.get('crop_id'))
+        if (row is None or row['crop_id'] in result
+                or row.get('label_provenance')!='human_reviewed'
+                or row['label'] not in ('A','2','3','4','5','6','7','8','9','10','J','Q','K')
+                or decision.get('label')!=row['label']
+                or decision.get('frame')!=row['frame']
+                or decision.get('frame_sha256')!=row['frame_sha256']
+                or decision.get('original_bbox')!=row['bbox']
+                or not isinstance(decision.get('reason'),str) or not decision['reason'].strip()):
+            raise ValueError('Geometry correction must match one original reviewed rank crop')
+        box=decision.get('bbox')
+        if (not isinstance(box,list) or len(box)!=4 or any(type(v) is not int for v in box)):
+            raise ValueError('Geometry correction needs an integer box')
+        x,y,w,h=box;ox,oy,ow,oh=row['bbox']
+        if (x<0 or y<0 or not 4<=w<=90 or not 8<=h<=60 or box==row['bbox']
+                or x>ox or y>oy or x+w<ox+ow or y+h<oy+oh):
+            raise ValueError('Geometry correction only expands an existing upper index crop')
+        result[row['crop_id']]=dict(decision)
+    return result
+
+
+def expand_reviewed_crop(row, decision, frame_path, output):
+    """Recrop original pixels; preserve origin aliases and the original human rank."""
+    from blackjack_lab.vision.deps import load_cv2
+    from blackjack_lab.vision.real_cards import manual_glyph
+    import numpy as np
+    cv2=load_cv2()
+    if sha(frame_path)!=row['frame_sha256']:raise ValueError('Geometry source frame changed')
+    bgr=cv2.imdecode(np.frombuffer(Path(frame_path).read_bytes(),np.uint8),cv2.IMREAD_COLOR)
+    if bgr is None:raise ValueError('Unreadable geometry source frame')
+    box=decision['bbox'];glyph=manual_glyph(bgr,box);x,y,w,h=box
+    identifier=hashlib.sha256(json.dumps([row['source_sha256'],row['frame_sha256'],box]).encode()).hexdigest()[:16]
+    output=Path(output);output.mkdir(parents=True,exist_ok=True)
+    crop_path=output/(identifier+'-crop.png');mask_path=output/(identifier+'-mask.png')
+    for path,pixels in ((crop_path,bgr[y:y+h,x:x+w]),(mask_path,glyph.mask)):
+        ok,encoded=cv2.imencode('.png',pixels)
+        if not ok:raise ValueError('Cannot encode geometry crop')
+        with path.open('xb') as stream:stream.write(encoded.tobytes())
+    return dict(row,crop_id=identifier,source_crop_id=row['crop_id'],source_bbox=list(row['bbox']),
+                origin_crop_id=row.get('origin_crop_id') or row['crop_id'],bbox=list(box),ink=glyph.ink,
+                bbox_provenance='assistant_visual_review',geometry_human_confirmed=False,
+                geometry_reason=decision['reason'],crop_file=str(crop_path.resolve()),mask_file=str(mask_path.resolve()),
+                crop_sha256=sha(crop_path),mask_sha256=sha(mask_path),mask_content_sha256='')
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--base-queue',required=True,type=Path)
@@ -59,6 +119,8 @@ def main():
     parser.add_argument('--annotations',required=True,type=Path)
     parser.add_argument('--supplement-crop-observations',action='store_true',
                         help='Explicitly project crop-only supplemental IDs to observations, preserving original claims')
+    parser.add_argument('--geometry-review',type=Path,
+                        help='Explicit assistant-reviewed missing-stroke expansions; original human rank labels remain unchanged')
     parser.add_argument('--output',required=True,type=Path)
     args=parser.parse_args()
     if args.output.exists():raise ValueError('Preserve old queues; use a new output directory')
@@ -106,7 +168,17 @@ def main():
                 raise ValueError('Reviewed crop/mask is missing or escapes its original queue')
             row[field]=str(path)
         row['split']='train';rows.append(row)
-    args.output.mkdir(parents=True)
+    geometry_review=None
+    if args.geometry_review:
+        document=json.loads(args.geometry_review.read_text(encoding='utf-8'))
+        corrections=geometry_corrections(rows,document,{k:v['sha256'] for k,v in receipts.items()},source)
+        frame_paths={Path(f['path']).name:Path(f['path']) for f in plan['training_frames']}
+        rows=[expand_reviewed_crop(row,corrections[row['crop_id']],frame_paths[row['frame']],
+                                  args.output/'geometry-assets') if row['crop_id'] in corrections else row for row in rows]
+        geometry_review=dict(path=str(args.geometry_review.resolve()),sha256=sha(args.geometry_review),
+                             corrections=list(corrections.values()),human_confirmed=False,
+                             scope='Assistant geometry only; inherit original human rank and origin alias, not a new human-reviewed box')
+    args.output.mkdir(parents=True,exist_ok=True)
     queue_path=args.output/'queue.jsonl'
     queue_path.write_text(''.join(json.dumps(row,ensure_ascii=False)+'\n' for row in rows),encoding='utf-8')
     from scripts.train_rank_classifier import _load_inputs,_training_digest
@@ -120,9 +192,10 @@ def main():
                 labels=dict(Counter(row['label'] for row in rows)),items=len(rows),
                 kept_by_queue=dict(Counter(origin for origin,_ in kept)),excluded=excluded,
                 supplemental_identity_projections=identity_projections,
+                geometry_review=geometry_review,
                 identity_projection_scope='crop observations only; no new physical-card identity or independence claim',
                 source_rank_labels_changed=False,original_files_changed=False,
-                scope='Human rank labels retained; upper-box selection includes separately attributed assistant orientation review. Counts are crops, not independent physical cards.')
+                scope='Human rank labels retained; upper-box selection and any explicit geometry expansion have separately attributed assistant review. Counts are crops, not independent physical cards.')
     for original in receipts.values():
         if sha(original['path'])!=original['sha256']:raise ValueError('Original queue changed during preparation')
     (args.output/'receipt.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
