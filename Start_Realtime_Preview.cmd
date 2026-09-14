@@ -11,7 +11,7 @@ if not exist "%LAB_MODEL%\model.npz" goto missing
 if not exist "%LAB_DETECTOR%\detector.pt" goto missing
 if not exist "%LAB_STYLE%" goto missing
 if not exist "%LAB_VIDEO%" goto missing
-start "" /D "%LAB_ROOT%" "%LAB_PY%" "%LAB_ROOT%scripts\realtime_preview.py" --video "%LAB_VIDEO%" --style "%LAB_STYLE%" --model "%LAB_MODEL%" --detector "%LAB_DETECTOR%" --initial-method baseline --fps 8 --last-frame 11040 --evidence-limit 4096 --geometry 2000x1120+20+20
+start "" /D "%LAB_ROOT%" "%LAB_PY%" "%LAB_ROOT%scripts\realtime_preview.py" --video "%LAB_VIDEO%" --style "%LAB_STYLE%" --model "%LAB_MODEL%" --detector "%LAB_DETECTOR%" --rgb-tiles --initial-method baseline --fps 8 --last-frame 11040 --evidence-limit 4096 --geometry 2000x1120+20+20
 exit /b 0
 :missing
 echo This local demo needs the reviewed models, optional environment, style and source video.
