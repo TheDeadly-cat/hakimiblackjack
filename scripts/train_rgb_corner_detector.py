@@ -18,6 +18,58 @@ def digest(path):
     with Path(path).open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
 
 
+def apply_orientation_review(entries, metadata, document):
+    """Apply an attributed training-only overlay; never rewrite human rank labels."""
+    if (document.get('schema')!='detector-orientation-review-1'
+            or document.get('provenance')!='assistant_visual_review'
+            or document.get('human_confirmed') is not False
+            or document.get('source_sha256')!=metadata['source_sha256']
+            or document.get('base_annotation_sha256')!=metadata['annotation_sha256']):
+        raise ValueError('Orientation review provenance or source identity mismatch')
+    decisions=document.get('decisions')
+    if not isinstance(decisions,list) or not decisions:
+        raise ValueError('Orientation review needs explicit decisions')
+    # Work on copies so a later conflicting decision cannot partially alter input.
+    updated=[dict(e,positives=[list(b) for b in e['positives']],
+                    negatives=[list(b) for b in e['negatives']]) for e in entries]
+    frames={Path(e['path']).name:e for e in updated}
+    if len(frames)!=len(updated):raise ValueError('Ambiguous training frame names')
+    seen=set();counts=Counter()
+    for decision in decisions:
+        entry=frames.get(decision.get('file'))
+        if (entry is None or entry['sha256']!=decision.get('frame_sha256')
+                or entry['source_sha256']!=metadata['source_sha256']):
+            raise ValueError('Orientation review frame identity mismatch')
+        box=decision.get('bbox')
+        if (not isinstance(box,list) or len(box)!=4
+                or any(type(v) is not int for v in box)
+                or not isinstance(decision.get('reason'),str) or not decision['reason'].strip()):
+            raise ValueError('Orientation review needs an integer box and visual reason')
+        x,y,w,h=box;ih,iw=entry['image'].shape[:2]
+        if x<0 or y<0 or w<1 or h<1 or x+w>iw or y+h>ih:
+            raise ValueError('Orientation review box outside original frame')
+        key=(decision['file'],tuple(box))
+        if key in seen:raise ValueError('Duplicate orientation review decision')
+        seen.add(key)
+        action=decision.get('action')
+        if action=='exclude_lower_corner':
+            if entry['positives'].count(box)!=1:
+                raise ValueError('Orientation correction must match one existing positive box')
+            entry['positives'].remove(box)
+        elif action=='add_lower_corner_negative':
+            if box in entry['negatives']:
+                raise ValueError('Additional lower corner is already a negative')
+        else:raise ValueError('Unsupported orientation review action')
+        if any(x<px+pw and x+w>px and y<py+ph and y+h>py
+               for px,py,pw,ph in entry['positives']):
+            raise ValueError('Lower-corner negative overlaps a remaining positive')
+        entry['negatives'].append(list(box));counts[action]+=1
+    result=dict(metadata,positives=sum(len(e['positives']) for e in updated),
+                negatives=sum(len(e['negatives']) for e in updated),
+                assistant_orientation_review=dict(counts),orientation_review_human_confirmed=False)
+    return updated,result
+
+
 def read_entries(bundle, title, negative_queues, negative_regions=()):
     import cv2
     import numpy as np
@@ -163,6 +215,8 @@ def main():
     p.add_argument('--validation-session',required=True)
     p.add_argument('--negative-queue',action='append',default=[],type=Path)
     p.add_argument('--negative-regions',action='append',default=[],type=Path)
+    p.add_argument('--orientation-review',type=Path,
+                   help='Explicit assistant-reviewed training overlay; source labels remain unchanged')
     p.add_argument('--reserved-source',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--steps',type=int,default=1200)
@@ -179,6 +233,12 @@ def main():
             for name in (args.train_session,args.validation_session)]
     if chosen[0]==chosen[1] or reserved in chosen:raise ValueError('Training, validation and reserved source must be disjoint')
     train,train_meta=read_entries(bundle,args.train_session,args.negative_queue,args.negative_regions)
+    orientation_review=None
+    if args.orientation_review:
+        document=json.loads(args.orientation_review.read_text(encoding='utf-8'))
+        train,train_meta=apply_orientation_review(train,train_meta,document)
+        orientation_review=dict(path=str(args.orientation_review.resolve()),sha256=digest(args.orientation_review),
+                                provenance=document['provenance'],human_confirmed=False)
     validation,val_meta=read_entries(bundle,args.validation_session,[])
     if any(e['image'].shape[:2]!=(520,1850) for e in train+validation):
         raise ValueError('This prototype is calibrated to native 1850x520 material only')
@@ -189,11 +249,12 @@ def main():
     spec=dict(architecture=ARCHITECTURE,style_id='navy-live-felt-v1',train=train_meta,validation=val_meta,reserved_source_sha256=reserved,
               steps=args.steps,batch_size=args.batch_size,seed=args.seed,threshold=args.threshold,
               initialization='torchvision MobileNet_V3_Small_Weights.IMAGENET1K_V1, truncated features 0..8',
-              policy='Only reviewed positive upper boxes, explicit reviewed junk, separately attributed assistant-reviewed empty regions and explicitly complete frames receive loss; all other pixels ignored.',
+              policy='Existing selected positive boxes, explicit junk, separately attributed assistant-reviewed empty/lower regions and explicitly complete frames receive loss; all other pixels ignored. Human rank review does not establish orientation truth.',
               classifier_changed=False,whole_roi_resized=False,rotation_or_lower_corner_augmentation=False,
               implementation_sha256={str(path.relative_to(ROOT)):digest(path) for path in
                   (ROOT/'blackjack_lab/vision/rgb_corner_model.py',Path(__file__).resolve())},
               additional_negative_regions=[dict(path=str(path.resolve()),sha256=digest(path)) for path in args.negative_regions],
+              orientation_review=orientation_review,
               training_frames=[{k:v for k,v in e.items() if k!='image'} for e in train])
     (args.output/'plan.json').write_text(json.dumps(spec,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(dict(train=train_meta,validation=val_meta),ensure_ascii=False),flush=True)
