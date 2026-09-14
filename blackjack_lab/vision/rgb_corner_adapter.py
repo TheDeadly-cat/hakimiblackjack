@@ -12,7 +12,27 @@ from .image_io import rgb_to_bgr
 from .model_adapter import TrainedModelAdapter
 
 CROP_PREPROCESSING = 'rgb-box-manual-hsv-v150-s80-1'
+NAVY_OTSU_PREPROCESSING = 'rgb-box-navy-b-r18-gray-otsu-1'
 INPUT_PROFILE = 'native-roi-1850x520-1'
+
+
+def extract_index_glyph(bgr,bbox,*,preprocessing=CROP_PREPROCESSING):
+    """Explicit native-pixel extraction; never resize or synthesize source detail."""
+    from .real_cards import manual_glyph,Glyph,_ink_kind
+    glyph=manual_glyph(bgr,bbox)
+    if preprocessing==CROP_PREPROCESSING:return glyph
+    if preprocessing!=NAVY_OTSU_PREPROCESSING:raise ImageRejected('未知 RGB 裁片预处理')
+    from .deps import load_cv2,load_numpy
+    cv2,np=load_cv2(),load_numpy()
+    x,y,w,h=glyph.bbox;crop=bgr[y:y+h,x:x+w]
+    # Same navy color cue as _ink_kind, applied per pixel before local grayscale
+    # segmentation. Work on a new gray array so the captured source stays intact.
+    channels=crop.astype(np.int16)
+    navy=channels[:,:,0]>channels[:,:,2]+18
+    gray=cv2.cvtColor(crop,cv2.COLOR_BGR2GRAY);gray[navy]=255
+    _,mask=cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV|cv2.THRESH_OTSU)
+    mask[navy]=0
+    return Glyph(glyph.bbox,mask,_ink_kind(np,crop,mask),int((mask>0).sum()))
 
 
 def require_calibrated_input(width,height):
@@ -54,6 +74,7 @@ class RgbCornerAdapter(TrainedModelAdapter):
         self.detector_directory=source.resolve()
         self.detector_manifest=manifest
         self.device,self.threshold=device,float(manifest['threshold'])
+        self.crop_preprocessing=CROP_PREPROCESSING
         self.extraction_version=ARCHITECTURE+'+'+CROP_PREPROCESSING+'+'+INPUT_PROFILE
         from .rgb_corner_model import FULL_FRAME_POLICY
         self.inference_policy=FULL_FRAME_POLICY
@@ -96,6 +117,21 @@ class RgbCornerAdapter(TrainedModelAdapter):
         if policy==TILED_POLICY:other.warmup(320,320,batch_size=8)
         return other
 
+    def with_crop_preprocessing(self,preprocessing):
+        """Compare a declared crop policy with the same detector and rank weights."""
+        from copy import copy
+        from .rgb_corner_model import ARCHITECTURE,TILED_POLICY
+        if preprocessing not in (CROP_PREPROCESSING,NAVY_OTSU_PREPROCESSING):
+            raise ImageRejected('未知 RGB 裁片预处理')
+        if preprocessing==NAVY_OTSU_PREPROCESSING and self.style_id!='navy-live-felt-v1':
+            raise ImageRejected('灰度分割实验仅用于已标定的深蓝牌桌样式')
+        other=copy(self);other.crop_preprocessing=preprocessing
+        other._base_extraction_version=ARCHITECTURE+'+'+preprocessing+'+'+INPUT_PROFILE
+        other.extraction_version=other._base_extraction_version+(
+            '+'+TILED_POLICY if other.inference_policy==TILED_POLICY else '')
+        other.digest=other._combined_digest()
+        return other
+
     def warmup(self,width,height,*,batch_size=1):
         import torch
         if (width,height,batch_size) in self._warmed_shapes:return
@@ -110,14 +146,14 @@ class RgbCornerAdapter(TrainedModelAdapter):
     def identity_text(self):
         from .rgb_corner_model import TILED_POLICY
         context=' / 原生分块' if self.inference_policy==TILED_POLICY else ''
+        if self.crop_preprocessing==NAVY_OTSU_PREPROCESSING:context+=' / 灰度分割实验'
         return (f'RGB 牌角开发原型{context} / {self.device} / digest={self.digest[:16]}　'
-                f'点数权重冻结={self.rank_model_id[:25]}　裁片={CROP_PREPROCESSING}；未通过独立事件验收')
+                f'点数权重冻结={self.rank_model_id[:25]}　裁片={self.crop_preprocessing}；未通过独立事件验收')
 
     def recognize(self,loaded,layout,source_declaration,*,timings=None):
         if layout.style_id!=self.style_id:raise ImageRejected('RGB 检测器与布局样式不一致')
         require_calibrated_input(loaded.width,loaded.height)
         from .rgb_corner_model import predict_boxes,predict_boxes_tiled,TILED_POLICY
-        from .real_cards import manual_glyph
         import numpy as np
         if timings is not None:timings['detection_start_ns']=time.perf_counter_ns()
         rgb=np.frombuffer(loaded.rgb,dtype=np.uint8).reshape(loaded.height,loaded.width,3)
@@ -127,11 +163,13 @@ class RgbCornerAdapter(TrainedModelAdapter):
             boxes=predict_boxes(self.detector,rgb,device=self.device,threshold=self.threshold)
         if timings is not None:timings['crop_preprocessing_start_ns']=time.perf_counter_ns()
         bgr=rgb_to_bgr(loaded)
-        # The same documented manual-mask preprocessing used by reviewed crop
-        # training. The detector box supplies localization; no body closure gate.
-        glyphs=[manual_glyph(bgr,[item['bbox'][k] for k in ('x','y','w','h')]) for item in boxes]
+        # Explicitly versioned native crop policy; the detector supplies the box
+        # without requiring a closed white-card contour.
+        glyphs=[extract_index_glyph(bgr,[item['bbox'][k] for k in ('x','y','w','h')],
+                                   preprocessing=self.crop_preprocessing) for item in boxes]
         if timings is not None:
             timings['crop_preprocessing_end_ns']=time.perf_counter_ns()
+            timings['crop_preprocessing_version']=self.crop_preprocessing
             timings['detector_candidate_count']=len(boxes)
             timings['detector_device']=self.device
             timings['detector_warmup_ms']=self.warmup_ms
@@ -139,5 +177,5 @@ class RgbCornerAdapter(TrainedModelAdapter):
         result=self._recognize_glyphs(loaded,layout,source_declaration,glyphs,
             occupied=set(layout.regions),timings=timings)
         for obs,item in zip(result.observations,boxes):obs.notes.append(f'RGB detection score={item["score"]:.4f}; not calibrated')
-        result.warnings.append('直接 RGB 上角检测；不翻转下角补数。检测框裁片预处理版本：'+CROP_PREPROCESSING)
+        result.warnings.append('直接 RGB 上角检测；不翻转下角补数。检测框裁片预处理版本：'+self.crop_preprocessing)
         return result
