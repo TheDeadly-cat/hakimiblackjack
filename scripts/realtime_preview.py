@@ -26,6 +26,8 @@ def main():
     parser.add_argument('--fps',type=float,default=8)
     parser.add_argument('--evidence-limit',type=int,default=1200,help='Bounded metadata rows; use a larger explicit bound for a complete long benchmark')
     parser.add_argument('--disable-region-observation',action='store_true',help='Explicit legacy fixed-rate comparison; default observes native regions and skips only exact previously inferred pixels')
+    parser.add_argument('--temporal-policy',choices=('distinct-crops','current-observations'),default='distinct-crops',
+                        help='Explicit preview-only consistency comparison; full-source repeats still cannot refresh state')
     parser.add_argument('--output',type=Path)
     parser.add_argument('--close-after',type=float,help='Controlled UI check duration; does not speed up playback')
     parser.add_argument('--close-on-finish',action='store_true',help='Close after the full source and final expiry repaint; never accelerates playback')
@@ -43,6 +45,7 @@ def main():
     from blackjack_lab.vision.model_adapter import TrainedModelAdapter,load_style
     from blackjack_lab.realtime_preview import RealtimeVideoSource,RealtimeWgcSource,RealtimePreviewSession
     from blackjack_lab.ui.realtime_preview import RealtimePreviewWindow
+    from blackjack_lab.vision.temporal_preview import POLICY_VERSION,PERSISTENT_OBSERVATION_POLICY
     style=load_style(args.style)
     baseline=TrainedModelAdapter(args.model,style_id=style.style_id)
     adapters={'旧提取器':baseline}
@@ -67,7 +70,8 @@ def main():
     source=(RealtimeVideoSource(args.video,style,first_frame=args.first_frame,last_frame=args.last_frame)
             if args.video else RealtimeWgcSource(args.window,style))
     session=RealtimePreviewSession(source,style,adapter,recognition_fps=args.fps,evidence_limit=args.evidence_limit,
-        observe_regions=not args.disable_region_observation)
+        observe_regions=not args.disable_region_observation,
+        temporal_policy=PERSISTENT_OBSERVATION_POLICY if args.temporal_policy=='current-observations' else POLICY_VERSION)
     root=tk.Tk();root.withdraw()
     window=RealtimePreviewWindow(root,session,adapters=adapters)
     if args.geometry:window.geometry(args.geometry)

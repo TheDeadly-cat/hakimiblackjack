@@ -270,7 +270,8 @@ class PreviewResult:
             "observed_monotonic_ns": self.packet.observed_monotonic_ns,
             "timings": dict(self.timings), "display_submitted_ns": self.display_ns,
             "observations": [{"track_id": obs.observation_id, "bbox": dict(obs.bbox),
-                "observed_rank": obs.accepted_rank(), "region_id": obs.region_id}
+                "observed_rank": obs.accepted_rank(), "region_id": obs.region_id,
+                "crop_sha256": getattr(obs,'crop_sha256',None)}
                 for obs in self.recognition.observations],
             "tracks": [dict(row) for row in self.tracks],
             "geometry_review_count": len(self.recognition.geometry_review),
@@ -282,7 +283,8 @@ class PreviewResult:
 class RealtimePreviewSession:
     """Single resident model, latest-frame inference and bounded timing evidence."""
 
-    def __init__(self, source, style, adapter, *, recognition_fps=8.0, evidence_limit=1200, observe_regions=True):
+    def __init__(self, source, style, adapter, *, recognition_fps=8.0, evidence_limit=1200, observe_regions=True,
+                 temporal_policy=POLICY_VERSION):
         if not 1 <= recognition_fps <= 60 or evidence_limit < 1:
             raise ValueError("Invalid realtime preview settings")
         self.source, self.style, self.adapter = source, style, adapter
@@ -292,7 +294,8 @@ class RealtimePreviewSession:
             rank_model.clear_prediction_cache()
         self.run_id = uuid4().hex
         self.recognition_fps = float(recognition_fps)
-        self.tracker = TemporalPreviewTracker()
+        self.temporal_policy=temporal_policy
+        self.tracker = TemporalPreviewTracker(policy=temporal_policy)
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread = None
@@ -346,7 +349,7 @@ class RealtimePreviewSession:
                 if packet.token() != self._token:
                     self._token = packet.token()
                     self.runtime.invalidate('实时来源代次改变')
-                    self.tracker = TemporalPreviewTracker()
+                    self.tracker = TemporalPreviewTracker(policy=self.temporal_policy)
                     self._completed_roi_hashes = {}
                     self._last_input_arrival_ns = None
                     with self._lock:
@@ -524,7 +527,7 @@ class RealtimePreviewSession:
                 "rows": [dict(row) for row in self.records], "source_displays": list(self.source_displays),
                 "display_updates": list(self.display_updates),
                 "latency_scope": "monotonic frame arrival to application display submission; readable-event ground truth is separate",
-                "stable_fusion_implemented": True, "temporal_policy": POLICY_VERSION,
+                "stable_fusion_implemented": True, "temporal_policy": self.temporal_policy,
                 "identity_scope": "session-local preview associations, not verified physical or ledger IDs",
                 "writes_ledger": False}
 

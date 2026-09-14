@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from .tracker import bbox_iou
 
 POLICY_VERSION = "preview-motion-rgb-expiry-2"
+PERSISTENT_OBSERVATION_POLICY = "preview-motion-rgb-current-observations-1"
 
 
 def _center(box):
@@ -79,6 +80,8 @@ class PreviewTrack:
     stable_rank: str | None = None
     stable_supported_ns: int | None = None
     evidence: deque = field(default_factory=lambda: deque(maxlen=8))
+    observation_history: deque = field(default_factory=lambda: deque(maxlen=8))
+    stability_basis: str | None = None
     matches: int = 1
     current: bool = True
     conflict_count: int = 0
@@ -98,12 +101,17 @@ def display_state(state, now_ns, *, rank_ttl_ns=550_000_000, identity_ttl_ns=650
         row.update(identity_state="expired", stable_rank=None, observed_rank=None, current=False)
     elif not row["current"] or age > rank_ttl_ns:
         row.update(identity_state="temporarily_unseen", observed_rank=None, current=False)
+    if row['stable_rank'] is None and 'stability_basis' in row:row['stability_basis']=None
     return row
 
 
 class TemporalPreviewTracker:
     def __init__(self, *, max_tracks=96, identity_ttl_ns=650_000_000,
-                 rank_ttl_ns=550_000_000, min_support=3, min_span_ns=200_000_000):
+                 rank_ttl_ns=550_000_000, min_support=3, min_span_ns=200_000_000,
+                 policy=POLICY_VERSION):
+        if policy not in (POLICY_VERSION,PERSISTENT_OBSERVATION_POLICY):
+            raise ValueError('Unknown temporal preview policy')
+        self.policy=policy
         self.max_tracks = max_tracks
         self.identity_ttl_ns, self.rank_ttl_ns = identity_ttl_ns, rank_ttl_ns
         self.min_support, self.min_span_ns = min_support, min_span_ns
@@ -143,6 +151,13 @@ class TemporalPreviewTracker:
 
     def _observe(self, track, rank, now_ns, signature):
         track.observed_rank = rank
+        if self.policy==PERSISTENT_OBSERVATION_POLICY:
+            # Reached only for a new source sample. Repeated local pixels remain
+            # one distinct item below; consistency is a display state, not an
+            # independent probability vote or permission to create ledger data.
+            while track.observation_history and now_ns-track.observation_history[0][0]>800_000_000:
+                track.observation_history.popleft()
+            track.observation_history.append((now_ns,rank))
         while track.evidence and now_ns-track.evidence[0][0] > 800_000_000:
             track.evidence.popleft()
         track.new_support = (signature != track.last_support_signature
@@ -153,6 +168,7 @@ class TemporalPreviewTracker:
         if track.stable_supported_ns is not None and now_ns-track.stable_supported_ns > self.rank_ttl_ns:
             track.stable_rank = None
             track.stable_supported_ns = None
+            track.stability_basis = None
         if track.stable_rank and rank == track.stable_rank:
             track.stable_supported_ns = now_ns
             track.conflict_count = 0
@@ -161,14 +177,19 @@ class TemporalPreviewTracker:
             if track.conflict_count >= 2:
                 track.stable_rank = None
                 track.stable_supported_ns = None
-        votes = Counter(v for _, v, _ in track.evidence if v is not None)
+                track.stability_basis = None
+        history=(track.observation_history if self.policy==PERSISTENT_OBSERVATION_POLICY
+                 else [(t,v) for t,v,_ in track.evidence])
+        votes = Counter(v for _, v in history if v is not None)
         if track.stable_rank is None and rank is not None:
-            support = [t for t, value, _ in track.evidence if value == rank]
-            recent = [v for _, v, _ in list(track.evidence)[-2:]]
+            support = [t for t, value in history if value == rank]
+            recent = [v for _, v in list(history)[-2:]]
             if (len(support) >= self.min_support and support[-1]-support[0] >= self.min_span_ns
                     and recent == [rank, rank] and votes[rank] >= sum(votes.values())*.75):
                 track.stable_rank, track.stable_supported_ns = rank, now_ns
                 track.conflict_count = 0
+                track.stability_basis=('persistent_current_observation' if self.policy==PERSISTENT_OBSERVATION_POLICY
+                                       else 'distinct_crop_consistency')
 
     def update(self, result, pixels, now_ns, sample_key):
         # Exact repeated sample reads never add votes, refresh TTL or move a track.
@@ -229,6 +250,8 @@ class TemporalPreviewTracker:
             "first_seen_ns": t.first_seen_ns, "region_id": t.region_id, "current": t.current,
             "new_rank_support": t.new_support if t.current else False,
             "evidence_count": len(t.evidence),
+            "stability_basis": t.stability_basis,
+            "current_observation_count": sum(v==t.stable_rank for _,v in t.observation_history) if t.stable_rank else 0,
             "identity_state": "rank_conflict" if t.conflict_count else
                 "temporally_associated" if t.matches >= 2 else "new_unverified",
             "support_count": sum(v == t.stable_rank for _, v, _ in t.evidence) if t.stable_rank else 0},

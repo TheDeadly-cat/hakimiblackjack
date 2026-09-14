@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 
 from blackjack_lab.vision.deps import cv2_available
-from blackjack_lab.vision.temporal_preview import TemporalPreviewTracker, _assignment, display_state
+from blackjack_lab.vision.temporal_preview import TemporalPreviewTracker, _assignment, display_state, PERSISTENT_OBSERVATION_POLICY
 
 
 def observation(x, y=20, rank="8", w=27, h=20):
@@ -85,6 +85,48 @@ class TemporalPreviewTests(unittest.TestCase):
 
     def test_global_assignment_does_not_greedily_steal_second_match(self):
         self.assertEqual(sorted(_assignment([[.1,.2,.85,.85],[.11,9.,.85,.85]])),[(0,1),(1,0)])
+
+    def test_current_observation_policy_can_display_static_card_without_inventing_pixel_votes(self):
+        import hashlib
+        self.tracker=TemporalPreviewTracker(policy=PERSISTENT_OBSERVATION_POLICY)
+        obs=observation(20,rank='K');obs.crop_sha256='one-unchanged-card-crop'
+        for i,ms in enumerate((0,125,250)):
+            self.pixels[0,0,0]=i  # A changing source outside the static card crop.
+            state=self.update(ms,[obs],hashlib.sha256(self.pixels.tobytes()).hexdigest())
+        self.assertEqual(state[0]['stable_rank'],'K')
+        self.assertEqual(state[0]['stability_basis'],'persistent_current_observation')
+        self.assertEqual(state[0]['current_observation_count'],3)
+        self.assertEqual(state[0]['evidence_count'],1)
+        self.assertEqual(state[0]['support_count'],1)
+        self.assertFalse(state[0]['new_rank_support'])
+
+    def test_current_observation_policy_keeps_freeze_and_expiry_protection(self):
+        self.tracker=TemporalPreviewTracker(policy=PERSISTENT_OBSERVATION_POLICY)
+        obs=observation(20);obs.crop_sha256='same-crop'
+        for ms in (0,125,250,8000):state=self.update(ms,[obs],'same-full-source')
+        self.assertIsNone(state[0]['stable_rank'])
+        self.assertEqual(state[0]['last_seen_ns'],0)
+        self.assertEqual(state[0]['identity_state'],'expired')
+        self.assertEqual(len(self.tracker.tracks[0].observation_history),1)
+        for ms in (8125,8250,8375):state=self.update(ms,[obs])
+        self.assertEqual(state[0]['stable_rank'],'8')
+        aged=display_state(state[0],9_100_000_000)
+        self.assertIsNone(aged['stable_rank']);self.assertIsNone(aged['stability_basis'])
+        self.assertEqual(aged['identity_state'],'expired')
+
+    def test_current_observation_policy_keeps_conflicts_and_independent_equal_rank_tracks(self):
+        self.tracker=TemporalPreviewTracker(policy=PERSISTENT_OBSERVATION_POLICY)
+        a,b=observation(20),observation(100);a.crop_sha256=b.crop_sha256='same-rank-pixels'
+        for ms in (0,125,250):state=self.update(ms,[a,b])
+        self.assertEqual(len({t['track_id'] for t in state}),2)
+        self.assertEqual([t['stable_rank'] for t in state],['8','8'])
+        changed=observation(20,rank='6');changed.crop_sha256='changed-rank-pixels'
+        self.update(375,[changed,b]);state=self.update(500,[changed,b])
+        self.assertIsNone(state[0]['stable_rank']);self.assertEqual(state[1]['stable_rank'],'8')
+        for ms in range(625,5000,125):self.update(ms,[changed,b])
+        self.assertTrue(all(len(t.observation_history)<=8 and len(t.evidence)<=8 for t in self.tracker.tracks))
+        self.tracker.invalidate_observation_gap()
+        self.assertEqual(self.tracker.tracks,[])
 
 
 if __name__=='__main__': unittest.main()

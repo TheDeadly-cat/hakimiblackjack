@@ -63,6 +63,9 @@ class RealtimePreviewWindow(tk.Toplevel):
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.var_model=tk.StringVar(value=session.adapter.identity_text)
         ttk.Label(self, textvariable=self.var_model, wraplength=1400, padding=8).pack(fill=tk.X)
+        from ..vision.temporal_preview import PERSISTENT_OBSERVATION_POLICY
+        if getattr(session,'temporal_policy',None)==PERSISTENT_OBSERVATION_POLICY:
+            ttk.Label(self,text='持续观察实验：新画面中的一致牌级可稳定显示；相同裁片仍只有一份像素证据。',padding=(8,2)).pack(fill=tk.X)
         self.protocol("WM_DELETE_WINDOW", self.close)
         self._schedule(20, self._poll)
         self.session.start()
@@ -93,7 +96,8 @@ class RealtimePreviewWindow(tk.Toplevel):
             source=old.source.clone()
             adapter=self.adapters[self.var_detector.get()]
             self.session=RealtimePreviewSession(source,old.style,adapter,recognition_fps=float(self.var_fps.get()),
-                evidence_limit=old.records.maxlen,observe_regions=old.region_observer is not None)
+                evidence_limit=old.records.maxlen,observe_regions=old.region_observer is not None,
+                temporal_policy=old.temporal_policy)
             self.var_model.set(adapter.identity_text)
             self._frame_key=None
             self._row_id=None
