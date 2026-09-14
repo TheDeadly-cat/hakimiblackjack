@@ -16,6 +16,17 @@ SCHEMA='rank-cnn-rgb-1'
 ARCHITECTURE='mobilenet-v3-small-rgb64-rank-1'
 FEATURE_VERSION='native-rgb-letterbox64-imagenet-1'
 PATCH_SIZE=64
+INPUT_POLICY='verified-original-frame-exact-bbox-rgb-1'
+
+
+def read_native_rgb_item(item,root=Path()):
+    """Review context thumbnails are not classifier inputs, even when labeled."""
+    np,cv2=load_numpy(),load_cv2()
+    path=Path(root)/item.crop_file
+    rgb=cv2.imdecode(np.frombuffer(path.read_bytes(),np.uint8),cv2.IMREAD_COLOR)
+    if rgb is None or rgb.shape[:2]!=(item.bbox[3],item.bbox[2]):
+        raise ImageRejected('RGB 训练或评估裁片必须精确对应审核框；不能输入带边缘的审核缩略图')
+    return cv2.cvtColor(rgb,cv2.COLOR_BGR2RGB)
 
 
 def rgb_to_patch(rgb):

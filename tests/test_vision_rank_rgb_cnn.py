@@ -11,6 +11,33 @@ HAS_TORCH=importlib.util.find_spec('torch') is not None and importlib.util.find_
 
 @unittest.skipUnless(cv2_available(),'optional OpenCV/numpy dependency')
 class NativeRgbInputTests(unittest.TestCase):
+    def test_native_queue_crops_verified_frame_and_preserves_label_origin(self):
+        import json,hashlib
+        import numpy as np
+        from blackjack_lab.vision.image_io import write_png_rgb
+        from scripts.prepare_native_rgb_queue import prepare
+        from blackjack_lab.vision.glyph_dataset import load_queue
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'frames').mkdir()
+            rgb=np.full((30,50,3),245,np.uint8);rgb[5:15,10:30]=[210,170,160]
+            frame=root/'frames/frame.png';write_png_rgb(frame,50,30,rgb.tobytes())
+            context=root/'context.png';write_png_rgb(context,50,30,rgb.tobytes())
+            mask=root/'mask.png';write_png_rgb(mask,20,10,rgb[5:15,10:30].tobytes())
+            sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+            row=dict(crop_id='a1',session='s',frame='frame.png',frame_sha256=sha(frame),source_sha256='1'*64,
+                split='train',bbox=[10,5,20,10],ink='red',crop_file='context.png',crop_sha256=sha(context),
+                mask_file='mask.png',mask_sha256=sha(mask),label='K',label_provenance='human_reviewed',origin_crop_id='original')
+            queue=root/'queue.jsonl';queue.write_text(json.dumps(row)+'\n',encoding='utf-8')
+            bundle=root/'bundle.json';bundle.write_text(json.dumps({'sessions':[{'session':str(root),'source_sha256':'1'*64}]}))
+            receipt=prepare(queue,bundle,root/'new');item=load_queue(root/'new/queue.jsonl')[0]
+            from blackjack_lab.vision.rank_rgb_cnn import read_native_rgb_item
+            self.assertTrue(np.array_equal(read_native_rgb_item(item),rgb[5:15,10:30]))
+            self.assertEqual((item.label,item.bbox,item.origin_crop_id),('K',(10,5,20,10),'original'))
+            self.assertEqual(sha(context),row['crop_sha256']);self.assertTrue(receipt['labels_boxes_origins_unchanged'])
+            frame.write_bytes(b'changed')
+            with self.assertRaises(ValueError):prepare(queue,bundle,root/'tampered')
+            self.assertFalse((root/'tampered').exists())
+
     def test_adapter_delivers_exact_rgb_without_a_binary_mask(self):
         import numpy as np
         from unittest.mock import patch
@@ -66,11 +93,15 @@ class NativeRgbInputTests(unittest.TestCase):
             root=Path(directory);rgb=np.full((20,30,3),[210,170,160],np.uint8)
             write_png_rgb(root/'crop.png',30,20,rgb.tobytes())
             rows=[SimpleNamespace(label='K',crop_id=str(i),session='synthetic',round_id='one',
-                  crop_file=name,mask_file='deliberately-no-mask.png') for i,name in enumerate(['crop.png','missing.png'])]
+                  bbox=(0,0,30,20),crop_file=name,mask_file='deliberately-no-mask.png') for i,name in enumerate(['crop.png','missing.png'])]
             report=evaluate_items(RawModel(),rows,root)
             self.assertEqual(report['n_identifiable'],2);self.assertEqual(report['accepted_correct'],1)
             self.assertEqual(report['n_invalid'],1);self.assertFalse(report['valid'])
             self.assertEqual(report['rows'][1]['error'],'missing_rgb_crop')
+            rows[0].bbox=(0,0,12,10)
+            report=evaluate_items(RawModel(),rows[:1],root)
+            self.assertEqual(report['n_invalid'],1)
+            self.assertEqual(report['rows'][0]['error'],'prediction_error:ImageRejected')
 
 
 @unittest.skipUnless(HAS_TORCH and cv2_available(),'optional PyTorch/torchvision/vision dependencies')

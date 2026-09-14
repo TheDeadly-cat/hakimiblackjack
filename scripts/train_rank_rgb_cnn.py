@@ -25,9 +25,10 @@ def main():
     from blackjack_lab.vision.glyph_dataset import labeled_only,LABEL_RANKS,label_counts
     from blackjack_lab.vision.rank_classifier import evaluate_items
     from blackjack_lab.vision.rank_cnn import RankCnnClassifier
-    from blackjack_lab.vision.rank_rgb_cnn import ARCHITECTURE,create_network,rgb_to_patch,RankRgbCnnClassifier
+    from blackjack_lab.vision.rank_rgb_cnn import ARCHITECTURE,INPUT_POLICY,create_network,rgb_to_patch,RankRgbCnnClassifier,read_native_rgb_item
     if plan['schema']!='rank-rgb-cnn-experiment-1' or plan['architecture']!=ARCHITECTURE:
         raise ValueError('Unknown RGB experiment')
+    if plan['input_policy']!=INPUT_POLICY:raise ValueError('Explicit exact-bbox RGB queue required')
     expected={'steps':1500,'seed':914,'batch_size':64,'angles':[0,15,-15,30,-30],
               'backbone_learning_rate':.0001,'head_learning_rate':.001,'weight_decay':.001,'label_smoothing':.02}
     if plan['training']!=expected or plan['rejection']!={'min_score':.9,'min_margin':.2}:
@@ -65,9 +66,7 @@ def main():
         raise ValueError('Use the verified existing pretrained cache; do not download during training')
     patches=[];labels=[]
     for item in train:
-        bgr=cv2.imdecode(np.fromfile(item.crop_file,dtype=np.uint8),cv2.IMREAD_COLOR)
-        if bgr is None:raise ValueError('Unreadable RGB training crop')
-        rgb=cv2.cvtColor(bgr,cv2.COLOR_BGR2RGB);h,w=rgb.shape[:2]
+        rgb=read_native_rgb_item(item);h,w=rgb.shape[:2]
         for angle in expected['angles']:
             matrix=cv2.getRotationMatrix2D(((w-1)/2,(h-1)/2),angle,1)
             # Expanded canvas preserves the original strokes, with white padding.

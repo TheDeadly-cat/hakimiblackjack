@@ -603,11 +603,15 @@ def evaluate_items(model: RankClassifier, items: Sequence[GlyphItem],
                 failure = "missing_rgb_crop" if native_rgb else "missing_mask"
                 mask = None
             else:
-                mask = cv2.imread(str(mask_path), cv2.IMREAD_COLOR if native_rgb else cv2.IMREAD_GRAYSCALE)
+                if native_rgb:
+                    from .rank_rgb_cnn import read_native_rgb_item
+                    mask = read_native_rgb_item(item, root)
+                else:
+                    mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
                 if mask is None or mask.size == 0:
                     failure = "unreadable_rgb_crop" if native_rgb else "unreadable_mask"
             if not failure:
-                guess = (model.predict_rgb_crops([cv2.cvtColor(mask, cv2.COLOR_BGR2RGB)])[0]
+                guess = (model.predict_rgb_crops([mask])[0]
                          if native_rgb else model.predict_mask(mask))
                 if guess.accepted and guess.rank not in RANKS_13:
                     failure = "invalid_prediction_contract"
