@@ -16,6 +16,20 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def as_crop_observation(row):
+    """Withdraw an uncertified physical-ID claim without inventing a new card ID."""
+    if row.get('physical_identity_confirmed') is True:
+        raise ValueError('Cannot withdraw a confirmed physical identity as a crop-only review')
+    updated=dict(row)
+    updated['source_declared_physical_card_id']=row.get('physical_card_id','')
+    updated['physical_card_id']=''
+    updated['identity_provenance']='crop_observation_only_not_verified_physical_card'
+    updated['physical_identity_confirmed']=False
+    # Retain any existing origin alias. Reprojection must not give a copy more votes.
+    updated['origin_crop_id']=row.get('origin_crop_id') or row['crop_id']
+    return updated
+
+
 def select_rows(tagged_rows, selected, source_sha256):
     """Keep reviewed junk and exactly the current upper boxes, without relabelling."""
     kept=[];excluded=[];seen=set();found=set()
@@ -43,6 +57,8 @@ def main():
     parser.add_argument('--supplement-queue',required=True,type=Path)
     parser.add_argument('--detector',required=True,type=Path)
     parser.add_argument('--annotations',required=True,type=Path)
+    parser.add_argument('--supplement-crop-observations',action='store_true',
+                        help='Explicitly project crop-only supplemental IDs to observations, preserving original claims')
     parser.add_argument('--output',required=True,type=Path)
     args=parser.parse_args()
     if args.output.exists():raise ValueError('Preserve old queues; use a new output directory')
@@ -50,6 +66,9 @@ def main():
     manifest=json.loads((args.detector/'detector-manifest.json').read_text(encoding='utf-8'))
     plan=json.loads(plan_path.read_text(encoding='utf-8'))
     annotation=json.loads(args.annotations.read_text(encoding='utf-8'))
+    if (args.supplement_crop_observations
+            and annotation.get('review_scope')!='new_crop_confirmation_only_not_temporal_truth'):
+        raise ValueError('Supplement identity projection requires an explicit crop-only review scope')
     if manifest['plan_sha256']!=sha(plan_path) or plan['train']['annotation_sha256']!=sha(args.annotations):
         raise ValueError('Detector plan or original annotation identity mismatch')
     source=plan['train']['source_sha256']
@@ -74,7 +93,12 @@ def main():
             for line in path.read_text(encoding='utf-8').splitlines() if line.strip()]
     kept,excluded=select_rows(tagged,selected,source)
     rows=[]
+    identity_projections=[]
     for origin,row in kept:
+        if args.supplement_crop_observations and origin=='supplement':
+            identity_projections.append(dict(crop_id=row['crop_id'],
+                                             original_physical_card_id=row.get('physical_card_id','')))
+            row=as_crop_observation(row)
         root=queues[origin].parent
         for field in ('crop_file','mask_file'):
             path=(root/row[field]).resolve()
@@ -95,6 +119,8 @@ def main():
                 queue_sha256=sha(queue_path),training_digest=_training_digest(items),
                 labels=dict(Counter(row['label'] for row in rows)),items=len(rows),
                 kept_by_queue=dict(Counter(origin for origin,_ in kept)),excluded=excluded,
+                supplemental_identity_projections=identity_projections,
+                identity_projection_scope='crop observations only; no new physical-card identity or independence claim',
                 source_rank_labels_changed=False,original_files_changed=False,
                 scope='Human rank labels retained; upper-box selection includes separately attributed assistant orientation review. Counts are crops, not independent physical cards.')
     for original in receipts.values():

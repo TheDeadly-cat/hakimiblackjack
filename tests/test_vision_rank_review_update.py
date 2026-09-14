@@ -1,6 +1,8 @@
 import copy
 import unittest
-from scripts.prepare_rank_review_update import select_rows
+from types import SimpleNamespace
+from scripts.prepare_rank_review_update import select_rows,as_crop_observation
+from blackjack_lab.vision.glyph_dataset import sample_origin_id
 
 
 class ReviewedRankSelectionTests(unittest.TestCase):
@@ -30,6 +32,19 @@ class ReviewedRankSelectionTests(unittest.TestCase):
                     'wrong_source':('source_sha256','other'),'unreviewed':('label_provenance','assistant_proposed')}[mode]
                 rows[-1][1][field]=value
             with self.subTest(mode=mode),self.assertRaises(ValueError):select_rows(rows,selected,'source')
+
+    def test_crop_only_projection_does_not_use_rank_as_identity_or_split_origin_aliases(self):
+        first=dict(crop_id='dealer-k',origin_crop_id='dealer-k',physical_card_id='K',label='K')
+        second=dict(crop_id='player-k',origin_crop_id='player-k',physical_card_id='K',label='K')
+        a,b=as_crop_observation(first),as_crop_observation(second)
+        self.assertEqual(first['physical_card_id'],'K')
+        self.assertEqual(a['source_declared_physical_card_id'],'K')
+        self.assertEqual(a['label'],'K')
+        self.assertEqual(a['physical_card_id'],'')
+        self.assertNotEqual(sample_origin_id(SimpleNamespace(**a)),sample_origin_id(SimpleNamespace(**b)))
+        copied=as_crop_observation(dict(first,crop_id='same-crop-copy'))
+        self.assertEqual(sample_origin_id(SimpleNamespace(**a)),sample_origin_id(SimpleNamespace(**copied)))
+        with self.assertRaises(ValueError):as_crop_observation(dict(first,physical_identity_confirmed=True))
 
 
 if __name__=='__main__':unittest.main()
