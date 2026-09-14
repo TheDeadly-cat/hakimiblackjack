@@ -1,6 +1,7 @@
 """Minimal Chinese contrast page for synthetic 6/7/8-deck experiments and history replay."""
 from __future__ import annotations
 
+import json
 import queue
 import threading
 import uuid
@@ -63,7 +64,7 @@ class ExperimentWindow(tk.Toplevel):
         ttk.Entry(form, textvariable=self.var_session, width=34).grid(row=2, column=1, columnspan=2, sticky="w")
         ttk.Label(form, text="事件序号").grid(row=2, column=3, sticky="w")
         ttk.Entry(form, textvariable=self.var_seq, width=8).grid(row=2, column=4, sticky="w")
-        ttk.Label(form, text="历史回放只用当时已记录信息，不吸收后续揭牌或纠错。",
+        ttk.Label(form, text="历史回放只用当时已记录信息，不吸收后续揭牌或纠错。固定玩家牌与庄家明牌的对照不是发牌前开局优势。整靴窗口扫描请用 python scripts/run_shoe_windows.py；独立牌靴集合请用 python scripts/run_independent_shoes.py；前三/六轮消耗请用 python scripts/run_round_windows.py（其他座位不是独立样本）；合成录牌误差对照请用 python scripts/run_observation_error.py；组成区间请用 python scripts/run_composition_interval.py（禁止平均牌靴）；策略耗牌对照请用 python scripts/run_policy_contrast.py（不共享实现路径）；未使用留出对照请用 python scripts/run_unused_holdout.py（缺声明即拒绝）。大于16张记未支持，超时保持超时，零窗口是合法结果。都不能当作可靠优势声明。",
                   wraplength=880).grid(row=3, column=0, columnspan=6, sticky="w", padx=4, pady=4)
 
         bar = ttk.Frame(self)
@@ -71,6 +72,10 @@ class ExperimentWindow(tk.Toplevel):
         ttk.Button(bar, text="开始", command=self.start).pack(side=tk.LEFT)
         ttk.Button(bar, text="取消", command=self.cancel).pack(side=tk.LEFT, padx=4)
         ttk.Button(bar, text="导出目录", command=self.export_folder).pack(side=tk.LEFT)
+        ttk.Button(bar, text="独立牌靴集合", command=lambda: self.run_research("shoes")).pack(side=tk.LEFT, padx=4)
+        ttk.Button(bar, text="组成区间", command=lambda: self.run_research("interval")).pack(side=tk.LEFT)
+        ttk.Button(bar, text="合成误差", command=lambda: self.run_research("error")).pack(side=tk.LEFT, padx=4)
+        ttk.Button(bar, text="耗牌对照", command=lambda: self.run_research("contrast")).pack(side=tk.LEFT)
         ttk.Label(bar, textvariable=self.var_status, wraplength=640).pack(side=tk.LEFT, padx=8)
 
         body = ttk.Frame(self)
@@ -134,17 +139,20 @@ class ExperimentWindow(tk.Toplevel):
         self.after(50, self._poll)
 
     def _poll(self):
-        done = len(self.runner.progress) if self.runner else 0
-        expected = getattr(self, "_expected", 1)
         try:
             kind, payload = self._queue.get_nowait()
         except queue.Empty:
             if self.thread and self.thread.is_alive():
-                self.var_status.set(f"进度 {done}/{expected}：顺序执行，不并行启动大量原生进程。")
+                if self.runner:
+                    done = len(self.runner.progress)
+                    expected = getattr(self, "_expected", 1)
+                    self.var_status.set(f"进度 {done}/{expected}：顺序执行，不并行启动大量原生进程。")
                 self.after(50, self._poll)
             return
         if kind == "ok":
             self._done(payload)
+        elif kind == "research":
+            self._done_research(payload)
         else:
             self._fail(payload)
 
@@ -158,6 +166,52 @@ class ExperimentWindow(tk.Toplevel):
             messagebox.showinfo("对照实验", "还没有可导出的实验结果", parent=self)
             return
         messagebox.showinfo("对照实验", f"JSON：{self.saved['json']}\nCSV：{self.saved['csv']}", parent=self)
+
+    def run_research(self, kind):
+        if self.thread and self.thread.is_alive():
+            messagebox.showinfo("对照实验", "已有实验在运行", parent=self)
+            return
+        self.var_status.set("研究扫描进行中：合成路径，不是独立录像。")
+        def work():
+            try:
+                self._queue.put(("research", self._research_report(kind)))
+            except Exception as error:
+                self._queue.put(("err", error))
+        self.thread = threading.Thread(target=work, daemon=True)
+        self.thread.start()
+        self.after(50, self._poll)
+
+    def _research_report(self, kind):
+        if kind == "shoes":
+            from ..analysis.shoe_windows import KIND_LATE_DEPLETE, run_independent_shoes
+            return run_independent_shoes(kind=KIND_LATE_DEPLETE, remaining=8, n_shoes=3,
+                                         max_rounds=3, n_decks=6, base_seed=1)
+        if kind == "interval":
+            from ..analysis.composition_interval import evaluate_interval
+            return evaluate_interval([[10, 9, 8, 7, 6, 5], [10, 10, 9, 8, 7, 6]])
+        if kind == "contrast":
+            from ..analysis.shoe_windows import CONSUMPTION_BASIC, CONSUMPTION_STAND, run_policy_contrast
+            return run_policy_contrast(pack=[10, 9, 8, 7, 6, 5, 4, 3, 2, 10], seed=1,
+                                       max_rounds=2, policies=(CONSUMPTION_STAND, CONSUMPTION_BASIC))
+        from random import Random
+        from ..analysis.observation_error import run_observation_error_study
+        from ..analysis.shoe_windows import sample_pack
+        pack = sample_pack(6, 8, Random(1))
+        return run_observation_error_study(pack=pack, seed=1, max_rounds=3)
+
+    def _done_research(self, report):
+        summary = report.get("summary") or {}
+        text = json.dumps({
+            "schema": report.get("schema"),
+            "sample_unit": report.get("sample_unit"),
+            "independent_video": report.get("independent_video"),
+            "not_a_reliable_window_claim": report.get("not_a_reliable_window_claim"),
+            "shared_realized_path": report.get("shared_realized_path"),
+            "forbids_mean_shoe": report.get("forbids_mean_shoe"),
+            **{key: summary[key] for key in list(summary)[:8]},
+        }, ensure_ascii=False)
+        self.var_status.set(text[:700])
+        messagebox.showinfo("研究扫描（非可靠窗口声明）", self.var_status.get(), parent=self)
 
     def _fail(self, error):
         self.var_status.set(str(error))

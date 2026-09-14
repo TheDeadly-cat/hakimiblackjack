@@ -214,8 +214,9 @@ class WgcLiveSource:
 
 
 def open_window_source(hwnd: int, **kwargs) -> WgcLiveSource:
+    from .overlay_exclusion import refuse_overlay_source
     from .window_list import describe_window
-    info = describe_window(int(hwnd))
+    info = refuse_overlay_source(describe_window(int(hwnd)))
     spec = SourceSpec(
         kind=SOURCE_WINDOW,
         window_hwnd=int(hwnd),

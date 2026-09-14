@@ -20,10 +20,12 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from .. import ENGINE_VERSION, __version__
+from ..observation.currency import ObservationState
 from ..core.cards import RANKS, SUIT_NAME, TEN_BUCKET, UNKNOWN
 from ..core.rules import (
     CAPABILITY_MATRIX, CONFIRM_UNKNOWN, CONFIRM_VERIFIED, RuleProfile,
 )
+from ..core.table_archive import archive_from_profile, load_archive, missing_archive, save_archive
 from ..core.shoe import ConsistencyError
 from ..core.table import (
     ACTION_DOUBLE, ACTION_SPLIT, ACTION_STAND, ACTION_SURRENDER, DEALER,
@@ -110,11 +112,15 @@ class BlackjackLabApp(tk.Tk):
         self.var_suit = tk.StringVar(value="未知")
         self.var_status = tk.StringVar(value="就绪：请先选择牌副数并新建牌靴")
         self.rule_details = {}
+        self.table_archive = None
+        self.archive_source_version = ""
+        self._fullscreen_dialog = None
         self.var_participants = {name: tk.BooleanVar(value=name == "玩家1") for name in SEAT_NAMES[1:]}
         self._hand_ids = {}
         self.vision_session = None
         self._vision_win = None
         self._quick_panel = None
+        self.observation = ObservationState()
 
         self._build_top()
         self._build_body()
@@ -181,6 +187,8 @@ class BlackjackLabApp(tk.Tk):
         ttk.Combobox(rule_box, textvariable=self.var_confirm, width=7,
                      values=[CONFIRM_UNKNOWN, CONFIRM_VERIFIED],
                      state="readonly").pack(side=tk.LEFT, padx=2)
+        ttk.Button(rule_box, text="载入真实桌档案", command=self.act_load_table_archive).pack(side=tk.LEFT, padx=6)
+        ttk.Button(rule_box, text="导出真实桌档案", command=self.act_export_table_archive).pack(side=tk.LEFT)
 
         ttk.Button(bar, text="新建牌靴（锁定规则）",
                    command=self.act_new_shoe).grid(row=0, column=2, padx=6)
@@ -294,7 +302,9 @@ class BlackjackLabApp(tk.Tk):
             "6·7·8副守恒/SQLite恢复/JSON导出\n"
             "V0.2b1：单手 / 两手顺序合计EV / 复盘\n"
             "V0.2b2：显式DAS模板（非A分手一次加倍）\n"
-            "识牌：本地图+人工确认入账；捕获/实盘未支持"),
+            "发牌前：剩余≤16精确；整靴/三六轮/区间实验性\n"
+            "真实桌/全屏/操作者对照：缺证据未支持\n"
+            "识牌须人工确认；禁止自动入账"),
             foreground="#555").pack(anchor="w", padx=4, pady=3)
 
         # ---------- 右侧：动作 + 组成 ----------
@@ -361,12 +371,15 @@ class BlackjackLabApp(tk.Tk):
         more.pack(fill=tk.X, padx=4, pady=2)
         for text, cmd in [
             ("修正选中事件", self.act_correct), ("查看选中时点", self.act_history),
+            ("插入漏牌（回溯修复）", self.act_repair_missed_deal),
             ("结束本轮（未结算）", self.act_end_unsettled),
             ("导入 JSON / CSV", self.act_import), ("恢复历史会话", self.act_recover),
             ("备份数据库", self.act_backup), ("旧会话诊断", self.act_diagnose),
             ("识牌核对", self.act_open_vision),
             ("悬浮记牌", self.act_quick_record),
             ("牌记录详细纠错", self.act_detailed_card_correction),
+            ("全屏验收清单", self.act_fullscreen_acceptance),
+            ("导出操作者对照", self.act_operator_study),
             ("刷新界面", self.act_refresh),
         ]:
             ttk.Button(more, text=text, command=cmd).pack(side=tk.LEFT, padx=3)
@@ -426,7 +439,71 @@ class BlackjackLabApp(tk.Tk):
         self.var_confirm.set(CONFIRM_VERIFIED)
         excluded = {"n_decks", "dealer_soft17", "blackjack_payout", "split_match", "double_after_split", "surrender", "confirm_status"}
         self.rule_details = {k: v for k, v in asdict(rules).items() if k not in excluded}
+        self.table_archive = None
         self.set_status("已载入自建研究模板（非平台桌规）：" + scope + "请新建牌靴使用；当前规则快照不变。")
+        self.refresh_all()
+
+    def apply_table_archive(self, archive):
+        rules = archive.rules
+        self.table_archive = archive
+        self.archive_source_version = archive.source_version
+        self.var_decks.set(rules.n_decks)
+        self.var_s17.set(rules.dealer_soft17 or "未知")
+        if rules.blackjack_payout is None:
+            self.var_bjp.set("未知")
+        else:
+            self.var_bjp.set(f"{rules.blackjack_payout[0]}:{rules.blackjack_payout[1]}")
+        self.var_split_match.set("same_rank 同牌面" if rules.split_match == "same_rank" else "same_value 同点值")
+        self.var_das.set({True: "允许", False: "禁止", None: "未知"}[rules.double_after_split])
+        self.var_surrender.set("不支持" if rules.surrender is None else rules.surrender)
+        self.var_confirm.set(rules.confirm_status)
+        excluded = {"n_decks", "dealer_soft17", "blackjack_payout", "split_match",
+                    "double_after_split", "surrender", "confirm_status"}
+        self.rule_details = {k: v for k, v in asdict(rules).items() if k not in excluded}
+
+    @tracked_operation
+    def act_load_table_archive(self):
+        path = filedialog.askopenfilename(
+            parent=self, filetypes=[("真实桌规则档案", "*.json")], title="载入真实桌档案")
+        if not path:
+            return
+        archive = load_archive(path)
+        self.apply_table_archive(archive)
+        self.set_status(
+            f"已载入真实桌档案 {archive.table_id} / {archive.source_version}；研究模板未充当该桌。请新建牌靴锁定。")
+        self.refresh_all()
+
+    @tracked_operation
+    def act_export_table_archive(self):
+        version = simpledialog.askstring(
+            "真实桌档案版本", "来源版本（条款/核对记录编号，不能用研究模板）：",
+            initialvalue=self.archive_source_version, parent=self)
+        if not version:
+            return
+        notes = simpledialog.askstring("真实桌档案备注", "可选备注；不能把研究模板写成平台桌：", parent=self) or ""
+        archive = archive_from_profile(self._build_rules(), version.strip(), notes)
+        path = filedialog.asksaveasfilename(
+            parent=self, defaultextension=".json", initialfile="table-rule-archive.json",
+            filetypes=[("真实桌规则档案", "*.json")])
+        if not path:
+            return
+        save_archive(archive, path)
+        self.table_archive = archive
+        self.archive_source_version = archive.source_version
+        self.set_status("已导出真实桌档案；尚未因此宣称某平台桌已验收。")
+
+    @tracked_operation
+    def act_fullscreen_acceptance(self):
+        from .acceptance_dialogs import FullscreenAcceptanceDialog
+        if getattr(self, "_fullscreen_dialog", None) is not None and self._fullscreen_dialog.winfo_exists():
+            self._fullscreen_dialog.lift()
+            return
+        self._fullscreen_dialog = FullscreenAcceptanceDialog(self)
+
+    @tracked_operation
+    def act_operator_study(self):
+        from .acceptance_dialogs import export_operator_trials
+        export_operator_trials(self)
 
     def act_experiments(self):
         if self.experiment_window is not None and self.experiment_window.winfo_exists():
@@ -615,6 +692,46 @@ class BlackjackLabApp(tk.Tk):
             self.ctrl.correct(event.event_id, fix, reason)
             self.refresh_all()
             self.set_status("已追加纠错并重算；原始事件仍保留。若后续操作与修正冲突，需先逆序撤销后续事件。")
+        except Exception as exc:
+            self.fail(exc)
+
+    @tracked_operation
+    def act_repair_missed_deal(self):
+        try:
+            event = self._selected_event()
+            seat = simpledialog.askstring(
+                "插入漏牌", "漏记的座位（玩家1 / 庄家）：",
+                initialvalue=self.var_target.get(), parent=self)
+            if not seat:
+                return
+            rank = simpledialog.askstring(
+                "插入漏牌", "牌面 A、2～10、J、Q、K；HIDDEN=暗牌；?=未知。确认时间为现在，不会改写旧事件：",
+                parent=self)
+            if rank is None:
+                return
+            rank = rank.strip().upper()
+            hidden = rank in ("HIDDEN", "暗牌")
+            unknown = rank in ("?", UNKNOWN, "UNKNOWN")
+            shown = None if hidden or unknown else rank
+            if not hidden and not unknown and shown not in (*RANKS, TEN_BUCKET):
+                raise ValueError("请输入有效牌面，或 HIDDEN / ?")
+            reason = simpledialog.askstring("插入依据", "说明漏牌位置与核对依据：", parent=self)
+            if not reason:
+                return
+            plan = self.ctrl.preview_missed_deal(
+                event.event_id, seat.strip(), shown, hidden=hidden, unknown=unknown, reason=reason)
+            n_suffix = len(plan.suffix_event_ids)
+            if not messagebox.askyesno(
+                "确认回溯修复",
+                f"将在选中事件之后插入一张牌，并逆序撤销后重放后续 {n_suffix} 条事件。"
+                "一次提交，原始事件保留。\n\n"
+                "历史时点仍看不到这张后来插入的牌。"
+                "不能用修复后的当前结果宣称当时已经抓到窗口。\n\n是否提交？",
+                parent=self):
+                return
+            self.ctrl.commit_repair(plan)
+            self.refresh_all()
+            self.set_status("已原子提交回溯修复；原事件仍在。查看选中时点不会带上后来插入的牌。")
         except Exception as exc:
             self.fail(exc)
 
@@ -932,11 +1049,16 @@ class BlackjackLabApp(tk.Tk):
 
     def refresh_topinfo(self, seg, replay) -> None:
         shoe_no = len(replay.segments)
+        if self.table_archive is not None:
+            origin = f"真实桌档案 {self.table_archive.table_id}@{self.table_archive.source_version}"
+        else:
+            origin = missing_archive()["reason_code"] + "；当前表单不是平台桌规"
         if seg is None:
             self.var_topinfo.set(
-                "牌靴 #0｜轮次 -｜完整性 -｜分析：单手 / 显式两手顺序模板")
+                "牌靴 #0｜轮次 -｜完整性 -｜分析：单手 / 显式两手顺序模板｜" + origin)
             return
         ok, note = seg.shoe.conservation_check()
+        source = seg.rules.rule_source or "来源未填"
         self.var_topinfo.set(
             f"锁定 {seg.rules.n_decks}副/{seg.rules.dealer_soft17 or '未知'}｜牌靴 #{shoe_no}｜第 {seg.table.round_no} 轮｜"
             f"阶段 {'牌靴已结束' if seg.closed else seg.table.phase}｜记录：{self._record_status(seg)}｜"
@@ -944,7 +1066,7 @@ class BlackjackLabApp(tk.Tk):
             f"规则确认：{seg.rules.confirm_status}｜分析：" + (
                 "两手DAS模型" if seg.rules.profile_id == DAS_PROFILE
                 else "两手顺序模型" if seg.rules.profile_id == SPLIT_PROFILE
-                else "原单手模型"))
+                else "原单手模型") + "｜锁定来源：" + source + "｜表单：" + origin)
 
     def refresh_hands(self, seg=None) -> None:
         if seg is None:

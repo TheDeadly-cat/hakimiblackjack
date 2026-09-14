@@ -81,8 +81,11 @@ class ContinuousReviewFeed:
 
     def poll(self):
         if not self.enabled or self.replay_mode:
+            if self.replay_mode:
+                self.work.sync_observation(self)
             return False
         if self.problem():
+            self.work.sync_observation(self)
             return False
         row = self.owner.latest_result()
         if row is None or self.last_row == row.row_id:
@@ -101,6 +104,8 @@ class ContinuousReviewFeed:
             if not self.work.overflow:
                 self.work._record("queue-overflow", bound=self.bound, requires_observation_check=True)
             self.work.overflow += len(fresh)
+            self.work.observation.mark_overflow(len(fresh))
+            self.work.sync_observation(self)
             return False
         source = self.owner.source
         if getattr(source, "is_live", False):
@@ -130,6 +135,7 @@ class ContinuousReviewFeed:
                 arrival_ns=row.packet.observed_monotonic_ns,
                 observed_at=obs.captured_at)
             added = draft is not None or added
+        self.work.sync_observation(self)
         return added
 
     def set_queue_policy(self, policy):
@@ -219,5 +225,7 @@ class ContinuousReviewFeed:
             self.replay_regions = self._snapshot_unranked(row)
         self.owner.stop()
         self.replay_mode = True
+        self.work.observation.enter_replay()
+        self.work.sync_observation(self)
         self.work._record("explicit-offline-review", epoch=self.epoch, bound=self.bound,
                           note="source is stopped; confirmations are retrospective, not live")

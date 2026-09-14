@@ -6,7 +6,7 @@ from pathlib import Path
 import queue
 import time
 import tkinter as tk
-from tkinter import ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from .assisted_recording import AssistedRecording, DraftError
 from .overlay_windows import CombinationHotkey, HOTKEYS, style_owned_window
@@ -25,7 +25,7 @@ class QuickRecordPanel(tk.Toplevel):
         super().__init__(app)
         self.withdraw()
         self.app = app
-        self.work = AssistedRecording(app.ctrl)
+        self.work = AssistedRecording(app.ctrl, observation=app.observation)
         self.work.seat = app.var_target.get()
         self.feed = None
         self.reconnect = None
@@ -137,9 +137,11 @@ class QuickRecordPanel(tk.Toplevel):
         self.record_list.bind("<Double-1>", lambda e: self.edit_record())
         bottom = ttk.Frame(self.editor)
         bottom.pack(fill=tk.X, pady=4)
-        for label, command in [("观察缺口", self.mark_gap), ("撤回草稿", self.discard),
+        for label, command in [("观察缺口", self.mark_gap), ("完成对账", self.complete_observation),
+                               ("撤回草稿", self.discard),
                                ("连接识别来源", self.open_source), ("回主工作台", self.show_main)]:
             ttk.Button(bottom, text=label, command=command).pack(side=tk.LEFT, padx=2)
+        ttk.Button(bottom, text="导出操作者对照", command=self.export_operator_study).pack(side=tk.LEFT, padx=2)
         hotbar = ttk.Frame(self.editor)
         hotbar.pack(fill=tk.X)
         key_combo = ttk.Combobox(hotbar, textvariable=self.var_key, values=tuple(HOTKEYS), state="readonly", width=20)
@@ -348,6 +350,36 @@ class QuickRecordPanel(tk.Toplevel):
             self.work.next()
         self.attempt(run)
 
+    def complete_observation(self):
+        def run():
+            self.work.complete_observation_check()
+            self.var_status.set("已完成观察对账；未改账本。当前分析是否适用由观察状态与账本共同决定")
+        self.attempt(run)
+
+    def export_operator_study(self):
+        from ..observation.operator_study import trial_from_usage, write_export
+        human = messagebox.askyesno(
+            "操作者对照", "这是配对真人试验记录吗？选否则保持结论：不能改自动提示默认。", parent=self)
+        if not messagebox.askyesno(
+            "实时声明", "确认：暂停后的对账成功不算实时跟上。必须选是才能导出。", parent=self):
+            self.var_status.set("未导出：必须声明暂停对账不算实时跟上")
+            return
+        missed = simpledialog.askinteger("漏牌次数", "本段漏牌次数：", parent=self, minvalue=0)
+        duplicates = simpledialog.askinteger("重复次数", "本段重复记录次数：", parent=self, minvalue=0)
+        repair = simpledialog.askinteger("修复耗时秒", "回溯修复耗时（秒）：", parent=self, minvalue=0)
+        if None in (missed, duplicates, repair):
+            return
+        path = filedialog.asksaveasfilename(
+            parent=self, defaultextension=".json", initialfile="operator-study.json",
+            filetypes=[("操作者对照", "*.json")])
+        if not path:
+            return
+        recorded = trial_from_usage(
+            "assisted", self.usage, human_run=bool(human), missed_cards=missed,
+            duplicates=duplicates, repair_seconds=repair, pause_reconcile_not_realtime=True)
+        body = write_export(path, [recorded])
+        self.var_status.set("已导出操作者对照；auto_prompt_default=" + str(body["auto_prompt_default"]))
+
     def mark_gap(self):
         def run():
             reason = self.var_reason.get().strip()
@@ -447,7 +479,7 @@ class QuickRecordPanel(tk.Toplevel):
             problem = "录像复盘 · 已停止采集，不代表当前牌桌"
         self.assist_button.configure(text="自动提示：" + ("开" if self.feed.enabled else "关") if self.feed else "自动提示：未连接")
         if self.work.overflow:
-            lag = "队列曾溢出：请检查漏牌并登记观察缺口"
+            lag = "队列曾溢出：清空后仍须点“完成对账”，不能自动视为观察完整"
         current = f"{d.seat} · {d.rank or '未知/待填'}" if d else f"{self.work.seat} · 按 N 补牌"
         if d and d.original.get("capture", {}).get("source_frame_index") is not None:
             current += f" · 录像 {d.original['capture']['media_time_ns'] / 1e9:.1f}s"
@@ -547,6 +579,7 @@ class QuickRecordPanel(tk.Toplevel):
                     self.table_canvas.itemconfigure(self.table_image, image=photo)
                     self._preview_key = packet.frame_id
             self.refresh()
+            self.work.sync_observation(self.feed)
             self.usage["max_pending"] = max(self.usage["max_pending"], len(self.work.pending))
             self.usage["max_lag_seconds"] = max(self.usage["max_lag_seconds"], self.work.lag_seconds())
         except Exception as exc:

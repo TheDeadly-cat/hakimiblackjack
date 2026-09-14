@@ -12,6 +12,7 @@ from uuid import uuid4
 from ..core.cards import RANKS
 from ..core.table import PHASE_DEALING, PHASE_IN_PROGRESS
 from ..ledger.events import CARD_DEALT, CARD_REVEALED, CONFIRMED
+from ..observation.currency import MODE_LIVE, ObservationState, classify_source_problem
 from ..storage.safe_files import atomic_write
 
 
@@ -44,11 +45,12 @@ class CardDraft:
 
 
 class AssistedRecording:
-    def __init__(self, ctrl, evidence_root=None, *, capacity=64):
+    def __init__(self, ctrl, evidence_root=None, *, capacity=64, observation=None):
         self.ctrl = ctrl
         self.root = Path(evidence_root or (str(ctrl.store.db_path) + ".assisted"))
         self.root.mkdir(parents=True, exist_ok=True)
         self.capacity = capacity
+        self.observation = observation if observation is not None else ObservationState()
         self.items: dict[str, CardDraft] = {}
         self.selected_id = None
         self.seat, self.hand_id = "玩家1", None
@@ -62,6 +64,7 @@ class AssistedRecording:
         self._cache_token = None
         self._cached_state = None
         self._restore()
+        self.sync_observation()
         ctrl.add_context_listener(self.context_changed)
 
     def _restore(self):
@@ -154,6 +157,10 @@ class AssistedRecording:
     def manual_pending(self):
         return [d for d in self.pending if (d.source_epoch is None or d.human_requested) and not d.blocked]
 
+    @property
+    def unresolved_pending(self):
+        return [d for d in self.pending if not d.blocked]
+
     def _record(self, action, draft=None, **extra):
         entry = {"schema": "assisted-review-action-1", "action": action,
                  "time": time.time(), "monotonic_ns": time.perf_counter_ns(),
@@ -179,6 +186,7 @@ class AssistedRecording:
         self._record("manual-draft", draft)
         self.items[draft.draft_id] = draft
         self.selected_id = draft.draft_id
+        self.sync_observation()
         return draft
 
     def connect(self, epoch, guard):
@@ -188,7 +196,9 @@ class AssistedRecording:
         self.epoch, self.source_guard = epoch, guard
         self.source_issue = "等待来源画面"
         self.seen.clear()
+        self.observation.connect_source(epoch)
         self._record("source-connected", epoch=epoch, bound=self.binding())
+        self.sync_observation()
 
     def source_problem(self):
         if self.source_guard is None:
@@ -211,6 +221,8 @@ class AssistedRecording:
             if not self.overflow:
                 self._record("queue-overflow", bound=self.binding(), requires_observation_check=True)
             self.overflow += 1
+            self.observation.mark_overflow()
+            self.sync_observation()
             return None
         if self.source_problem():
             return None
@@ -236,6 +248,7 @@ class AssistedRecording:
         # Incoming work must not replace the currently displayed draft.
         if self.selected_id is None:
             self.selected_id = draft.draft_id
+        self.sync_observation()
         return draft
 
     def select(self, draft_id):
@@ -327,6 +340,7 @@ class AssistedRecording:
         self._record("history-draft", d)
         self.items[d.draft_id] = d
         self.selected_id = d.draft_id
+        self.sync_observation()
         return d
 
     def confirm(self, draft_id):
@@ -406,12 +420,46 @@ class AssistedRecording:
         d.event_id = event.event_id if event else None
         d.status = {"link": "linked", "reject": "rejected"}.get(d.operation, "committed")
         self._record("confirmation-result", d, ledger_written=d.operation not in ("link", "reject"))
+        self._after_unresolved_change()
         return event
 
     def discard(self):
         if self.selected and self.selected.status == "pending":
             self._record("discard-draft", self.selected)
             self.selected.status = "discarded"
+            self._after_unresolved_change()
+
+    def complete_observation_check(self, note="operator_reconcile"):
+        """Human finished reviewing suspects. Does not write the ledger or restore overflow silently."""
+        if self.unresolved_pending:
+            raise DraftError("仍有未处理草稿；请确认、拒绝或撤回后再完成对账")
+        revision = self.observation.reconcile(acknowledge_overflow=True)
+        self._record("observation-check", note=note, generation=revision.generation,
+                     seq=revision.seq, requires_observation_check=False)
+        self.sync_observation()
+        return revision
+
+    def _after_unresolved_change(self):
+        self.sync_observation()
+        if not self.unresolved_pending:
+            self.observation.reconcile(acknowledge_overflow=False)
+
+    def sync_observation(self, feed=None):
+        obs = self.observation
+        obs.set_unconfirmed(len(self.unresolved_pending))
+        if feed is not None and getattr(feed, "replay_mode", False):
+            obs.enter_replay()
+            obs.note_frame(getattr(feed, "last_change_ns", None))
+            return
+        if self.source_guard is None:
+            if obs.mode == MODE_LIVE:
+                obs.disconnect_live()
+            else:
+                obs.enter_manual()
+            return
+        problem = self.source_problem()
+        last_frame = getattr(feed, "last_change_ns", None) if feed is not None else None
+        obs.note_source(classify_source_problem(problem), last_frame_ns=last_frame)
 
     def lag_seconds(self):
         candidates = [d for d in self.pending if d.source_epoch is not None and not d.blocked]

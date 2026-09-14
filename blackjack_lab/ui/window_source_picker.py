@@ -40,7 +40,10 @@ class WindowSourcePicker(tk.Toplevel):
         selected=self.table.selection()
         if not selected:
             self.var_status.set('请先选择一个窗口。');return
-        try:self.on_selected(self.windows[selected[0]])
+        try:
+            from ..capture.overlay_exclusion import refuse_overlay_source
+            refuse_overlay_source(self.windows[selected[0]])
+            self.on_selected(self.windows[selected[0]])
         except Exception as exc:
             messagebox.showerror('窗口预览未启动',str(exc),parent=self);return
         self.destroy()

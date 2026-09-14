@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .contracts import CaptureRejected
+from .overlay_exclusion import is_lab_overlay
 
 _user32 = ctypes.WinDLL("user32", use_last_error=True)
 _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -180,12 +181,25 @@ def describe_window(hwnd: int) -> WindowInfo:
     )
 
 
+def should_list_window(info: WindowInfo, *, own_pid: int,
+                       min_width: int = MIN_LISTED_WIDTH,
+                       min_height: int = MIN_LISTED_HEIGHT) -> bool:
+    """Own process, lab overlays, and tiny windows are not table sources."""
+    if info.process_id == own_pid:
+        return False
+    if is_lab_overlay(info):
+        return False
+    if info.width < min_width or info.height < min_height:
+        return False
+    return True
+
+
 def list_capturable_windows(*, exclude_self: bool = True,
                             min_width: int = MIN_LISTED_WIDTH,
                             min_height: int = MIN_LISTED_HEIGHT) -> List[WindowInfo]:
     """列出可选的顶层窗口，按面积从大到小。
 
-    排除本进程窗口，避免把自己的预览再捕一遍形成反馈循环。
+    排除本进程窗口和本工具浮层，避免把自己的预览再捕一遍形成反馈循环。
     """
     own_pid = os.getpid() if exclude_self else -1
     found: List[WindowInfo] = []
@@ -203,9 +217,8 @@ def list_capturable_windows(*, exclude_self: bool = True,
             info = describe_window(hwnd)
         except CaptureRejected:  # pragma: no cover - 枚举过程中窗口被关闭
             return True
-        if info.process_id == own_pid:
-            return True
-        if info.width < min_width or info.height < min_height:
+        if not should_list_window(info, own_pid=own_pid, min_width=min_width,
+                                  min_height=min_height):
             return True
         found.append(info)
         return True

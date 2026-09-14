@@ -4,37 +4,54 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from ..analysis.contracts import RESULT_SCHEMA, STATUS_ZH, ACTION_ZH, AVAILABLE, STALE, InputUnavailable
+from ..analysis.predeal_contracts import PREDEAL_RESULT_SCHEMA, PreDealInput
+from ..analysis.research_windows import (
+    CURRENT_HAND_SCOPE, build_predeal_input, counts_from_values, format_outcome_line,
+    format_predeal_result, parse_remaining_tokens, result_heading,
+)
 from ..analysis.service import AnalysisService
+from ..observation.currency import REASON_SWITCHED, REASON_ZH
 from ..storage.analysis_snapshots import is_minimal_result
 from ..analysis.split_contracts import SPLIT_RESULT_SCHEMA
 
-DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA}
+DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA, PREDEAL_RESULT_SCHEMA}
 
 
-def format_result(result, historical=False):
+def format_result(result, historical=False, live_applicable=True, applicability_reason=None):
+    if result.get("schema") == PREDEAL_RESULT_SCHEMA:
+        return format_predeal_result(result, historical, live_applicable=live_applicable,
+                                     applicability_reason=applicability_reason)
     if result['schema'] == SPLIT_RESULT_SCHEMA:
         from .split_display import format_split_result
-        return format_split_result(result, historical)
+        return format_split_result(result, historical, live_applicable=live_applicable,
+                                   applicability_reason=applicability_reason)
     info = result["input"]
-    lines = [("历史分析 · " if historical else "当前 · ") +
+    lines = [result_heading(historical, live_applicable) +
              f"{info['seat']} · {' '.join(info['player_ranks'])} · 庄家 {info['dealer_up']} · {info['n_decks']}副"]
     if result["status"] != AVAILABLE:
         lines.append(f"{STATUS_ZH.get(result['status'], result['status'])}：{result['reason']}")
         return "\n".join(lines)
     if historical:
         lines.append("原时点结果，不代表当前输入")
+    elif not live_applicable:
+        detail = REASON_ZH.get(applicability_reason, applicability_reason or "观察状态已变化")
+        lines.append("账本未变；数字对应已确认前缀，不适用于眼前牌桌：" + detail)
     if result["partial_comparison"]:
         lines.append("部分动作比较（分牌缺失或合法性待核对）")
     lines.append("EV单位：原始1单位初始注的最终净收益")
     for action, item in result["actions"].items():
         value = f"  EV {item['ev']:+.6f}" if item["status"] == AVAILABLE else ""
-        lines.append(f"{ACTION_ZH[action]}：{STATUS_ZH[item['status']]}{value}")
+        extra = ""
+        if item["status"] == AVAILABLE and item.get("net_distribution"):
+            extra = " · " + format_outcome_line(item["net_distribution"])
+        lines.append(f"{ACTION_ZH[action]}：{STATUS_ZH[item['status']]}{value}{extra}")
     if result["partial_comparison"]:
         lines.append("部分动作比较；缺少分牌EV或合法性待核对，不给唯一推荐。")
     elif result.get("highest_ev_action"):
         lines.append(f"在声明模型与当时信息下EV最高：{ACTION_ZH[result['highest_ev_action']]}")
     if result.get("all_computed_ev_negative"):
         lines.append("已计算动作EV均为负；较高只意味着可能少亏。")
+    lines.append(CURRENT_HAND_SCOPE)
     lines.append("当前手牌EV不等于下一轮开局优势，不提供注额建议。")
     probabilities = result["probabilities"]
     if result.get("probability_status", {}).get("next_target_draw", AVAILABLE) == AVAILABLE:
@@ -74,11 +91,16 @@ class AnalysisPanel(ttk.Frame):
         self._auto_id = None
         self._auto_suppressed_key = None
         self._closed = False
+        self.live_applicable = True
+        self._applicability_reason = None
+        self.request_observation = None
+        self.result_source_generation = ""
+        self._observation_moved_during_request = False
         self.status = tk.StringVar(value="先选择研究模板并录入当前手牌")
         self.persistence = tk.StringVar(value="结果会独立保存，原始事件不变")
         self.auto = tk.BooleanVar(value=False)
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(3, weight=1)
+        self.rowconfigure(4, weight=1)
         toolbar = ttk.Frame(self)
         toolbar.grid(row=0, column=0, sticky="ew", pady=2)
         self.compute_button = ttk.Button(toolbar, text="计算当前手牌", command=self.calculate_current)
@@ -87,24 +109,41 @@ class AnalysisPanel(ttk.Frame):
         self.cancel_button.pack(side=tk.LEFT, padx=3)
         self.auto_button = ttk.Checkbutton(toolbar, text="自动", variable=self.auto)
         self.auto_button.pack(side=tk.LEFT)
-        ttk.Label(self, textvariable=self.status, wraplength=300).grid(row=1, column=0, sticky="w", padx=3)
-        ttk.Label(self, textvariable=self.persistence, wraplength=300, foreground="#555").grid(row=2, column=0, sticky="w", padx=3)
+        predeal_bar = ttk.Frame(self)
+        predeal_bar.grid(row=1, column=0, sticky="ew", pady=2)
+        self.predeal_button = ttk.Button(predeal_bar, text="计算发牌前优势", command=self.calculate_predeal)
+        self.predeal_button.pack(side=tk.LEFT)
+        self.predeal_button.state(["disabled"])
+        self.var_predeal_remaining = tk.StringVar(value="")
+        ttk.Label(predeal_bar, text="合成剩余").pack(side=tk.LEFT, padx=(8, 2))
+        self.predeal_entry = ttk.Entry(predeal_bar, textvariable=self.var_predeal_remaining, width=18)
+        self.predeal_entry.pack(side=tk.LEFT)
+        ttk.Label(self, textvariable=self.status, wraplength=300).grid(row=2, column=0, sticky="w", padx=3)
+        ttk.Label(self, textvariable=self.persistence, wraplength=300, foreground="#555").grid(row=3, column=0, sticky="w", padx=3)
         body = ttk.Frame(self)
-        body.grid(row=3, column=0, sticky="nsew")
+        body.grid(row=4, column=0, sticky="nsew")
         self.text = tk.Text(body, wrap=tk.WORD, state=tk.DISABLED, width=38, height=15, font=("Microsoft YaHei UI", 9))
         scroll = ttk.Scrollbar(body, command=self.text.yview)
         self.text.configure(yscrollcommand=scroll.set)
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.text.pack(fill=tk.BOTH, expand=True)
         footer = ttk.Frame(self)
-        footer.grid(row=4, column=0, sticky="ew", pady=2)
+        footer.grid(row=5, column=0, sticky="ew", pady=2)
         ttk.Button(footer, text="历史分析 / 复算", command=self.show_history).pack(side=tk.LEFT)
         ttk.Button(footer, text="重试保存", command=self.retry_save).pack(side=tk.LEFT, padx=3)
         self.app.ctrl.add_context_listener(self.context_changed)
         self._target_traces = [(var, var.trace_add("write", self.context_changed))
                                for var in (self.app.var_target, self.app.var_hand)]
         self._auto_trace = self.auto.trace_add("write", self._auto_changed)
+        self._predeal_trace = self.var_predeal_remaining.trace_add("write", self._predeal_field_changed)
+        obs = getattr(self.app, "observation", None)
+        if obs is not None:
+            obs.add_listener(self._on_observation)
         self._poll_id = self.after(50, self._poll)
+
+    def _on_observation(self):
+        if not self._closed:
+            self._sync_observation_currency()
 
     def _set_text(self, text):
         self.text.configure(state=tk.NORMAL)
@@ -115,6 +154,72 @@ class AnalysisPanel(ttk.Frame):
     def _live_key(self):
         return (self.app.ctrl.context_token, self.app.var_target.get(), self.app.var_hand.get())
 
+    def _observation_revision(self):
+        obs = getattr(self.app, "observation", None)
+        return None if obs is None else obs.revision()
+
+    def _live_table_ok(self):
+        obs = getattr(self.app, "observation", None)
+        if obs is None:
+            return True, "aligned"
+        return obs.live_table_applicable()
+
+    def _refresh_result_text(self):
+        if not self.last_result:
+            return
+        historical = bool(self.recomputed_from)
+        live = (not historical) and self.live_applicable
+        self._set_text(format_result(self.last_result, historical=historical, live_applicable=live,
+                                     applicability_reason=None if live or historical else self._applicability_reason))
+
+    def _status_for_result(self, result):
+        summary = result["reason"]
+        if result["status"] == AVAILABLE:
+            if result.get("schema") == PREDEAL_RESULT_SCHEMA:
+                summary = f"发牌前净 EV {result['ev']:+.6f}"
+            else:
+                summary = ("部分动作比较，不给唯一推荐" if result["partial_comparison"] else
+                           "已计算动作EV均为负" if result.get("all_computed_ev_negative") else "计算完成（所声明模型）")
+        prefix = "历史复算 · " if self.recomputed_from else ""
+        if not self.recomputed_from and not self.live_applicable:
+            prefix = "截至已确认记录 · "
+        return prefix + STATUS_ZH[result["status"]] + "：" + summary
+
+    def _sync_observation_currency(self):
+        if self.recomputed_from:
+            return
+        ok, reason = self._live_table_ok()
+        revision = self._observation_revision()
+        generation = revision.generation if revision is not None else ""
+        ledger_ok = self.request_key is None or self.request_key == self._live_key()
+        if not self.last_result or not ledger_ok:
+            self.live_applicable = ok and not self._observation_moved_during_request
+            self._applicability_reason = None if self.live_applicable else reason
+            return
+        if self._observation_moved_during_request:
+            if self.live_applicable or self._applicability_reason != reason:
+                self.live_applicable = False
+                self._applicability_reason = reason
+                self.status.set(self._status_for_result(self.last_result))
+                self.persistence.set("观察状态已变化；本结果只保留为截至已确认记录，需重新计算才能作为当前牌桌信号")
+                self._refresh_result_text()
+            return
+        same_source = generation == self.result_source_generation
+        if ok and same_source:
+            if not self.live_applicable:
+                self.live_applicable = True
+                self._applicability_reason = None
+                self.status.set(self._status_for_result(self.last_result))
+                self._refresh_result_text()
+            return
+        shown_reason = reason if not ok else REASON_SWITCHED
+        if self.live_applicable or self._applicability_reason != shown_reason:
+            self.live_applicable = False
+            self._applicability_reason = shown_reason
+            self.status.set(self._status_for_result(self.last_result))
+            self.persistence.set("账本未变；数字仍对应已确认前缀，不能当作眼前牌桌信号")
+            self._refresh_result_text()
+
     def _cancel_auto(self):
         if self._auto_id:
             self.after_cancel(self._auto_id)
@@ -123,6 +228,11 @@ class AnalysisPanel(ttk.Frame):
     def _invalidate_current(self):
         self.request_key = self.request_digest = self.request_id = None
         self.last_result = self.saved = None
+        self.request_observation = None
+        self.result_source_generation = ""
+        self.live_applicable = True
+        self._applicability_reason = None
+        self._observation_moved_during_request = False
         self.service.cancel(STALE)
         self.status.set("过期：牌面、目标或会话已变化")
         self.persistence.set("旧判断仅保留在历史分析中")
@@ -146,7 +256,8 @@ class AnalysisPanel(ttk.Frame):
     def _run_auto(self):
         self._auto_id = None
         if (self.auto.get() and not self._closed and not self.recomputed_from
-                and self._live_key() != self._auto_suppressed_key):
+                and self._live_key() != self._auto_suppressed_key
+                and self._live_table_ok()[0]):
             self.calculate_current()
 
     def on_context(self, segment):
@@ -168,6 +279,25 @@ class AnalysisPanel(ttk.Frame):
                 self.status.set("可计算：当前单手，正常底牌仍未揭示")
             if self.auto.get() and not self.recomputed_from and key != self._auto_suppressed_key:
                 self._auto_id = self.after(250, self._run_auto)
+        self._refresh_predeal_gate()
+
+    def _predeal_field_changed(self, *_args):
+        if not self._closed:
+            self._refresh_predeal_gate()
+
+    def _predeal_snapshot(self):
+        text = self.var_predeal_remaining.get().strip()
+        if text:
+            return build_predeal_input(counts=counts_from_values(parse_remaining_tokens(text)))
+        return self.app.ctrl.predeal_input()
+
+    def _refresh_predeal_gate(self):
+        try:
+            self._predeal_snapshot()
+        except (InputUnavailable, ValueError):
+            self.predeal_button.state(["disabled"])
+        else:
+            self.predeal_button.state(["!disabled"])
 
     def calculate_current(self):
         self._cancel_auto()
@@ -182,21 +312,47 @@ class AnalysisPanel(ttk.Frame):
             self._set_text("")
             self.status.set(f"待核对：{error}")
 
+    def calculate_predeal(self):
+        self._cancel_auto()
+        try:
+            snapshot = self._predeal_snapshot()
+            self.start(snapshot)
+        except Exception as error:
+            self.recomputed_from = None
+            self._invalidate_current()
+            self._set_text("")
+            self.status.set(f"待核对：{error}")
+
     def start(self, snapshot, recomputed_from=None, budget_seconds=5.0):
         self._cancel_auto()
         if not recomputed_from:
-            segment = self.app._current_seg()
-            hand_id = self.app._selected_hand_id(segment) if segment else None
-            current = self.app.ctrl.analysis_input(self.app.var_target.get(), hand_id)
-            if current.input_digest != snapshot.input_digest:
-                raise InputUnavailable("TARGET_CHANGED", "输入已改变，请按当前手牌重新计算")
+            if isinstance(snapshot, PreDealInput):
+                current = self._predeal_snapshot()
+                if current.input_digest != snapshot.input_digest:
+                    raise InputUnavailable("TARGET_CHANGED", "发牌前输入已改变，请按当前组成重新计算")
+            else:
+                segment = self.app._current_seg()
+                hand_id = self.app._selected_hand_id(segment) if segment else None
+                current = self.app.ctrl.analysis_input(self.app.var_target.get(), hand_id)
+                if current.input_digest != snapshot.input_digest:
+                    raise InputUnavailable("TARGET_CHANGED", "输入已改变，请按当前手牌重新计算")
         self.context_key = self._live_key()
         self.request_key = self.context_key
         self.request_digest = snapshot.input_digest
+        self.request_observation = self._observation_revision()
+        self.result_source_generation = (
+            self.request_observation.generation if self.request_observation is not None else "")
+        ok, reason = self._live_table_ok()
+        self.live_applicable = bool(recomputed_from) or ok
+        self._applicability_reason = None if self.live_applicable else reason
+        self._observation_moved_during_request = False
         self.recomputed_from = recomputed_from
         self.saved = None
         self.last_result = None
-        self._set_text("正在按当时可见信息计算；可以继续录入或取消。")
+        waiting = "正在按当时可见信息计算；可以继续录入或取消。"
+        if not recomputed_from and not ok:
+            waiting = "正在按已确认记录计算；结果不能自动当作当前牌桌信号。"
+        self._set_text(waiting)
         self.persistence.set("等待当前计算完成")
         self.request_id = self.service.start(snapshot, budget_seconds)
         self.status.set(("历史复算中" if recomputed_from else "计算中") + f" · 前缀 #{snapshot.through_seq}")
@@ -210,18 +366,22 @@ class AnalysisPanel(ttk.Frame):
         # commit notification or every general refresh method was skipped/failed.
         if self.context_key != self._live_key():
             self.on_context(self.app._current_seg())
+        self._sync_observation_currency()
         result = self.service.poll()
         current_matches = self.request_key is not None and self.request_key == self._live_key()
         if (result and (self.recomputed_from or current_matches)
                 and result.get("request_id") == self.request_id
                 and result.get("input_digest") == self.request_digest):
+            revision = self._observation_revision()
+            ok, reason = self._live_table_ok()
+            observation_unchanged = (self.recomputed_from or self.request_observation == revision)
+            if not observation_unchanged:
+                self._observation_moved_during_request = True
+            self.live_applicable = bool(self.recomputed_from) or (ok and observation_unchanged)
+            self._applicability_reason = None if self.live_applicable else reason
             self.last_result = result
-            summary = result["reason"]
-            if result["status"] == AVAILABLE:
-                summary = ("部分动作比较，不给唯一推荐" if result["partial_comparison"] else
-                           "已计算动作EV均为负" if result.get("all_computed_ev_negative") else "计算完成（所声明模型）")
-            self.status.set(("历史复算 · " if self.recomputed_from else "") + STATUS_ZH[result["status"]] + "：" + summary)
-            self._set_text(format_result(result, bool(self.recomputed_from)))
+            self.status.set(self._status_for_result(result))
+            self._refresh_result_text()
             if result["status"] == AVAILABLE:
                 self.retry_save()
             else:
@@ -268,6 +428,8 @@ class AnalysisPanel(ttk.Frame):
             r = item["result"]
             stamp = datetime.fromtimestamp(item["saved_at"]).strftime("%Y-%m-%d %H:%M:%S")
             identity = ("仅存储信封，无分析数值" if is_minimal_result(r) else
+                        f"发牌前剩余{r['input'].get('physical_remaining', sum(r['input'].get('counts') or ()))} · #{r['input']['through_seq']} · {r['engine_version']}"
+                        if r.get("schema") == PREDEAL_RESULT_SCHEMA else
                         f"{r['input']['seat']} · #{r['input']['through_seq']} · {r['engine_version']}")
             listing.insert(tk.END, f"{stamp} · {identity} · {item['snapshot_id'][:8]}")
         def select(_event=None):
@@ -315,10 +477,14 @@ class AnalysisPanel(ttk.Frame):
 
     def close(self):
         self._closed = True
+        obs = getattr(self.app, "observation", None)
+        if obs is not None:
+            obs.remove_listener(self._on_observation)
         self.app.ctrl.remove_context_listener(self.context_changed)
         for var, trace_id in self._target_traces:
             var.trace_remove("write", trace_id)
         self.auto.trace_remove("write", self._auto_trace)
+        self.var_predeal_remaining.trace_remove("write", self._predeal_trace)
         self.after_cancel(self._poll_id)
         self._cancel_auto()
         self.service.close()

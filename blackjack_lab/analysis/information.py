@@ -10,6 +10,10 @@ from .contracts import AnalysisInput, InputUnavailable, canonical, digest, ACTIO
 
 
 def build_input(ledger, seat, hand_id=None, through_seq=None):
+    """Current-hand window only. Requires the player's cards and dealer up/hole.
+
+    This is not a pre-deal opening-advantage entry. Do not retitle its EV.
+    """
     all_events = ledger.to_list()
     seq = all_events[-1]["seq"] if through_seq is None and all_events else through_seq
     if type(seq) is not int or not any(e["seq"] == seq for e in all_events):

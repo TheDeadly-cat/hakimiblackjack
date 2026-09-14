@@ -47,7 +47,7 @@ class IdentityLinkTests(unittest.TestCase):
         with self.assertRaises(VisionBridgeError):
             restored.confirm(ConfirmDecision(obs.observation_id,OP_NEW,seat='玩家1',confirmed_rank='A'))
         self.assertEqual(self.ctrl.state().current.shoe.exact_out['A'],2)
-        record=json.loads((self.root/'evidence'/'identity-links'/f'{result.request_id}.json').read_text())
+        record=json.loads((self.root/'evidence'/'identity-links'/f'{result.request_id}.json').read_text(encoding='utf-8'))
         self.assertEqual(record['observation'],original)
         self.assertFalse(record['writes_ledger']);self.assertEqual(record['target']['rank'],'A')
         recovered=SessionController.recover(self.root/'ledger.db',self.ctrl.session_id)

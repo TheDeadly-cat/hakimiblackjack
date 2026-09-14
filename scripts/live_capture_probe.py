@@ -50,7 +50,7 @@ def cmd_list() -> int:
     for info in windows:
         size = f"{info.width}x{info.height}"
         print(f"{info.hwnd:>10}  {size:>11}  {info.dpi:>4}  {info.process_name}  {info.title}")
-    print("\n本进程窗口已排除，避免预览被再次捕获形成反馈循环。")
+    print("\n本进程窗口和本工具浮层已排除，避免预览被再次捕获形成反馈循环。")
     return 0
 
 

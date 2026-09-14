@@ -7,12 +7,21 @@ import uuid
 from .actions import solve_counts
 from .contracts import (AnalysisInput, ENGINE_VERSION, STRATEGY_VERSION, RESULT_SCHEMA,
                         AVAILABLE, INAPPLICABLE, UNSUPPORTED, PENDING, TIMEOUT, CANCELLED, STALE, FAILED, ACTION_ZH)
+from .predeal_contracts import PREDEAL_INPUT_SCHEMA, PREDEAL_RESULT_SCHEMA, PreDealInput
 from .probability import CalculationStopped, InsufficientCards
 from .split_contracts import SplitAnalysisInput, SPLIT_INPUT_SCHEMA, SPLIT_RESULT_SCHEMA
 
 
+def _result_schema(snapshot):
+    if isinstance(snapshot, SplitAnalysisInput):
+        return SPLIT_RESULT_SCHEMA
+    if isinstance(snapshot, PreDealInput):
+        return PREDEAL_RESULT_SCHEMA
+    return RESULT_SCHEMA
+
+
 def base_result(snapshot, request_id):
-    return {"schema": SPLIT_RESULT_SCHEMA if isinstance(snapshot, SplitAnalysisInput) else RESULT_SCHEMA, "request_id": request_id,
+    result = {"schema": _result_schema(snapshot), "request_id": request_id,
             "input": snapshot.to_dict(), "input_digest": snapshot.input_digest,
             "rules_digest": snapshot.rules_digest, "engine_version": snapshot.engine_version,
             "strategy_version": snapshot.strategy_version, "created_at": time(),
@@ -20,6 +29,9 @@ def base_result(snapshot, request_id):
             "actions": {}, "probabilities": None, "highest_ev_action": None,
             "partial_comparison": False, "elapsed_seconds": 0.0,
             "ev_unit": "相对原始1单位初始注的最终净收益（返还本金不是盈利）"}
+    if getattr(snapshot, "window", None):
+        result["window"] = snapshot.window
+    return result
 
 
 def calculate(snapshot, request_id=None, budget_seconds=5.0):
@@ -27,6 +39,9 @@ def calculate(snapshot, request_id=None, budget_seconds=5.0):
     if isinstance(snapshot, SplitAnalysisInput):
         from .split_service import calculate_split
         return calculate_split(snapshot, request_id, budget_seconds)
+    if isinstance(snapshot, PreDealInput):
+        from .predeal import calculate_predeal
+        return calculate_predeal(snapshot, request_id, budget_seconds)
     result = base_result(snapshot, request_id)
     start = perf_counter()
     try:
@@ -87,10 +102,18 @@ def _validate_distribution(values):
         raise ArithmeticError("计算结果分布不合法，禁止发布")
 
 
+def _input_type(data):
+    schema = data.get("schema")
+    if schema == SPLIT_INPUT_SCHEMA:
+        return SplitAnalysisInput
+    if schema == PREDEAL_INPUT_SCHEMA:
+        return PreDealInput
+    return AnalysisInput
+
+
 def _worker(connection, data, request_id, budget):
     try:
-        input_type = SplitAnalysisInput if data.get("schema") == SPLIT_INPUT_SCHEMA else AnalysisInput
-        result = calculate(input_type.from_dict(data), request_id, budget)
+        result = calculate(_input_type(data).from_dict(data), request_id, budget)
         import socket
         result["worker_network_guard_active"] = bool(getattr(socket, "_hakimi_offline_guard", False))
         result["worker_peak_working_set_bytes"] = _peak_memory()

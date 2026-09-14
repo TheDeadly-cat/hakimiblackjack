@@ -420,6 +420,8 @@ class VisionReviewWindow(tk.Toplevel):
         if self.runtime.adapter is None or not isinstance(self.selected_style,LiveStyle):
             raise VisionBridgeError('请先选择归一化样式和匹配的本地训练模型。')
         current=describe_window(info.hwnd)
+        from ..capture.overlay_exclusion import refuse_overlay_source
+        refuse_overlay_source(current)
         if current.process_id!=info.process_id or current.minimized:
             raise VisionBridgeError('所选窗口已经改变或最小化，请刷新列表。')
         load_wgc()  # Missing optional dependencies must not discard current review.

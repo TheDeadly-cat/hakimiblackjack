@@ -7,10 +7,11 @@ from time import time
 import uuid
 
 from ..analysis.contracts import RESULT_SCHEMA, STATUS_ZH, ACTION_ZH, canonical, digest
+from ..analysis.predeal_contracts import PREDEAL_RESULT_SCHEMA
 from .safe_files import atomic_write
 
 SNAPSHOT_SCHEMA = "hakimi-analysis-snapshot-v1"
-SUPPORTED_RESULTS = {RESULT_SCHEMA, "hakimi-analysis-result-v2"}
+SUPPORTED_RESULTS = {RESULT_SCHEMA, "hakimi-analysis-result-v2", PREDEAL_RESULT_SCHEMA}
 
 
 class SnapshotFormatError(ValueError):
@@ -64,6 +65,9 @@ def _validate_result(result):
     # and the history UI does not treat them as computed EV or recomputable input.
     if is_minimal_result(result):
         return
+    if result["schema"] == PREDEAL_RESULT_SCHEMA:
+        _validate_predeal_result(result)
+        return
     for name in ("session_id", "shoe_id", "round_id", "seat", "hand_id"):
         _text(info.get(name), "result.input." + name)
     _require(type(info.get("through_seq")) is int and info["through_seq"] > 0,
@@ -109,6 +113,50 @@ def _validate_result(result):
             _number(value, "result.probabilities." + name)
     if "probability_status" in result:
         _require(isinstance(result["probability_status"], dict), "result.probability_status", "必须为JSON对象")
+
+
+def _validate_predeal_result(result):
+    from ..analysis.predeal_contracts import PreDealInput
+    from ..analysis.research_windows import WINDOW_PRE_DEAL
+    try:
+        snapshot = PreDealInput.from_dict(result["input"])
+        snapshot.validate()
+    except (KeyError, TypeError, ValueError, AttributeError, RecursionError) as error:
+        raise SnapshotFormatError("result.input：无效发牌前输入：" + str(error)) from error
+    _require(result.get("window") == WINDOW_PRE_DEAL, "result.window", "必须为发牌前窗口")
+    _require(result["input_digest"] == snapshot.input_digest, "result.input_digest", "与发牌前输入不一致")
+    _require(result.get("rules_digest") == snapshot.rules_digest, "result.rules_digest", "与规则快照不一致")
+    _hex(result.get("rules_digest"), 64, "result.rules_digest")
+    for name in ("engine_version", "strategy_version", "status", "reason"):
+        _text(result.get(name), "result." + name)
+    _number(result.get("elapsed_seconds"), "result.elapsed_seconds")
+    _require(type(result.get("partial_comparison")) is bool, "result.partial_comparison", "必须为布尔值")
+    if result["status"] != "available":
+        return
+    _number(result.get("ev"), "result.ev")
+    _number(result.get("variance"), "result.variance")
+    distribution = result.get("net_distribution")
+    _require(isinstance(distribution, dict) and bool(distribution), "result.net_distribution", "必须为收益对象")
+    total = expectation = 0.0
+    for net, probability in distribution.items():
+        _number(probability, "result.net_distribution.probability")
+        try:
+            outcome = float(net)
+        except (ValueError, TypeError) as error:
+            raise SnapshotFormatError("result.net_distribution：收益键无效") from error
+        _number(outcome, "result.net_distribution.net")
+        _require(probability >= -1e-12, "result.net_distribution", "概率不得为负")
+        total += probability
+        expectation += outcome * probability
+    _require(abs(total - 1) <= 1e-8 and abs(expectation - result["ev"]) <= 1e-8,
+             "result.net_distribution", "概率和或EV不一致")
+    outcomes = result.get("outcomes")
+    _require(isinstance(outcomes, dict), "result.outcomes", "必须为对象")
+    for name in ("win", "push", "lose"):
+        _number(outcomes.get(name), "result.outcomes." + name)
+        _require(outcomes[name] >= -1e-12, "result.outcomes." + name, "概率不得为负")
+    _require(abs(sum(outcomes[name] for name in ("win", "push", "lose")) - 1) <= 1e-8,
+             "result.outcomes", "胜平负概率和必须为1")
 
 
 def _validate_split_result(result):
