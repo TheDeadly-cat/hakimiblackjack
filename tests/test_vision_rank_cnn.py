@@ -43,12 +43,16 @@ class CnnClassifierTests(unittest.TestCase):
         with self.assertRaises(ImageRejected):model.predict_mask(mask)
 
     def test_saved_weights_are_verified_and_existing_model_is_not_overwritten(self):
+        from blackjack_lab.vision.model_adapter import TrainedModelAdapter
         mask=np.full((20,12),255,dtype=np.uint8)
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'model';model=self.make_model();model.save(path)
             restored=RankCnnClassifier.load(path)
             self.assertEqual(restored.model_id,model.model_id)
             self.assertEqual(restored.predict_mask(mask).rank,'8')
+            selected=TrainedModelAdapter(path,style_id='fixture')
+            self.assertEqual(selected.model_id,model.model_id)
+            with self.assertRaises(ImageRejected):TrainedModelAdapter(path,style_id='different')
             saved=(path/'model.npz').read_bytes()
             with self.assertRaises(FileExistsError):model.save(path)
             self.assertEqual((path/'model.npz').read_bytes(),saved)

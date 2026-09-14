@@ -25,7 +25,7 @@ def require_calibrated_input(width,height):
 class RgbCornerAdapter(TrainedModelAdapter):
     expected_input_size = (1850,520)
     def __init__(self, rank_directory, detector_directory, *, style_id, device='cuda'):
-        super().__init__(rank_directory,style_id=style_id)
+        super().__init__(rank_directory,style_id=style_id,classifier_device=device)
         if self.model.orientation_policy!='upright_upper':
             raise ImageRejected('RGB 上角原型需要明确的正向点数模型')
         self.rank_model_id,self.rank_model_digest=self.model_id,self.digest
@@ -56,13 +56,30 @@ class RgbCornerAdapter(TrainedModelAdapter):
         self.device,self.threshold=device,float(manifest['threshold'])
         self.extraction_version=ARCHITECTURE+'+'+CROP_PREPROCESSING+'+'+INPUT_PROFILE
         self.model_id='rgb-index-'+manifest['checkpoint_sha256'][:16]+'+'+self.rank_model_id
-        self.digest=hashlib.sha256(raw+b'\0'+blob+b'\0'+self.rank_model_digest.encode()+b'\0'+
-                                   self.extraction_version.encode()).hexdigest()
+        self._detector_identity_bytes=raw+b'\0'+blob+b'\0'
+        self.digest=self._combined_digest()
         self.corner_policy_version=None
         self.warmup_ms=None
         self._warmed_shapes=set()
         torch.set_num_threads(4)
         self.warmup(1850,520)
+
+    def _combined_digest(self):
+        return hashlib.sha256(self._detector_identity_bytes+self.rank_model_digest.encode()+b'\0'+
+                              self.extraction_version.encode()).hexdigest()
+
+    def with_rank_model(self,directory,*,classifier_device=None):
+        """Explicit classifier comparison sharing the exact resident detector."""
+        from copy import copy
+        rank=TrainedModelAdapter(directory,style_id=self.style_id,classifier_device=classifier_device or self.device)
+        if rank.model.orientation_policy!='upright_upper':raise ImageRejected('RGB 对照需要正向分类器')
+        other=copy(self)
+        other.directory,other.model=rank.directory,rank.model
+        other.feature_version,other.training_digest=rank.feature_version,rank.training_digest
+        other.rank_model_id,other.rank_model_digest=rank.model_id,rank.digest
+        other.model_id='rgb-index-'+self.detector_manifest['checkpoint_sha256'][:16]+'+'+rank.model_id
+        other.digest=other._combined_digest()
+        return other
 
     def warmup(self,width,height):
         import torch

@@ -16,7 +16,8 @@ def main():
     parser.add_argument('--style',required=True,type=Path)
     parser.add_argument('--model',required=True,type=Path)
     parser.add_argument('--detector',type=Path,help='Explicit experimental RGB detector directory; omitted uses old extraction')
-    parser.add_argument('--initial-method',choices=('baseline','rgb'),help='Initial selection when both adapters are loaded; omitted preserves the explicit --detector selection')
+    parser.add_argument('--cnn-model',type=Path,help='Optional frozen independent CNN rank model, sharing the same RGB detector')
+    parser.add_argument('--initial-method',choices=('baseline','rgb','rgb-cnn'),help='Explicit initial selection; adding a CNN never selects it automatically')
     parser.add_argument('--device',choices=('cpu','cuda'),default='cuda')
     parser.add_argument('--first-frame',type=int,default=0)
     parser.add_argument('--last-frame',type=int)
@@ -30,6 +31,8 @@ def main():
     args=parser.parse_args()
     if args.initial_method=='rgb' and not args.detector:
         parser.error('--initial-method rgb requires --detector')
+    if args.cnn_model and not args.detector:parser.error('--cnn-model requires --detector')
+    if args.initial_method=='rgb-cnn' and not args.cnn_model:parser.error('--initial-method rgb-cnn requires --cnn-model')
     from blackjack_lab.vision.model_adapter import TrainedModelAdapter,load_style
     from blackjack_lab.realtime_preview import RealtimeVideoSource,RealtimeWgcSource,RealtimePreviewSession
     from blackjack_lab.ui.realtime_preview import RealtimePreviewWindow
@@ -42,6 +45,9 @@ def main():
         adapters['RGB 牌角']=adapter
     else:
         adapter=baseline
+    if args.cnn_model:
+        adapters['RGB + CNN']=adapter.with_rank_model(args.cnn_model,classifier_device=args.device)
+        if args.initial_method=='rgb-cnn':adapter=adapters['RGB + CNN']
     if args.initial_method=='baseline':adapter=baseline
     source=(RealtimeVideoSource(args.video,style,first_frame=args.first_frame,last_frame=args.last_frame)
             if args.video else RealtimeWgcSource(args.window,style))

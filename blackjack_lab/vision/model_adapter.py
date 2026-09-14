@@ -49,7 +49,7 @@ def prepare_style_image(loaded: LoadedImage, style=None):
 class TrainedModelAdapter:
     """One immutable, verified model artifact, bound to one explicit style."""
 
-    def __init__(self, directory: Path | str, *, style_id: str, corner_policy_version=None):
+    def __init__(self, directory: Path | str, *, style_id: str, corner_policy_version=None, classifier_device='cpu'):
         from .rank_classifier import RankClassifier
         from .real_cards import EXTRACTION_VERSION
 
@@ -57,9 +57,17 @@ class TrainedModelAdapter:
         try:
             manifest = (self.directory / "manifest.json").read_bytes()
             blob = (self.directory / "model.npz").read_bytes()
-        except OSError as exc:
+            schema = json.loads(manifest).get('schema')
+        except (OSError,ValueError,AttributeError) as exc:
             raise ImageRejected(f"无法读取指定模型：{self.directory}") from exc
-        self.model = RankClassifier.load(self.directory)
+        if schema=='rank-cnn-mask-1':
+            try:
+                from .rank_cnn import RankCnnClassifier
+                self.model=RankCnnClassifier.load(self.directory,device=classifier_device)
+            except ImportError as exc:
+                raise ImageRejected('此目录是可选 CNN 模型，需要本地 PyTorch 环境；旧模型与手动录牌仍可用。') from exc
+        else:
+            self.model = RankClassifier.load(self.directory)
         if (manifest != (self.directory / "manifest.json").read_bytes()
                 or blob != (self.directory / "model.npz").read_bytes()):
             raise ImageRejected("模型文件在加载过程中变化，请固定模型后重新选择")
@@ -146,7 +154,7 @@ class TrainedModelAdapter:
             timings["detection_end_ns"] = time.perf_counter_ns()
             timings["classification_start_ns"] = time.perf_counter_ns()
             timings["classification_calls"] = len(glyphs)
-            timings["classification_batch_version"] = "within-frame-dot-matrix-1"
+            timings["classification_batch_version"] = getattr(self.model,'batch_version',"within-frame-dot-matrix-1")
         guesses = self.model.predict_masks([glyph.mask for glyph in glyphs],stats=timings)
         # Shared raw extraction plus the model's explicit corner policy, using
         # full image context. Never resize whole-card boxes into glyph inputs.

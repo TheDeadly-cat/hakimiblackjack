@@ -32,6 +32,7 @@ def identity_hash(identity):
 class RankCnnClassifier:
     orientation_policy='upright_upper'
     feature_version=FEATURE_VERSION
+    batch_version='within-frame-cnn-mask32-1'
 
     def __init__(self,network,*,style_id,training_digest,plan_digest,min_score=.90,min_margin=.20,device='cpu',label_review_status='unverified'):
         import torch
