@@ -595,18 +595,20 @@ def evaluate_items(model: RankClassifier, items: Sequence[GlyphItem],
         row = {"crop_id": item.crop_id, "session_id": item.session,
                "round_id": item.round_id, "truth": truth,
                "label_provenance": getattr(item, "label_provenance", "unspecified")}
-        mask_path = root / item.mask_file
+        native_rgb = getattr(model, 'input_kind', None) == 'native_rgb_crop'
+        mask_path = root / (item.crop_file if native_rgb else item.mask_file)
         failure = ""
         try:
             if not mask_path.is_file():
-                failure = "missing_mask"
+                failure = "missing_rgb_crop" if native_rgb else "missing_mask"
                 mask = None
             else:
-                mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+                mask = cv2.imread(str(mask_path), cv2.IMREAD_COLOR if native_rgb else cv2.IMREAD_GRAYSCALE)
                 if mask is None or mask.size == 0:
-                    failure = "unreadable_mask"
+                    failure = "unreadable_rgb_crop" if native_rgb else "unreadable_mask"
             if not failure:
-                guess = model.predict_mask(mask)
+                guess = (model.predict_rgb_crops([cv2.cvtColor(mask, cv2.COLOR_BGR2RGB)])[0]
+                         if native_rgb else model.predict_mask(mask))
                 if guess.accepted and guess.rank not in RANKS_13:
                     failure = "invalid_prediction_contract"
         except Exception as exc:
@@ -619,7 +621,7 @@ def evaluate_items(model: RankClassifier, items: Sequence[GlyphItem],
                 junk_invalid += 1
             else:
                 per_rank[truth]["invalid"] += 1
-            row.update(status="invalid", error=failure, mask_file=str(item.mask_file),
+            row.update(status="invalid", error=failure, input_file=str(mask_path), mask_file=str(item.mask_file),
                        predicted=None, accepted=False)
             rows.append(row)
             continue

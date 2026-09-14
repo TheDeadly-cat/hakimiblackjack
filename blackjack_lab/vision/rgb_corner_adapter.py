@@ -13,12 +13,21 @@ from .model_adapter import TrainedModelAdapter
 
 CROP_PREPROCESSING = 'rgb-box-manual-hsv-v150-s80-1'
 NAVY_OTSU_PREPROCESSING = 'rgb-box-navy-b-r18-gray-otsu-1'
+RAW_RGB_PREPROCESSING = 'rgb-box-native-color-1'
 INPUT_PROFILE = 'native-roi-1850x520-1'
 
 
 def extract_index_glyph(bgr,bbox,*,preprocessing=CROP_PREPROCESSING):
     """Explicit native-pixel extraction; never resize or synthesize source detail."""
     from .real_cards import manual_glyph,Glyph,_ink_kind
+    if preprocessing==RAW_RGB_PREPROCESSING:
+        if (len(bbox)!=4 or any(type(v) is not int for v in bbox)
+                or getattr(bgr,'ndim',None)!=3 or bgr.shape[2]!=3):
+            raise ImageRejected('原生 RGB 裁片坐标或图像格式不合法')
+        x,y,w,h=bbox
+        if x<0 or y<0 or w<1 or h<1 or x+w>bgr.shape[1] or y+h>bgr.shape[0]:
+            raise ImageRejected('原生 RGB 裁片超出原帧')
+        return Glyph(tuple(bbox),None,'native_rgb',0)
     glyph=manual_glyph(bgr,bbox)
     if preprocessing==CROP_PREPROCESSING:return glyph
     if preprocessing!=NAVY_OTSU_PREPROCESSING:raise ImageRejected('未知 RGB 裁片预处理')
@@ -75,8 +84,9 @@ class RgbCornerAdapter(TrainedModelAdapter):
         self.detector_directory=source.resolve()
         self.detector_manifest=manifest
         self.device,self.threshold=device,float(manifest['threshold'])
-        self.crop_preprocessing=CROP_PREPROCESSING
-        self.extraction_version=ARCHITECTURE+'+'+CROP_PREPROCESSING+'+'+INPUT_PROFILE
+        self.crop_preprocessing=(RAW_RGB_PREPROCESSING if getattr(self.model,'input_kind',None)=='native_rgb_crop'
+                                 else CROP_PREPROCESSING)
+        self.extraction_version=ARCHITECTURE+'+'+self.crop_preprocessing+'+'+INPUT_PROFILE
         from .rgb_corner_model import FULL_FRAME_POLICY
         self.inference_policy=FULL_FRAME_POLICY
         self._base_extraction_version=self.extraction_version
@@ -103,6 +113,10 @@ class RgbCornerAdapter(TrainedModelAdapter):
         other.feature_version,other.training_digest=rank.feature_version,rank.training_digest
         other.rank_model_id,other.rank_model_digest=rank.model_id,rank.digest
         other.model_id='rgb-index-'+self.detector_manifest['checkpoint_sha256'][:16]+'+'+rank.model_id
+        if getattr(rank.model,'input_kind',None)=='native_rgb_crop':
+            return other.with_crop_preprocessing(RAW_RGB_PREPROCESSING)
+        if self.crop_preprocessing==RAW_RGB_PREPROCESSING:
+            return other.with_crop_preprocessing(CROP_PREPROCESSING)
         other.digest=other._combined_digest()
         return other
 
@@ -122,8 +136,11 @@ class RgbCornerAdapter(TrainedModelAdapter):
         """Compare a declared crop policy with the same detector and rank weights."""
         from copy import copy
         from .rgb_corner_model import ARCHITECTURE,TILED_POLICY
-        if preprocessing not in (CROP_PREPROCESSING,NAVY_OTSU_PREPROCESSING):
+        if preprocessing not in (CROP_PREPROCESSING,NAVY_OTSU_PREPROCESSING,RAW_RGB_PREPROCESSING):
             raise ImageRejected('未知 RGB 裁片预处理')
+        if ((preprocessing==RAW_RGB_PREPROCESSING)
+                != (getattr(self.model,'input_kind',None)=='native_rgb_crop')):
+            raise ImageRejected('原生 RGB 分类器与裁片预处理类型不一致')
         if preprocessing==NAVY_OTSU_PREPROCESSING and self.style_id!='navy-live-felt-v1':
             raise ImageRejected('灰度分割实验仅用于已标定的深蓝牌桌样式')
         other=copy(self);other.crop_preprocessing=preprocessing
@@ -148,6 +165,7 @@ class RgbCornerAdapter(TrainedModelAdapter):
         from .rgb_corner_model import TILED_POLICY
         context=' / 原生分块' if self.inference_policy==TILED_POLICY else ''
         if self.crop_preprocessing==NAVY_OTSU_PREPROCESSING:context+=' / 灰度分割实验'
+        if self.crop_preprocessing==RAW_RGB_PREPROCESSING:context+=' / 原生 RGB 分类实验'
         return (f'RGB 牌角开发原型{context} / {self.device} / digest={self.digest[:16]}　'
                 f'点数权重冻结={self.rank_model_id[:25]}　裁片={self.crop_preprocessing}；未通过独立事件验收')
 

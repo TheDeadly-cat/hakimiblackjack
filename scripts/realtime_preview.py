@@ -19,7 +19,8 @@ def main():
     parser.add_argument('--cnn-model',type=Path,help='Optional frozen independent CNN rank model, sharing the same RGB detector')
     parser.add_argument('--rgb-tiles',action='store_true',help='Add fixed native 320px RGB context tiles with unchanged weights')
     parser.add_argument('--rgb-otsu',action='store_true',help='Add experimental local grayscale extraction to native tiled RGB')
-    parser.add_argument('--initial-method',choices=('baseline','rgb','rgb-cnn','rgb-tiled','rgb-tiled-otsu'),help='Explicit initial selection; new experiments are not selected automatically')
+    parser.add_argument('--rgb-classifier-model',type=Path,help='Optional pretrained native RGB rank classifier, sharing the tiled detector')
+    parser.add_argument('--initial-method',choices=('baseline','rgb','rgb-cnn','rgb-tiled','rgb-tiled-otsu','rgb-color'),help='Explicit initial selection; new experiments are not selected automatically')
     parser.add_argument('--device',choices=('cpu','cuda'),default='cuda')
     parser.add_argument('--first-frame',type=int,default=0)
     parser.add_argument('--last-frame',type=int)
@@ -42,6 +43,9 @@ def main():
     if args.rgb_otsu and not args.rgb_tiles:parser.error('--rgb-otsu requires --rgb-tiles')
     if args.initial_method=='rgb-tiled-otsu' and not args.rgb_otsu:
         parser.error('--initial-method rgb-tiled-otsu requires --rgb-otsu')
+    if args.rgb_classifier_model and not args.rgb_tiles:parser.error('--rgb-classifier-model requires --rgb-tiles')
+    if args.initial_method=='rgb-color' and not args.rgb_classifier_model:
+        parser.error('--initial-method rgb-color requires --rgb-classifier-model')
     from blackjack_lab.vision.model_adapter import TrainedModelAdapter,load_style
     from blackjack_lab.realtime_preview import RealtimeVideoSource,RealtimeWgcSource,RealtimePreviewSession
     from blackjack_lab.ui.realtime_preview import RealtimePreviewWindow
@@ -66,6 +70,12 @@ def main():
         from blackjack_lab.vision.rgb_corner_adapter import NAVY_OTSU_PREPROCESSING
         adapters['RGB 分块灰度']=adapters['RGB 原生分块'].with_crop_preprocessing(NAVY_OTSU_PREPROCESSING)
         if args.initial_method=='rgb-tiled-otsu':adapter=adapters['RGB 分块灰度']
+    if args.rgb_classifier_model:
+        color=adapters['RGB 原生分块'].with_rank_model(args.rgb_classifier_model,classifier_device=args.device)
+        if getattr(color.model,'input_kind',None)!='native_rgb_crop':
+            parser.error('--rgb-classifier-model must select a native RGB classifier')
+        adapters['RGB 彩色分类']=color
+        if args.initial_method=='rgb-color':adapter=color
     if args.initial_method=='baseline':adapter=baseline
     source=(RealtimeVideoSource(args.video,style,first_frame=args.first_frame,last_frame=args.last_frame)
             if args.video else RealtimeWgcSource(args.window,style))

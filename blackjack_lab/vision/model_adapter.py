@@ -60,7 +60,13 @@ class TrainedModelAdapter:
             schema = json.loads(manifest).get('schema')
         except (OSError,ValueError,AttributeError) as exc:
             raise ImageRejected(f"无法读取指定模型：{self.directory}") from exc
-        if schema=='rank-cnn-mask-1':
+        if schema=='rank-cnn-rgb-1':
+            try:
+                from .rank_rgb_cnn import RankRgbCnnClassifier
+                self.model=RankRgbCnnClassifier.load(self.directory,device=classifier_device)
+            except ImportError as exc:
+                raise ImageRejected('RGB 分类实验需要本地 PyTorch 与 torchvision 环境。') from exc
+        elif schema=='rank-cnn-mask-1':
             try:
                 from .rank_cnn import RankCnnClassifier
                 self.model=RankCnnClassifier.load(self.directory,device=classifier_device)
@@ -155,7 +161,14 @@ class TrainedModelAdapter:
             timings["classification_start_ns"] = time.perf_counter_ns()
             timings["classification_calls"] = len(glyphs)
             timings["classification_batch_version"] = getattr(self.model,'batch_version',"within-frame-dot-matrix-1")
-        guesses = self.model.predict_masks([glyph.mask for glyph in glyphs],stats=timings)
+        if getattr(self.model,'input_kind',None)=='native_rgb_crop':
+            from .deps import load_numpy
+            np=load_numpy()
+            crops=[np.frombuffer(crop_rgb(loaded,*glyph.bbox),dtype=np.uint8).reshape(
+                    glyph.bbox[3],glyph.bbox[2],3) for glyph in glyphs]
+            guesses=self.model.predict_rgb_crops(crops,stats=timings)
+        else:
+            guesses = self.model.predict_masks([glyph.mask for glyph in glyphs],stats=timings)
         # Shared raw extraction plus the model's explicit corner policy, using
         # full image context. Never resize whole-card boxes into glyph inputs.
         for glyph, guess in zip(glyphs, guesses):
