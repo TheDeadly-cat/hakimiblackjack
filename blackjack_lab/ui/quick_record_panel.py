@@ -60,6 +60,7 @@ class QuickRecordPanel(tk.Toplevel):
         self.var_target = tk.StringVar()
         self.var_reason = tk.StringVar()
         self.var_key = tk.StringVar(value="Ctrl+Alt+Space")
+        self.var_queue_policy = tk.StringVar(value="有牌级提示")
 
         self.header = tk.Frame(self, bg="#142b3a")
         self.header.pack(fill=tk.X)
@@ -144,6 +145,11 @@ class QuickRecordPanel(tk.Toplevel):
         key_combo = ttk.Combobox(hotbar, textvariable=self.var_key, values=tuple(HOTKEYS), state="readonly", width=20)
         key_combo.pack(side=tk.LEFT)
         ttk.Button(hotbar, text="应用呼出键", command=self.configure_hotkey).pack(side=tk.LEFT, padx=4)
+        policy = ttk.Combobox(hotbar, textvariable=self.var_queue_policy, values=("有牌级提示", "所有检测位置"),
+                              state="readonly", width=11)
+        policy.pack(side=tk.LEFT)
+        policy.bind("<<ComboboxSelected>>", self.change_queue_policy)
+        ttk.Button(hotbar, text="未定区域", command=self.review_unranked).pack(side=tk.LEFT, padx=3)
         ttk.Label(self.editor, textvariable=self.var_hotkey, wraplength=485).pack(fill=tk.X)
 
         # Before widget class bindings, so a focused button cannot also submit.
@@ -392,9 +398,21 @@ class QuickRecordPanel(tk.Toplevel):
 
     def attach(self, session, context_guard=lambda: True):
         from .continuous_review import ContinuousReviewFeed
-        self.feed = ContinuousReviewFeed(self.work, session, context_guard)
+        self.feed = ContinuousReviewFeed(self.work, session, context_guard,
+            queue_policy="rank-hints" if self.var_queue_policy.get() == "有牌级提示" else "all-regions")
         self.usage["source_runs"].append(session.run_id)
         self.var_status.set("持续采集中；每张候选仍须核对座位、是否新牌及原图")
+
+    def change_queue_policy(self, event=None):
+        if self.feed:
+            self.feed.set_queue_policy("rank-hints" if self.var_queue_policy.get() == "有牌级提示" else "all-regions")
+            self.var_status.set("队列显示方式已切换；未定区域仍可查看，少排候选不代表没有漏牌")
+
+    def review_unranked(self):
+        if self.feed:
+            from .unranked_review import UnrankedReviewWindow
+            return self.attempt(lambda: UnrankedReviewWindow(self))
+        self.var_status.set("请先连接识别来源；也可直接按 N 补录")
 
     def toggle_assist(self):
         if self.feed:
@@ -421,6 +439,9 @@ class QuickRecordPanel(tk.Toplevel):
         count = len(self.work.pending)
         self.var_summary.set(f"待核对 {count} 张 · 草稿确认后入账")
         problem = self.work.source_problem() if self.feed else "手动录牌"
+        source_problem = problem
+        if self.feed:
+            self.var_summary.set(f"待核对 {count} 张 · 未定区域 {self.feed.unranked_count}")
         lag = f"记录落后 {self.work.lag_seconds():.1f} 秒" if self.feed and count else "队列清空不代表记录完整"
         if self.feed and self.feed.replay_mode:
             problem = "录像复盘 · 已停止采集，不代表当前牌桌"
@@ -492,7 +513,7 @@ class QuickRecordPanel(tk.Toplevel):
             if eid not in retained:
                 self.record_list.delete(eid)
         allowed = d is not None and d.status == "pending" and not d.blocked
-        if allowed and d.source_epoch is not None and problem:
+        if allowed and d.source_epoch is not None and source_problem:
             allowed = False
         self.confirm_button.configure(state=tk.NORMAL if allowed else tk.DISABLED)
 

@@ -76,6 +76,59 @@ class ContinuousReviewTest(unittest.TestCase):
         self.assertEqual(2, len(paths))
         self.assertEqual(before, original_path.read_bytes())
 
+    def test_unranked_region_is_visible_and_later_same_track_hint_can_queue(self):
+        obs = self.row.recognition.observations[0]
+        obs.reject_reason = "不确定"
+        self.feed.poll()
+        self.assertEqual(1, self.feed.unranked_count)
+        self.assertEqual(1, len(self.work.pending))
+        self.assertNotIn((self.feed.epoch, obs.observation_id), self.work.seen)
+        record = self.feed.snapshot_unranked()
+        self.assertEqual(obs.bbox, record["regions"][0]["bbox"])
+        self.assertFalse(self.owner.stopped)
+        self.assertEqual([], self.work.records())
+        obs.reject_reason = None
+        self.row.row_id += 1
+        self.owner.records.append(self.row.metadata())
+        self.feed.poll()
+        self.assertEqual(2, len(self.work.pending))
+
+    def test_explicit_unranked_supplement_bypasses_automatic_capacity_but_never_auto_commits(self):
+        self.work.capacity = 1
+        self.row.recognition.observations[0].reject_reason = "不确定"
+        self.feed.poll()
+        self.assertEqual(1, len(self.work.automatic_pending))
+        record = self.feed.snapshot_unranked()
+        draft = self.feed.draft_region(record, 0)
+        self.assertTrue(draft.human_requested)
+        self.assertIsNone(draft.rank)
+        self.assertEqual(1, len(self.work.manual_pending))
+        self.assertEqual([], self.work.records())
+        self.work.edit(face="unknown")
+        self.work.confirm(draft.draft_id)
+        self.assertEqual(1, self.ctrl.state().current.shoe.unrevealed_out)
+
+    def test_all_regions_mode_is_available_and_keeps_original_rejection(self):
+        self.row.recognition.observations[0].reject_reason = "不确定"
+        self.feed.poll()
+        self.feed.set_queue_policy("all-regions")
+        self.feed.poll()
+        self.assertEqual(2, len(self.work.pending))
+        unresolved = next(d for d in self.work.pending if d.rank is None)
+        self.assertEqual("不确定", unresolved.original["observation"]["reject_reason"])
+
+    def test_replay_retains_last_uncertain_snapshot_and_old_rebind_cannot_submit_it(self):
+        self.row.recognition.observations[0].reject_reason = "不确定"
+        self.feed.poll()
+        self.owner.finished = self.owner.source.finished = True
+        self.feed.enter_replay()
+        record = self.feed.snapshot_unranked()
+        self.assertTrue(self.owner.stopped)
+        self.assertIsNotNone(self.feed.draft_region(record, 0))
+        new_feed = ContinuousReviewFeed(self.work, self.owner)
+        with self.assertRaises(ValueError):
+            new_feed.draft_region(record, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

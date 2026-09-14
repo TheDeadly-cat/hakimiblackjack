@@ -108,6 +108,62 @@ class QuickPanelTest(unittest.TestCase):
         self.assertEqual(before, self.app.ctrl.commit_revision)
         self.assertIn("未提交新的牌面事件", self.errors[-1][1])
 
+    def test_offline_review_banner_does_not_disable_valid_confirmation(self):
+        from tests.test_realtime_review import fixture, np
+        if np is None:
+            self.skipTest("optional numpy")
+        owner, row, intake = fixture()
+        owner.finished = owner.source.finished = False
+        owner.source.preview = intake.preview
+        owner._latest = row
+        self.panel.attach(owner)
+        self.panel.feed.poll()
+        owner.finished = owner.source.finished = True
+        self.panel.feed.enter_replay()
+        self.panel.refresh()
+        self.assertIn("录像复盘", self.panel.var_current.get())
+        self.assertFalse(self.panel.confirm_button.instate(["disabled"]))
+        self.panel.confirm_button.invoke()
+        self.assertEqual(1, len(self.panel.work.records()))
+
+    def test_unranked_region_window_freezes_frame_and_only_adds_a_draft(self):
+        from tests.test_realtime_review import fixture, np
+        if np is None:
+            self.skipTest("optional numpy")
+        owner, row, intake = fixture()
+        owner.finished = owner.source.finished = False
+        owner.source.preview = intake.preview
+        owner._latest = row
+        row.recognition.observations[0].reject_reason = "不确定"
+        self.panel.attach(owner)
+        self.panel.feed.poll()
+        window = self.panel.review_unranked()
+        self.assertIsNotNone(window)
+        self.assertEqual(1, len(window.record["regions"]))
+        self.assertFalse(owner.stopped)
+        window.add_draft()
+        self.assertTrue(self.panel.work.selected.human_requested)
+        self.assertEqual([], self.panel.work.records())
+
+    def test_large_source_selected_region_is_visible_after_initial_layout(self):
+        import tkinter as tk
+        from types import SimpleNamespace
+        from blackjack_lab.vision.image_io import write_png_rgb
+        path = Path(self.tmp.name) / "wide-source.png"
+        write_png_rgb(path, 1850, 520, b"\x90\x90\x90" * (1850*520))
+        record = {"source_image":str(path), "regions":[{"bbox":{"x":1250,"y":128,"w":35,"h":25},"reason":"synthetic fixture"}]}
+        self.panel.feed = SimpleNamespace(snapshot_unranked=lambda:record, poll=lambda:False,
+            owner=SimpleNamespace(source=SimpleNamespace(preview=lambda:None)),
+            unranked_count=1, enabled=False, replay_mode=False)
+        from blackjack_lab.ui.unranked_review import UnrankedReviewWindow
+        window = UnrankedReviewWindow(self.panel)
+        self.app.update_idletasks()
+        self.app.update()
+        self.assertLessEqual(window.canvas.canvasx(0), 1250)
+        self.assertGreaterEqual(window.canvas.canvasx(window.canvas.winfo_width()), 1285)
+        window.destroy()
+        self.panel.feed = None
+
 
 if __name__ == "__main__":
     unittest.main()

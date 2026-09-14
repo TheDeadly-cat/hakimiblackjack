@@ -33,6 +33,7 @@ class CardDraft:
     status: str = "pending"
     blocked: str = ""
     source_epoch: str | None = None
+    human_requested: bool = False
     observed_at: float = field(default_factory=time.time)
     arrival_ns: int = field(default_factory=time.perf_counter_ns)
     original: dict = field(default_factory=dict)
@@ -145,6 +146,14 @@ class AssistedRecording:
     def pending(self):
         return [d for d in self.items.values() if d.status == "pending"]
 
+    @property
+    def automatic_pending(self):
+        return [d for d in self.pending if d.source_epoch is not None and not d.human_requested and not d.blocked]
+
+    @property
+    def manual_pending(self):
+        return [d for d in self.pending if (d.source_epoch is None or d.human_requested) and not d.blocked]
+
     def _record(self, action, draft=None, **extra):
         entry = {"schema": "assisted-review-action-1", "action": action,
                  "time": time.time(), "monotonic_ns": time.perf_counter_ns(),
@@ -158,7 +167,7 @@ class AssistedRecording:
         bound = self.binding()
         if not bound["active"]:
             raise DraftError("请先在主工作台新建牌靴并开轮")
-        if sum(d.source_epoch is None and not d.blocked for d in self.pending) >= 16:
+        if len(self.manual_pending) >= 16:
             raise DraftError("已有 16 张手动草稿，请先处理或撤回其中一张")
         seat = seat or self.seat
         hand_id = hand_id if hand_id is not None else (self.hand_id if seat == self.seat else None)
@@ -190,13 +199,15 @@ class AssistedRecording:
             return "来源验证失败：" + str(exc)
 
     def enqueue(self, *, key, rank, original, source_image, crop_image,
-                observed_at=None, arrival_ns=None):
+                observed_at=None, arrival_ns=None, human_requested=False):
         # A tracking key suppresses repeat proposals only. It is never a
         # physical-card identity, and equal ranks never imply equal keys.
         scoped = (self.epoch, key)
         if scoped in self.seen:
             return None
-        if sum(d.source_epoch is not None and not d.blocked for d in self.pending) >= self.capacity or len(self.seen) >= 20000:
+        if human_requested and len(self.manual_pending) >= 16:
+            raise DraftError("已有 16 张手动草稿，请先处理其中一张")
+        if not human_requested and (len(self.automatic_pending) >= self.capacity or len(self.seen) >= 20000):
             if not self.overflow:
                 self._record("queue-overflow", bound=self.binding(), requires_observation_check=True)
             self.overflow += 1
@@ -210,6 +221,7 @@ class AssistedRecording:
         hand = self.target_hand(self.seat, self.hand_id)
         draft = CardDraft(uuid4().hex, bound, self.seat, hand,
             rank=rank if rank in RANKS else None, source_epoch=self.epoch,
+            human_requested=human_requested,
             original=deepcopy(original), source_image=str(source_image), crop_image=str(crop_image),
             observed_at=observed_at if observed_at is not None else time.time(),
             arrival_ns=arrival_ns if arrival_ns is not None else time.perf_counter_ns())
@@ -301,7 +313,7 @@ class AssistedRecording:
         target = next((r for r in self.records(event.round_id) if r["event_id"] == event_id), None)
         if target is None:
             raise DraftError("请选择仍有效的一张已记录牌")
-        if sum(d.source_epoch is None and not d.blocked for d in self.pending) >= 16:
+        if len(self.manual_pending) >= 16:
             raise DraftError("已有 16 张手动草稿，请先处理或撤回其中一张")
         d = CardDraft(uuid4().hex, self.binding(), target["seat"], target["hand_id"])
         d.operation = "reveal" if target["rank"] not in RANKS and event.round_id == d.bound["round_id"] and d.bound["active"] else "correct"
