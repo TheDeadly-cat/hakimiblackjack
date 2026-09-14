@@ -55,6 +55,9 @@ class RgbCornerAdapter(TrainedModelAdapter):
         self.detector_manifest=manifest
         self.device,self.threshold=device,float(manifest['threshold'])
         self.extraction_version=ARCHITECTURE+'+'+CROP_PREPROCESSING+'+'+INPUT_PROFILE
+        from .rgb_corner_model import FULL_FRAME_POLICY
+        self.inference_policy=FULL_FRAME_POLICY
+        self._base_extraction_version=self.extraction_version
         self.model_id='rgb-index-'+manifest['checkpoint_sha256'][:16]+'+'+self.rank_model_id
         self._detector_identity_bytes=raw+b'\0'+blob+b'\0'
         self.digest=self._combined_digest()
@@ -81,30 +84,47 @@ class RgbCornerAdapter(TrainedModelAdapter):
         other.digest=other._combined_digest()
         return other
 
-    def warmup(self,width,height):
+    def with_inference_policy(self,policy):
+        """Explicit context experiment, retaining the same detector/rank weights."""
+        from copy import copy
+        from .rgb_corner_model import FULL_FRAME_POLICY,TILED_POLICY
+        if policy not in (FULL_FRAME_POLICY,TILED_POLICY):raise ImageRejected('未知 RGB 输入策略')
+        other=copy(self)
+        other.inference_policy=policy
+        other.extraction_version=self._base_extraction_version+('+'+policy if policy==TILED_POLICY else '')
+        other.digest=other._combined_digest()
+        if policy==TILED_POLICY:other.warmup(320,320,batch_size=8)
+        return other
+
+    def warmup(self,width,height,*,batch_size=1):
         import torch
-        if (width,height) in self._warmed_shapes:return
+        if (width,height,batch_size) in self._warmed_shapes:return
         start=time.perf_counter_ns()
         with torch.inference_mode():
-            self.detector(torch.zeros(1,3,((height+31)//32)*32,((width+31)//32)*32,device=self.device))
+            self.detector(torch.zeros(batch_size,3,((height+31)//32)*32,((width+31)//32)*32,device=self.device))
         if self.device=='cuda':torch.cuda.synchronize()
         self.warmup_ms=(time.perf_counter_ns()-start)/1e6
-        self._warmed_shapes.add((width,height))
+        self._warmed_shapes.add((width,height,batch_size))
 
     @property
     def identity_text(self):
-        return (f'RGB 牌角开发原型 / {self.device} / digest={self.digest[:16]}　'
+        from .rgb_corner_model import TILED_POLICY
+        context=' / 原生分块' if self.inference_policy==TILED_POLICY else ''
+        return (f'RGB 牌角开发原型{context} / {self.device} / digest={self.digest[:16]}　'
                 f'点数权重冻结={self.rank_model_id[:25]}　裁片={CROP_PREPROCESSING}；未通过独立事件验收')
 
     def recognize(self,loaded,layout,source_declaration,*,timings=None):
         if layout.style_id!=self.style_id:raise ImageRejected('RGB 检测器与布局样式不一致')
         require_calibrated_input(loaded.width,loaded.height)
-        from .rgb_corner_model import predict_boxes
+        from .rgb_corner_model import predict_boxes,predict_boxes_tiled,TILED_POLICY
         from .real_cards import manual_glyph
         import numpy as np
         if timings is not None:timings['detection_start_ns']=time.perf_counter_ns()
         rgb=np.frombuffer(loaded.rgb,dtype=np.uint8).reshape(loaded.height,loaded.width,3)
-        boxes=predict_boxes(self.detector,rgb,device=self.device,threshold=self.threshold)
+        if self.inference_policy==TILED_POLICY:
+            boxes=predict_boxes_tiled(self.detector,rgb,device=self.device,threshold=self.threshold,stats=timings)
+        else:
+            boxes=predict_boxes(self.detector,rgb,device=self.device,threshold=self.threshold)
         if timings is not None:timings['crop_preprocessing_start_ns']=time.perf_counter_ns()
         bgr=rgb_to_bgr(loaded)
         # The same documented manual-mask preprocessing used by reviewed crop

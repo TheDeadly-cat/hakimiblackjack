@@ -7,6 +7,10 @@ from __future__ import annotations
 
 ARCHITECTURE = "mobilenet-v3-small-s4-rgb-index-1"
 STRIDE = 4
+FULL_FRAME_POLICY = 'native-full-frame-1'
+TILED_POLICY = 'native-tiles-320-step160-1'
+TILE_SIZE = 320
+TILE_STEP = 160
 
 
 def create_model(*, pretrained=False):
@@ -133,3 +137,62 @@ def predict_boxes(model, rgb, *, device, threshold=.35, max_candidates=96):
         boxes.append(dict(bbox=box,score=float(confidence),score_is_calibrated_probability=False))
         if len(boxes)>=max_candidates:break
     return boxes
+
+
+def native_tiles(width,height):
+    """Fixed grid, independent of detections, labels, ranks or future frames.
+
+    Interior centers have at least 80px of context, matching the training
+    sampler's 70px minimum. Boundary tiles retain original source edges.
+    """
+    if not TILE_SIZE<=width<=2048 or not TILE_SIZE<=height<=1024:
+        raise ValueError('Native tiled detector requires a ROI within 320..2048 by 320..1024')
+    def axis(length):
+        starts=list(range(0,length-TILE_SIZE+1,TILE_STEP))
+        if starts[-1]!=length-TILE_SIZE:starts.append(length-TILE_SIZE)
+        boundaries=[0]+[(a+b)/2+TILE_SIZE/2 for a,b in zip(starts,starts[1:])]+[length]
+        return [(start,boundaries[i],boundaries[i+1]) for i,start in enumerate(starts)]
+    return [{'x':x,'y':y,'owner':(left,top,right,bottom)}
+            for y,top,bottom in axis(height) for x,left,right in axis(width)]
+
+
+def predict_boxes_tiled(model,rgb,*,device,threshold=.35,max_candidates=96,stats=None):
+    """Batch fixed native crops; globally deduplicate before temporal tracking."""
+    import numpy as np
+    import torch
+    import torch.nn.functional as F
+    from .tracker import bbox_iou
+    height,width=rgb.shape[:2];tiles=native_tiles(width,height)
+    candidates=[];all_peaks=0
+    for start in range(0,len(tiles),8):
+        chunk=tiles[start:start+8]
+        images=np.stack([rgb[t['y']:t['y']+TILE_SIZE,t['x']:t['x']+TILE_SIZE] for t in chunk])
+        tensor=torch.from_numpy(np.ascontiguousarray(images.transpose(0,3,1,2))).to(device).float()/255
+        with torch.inference_mode():
+            logits,size,offset=model(tensor)
+            scores=logits.sigmoid()
+            maxima=(scores==F.max_pool2d(scores,3,stride=1,padding=1))&(scores>=threshold)
+            for index,tile in enumerate(chunk):
+                ys,xs=torch.where(maxima[index,0])
+                values=torch.stack((xs,ys,scores[index,0,ys,xs],size[index,0,ys,xs],size[index,1,ys,xs],
+                    offset[index,0,ys,xs].sigmoid(),offset[index,1,ys,xs].sigmoid()),dim=1).cpu().numpy()
+                all_peaks+=len(values)
+                for ix,iy,confidence,lw,lh,ox,oy in values:
+                    cx,cy=(ix+ox)*STRIDE+tile['x'],(iy+oy)*STRIDE+tile['y']
+                    left,top,right,bottom=tile['owner']
+                    if not (left<=cx<right and top<=cy<bottom):continue
+                    w,h=np.exp(np.clip([lw,lh],-1,4))*STRIDE
+                    x0,y0=max(0,round(float(cx-w/2))),max(0,round(float(cy-h/2)))
+                    x1,y1=min(width,round(float(cx+w/2))),min(height,round(float(cy+h/2)))
+                    if x1<=x0 or y1<=y0:continue
+                    candidates.append({'bbox':dict(x=x0,y=y0,w=x1-x0,h=y1-y0),
+                        'score':float(confidence),'score_is_calibrated_probability':False})
+    boxes=[]
+    for candidate in sorted(candidates,key=lambda row:-row['score']):
+        if not any(bbox_iou(candidate['bbox'],old['bbox'])>.3 for old in boxes):boxes.append(candidate)
+    if stats is not None:
+        stats.update(detector_inference_policy=TILED_POLICY,detector_tile_count=len(tiles),detector_tile_batch_limit=8,
+            detector_raw_tile_peaks=all_peaks,detector_owned_peaks=len(candidates),
+            detector_deduplicated_boxes=len(boxes),detector_truncated_candidates=max(0,len(boxes)-max_candidates),
+            detector_whole_frame_resized=False)
+    return boxes[:max_candidates]
