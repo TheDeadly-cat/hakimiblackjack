@@ -96,6 +96,8 @@ python scripts/verify_vision_v03a.py --rebuild-holdout
 
 [方向监督修正实验](docs/RGB_ORIENTATION_SUPERVISION_20260914.md)另存 11 个下角正例的用途修正及 53 个下角负例，原人审不改写。固定 HOG 的两轮真实回放中，正确稳定从 14/31 增至 16/31，额外稳定代表中的下角和背景误收减少，但仍有漏检、拒识及背景误收。可用 `Start_Orientation_Experiment.cmd` 显式查看该实验模型，尚未通过可靠秒级识牌验收。
 
+[分类审核接入与 CNN 更新对照](docs/CLASSIFIER_REVIEW_UPDATE_20260914.md)将已完成补充审核和当前上角选择连接为 296 个分类训练裁片，原记录及旧权重保留。更新 CNN 的静态收益未转化为实时收益：固定对照正确稳定由 16/31 降至 13/31、错认增加，因此未替换启动器中的原 HOG。
+
 既有人工流程和验收边界见 [V0.3e 审查整改](docs/vision/V0.3e-审查整改验收.md)，操作见 [指定模型与 CLI](docs/vision/V0.3e-指定模型与CLI.md)。原 [V0.3e 训练留出记录](docs/vision/V0.3e-标注训练留出集.md) 保留为历史开发记录，其中标签和分数不构成独立真实验收。
 
 原 V0.2a 回归与截图验收脚本（不能代替新增分牌工作流/性能验收，截图使用可选开发依赖 Pillow）：
