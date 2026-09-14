@@ -447,6 +447,7 @@ class BlackjackLabApp(tk.Tk):
             self._quick_panel = QuickRecordPanel(self)
         return self._quick_panel
 
+    @tracked_operation
     def act_detailed_card_correction(self):
         try:
             event = self._selected_event()

@@ -101,6 +101,13 @@ class QuickPanelTest(unittest.TestCase):
         self.assertTrue(self.panel.native_status["ex_style"] & 0x08000000)
         self.assertFalse(self.panel.native_status["ex_style"] & 0x20)
 
+    def test_invalid_history_selection_does_not_claim_an_earlier_commit_as_new(self):
+        self.app.lst_timeline.selection_clear(0, "end")
+        before = self.app.ctrl.commit_revision
+        self.app.act_detailed_card_correction()
+        self.assertEqual(before, self.app.ctrl.commit_revision)
+        self.assertIn("未提交新的牌面事件", self.errors[-1][1])
+
 
 if __name__ == "__main__":
     unittest.main()
