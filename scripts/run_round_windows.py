@@ -8,11 +8,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from blackjack_lab.analysis.round_windows import run_round_window_study
-from blackjack_lab.analysis.shoe_windows import CONSUMPTION_BASIC, CONSUMPTION_PI, CONSUMPTION_STAND
+from blackjack_lab.analysis.shoe_windows import (
+    CONSUMPTION_BASIC, CONSUMPTION_LEGAL_UNSPLIT, CONSUMPTION_PI, CONSUMPTION_STAND,
+)
 
 POLICIES = {
     "stand": CONSUMPTION_STAND,
     "basic": CONSUMPTION_BASIC,
+    "legal-unsplit": CONSUMPTION_LEGAL_UNSPLIT,
     "composition": CONSUMPTION_PI,
 }
 

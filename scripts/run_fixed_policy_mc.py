@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from blackjack_lab.analysis.fixed_policy_mc import (
-    POLICY_ALWAYS_STAND, POLICY_TOY_HARD, evaluate_fixed_policy,
+    POLICY_ALWAYS_STAND, POLICY_LEGAL_UNSPLIT, POLICY_TOY_HARD, evaluate_fixed_policy,
 )
 from blackjack_lab.analysis.research_windows import parse_remaining_tokens
 
@@ -16,6 +16,7 @@ from blackjack_lab.analysis.research_windows import parse_remaining_tokens
 POLICIES = {
     "always-stand": POLICY_ALWAYS_STAND,
     "toy-hard": POLICY_TOY_HARD,
+    "legal-unsplit": POLICY_LEGAL_UNSPLIT,
 }
 
 
@@ -41,10 +42,15 @@ def main(argv=None):
     print(json.dumps(body, ensure_ascii=False, indent=2))
     print("ev", report.get("ev"), "se", report.get("standard_error"),
           "sign", report.get("sign_status"), "window_state", report.get("window_state"),
+          "input_scope", report.get("input_scope"),
+          "window_claim_allowed", report.get("window_claim_allowed"),
+          "statistical_positive", report.get("statistical_positive"),
           "samples_per_second", report.get("samples_per_second"),
           "not_exact_optimal", report.get("not_exact_optimal"))
-    if report.get("window_claim_allowed") or report.get("window_state") != "indeterminate":
-        raise SystemExit("冻结策略MC不得允许窗口声称")
+    if report.get("timely") or report.get("independent_video") or report.get("desktop_attested"):
+        raise SystemExit("合成固定策略MC不得标成 timely、独立录像或桌面已证")
+    if not report.get("not_exact_optimal") or report.get("exact_positive"):
+        raise SystemExit("冻结策略MC必须标成非精确最优")
 
 
 if __name__ == "__main__":

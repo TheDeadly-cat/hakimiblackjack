@@ -2,9 +2,11 @@
 import unittest
 
 from blackjack_lab.analysis.contracts import UNSUPPORTED
-from blackjack_lab.analysis.predeal_contracts import PREDEAL_MAX_REMAINING
+from blackjack_lab.analysis.predeal_contracts import PREDEAL_MAX_REMAINING, PREDEAL_STRATEGY_VERSION
 from blackjack_lab.analysis.round_windows import play_seated_round, run_round_window_study
-from blackjack_lab.analysis.shoe_windows import CONSUMPTION_STAND, play_round
+from blackjack_lab.analysis.shoe_windows import (
+    CONSUMPTION_LEGAL_UNSPLIT, CONSUMPTION_STAND, EVALUATION_FIXED_POLICY_MC, play_round,
+)
 from blackjack_lab.core.rules import CAPABILITY_MATRIX, EXPERIMENTAL
 
 
@@ -121,6 +123,25 @@ class RoundWindowStudyTest(unittest.TestCase):
         self.assertTrue(report["summary"]["incomplete_cannot_claim_zero_window"])
         self.assertFalse(report["summary"]["zero_window"])
         self.assertEqual(0, report["summary"]["snapshot_count"])
+
+    def test_round_mc_checkpoint_keeps_cut_and_separates_policies(self):
+        report = run_round_window_study(
+            n_decks=6, n_players=1, after_rounds=(1,), seed=2, surrender=None,
+            target_policy=CONSUMPTION_STAND,
+            evaluation_method=EVALUATION_FIXED_POLICY_MC,
+            evaluation_policy_id=CONSUMPTION_LEGAL_UNSPLIT, mc_n_samples=8)
+        self.assertEqual(52, report["cut_remaining"])
+        self.assertNotEqual(PREDEAL_MAX_REMAINING, report["cut_remaining"])
+        self.assertEqual(EVALUATION_FIXED_POLICY_MC, report["evaluation_method"])
+        self.assertEqual(CONSUMPTION_LEGAL_UNSPLIT, report["evaluation_policy_id"])
+        self.assertEqual(CONSUMPTION_STAND, report["path_policy_id"])
+        self.assertNotEqual(PREDEAL_STRATEGY_VERSION, report["evaluation_policy_id"])
+        self.assertTrue(report["snapshots"])
+        snap = report["snapshots"][0]
+        self.assertGreater(snap["physical_remaining"], 52)
+        self.assertEqual("fixed_composition", snap["predeal"]["input_scope"])
+        self.assertEqual(EVALUATION_FIXED_POLICY_MC, snap["predeal"]["evaluation_method"])
+        self.assertTrue(report["cut_policy"]["not_moved_to_last_cards"])
 
     def test_capability_row_stays_experimental(self):
         status, note = CAPABILITY_MATRIX["前三/六轮消耗对照"]

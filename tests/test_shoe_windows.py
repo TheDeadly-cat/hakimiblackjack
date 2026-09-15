@@ -8,8 +8,10 @@ from blackjack_lab.analysis.predeal_contracts import PREDEAL_MAX_REMAINING, PRED
 from blackjack_lab.analysis.research_windows import WINDOW_PRE_DEAL, counts_from_values
 from blackjack_lab.analysis.shoe_windows import (
     KIND_FULL_DEPLETE, KIND_FULL_RESHUFFLE, KIND_LATE_DEPLETE, KIND_LATE_RESHUFFLE,
-    choose_action, evaluate_predeal, physical_mean, play_round, run_independent_shoes,
-    run_policy_contrast, run_window_study,
+    CONSUMPTION_LEGAL_UNSPLIT, CONSUMPTION_STAND,
+    EVALUATION_EXACT_SMALL, EVALUATION_FIXED_POLICY_MC,
+    choose_action, evaluate_checkpoint, evaluate_predeal, physical_mean, play_round,
+    run_independent_shoes, run_policy_contrast, run_window_study,
 )
 
 
@@ -256,3 +258,89 @@ class ShoeWindowStudyTest(unittest.TestCase):
         with self.assertRaises(ValueError) as caught:
             choose_action(counts_from_values([10, 10, 10]), (10, 6), 9, False)
         self.assertIn("不能默认含投降", str(caught.exception))
+
+    def test_mc_reshuffle_reevaluates_same_composition_not_only_realized_nets(self):
+        report = run_window_study(
+            kind=KIND_FULL_RESHUFFLE, n_decks=6, seed=3, max_rounds=3, surrender=None,
+            evaluation_method=EVALUATION_FIXED_POLICY_MC,
+            evaluation_policy_id=CONSUMPTION_LEGAL_UNSPLIT,
+            play_policy=CONSUMPTION_STAND, mc_n_samples=16)
+        self.assertEqual(EVALUATION_FIXED_POLICY_MC, report["evaluation_method"])
+        self.assertEqual(CONSUMPTION_LEGAL_UNSPLIT, report["evaluation_policy_id"])
+        self.assertEqual(CONSUMPTION_STAND, report["path_policy_id"])
+        self.assertNotEqual(report["path_policy_id"], report["evaluation_policy_id"])
+        self.assertTrue(report["methods_not_merged"])
+        self.assertNotEqual(PREDEAL_STRATEGY_VERSION, report["evaluation_policy_id"])
+        identities = []
+        counts = []
+        for item in report["rounds"]:
+            pre = item["predeal"]
+            self.assertEqual(EVALUATION_FIXED_POLICY_MC, pre["evaluation_method"])
+            self.assertEqual("fixed_composition", pre["input_scope"])
+            self.assertEqual(312, pre["physical_remaining"])
+            self.assertEqual(CONSUMPTION_LEGAL_UNSPLIT, pre["evaluation_policy_id"])
+            self.assertEqual(CONSUMPTION_STAND, pre["path_policy_id"])
+            self.assertTrue(pre["not_merged_with_exact_optimal"])
+            self.assertTrue(item["reshuffled"])
+            self.assertIsNotNone(item["realized_net"])
+            self.assertIsNotNone(pre["ev"])
+            self.assertIn("sample_plan", pre)
+            identities.append(id(pre))
+            counts.append(tuple(pre["composition_counts"]))
+        self.assertEqual(3, len(set(identities)))
+        self.assertEqual(1, len(set(counts)))
+        self.assertTrue(report["cut_policy"]["not_moved_to_last_cards"])
+
+    def test_mc_deplete_keeps_research_cut_not_the_exact_cap(self):
+        report = run_window_study(
+            kind=KIND_FULL_DEPLETE, n_decks=6, seed=1, max_rounds=3, surrender=None,
+            evaluation_method=EVALUATION_FIXED_POLICY_MC,
+            evaluation_policy_id=CONSUMPTION_STAND, mc_n_samples=8)
+        self.assertEqual(52, report["cut_remaining"])
+        self.assertNotEqual(PREDEAL_MAX_REMAINING, report["cut_remaining"])
+        self.assertGreater(report["remaining_at_end"], 52)
+        self.assertEqual("max_rounds", report["stop_reason"])
+        methods = {item["predeal"]["evaluation_method"] for item in report["rounds"]}
+        self.assertEqual({EVALUATION_FIXED_POLICY_MC}, methods)
+        for item in report["rounds"]:
+            self.assertGreater(item["predeal"]["physical_remaining"], 52)
+            self.assertEqual("fixed_composition", item["predeal"]["input_scope"])
+            self.assertNotEqual(EVALUATION_EXACT_SMALL, item["predeal"]["evaluation_method"])
+
+    def test_declared_cut_with_mc_still_stops_before_the_tail(self):
+        pack = list(range(1, 11)) * 3
+        report = run_window_study(
+            kind=KIND_FULL_DEPLETE, pack=pack, n_decks=6, seed=2,
+            cut_remaining=12, max_rounds=40, play_budget_seconds=2.0, surrender=None,
+            evaluation_method=EVALUATION_FIXED_POLICY_MC,
+            evaluation_policy_id=CONSUMPTION_STAND, mc_n_samples=8)
+        self.assertEqual(12, report["cut_remaining"])
+        self.assertEqual("cut", report["stop_reason"])
+        self.assertNotEqual(PREDEAL_MAX_REMAINING, report["cut_remaining"])
+        for item in report["rounds"]:
+            self.assertGreater(item["predeal"]["physical_remaining"], 12)
+            self.assertEqual(EVALUATION_FIXED_POLICY_MC, item["predeal"]["evaluation_method"])
+
+    def test_exact_checkpoint_refuses_to_wear_a_frozen_policy_id(self):
+        with self.assertRaises(ValueError) as caught:
+            evaluate_checkpoint(
+                [10, 9, 8, 7, 6, 5], surrender=None,
+                evaluation_method=EVALUATION_EXACT_SMALL,
+                evaluation_policy_id=CONSUMPTION_STAND)
+        self.assertIn("不能改用冻结策略冒充最优", str(caught.exception))
+        with self.assertRaises(ValueError) as caught:
+            evaluate_checkpoint(
+                [10, 9, 8, 7, 6, 5], surrender=None,
+                evaluation_method=EVALUATION_FIXED_POLICY_MC,
+                evaluation_policy_id=PREDEAL_STRATEGY_VERSION)
+        self.assertIn("不能把精确最优并进MC", str(caught.exception))
+
+    def test_default_six_deck_scan_is_still_exact_and_unsupported(self):
+        report = run_window_study(kind=KIND_FULL_RESHUFFLE, n_decks=6, seed=3, max_rounds=2,
+                                  surrender=None)
+        self.assertEqual(EVALUATION_EXACT_SMALL, report["evaluation_method"])
+        self.assertEqual(PREDEAL_STRATEGY_VERSION, report["evaluation_policy_id"])
+        for item in report["rounds"]:
+            self.assertEqual(UNSUPPORTED, item["predeal"]["status"])
+            self.assertEqual("PREDEAL_SHOE_TOO_LARGE", item["predeal"]["reason_code"])
+            self.assertEqual(EVALUATION_EXACT_SMALL, item["predeal"]["evaluation_method"])

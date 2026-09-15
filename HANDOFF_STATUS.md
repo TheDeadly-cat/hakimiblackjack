@@ -22,11 +22,11 @@
 
 ## M2：完整牌靴固定策略离线 MC
 
-`fixed_policy_mc.py` 评估冻结停牌或玩具硬规则，不是精确最优。Python 入口缺投降字段拒绝，不能把省略写成无投降。研究扫描 CLI（整靴/独立牌靴/3-6轮/策略对照/录牌误差/留出/固定策略MC/组成区间）`--surrender` 为必填，省略即退出，不能缺省 late。对照实验 CLI 合成缺省仍是 `none`，对齐主窗口「不支持」。6/7/8 副开局与中途剩余可出点估计、标准误、Wald 区间、样本吞吐、峰值 RSS 与取消延迟；失败/未跑样本留在分母。精确未分牌最优策略 ID 被拒绝。`choose_action` 必须显式给出动作集合，不能默认含投降。交互 5 秒 / 16 张门槛未改。MC 写入 `rules_digest`；点估计为正或 Wald 区间不含零仍是 `window_state=indeterminate`，不能当已证明开局窗。
+`fixed_policy_mc.py` 现有冻结合法未分牌 S17（硬/软/加倍/允许时晚投降；不分牌、不买保险），以及原来的冻结停牌与玩具硬规则。都不是组成最优，也不是已核验赌场基本策略表。精确未分牌最优策略 ID 仍被拒绝。Python 入口缺投降字段拒绝。固定组成（同一副牌洗牌，含整靴 `remaining=None` 或 `remaining=整靴张数`）与剩余张数先验（每次重抽不同组成）分开标记；后者不能作正式窗口声称。回执分开 `rules_digest` / `policy_digest` / `algorithm_digest`，并写出组成向量、规则快照、净收益分布与 p(win/push/lose)。失败或未跑样本使总体 `ev` 为空，成功子样本均值只作诊断。`z` 与预算在抽样前校验。取消延迟是察觉 `cancelled()` 之后的墙钟。固定组成且预注册样本完成时，Wald 下界>0 可标统计正、上界≤0 可标统计非正；这不是精确最优、不是 timely、不是桌面已证。合成 MC 仍 `timely=False`、`not_a_reliable_window_claim=True`。交互 5 秒 / 16 张门槛未改。CLI 增加 `legal-unsplit`，不再因为统计符号声称而退出。
 
 ## M3：整靴口径
 
-全六副重洗对照：精确发牌前仍 unsupported（不能把 312 张硬穷举），但每轮独立重洗后用冻结停牌打出实现净收益，负对照有数值。独立牌靴汇总的 `zero_window_rate` 只在有完整评估的牌靴上计算；全部评不完时为 null，不能写成已证明零窗口频率。耗牌研究声明切牌剩余（整靴默认 52 张），到切牌点停，不把尾靴当窗口频率。3/6 轮快照是实际耗牌剩余，不是固定减 65/130。整靴 3/6 轮对照也写入 `evaluation_scope`：快照全是 unsupported 时 `zero_window` 为假、`incomplete_cannot_claim_zero_window` 为真，不能把「精确入口评不了」写成已证明无窗口。`path_policy_id` 与 `evaluation_policy_id` 分开；玩具硬规则不得叫已核验基本策略。独立牌靴汇总保留每靴 checkpoints：发牌前剩余、打完后剩余、该轮合成 predeal 记录、实现净收益、耗牌/评估策略。合成 `evaluate_predeal` 一律 `source_mode=synthetic-composition`、`timely=False`、`not_a_reliable_window_claim=True`，`result_ready_at` 只在算出时写入，不能当成当时抓住的窗口。漏牌、重复、错认现在也按**公开发牌事件**重建下一轮剩余，并与完美公开事件对照计分；这和直接改未用牌组成分开。同一组误差也可以注入真实 `EventLedger` 的可见 `CARD_DEALT` 后重放观察账本，只比较剩余牌面向量，不把六副剩余写成精确窗口。延迟是已确认前缀：零延迟知识一致；只落后未翻底牌时牌面剩余可以相同，但 `unrevealed_out` / 物理剩余不同。落后一轮结束事件后，真值是 `PREDEAL_SHOE_TOO_LARGE`、观察仍是本轮已发，两边都不可评，不能写成已证明零窗口。公开错认后追加 `CORRECTION` 必须把剩余恢复成真值。未翻底牌不是公开事件：爆牌/投降后完美公开事件剩余仍含底牌，不等于下一轮私有鞋。控制器 `commit_repair` 在 `save_ledger` 失败时不替换内存账本，磁盘仍是修复前前缀。`lag_rounds=0` 仍是理想观察。合成误差增加漏计/重复/未知移除，与换点值分开计分。`run_shoe_windows.py` / `run_round_windows.py` / `run_fixed_policy_mc.py` 等研究脚本显式 `--surrender none|late`。对照实验窗口的合成扫描与合成启动都跟会话规则，不再默认晚投降覆盖无投降；合成映射缺投降字段拒绝。多座位耗牌后公开剩余仍含未翻底牌，路径推进跟环境私有剩余。`play_round` / `run_window_study` / `compare_holdout` / 冻结π区间入口等研究函数缺投降 kwargs 会报「不能默认晚投降」。
+缺省扫描仍是精确发牌前：六副剩余>16 为 unsupported，不能把 312 张硬穷举。可选用冻结策略 MC 评估切牌前检查点；`evaluation_method`、`evaluation_policy_id`、`path_policy_id`、`input_scope`、`cut_policy`、`sample_plan` 分开写入。不把切牌改到尾靴或精确 16 张上限；整靴缺省切牌剩余仍是 52。MC 与精确最优不合并成一条曲线：一次研究只用一种评估方法。重洗负对照对同一组成/规则/策略重新评估，不只保留实现净收益。独立牌靴汇总的 `zero_window_rate` 只在有完整评估的牌靴上计算；全部评不完时为 null。3/6 轮快照是实际耗牌剩余，不是固定减 65/130；也可选用同一套 MC 检查点，缺省仍精确。`path_policy_id` 与 `evaluation_policy_id` 分开；玩具硬规则不得叫已核验基本策略。合成 `evaluate_predeal` 一律 `source_mode=synthetic-composition`、`timely=False`、`not_a_reliable_window_claim=True`。漏牌、重复、错认按公开发牌事件重建下一轮剩余，并与完美公开事件对照计分。延迟是已确认前缀。`run_shoe_windows.py` 增加 `--evaluation-method exact-small|fixed-policy-mc`。研究脚本 `--surrender none|late` 仍为必填。
 
 漏牌修复：分牌后缀可重放，同靴跨轮后缀可重放；历史前缀仍看不到后来插入的牌。重放事件带 `repair_original_event_id` 指向原事件。发生时间只记在负载，`observed_at` 是确认时间，不能把早期发生时间当成当时已确认。内存应用失败不留半截撤销；进程从 SQLite 恢复后仍能分开当时前缀与修复后当前。已保存分析快照不因修复改 EV 或当成当时抓住窗口。跨新靴与纠错后缀继续拒绝，未删保护检查。
 
@@ -38,7 +38,7 @@
 
 操作者对照：`trial` / `trial_from_usage` 保留 `operator_id` / `video_id` / `pair_id`；`conclude` / `write_export` 写出 `identity_chain`。现有导出对话框可选填这三项，空则仍只记录条件。匹配字符串只记 `declared_pair_ids`，`paired` / `accepted` / `auto_prompt_default` 仍为 False。真实桌档案导出始终 `accepted=false`、`evidence_level=declared`；手工把 JSON 改成 `accepted=true` 后再加载仍会盖回未通过。界面顶栏把已载入档案标成「声明未验收」。`scripts/report_unattested_materials.py` 扫描操作者/全屏/桌档案/验收包时也不认手改 `accepted=true`。
 
-发牌前精确入口与合成 `evaluate_predeal`、固定策略 MC 均写入 4.4 身份：`window_kind`、`source_mode`、`strategy_id`、`ledger_prefix_digest`、`information_cutoff`、`result_ready_at`、`decision_deadline`、`timely`、`window_state`。计算状态与窗口状态分开：`positive_supported` / `nonpositive_supported` / `indeterminate` / `unavailable`。MC 点估计 `window_claim_allowed=False`，窗口状态只能是 `indeterminate`，正的点估计不能写成已证明开局窗。当前手结果标 `current_hand`，开局 `window_state=unavailable`，不能改称开局优势，也不能进入零窗口/混淆矩阵的正开局计数。合成组成 `timely=False` 且 `not_a_reliable_window_claim=True`，快照拒绝把合成结果改成当时抓住，也拒绝把当前手 `window_state` 改成正开局。求解器本身不把结果标成 timely live；UI 信封 `timely_live_claim` 只有当时 live 且知识/输入未变才可为 true。历史复算、手动 as-of、迟到结果、软件省略该字段都是 false。发牌前按钮可替换进行中的当前手请求；发布结果必须是发牌前 schema，显示「合成研究」，不贴「当前 ·」。
+发牌前精确入口与合成 `evaluate_predeal`、固定策略 MC 均写入 4.4 身份：`window_kind`、`source_mode`、`strategy_id`、`ledger_prefix_digest`、`information_cutoff`、`result_ready_at`、`decision_deadline`、`timely`、`window_state`。计算状态与窗口状态分开：`positive_supported` / `nonpositive_supported` / `indeterminate` / `unavailable`。MC 在固定组成且预注册样本完成、Wald 区间给出符号时可以 `window_claim_allowed=True`，但这是统计正/统计非正，不是精确最优，也不是 timely 或桌面已证；合成组成仍 `timely=False` 且 `not_a_reliable_window_claim=True`。剩余张数先验不能作正式窗口声称。当前手结果标 `current_hand`，开局 `window_state=unavailable`，不能改称开局优势，也不能进入零窗口/混淆矩阵的正开局计数。快照拒绝把合成结果改成当时抓住，也拒绝把当前手 `window_state` 改成正开局。求解器本身不把结果标成 timely live；UI 信封 `timely_live_claim` 只有当时 live 且知识/输入未变才可为 true。历史复算、手动 as-of、迟到结果、软件省略该字段都是 false。发牌前按钮可替换进行中的当前手请求；发布结果必须是发牌前 schema，显示「合成研究」，不贴「当前 ·」。
 
 ## M5：尚未冻结
 
@@ -59,7 +59,7 @@ python -m compileall -q blackjack_lab tests scripts
 python -m unittest discover -s tests -q
 ```
 
-完整 discover **1055** 通过、**8** 跳过（129.274s）。不要沿用 808/809、910/941、946、952、956、958、961、972、975、978、983、986、988、990、994、995、997、1001、1002、1003、1006、1008、1009、1011、1014、1016、1017、1019、1020、1023、1028、1031、1038、1043、1044、1045、1047、1048 或上一轮 1053。本机计数不能换签为精确提交 CI，需等推送后的 GitHub Actions。
+完整 discover **1080** 通过、**8** 跳过。不要沿用 808/809、910/941、946、952、956、958、961、972、975、978、983、986、988、990、994、995、997、1001、1002、1003、1006、1008、1009、1011、1014、1016、1017、1019、1020、1023、1028、1031、1038、1043、1044、1045、1047、1048、1053 或上一轮 1055。本机计数不能换签为精确提交 CI，需等推送后的 GitHub Actions。
 
 ---
 

@@ -14,9 +14,11 @@ from .predeal_contracts import (
 from .probability import CalculationStopped, InsufficientCards
 from .research_windows import WINDOW_PRE_DEAL, counts_from_values, evaluation_scope
 from .shoe_windows import (
-    CONSUMPTION_BASIC, CONSUMPTION_PI, CONSUMPTION_STAND, POLICY_DISPLAY,
-    basic_unsplit_action, choose_action, evaluate_predeal, full_pack, observation_remainings,
-    play_round, resolve_cut_remaining, _dealer_stands, _score, _settle,
+    CONSUMPTION_BASIC, CONSUMPTION_LEGAL_UNSPLIT, CONSUMPTION_PI, CONSUMPTION_STAND, POLICY_DISPLAY,
+    EVALUATION_EXACT_SMALL,
+    basic_unsplit_action, choose_action, evaluate_checkpoint, full_pack,
+    legal_unsplit_s17_action, observation_remainings, play_round, resolve_cut_remaining,
+    _dealer_stands, _score, _settle,
 )
 
 SCHEMA = "hakimi-round-window-study-v1"
@@ -128,6 +130,28 @@ def _play_unsplit(player, up, hole, undealt, policy, peek, budget_seconds, surre
             player.append(undealt.pop(0))
             if _score(player) > 21:
                 break
+    elif policy == CONSUMPTION_LEGAL_UNSPLIT:
+        first = True
+        while True:
+            action = legal_unsplit_s17_action(
+                player, up, surrender=surrender,
+                can_double=first and len(player) == 2,
+                can_surrender=first and len(player) == 2)
+            if action == "surrender":
+                return player, action, stake, undealt
+            if action == "double":
+                if not undealt:
+                    raise InsufficientCards("加倍时没有可补的牌")
+                player.append(undealt.pop(0))
+                return player, "double", 2, undealt
+            if action != "hit":
+                break
+            if not undealt:
+                raise InsufficientCards("补牌时牌靴耗尽")
+            player.append(undealt.pop(0))
+            first = False
+            if _score(player) > 21:
+                break
     elif policy != CONSUMPTION_STAND:
         raise ValueError("未知消耗策略")
     return player, action, stake, undealt
@@ -151,13 +175,20 @@ def _seated_result(nets, target_index, remaining, public, *, dealer_bj, hole, ho
 def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS, seed=1,
                            target_policy=CONSUMPTION_BASIC, other_policy=OTHER_STAND,
                            budget_seconds=5.0, play_budget_seconds=2.0, pack=None,
-                           target_index=0, cut_remaining=None, surrender=SURRENDER_UNSET):
+                           target_index=0, cut_remaining=None, surrender=SURRENDER_UNSET,
+                           evaluation_method=EVALUATION_EXACT_SMALL, evaluation_policy_id=None,
+                           mc_n_samples=64, mc_seed=None, mc_z=1.96):
     surrender = require_declared_surrender(surrender, what="前三/六轮消耗对照")
     if n_decks not in (6, 7, 8):
         raise ValueError("整靴研究只接受 6/7/8 副")
     checkpoints = tuple(after_rounds or AFTER_ROUNDS)
     if any(type(item) is not int or item < 1 for item in checkpoints):
         raise ValueError("对照轮数必须为正整数")
+    eval_method = evaluation_method or EVALUATION_EXACT_SMALL
+    if eval_method == EVALUATION_EXACT_SMALL:
+        eval_policy = PREDEAL_STRATEGY_VERSION
+    else:
+        eval_policy = evaluation_policy_id or CONSUMPTION_STAND
     cut, cut_declared, cut_source = resolve_cut_remaining(
         n_decks, pack=pack, cut_remaining=cut_remaining)
     rng = Random(seed)
@@ -167,6 +198,7 @@ def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS,
     snapshots = []
     wanted = set(checkpoints)
     stop_reason = "complete"
+    mc_base_seed = seed if mc_seed is None else mc_seed
     for index in range(max(wanted)):
         if cut > 0 and len(current) <= cut:
             stop_reason = "cut"
@@ -189,14 +221,28 @@ def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS,
             "physical_remaining": len(current),
         })
         if index + 1 in wanted:
-            predeal = evaluate_predeal(current, budget_seconds=budget_seconds,
-                                       surrender=surrender)
+            predeal = evaluate_checkpoint(
+                current, surrender=surrender, evaluation_method=eval_method,
+                evaluation_policy_id=evaluation_policy_id, budget_seconds=budget_seconds,
+                mc_n_samples=mc_n_samples, mc_seed=mc_base_seed + index + 1, mc_z=mc_z,
+                mc_play_budget_seconds=play_budget_seconds)
+            predeal = dict(predeal)
+            predeal["path_policy_id"] = target_policy
+            predeal["cut_policy"] = {
+                "cut_remaining": cut,
+                "cut_declared": cut_declared,
+                "cut_source": cut_source,
+                "not_moved_to_last_cards": True,
+            }
             snapshots.append({
                 "after_rounds": index + 1,
                 "n_players": n_players,
                 "physical_remaining": len(current),
                 "remaining_count": len(current),
                 "predeal": predeal,
+                "evaluation_method": eval_method,
+                "evaluation_policy_id": eval_policy,
+                "path_policy_id": target_policy,
                 "target_net_sum": sum(item["target_net"] for item in history if "target_net" in item),
                 "other_net_sum": sum(sum(item.get("other_nets") or ()) for item in history),
                 "other_seat_count": n_players - 1,
@@ -219,11 +265,19 @@ def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS,
         "other_policy": other_policy,
         "path_policy_id": target_policy,
         "path_policy_display": POLICY_DISPLAY.get(target_policy, target_policy),
-        "evaluation_policy_id": PREDEAL_STRATEGY_VERSION,
+        "evaluation_method": eval_method,
+        "evaluation_policy_id": eval_policy,
+        "methods_not_merged": True,
         "surrender": surrender,
         "cut_remaining": cut,
         "cut_declared": cut_declared,
         "cut_source": cut_source,
+        "cut_policy": {
+            "cut_remaining": cut,
+            "cut_declared": cut_declared,
+            "cut_source": cut_source,
+            "not_moved_to_last_cards": True,
+        },
         "stop_reason": stop_reason,
         "remaining_at_end": len(current),
         "rounds": history,

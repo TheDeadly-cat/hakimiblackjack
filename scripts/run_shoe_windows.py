@@ -9,7 +9,8 @@ sys.path.insert(0, str(ROOT))
 
 from blackjack_lab.analysis.shoe_windows import (
     KIND_FULL_DEPLETE, KIND_FULL_RESHUFFLE, KIND_LATE_DEPLETE, KIND_LATE_RESHUFFLE,
-    run_window_study,
+    CONSUMPTION_BASIC, CONSUMPTION_LEGAL_UNSPLIT, CONSUMPTION_STAND,
+    EVALUATION_EXACT_SMALL, EVALUATION_FIXED_POLICY_MC, run_window_study,
 )
 
 KINDS = {
@@ -17,6 +18,15 @@ KINDS = {
     "late-reshuffle": KIND_LATE_RESHUFFLE,
     "full-reshuffle": KIND_FULL_RESHUFFLE,
     "full-deplete": KIND_FULL_DEPLETE,
+}
+EVAL_METHODS = {
+    "exact-small": EVALUATION_EXACT_SMALL,
+    "fixed-policy-mc": EVALUATION_FIXED_POLICY_MC,
+}
+EVAL_POLICIES = {
+    "always-stand": CONSUMPTION_STAND,
+    "toy-hard": CONSUMPTION_BASIC,
+    "legal-unsplit": CONSUMPTION_LEGAL_UNSPLIT,
 }
 
 
@@ -32,12 +42,24 @@ def main(argv=None):
                         help="切牌后剩余张数；整靴耗牌缺省 52")
     parser.add_argument("--surrender", choices=("none", "late"), required=True,
                         help="发牌前规则；不能省略成晚投降")
+    parser.add_argument("--evaluation-method", choices=sorted(EVAL_METHODS), default="exact-small",
+                        help="检查点评估方法；缺省仍是≤16精确穷举，不会把MC与最优并成一条曲线")
+    parser.add_argument("--evaluation-policy", choices=sorted(EVAL_POLICIES), default="always-stand",
+                        help="仅 fixed-policy-mc 使用的冻结策略")
+    parser.add_argument("--mc-samples", type=int, default=64)
+    parser.add_argument("--mc-seed", type=int, default=None)
     args = parser.parse_args(argv)
     from blackjack_lab.analysis.research_windows import parse_surrender_token
+    eval_method = EVAL_METHODS[args.evaluation_method]
+    eval_policy = EVAL_POLICIES[args.evaluation_policy] if eval_method == EVALUATION_FIXED_POLICY_MC else None
     report = run_window_study(kind=KINDS[args.kind], n_decks=args.decks, remaining=args.remaining,
                               seed=args.seed, margin=args.margin, max_rounds=args.max_rounds,
                               cut_remaining=args.cut_remaining,
-                              surrender=parse_surrender_token(args.surrender))
+                              surrender=parse_surrender_token(args.surrender),
+                              evaluation_method=eval_method,
+                              evaluation_policy_id=eval_policy,
+                              mc_n_samples=args.mc_samples,
+                              mc_seed=args.mc_seed)
     summary = dict(report["summary"])
     body = {key: value for key, value in report.items() if key != "rounds"}
     body["summary"] = summary

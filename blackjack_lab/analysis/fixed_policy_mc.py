@@ -6,6 +6,7 @@ Offline callers pass their own sample count and optional wall-clock budget.
 """
 from __future__ import annotations
 
+import math
 import os
 import sys
 from math import sqrt
@@ -19,18 +20,26 @@ from .predeal_contracts import (
 )
 from .contracts import digest
 from .probability import CalculationStopped, InsufficientCards
-from .research_windows import WINDOW_PRE_DEAL, require_point_values, window_state
+from .research_windows import WINDOW_PRE_DEAL, counts_from_values, require_point_values, window_state
 from .shoe_windows import (
-    CONSUMPTION_BASIC, CONSUMPTION_PI, CONSUMPTION_STAND, full_pack, play_round,
+    CONSUMPTION_BASIC, CONSUMPTION_LEGAL_UNSPLIT, CONSUMPTION_PI, CONSUMPTION_STAND,
+    full_pack, play_round,
 )
 
 SCHEMA = "hakimi-fixed-policy-mc-v1"
 METHOD = "fixed_policy_monte_carlo"
 POLICY_ALWAYS_STAND = CONSUMPTION_STAND
 POLICY_TOY_HARD = CONSUMPTION_BASIC
+POLICY_LEGAL_UNSPLIT = CONSUMPTION_LEGAL_UNSPLIT
+INPUT_SCOPE_FIXED_COMPOSITION = "fixed_composition"
+INPUT_SCOPE_REMAINING_COUNT_PRIOR = "remaining_count_prior"
 SUPPORTED_POLICIES = {
     POLICY_ALWAYS_STAND: "冻结停牌消耗；不是最优策略",
     POLICY_TOY_HARD: "玩具硬点数消耗；不是已核验基本策略表",
+    POLICY_LEGAL_UNSPLIT: (
+        "冻结合法未分牌S17：硬点、软点、允许时加倍、明确允许的晚投降；"
+        "不分牌、不买保险；不是组成最优，也不是已核验赌场基本策略表"
+    ),
 }
 
 
@@ -92,6 +101,20 @@ def _require_positive_int(value, name):
     return value
 
 
+def _require_finite_number(value, name, *, positive=False):
+    if type(value) is bool:
+        raise FixedPolicyError("ILLEGAL_NUMBER", f"{name}不能是布尔值")
+    try:
+        number = float(value)
+    except (TypeError, ValueError) as error:
+        raise FixedPolicyError("ILLEGAL_NUMBER", f"{name}必须是有限数") from error
+    if not math.isfinite(number):
+        raise FixedPolicyError("ILLEGAL_NUMBER", f"{name}必须是有限数")
+    if positive and number <= 0:
+        raise FixedPolicyError("ILLEGAL_NUMBER", f"{name}必须为正数")
+    return number
+
+
 def _require_nonneg_int(value, name):
     if type(value) is not int or value < 0:
         raise FixedPolicyError("ILLEGAL_INT", f"{name}必须是非负整数；不能把 {value!r} 截成整数")
@@ -102,11 +125,58 @@ def _policy_id(policy):
     if policy == CONSUMPTION_PI or policy == PREDEAL_STRATEGY_VERSION:
         raise FixedPolicyError(
             "OPTIMAL_POLICY_NOT_MC",
-            "精确未分牌最优不是本离线MC方法；请用冻结停牌或玩具硬规则，小牌靴仍走 exact_small",
+            "精确未分牌最优不是本离线MC方法；请用冻结停牌、玩具硬规则或合法未分牌S17，小牌靴仍走 exact_small",
         )
     if policy not in SUPPORTED_POLICIES:
         raise FixedPolicyError("UNKNOWN_POLICY", f"未声明的冻结策略: {policy!r}")
     return policy
+
+
+def _input_scope(*, pack, remaining, n_decks):
+    if pack is not None:
+        return INPUT_SCOPE_FIXED_COMPOSITION
+    full = len(full_pack(n_decks)) if n_decks in (6, 7, 8) else None
+    if remaining is None or remaining == full:
+        return INPUT_SCOPE_FIXED_COMPOSITION
+    return INPUT_SCOPE_REMAINING_COUNT_PRIOR
+
+
+def _net_summary(pays):
+    n = len(pays)
+    buckets = {}
+    win = push = lose = 0
+    for pay in pays:
+        key = f"{float(pay):.12g}"
+        buckets[key] = buckets.get(key, 0) + 1
+        if pay > 0:
+            win += 1
+        elif pay < 0:
+            lose += 1
+        else:
+            push += 1
+    probabilities = {key: count / n for key, count in buckets.items()} if n else {}
+    return {
+        "net_pay_counts": buckets,
+        "net_distribution": probabilities,
+        "p_win": (win / n) if n else None,
+        "p_push": (push / n) if n else None,
+        "p_lose": (lose / n) if n else None,
+        "n": n,
+    }
+
+
+def _rules_snapshot(n_decks, surrender, input_scope):
+    return {
+        "dealer_soft17": "S17",
+        "blackjack_payout": [3, 2],
+        "american_hole_card": True,
+        "surrender": surrender,
+        "split": False,
+        "insurance": False,
+        "double_after_split": False,
+        "n_decks": n_decks,
+        "input_scope": input_scope,
+    }
 
 
 def _sample_pack(*, n_decks, remaining, pack, rng):
@@ -127,32 +197,81 @@ def _sample_pack(*, n_decks, remaining, pack, rng):
     return values
 
 
+def _parent_composition(*, n_decks, remaining, pack):
+    if pack is not None:
+        values = list(require_point_values(pack, what="冻结策略MC剩余"))
+        return values, list(counts_from_values(values)), len(values), None
+    if n_decks not in (6, 7, 8):
+        raise FixedPolicyError("ILLEGAL_DECKS", "整靴固定策略评估只接受 6/7/8 副")
+    values = full_pack(n_decks)
+    size = len(values) if remaining is None else remaining
+    if type(size) is not int or size < 4:
+        raise FixedPolicyError("ILLEGAL_REMAINING", "采样剩余必须是≥4的整数")
+    if size > len(values):
+        raise FixedPolicyError("ILLEGAL_REMAINING", "采样张数超过整靴")
+    return values, list(counts_from_values(values)), size, n_decks
+
+
 def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=1024, seed=1,
                           remaining=None, pack=None, surrender=SURRENDER_UNSET, cancelled=None,
                           budget_seconds=None, play_budget_seconds=2.0, z=1.96):
     """Independent Monte Carlo of one next round under a frozen unsplit policy.
 
     `budget_seconds` is an offline wall-clock bound, not the interactive 5s exact cap.
-    Failed or unrun samples stay in the denominator. A positive point estimate is not
-    a proven opening window and is never exact-optimal EV.
+    Failed or unrun samples stay in the denominator. The successful-subsample mean
+    is not the planned-population EV. A statistical sign claim is not exact-optimal,
+    not timely, and not desktop-attested.
     """
     policy = _policy_id(policy)
     n_samples = _require_positive_int(n_samples, "样本数")
     seed = _require_nonneg_int(seed, "种子")
+    z_value = _require_finite_number(z, "区间z", positive=True)
+    try:
+        play_budget_seconds = _require_finite_number(play_budget_seconds, "单局预算", positive=True)
+        if budget_seconds is not None:
+            budget_seconds = _require_finite_number(budget_seconds, "离线墙钟预算", positive=True)
+    except FixedPolicyError as error:
+        if error.code == "ILLEGAL_NUMBER":
+            raise FixedPolicyError("ILLEGAL_BUDGET", str(error)) from error
+        raise
     try:
         surrender = require_declared_surrender(surrender, what="固定策略MC")
     except ValueError as error:
         raise FixedPolicyError("SURRENDER_REQUIRED", str(error)) from error
-    if budget_seconds is not None:
-        if type(budget_seconds) is bool or type(budget_seconds) not in (int, float) or budget_seconds <= 0:
-            raise FixedPolicyError("ILLEGAL_BUDGET", "离线墙钟预算必须为正数；不能改交互精确 5 秒门槛")
+    parent, composition_counts, physical, decks_out = _parent_composition(
+        n_decks=n_decks, remaining=remaining, pack=pack)
+    input_scope = _input_scope(pack=pack, remaining=remaining, n_decks=n_decks)
+    rules = _rules_snapshot(decks_out, surrender, input_scope)
+    sample_plan = {
+        "n_samples_planned": n_samples,
+        "seed": seed,
+        "ci_z": z_value,
+        "input_scope": input_scope,
+        "draw_size": physical,
+        "play_budget_seconds": play_budget_seconds,
+        "offline_budget_seconds": budget_seconds,
+    }
+    rules_digest = digest(rules)
+    policy_digest = digest({
+        "policy_id": policy,
+        "policy_note": SUPPORTED_POLICIES[policy],
+        "split": False,
+        "insurance": False,
+    })
+    algorithm_digest = digest({
+        "method": METHOD,
+        "ci_method": "wald_normal_mean_sample_sd",
+        "sample_plan": sample_plan,
+    })
     rng = Random(seed)
     pays = []
     failures = []
     stopped = None
+    cancel_noticed_at = None
     start = perf_counter()
     for index in range(n_samples):
         if cancelled is not None and cancelled():
+            cancel_noticed_at = perf_counter()
             stopped = "cancelled"
             break
         if budget_seconds is not None and perf_counter() - start >= budget_seconds:
@@ -174,48 +293,78 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
     n_failed = len(failures)
     n_not_run = n_samples - n_ok - n_failed
     complete = stopped is None and n_failed == 0 and n_not_run == 0 and n_ok == n_samples
-    sample_mean = mean(pays) if pays else None
-    sample_std = stdev(pays) if n_ok >= 2 else None
-    se = (sample_std / sqrt(n_ok)) if sample_std is not None else None
-    z_value = float(z)
-    lo = (sample_mean - z_value * se) if se is not None else None
-    hi = (sample_mean + z_value * se) if se is not None else None
-    if not complete or se is None:
+    subsample_mean = mean(pays) if pays else None
+    subsample_std = stdev(pays) if n_ok >= 2 else None
+    subsample_se = (subsample_std / sqrt(n_ok)) if subsample_std is not None else None
+    population_ev = subsample_mean if complete else None
+    sample_std = subsample_std if complete else None
+    se = subsample_se if complete else None
+    lo = (population_ev - z_value * se) if se is not None else None
+    hi = (population_ev + z_value * se) if se is not None else None
+    nets = _net_summary(pays) if complete else {
+        "net_pay_counts": {},
+        "net_distribution": {},
+        "p_win": None,
+        "p_push": None,
+        "p_lose": None,
+        "n": n_ok,
+    }
+    statistical_positive = False
+    statistical_nonpositive = False
+    window_claim_allowed = False
+    if complete and se is not None and input_scope == INPUT_SCOPE_FIXED_COMPOSITION:
+        if lo > 0:
+            statistical_positive = True
+            window_claim_allowed = True
+            sign_status = "point_ci_excludes_zero_positive"
+            sign_reason = "固定组成、预注册样本完成且 Wald 下界>0；统计正，不是精确最优、不是 timely、不是桌面已证"
+        elif hi <= 0:
+            statistical_nonpositive = True
+            window_claim_allowed = True
+            sign_status = "point_ci_excludes_zero_nonpositive"
+            sign_reason = "固定组成、预注册样本完成且 Wald 上界≤0；统计非正，不是精确最优"
+        else:
+            sign_status = "indeterminate"
+            sign_reason = "固定组成已完成，但区间含零；不能宣称确定符号"
+    elif not complete:
         sign_status = "indeterminate"
-        sign_reason = "未完成预注册样本或精度不足；不能宣称确定正优势"
-    elif lo > 0:
-        sign_status = "point_ci_excludes_zero_positive"
-        sign_reason = "Wald 区间不含零且点估计为正；仍不是精确最优，也不是已证实窗口"
-    elif hi < 0:
-        sign_status = "point_ci_excludes_zero_negative"
-        sign_reason = "Wald 区间不含零且点估计为负；仍不是精确最优"
+        sign_reason = "未完成预注册样本或存在失败/未跑样本；成功子样本均值不能代表计划总体"
+    elif input_scope != INPUT_SCOPE_FIXED_COMPOSITION:
+        sign_status = "indeterminate"
+        sign_reason = "剩余张数先验每次重抽组成，不能作为正式窗口声称"
     else:
         sign_status = "indeterminate"
-        sign_reason = "区间含零或贴零；不能宣称确定正优势"
-    physical = len(pack) if pack is not None else remaining
-    if physical is None and n_decks in (6, 7, 8):
-        physical = len(full_pack(n_decks))
+        sign_reason = "精度不足，不能宣称确定符号"
+    source_mode = ("synthetic-composition" if input_scope == INPUT_SCOPE_FIXED_COMPOSITION
+                   else "sampled-remaining")
+    cancel_latency = None
+    if cancel_noticed_at is not None:
+        cancel_latency = perf_counter() - cancel_noticed_at
     report = {
         "schema": SCHEMA,
         "window": WINDOW_PRE_DEAL,
         "window_kind": WINDOW_PRE_DEAL,
-        "source_mode": "synthetic-composition" if pack is not None else "sampled-remaining",
+        "source_mode": source_mode,
+        "input_scope": input_scope,
         "strategy_id": policy,
-        "rules_digest": digest({
-            "window": WINDOW_PRE_DEAL,
-            "surrender": surrender,
-            "policy": policy,
-            "method": METHOD,
-        }),
+        "rules": rules,
+        "rules_digest": rules_digest,
+        "policy_digest": policy_digest,
+        "algorithm_digest": algorithm_digest,
         "method": METHOD,
+        "evaluation_method": METHOD,
         "knowledge_revision": None,
         "ledger_prefix_digest": None,
         "information_cutoff": None,
         "result_ready_at": time() if complete else None,
         "decision_deadline": None,
         "timely": False,
+        "exact_positive": False,
+        "statistical_positive": statistical_positive,
+        "statistical_nonpositive": statistical_nonpositive,
+        "desktop_attested": False,
         "not_exact_optimal": True,
-        "window_claim_allowed": False,
+        "window_claim_allowed": window_claim_allowed,
         "not_a_reliable_window_claim": True,
         "independent_video": False,
         "policy_id": policy,
@@ -224,9 +373,13 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
         "evaluation_policy_id": policy,
         "exact_small_max_remaining": PREDEAL_MAX_REMAINING,
         "interactive_exact_budget_seconds": 5.0,
-        "n_decks": None if pack is not None else n_decks,
+        "n_decks": decks_out,
         "physical_remaining": physical,
+        "counts": composition_counts,
+        "composition_counts": composition_counts,
+        "parent_card_count": len(parent),
         "surrender": surrender,
+        "sample_plan": sample_plan,
         "n_samples_planned": n_samples,
         "n_ok": n_ok,
         "n_failed": n_failed,
@@ -235,7 +388,8 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
         "complete_pre_registered_sample": complete,
         "status": "available" if complete else "indeterminate",
         "reason_code": "CALCULATED" if complete else (stopped or "INCOMPLETE_SAMPLE"),
-        "ev": sample_mean,
+        "ev": population_ev,
+        "successful_subsample_ev": subsample_mean,
         "variance": (sample_std * sample_std) if sample_std is not None else None,
         "std": sample_std,
         "standard_error": se,
@@ -243,6 +397,11 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
         "ci_low": lo,
         "ci_high": hi,
         "ci_method": "wald_normal_mean_sample_sd",
+        "net_pay_counts": nets["net_pay_counts"],
+        "net_distribution": nets["net_distribution"],
+        "p_win": nets["p_win"],
+        "p_push": nets["p_push"],
+        "p_lose": nets["p_lose"],
         "sign_status": sign_status,
         "sign_reason": sign_reason,
         "seed": seed,
@@ -252,10 +411,10 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
         "peak_rss_bytes": _peak_rss_bytes(),
         "platform": sys.platform,
         "cancel_response": stopped == "cancelled",
-        "cancel_latency_seconds": elapsed if stopped == "cancelled" else None,
-        "hardware_note": "吞吐按本机墙钟与已尝试样本；峰值RSS是进程工作集，不是精度证明；取消延迟是本机墙钟，不是声明硬件基准",
+        "cancel_latency_seconds": cancel_latency,
+        "hardware_note": "吞吐按本机墙钟与已尝试样本；峰值RSS是进程工作集，不是精度证明；取消延迟是察觉 cancelled() 之后到回执写出的墙钟，不是整段任务时长",
         "cancelled": stopped == "cancelled",
-        "note": "固定策略蒙特卡洛；失败样本未丢弃；正的点估计不是精确最优开局优势",
+        "note": "固定策略蒙特卡洛；失败/未跑样本使总体EV为空；统计符号不是精确最优、不是 timely、不是桌面已证",
     }
     report["window_state"] = window_state(report)
     return report

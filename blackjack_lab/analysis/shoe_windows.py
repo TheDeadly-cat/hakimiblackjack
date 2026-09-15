@@ -33,11 +33,15 @@ CONSUMPTION_STAND = "always-stand-v1"
 CONSUMPTION_PI = PREDEAL_STRATEGY_VERSION
 CONSUMPTION_BASIC = "basic-s17-unsplit-no-double-v1"
 CONSUMPTION_TOY_HARD = CONSUMPTION_BASIC
+CONSUMPTION_LEGAL_UNSPLIT = "legal-unsplit-s17-no-split-no-insurance-v1"
 ACTION_ORDER = ("stand", "hit", "double", "surrender")
 RESEARCH_DEFAULT_CUT_REMAINING = 52
+EVALUATION_EXACT_SMALL = "exact_small"
+EVALUATION_FIXED_POLICY_MC = "fixed_policy_monte_carlo"
 POLICY_DISPLAY = {
     CONSUMPTION_STAND: "冻结停牌消耗策略",
     CONSUMPTION_BASIC: "玩具硬点数消耗策略（不是已核验基本策略表）",
+    CONSUMPTION_LEGAL_UNSPLIT: "冻结合法未分牌S17（硬/软/加倍/允许时晚投降；不分牌、不买保险）",
     CONSUMPTION_PI: "小牌靴精确未分牌可见信息最优（≤16）",
 }
 
@@ -52,6 +56,55 @@ def basic_unsplit_action(player, up):
     if up in (2, 3, 4, 5, 6):
         return "stand"
     return "hit"
+
+
+def legal_unsplit_s17_action(player, up, *, surrender, can_double=True, can_surrender=True):
+    """Frozen S17 unsplit chart: hard/soft/double/late surrender.
+
+    Not a verified casino basic-strategy table. No split, no insurance,
+    not composition-dependent. Double and surrender only when the caller
+    says those actions are still legal (initial two cards).
+    """
+    total, soft = hand_total([_rank(v) for v in player])
+    if total is None:
+        raise ValueError("点数不可知")
+    up = int(up)
+    two = len(player) == 2
+    if can_surrender and two and surrender == "late" and not soft:
+        if total == 16 and up in (1, 9, 10):
+            return "surrender"
+        if total == 15 and up == 10:
+            return "surrender"
+    if two and can_double:
+        if soft:
+            if total in (13, 14) and up in (5, 6):
+                return "double"
+            if total in (15, 16) and up in (4, 5, 6):
+                return "double"
+            if total == 17 and up in (3, 4, 5, 6):
+                return "double"
+            if total == 18 and up in (3, 4, 5, 6):
+                return "double"
+        else:
+            if total == 9 and up in (3, 4, 5, 6):
+                return "double"
+            if total == 10 and up in (2, 3, 4, 5, 6, 7, 8, 9):
+                return "double"
+            if total == 11 and up != 1:
+                return "double"
+    if soft:
+        if total <= 17:
+            return "hit"
+        if total == 18:
+            return "stand" if up in (2, 7, 8) else "hit"
+        return "stand"
+    if total <= 11:
+        return "hit"
+    if total == 12:
+        return "stand" if up in (4, 5, 6) else "hit"
+    if total <= 16:
+        return "stand" if up in (2, 3, 4, 5, 6) else "hit"
+    return "stand"
 
 
 def _rank(value):
@@ -251,6 +304,29 @@ def play_round(pack, *, policy=CONSUMPTION_PI, budget_seconds=2.0, decisions=Non
             player.append(undealt.pop(0))
             if _score(player) > 21:
                 break
+    elif policy == CONSUMPTION_LEGAL_UNSPLIT:
+        first = True
+        while True:
+            action = legal_unsplit_s17_action(
+                player, up, surrender=surrender,
+                can_double=first and len(player) == 2,
+                can_surrender=first and len(player) == 2)
+            if action == "surrender":
+                return _done({"net": -0.5, "action": action, "stake": 1}, hole_revealed=False)
+            if action == "double":
+                if not undealt:
+                    raise InsufficientCards("加倍时没有可补的牌")
+                player.append(undealt.pop(0))
+                stake = 2
+                break
+            if action != "hit":
+                break
+            if not undealt:
+                raise InsufficientCards("补牌时牌靴耗尽")
+            player.append(undealt.pop(0))
+            first = False
+            if _score(player) > 21:
+                break
     elif policy != CONSUMPTION_STAND:
         raise ValueError("未知消耗策略")
 
@@ -315,6 +391,37 @@ def evaluate_predeal(pack, budget_seconds=5.0, surrender=SURRENDER_UNSET):
     return record
 
 
+def evaluate_checkpoint(pack, *, surrender, evaluation_method=EVALUATION_EXACT_SMALL,
+                        evaluation_policy_id=None, budget_seconds=5.0, mc_n_samples=64,
+                        mc_seed=1, mc_z=1.96, mc_play_budget_seconds=2.0):
+    """Evaluate one remaining pack. Exact and frozen-policy MC stay separate methods."""
+    surrender = require_declared_surrender(surrender, what="检查点评估")
+    method = evaluation_method or EVALUATION_EXACT_SMALL
+    if method == EVALUATION_EXACT_SMALL:
+        if evaluation_policy_id not in (None, PREDEAL_STRATEGY_VERSION, CONSUMPTION_PI):
+            raise ValueError("精确发牌前检查点不能改用冻结策略冒充最优")
+        record = dict(evaluate_predeal(pack, budget_seconds=budget_seconds, surrender=surrender))
+        record["evaluation_method"] = EVALUATION_EXACT_SMALL
+        record["evaluation_policy_id"] = PREDEAL_STRATEGY_VERSION
+        record["input_scope"] = "fixed_composition"
+        record["not_merged_with_monte_carlo"] = True
+        return record
+    if method != EVALUATION_FIXED_POLICY_MC:
+        raise ValueError(f"未知检查点评估方法: {method!r}")
+    from .fixed_policy_mc import SUPPORTED_POLICIES, evaluate_fixed_policy
+    policy = evaluation_policy_id or CONSUMPTION_STAND
+    if policy not in SUPPORTED_POLICIES:
+        raise ValueError("MC检查点必须使用已声明冻结策略；不能把精确最优并进MC")
+    report = dict(evaluate_fixed_policy(
+        pack=list(pack), policy=policy, n_samples=mc_n_samples, seed=mc_seed,
+        surrender=surrender, z=mc_z, play_budget_seconds=mc_play_budget_seconds,
+    ))
+    report["evaluation_method"] = EVALUATION_FIXED_POLICY_MC
+    report["evaluation_policy_id"] = policy
+    report["not_merged_with_exact_optimal"] = True
+    return report
+
+
 def _pay_distribution(pays):
     buckets = {}
     for pay in pays:
@@ -325,13 +432,17 @@ def _pay_distribution(pays):
 
 def _summarize(kind, rounds, *, n_decks, seed, margin, consumption,
                cut_remaining=0, cut_declared=False, cut_source="undeclared-play-to-exhaustion",
-               stop_reason=None, remaining_at_end=None, surrender=SURRENDER_UNSET):
+               stop_reason=None, remaining_at_end=None, surrender=SURRENDER_UNSET,
+               evaluation_method=EVALUATION_EXACT_SMALL, evaluation_policy_id=None):
     surrender = require_declared_surrender(surrender, what="整靴窗口摘要")
-    available = [item for item in rounds if item["predeal"].get("status") == AVAILABLE]
+    available = [item for item in rounds
+                 if item["predeal"].get("status") == AVAILABLE and item["predeal"].get("ev") is not None]
     margin_hits = [item for item in available if item["predeal"]["ev"] > margin]
     realized = [item["realized_net"] for item in rounds if item.get("realized_net") is not None]
     streaks = _positive_streaks(rounds)
     scope = evaluation_scope([item["predeal"] for item in rounds])
+    eval_policy = evaluation_policy_id or PREDEAL_STRATEGY_VERSION
+    exact = evaluation_method == EVALUATION_EXACT_SMALL
     return {
         "schema": SCHEMA,
         "kind": kind,
@@ -341,12 +452,25 @@ def _summarize(kind, rounds, *, n_decks, seed, margin, consumption,
         "strategy_version": PREDEAL_STRATEGY_VERSION,
         "consumption_policy": consumption,
         "path_policy_id": consumption,
-        "evaluation_policy_id": PREDEAL_STRATEGY_VERSION,
-        "evaluation_policy_note": "快照发牌前EV仍按精确未分牌最优；不是当前耗牌策略自己的开局EV",
+        "evaluation_method": evaluation_method,
+        "evaluation_policy_id": eval_policy,
+        "evaluation_policy_note": (
+            "快照发牌前EV仍按精确未分牌最优；不是当前耗牌策略自己的开局EV"
+            if exact else
+            "检查点EV按冻结策略MC；不是精确最优，也不是耗牌路径与评估方法的合并曲线"
+        ),
+        "methods_not_merged": True,
         "path_policy_display": POLICY_DISPLAY.get(consumption, consumption),
         "cut_remaining": cut_remaining,
         "cut_declared": cut_declared,
         "cut_source": cut_source,
+        "cut_policy": {
+            "cut_remaining": cut_remaining,
+            "cut_declared": cut_declared,
+            "cut_source": cut_source,
+            "not_moved_to_last_cards": True,
+            "not_relocated_to_exact_cap": cut_remaining != PREDEAL_MAX_REMAINING,
+        },
         "stop_reason": stop_reason,
         "remaining_at_end": remaining_at_end,
         "information_scope": "ideal_composition",
@@ -411,13 +535,35 @@ def _positive_streaks(rounds):
     return streaks
 
 
+def _attach_checkpoint(predeal, *, path_policy_id, cut, cut_declared, cut_source):
+    record = dict(predeal)
+    record["path_policy_id"] = path_policy_id
+    record["cut_remaining"] = cut
+    record["cut_declared"] = cut_declared
+    record["cut_source"] = cut_source
+    record["cut_policy"] = {
+        "cut_remaining": cut,
+        "cut_declared": cut_declared,
+        "cut_source": cut_source,
+        "not_moved_to_last_cards": True,
+    }
+    return record
+
+
 def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, margin=0.01,
                      budget_seconds=5.0, max_rounds=80, play_budget_seconds=2.0,
-                     play_policy=None, surrender=SURRENDER_UNSET, cut_remaining=None):
+                     play_policy=None, surrender=SURRENDER_UNSET, cut_remaining=None,
+                     evaluation_method=EVALUATION_EXACT_SMALL, evaluation_policy_id=None,
+                     mc_n_samples=64, mc_seed=None, mc_z=1.96):
     surrender = require_declared_surrender(surrender, what="整靴窗口研究")
     rng = Random(seed)
     if play_policy is None:
         play_policy = CONSUMPTION_STAND if kind == KIND_FULL_RESHUFFLE else CONSUMPTION_PI
+    eval_method = evaluation_method or EVALUATION_EXACT_SMALL
+    if eval_method == EVALUATION_EXACT_SMALL:
+        eval_policy = PREDEAL_STRATEGY_VERSION
+    else:
+        eval_policy = evaluation_policy_id or CONSUMPTION_STAND
     cut, cut_declared, cut_source = resolve_cut_remaining(
         n_decks, pack=pack, cut_remaining=cut_remaining)
     if pack is not None:
@@ -426,11 +572,28 @@ def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, marg
         initial = sample_pack(n_decks, remaining or 8, rng)
     else:
         initial = full_pack(n_decks)
+    mc_base_seed = seed if mc_seed is None else mc_seed
+
+    def _predeal_at(current, *, round_index, path_policy_id, checkpoint_cut, checkpoint_declared,
+                    checkpoint_source):
+        record = evaluate_checkpoint(
+            current, surrender=surrender, evaluation_method=eval_method,
+            evaluation_policy_id=evaluation_policy_id, budget_seconds=budget_seconds,
+            mc_n_samples=mc_n_samples, mc_seed=mc_base_seed + round_index, mc_z=mc_z,
+            mc_play_budget_seconds=play_budget_seconds)
+        return _attach_checkpoint(
+            record, path_policy_id=path_policy_id, cut=checkpoint_cut,
+            cut_declared=checkpoint_declared, cut_source=checkpoint_source)
+
+    summary_kw = dict(evaluation_method=eval_method, evaluation_policy_id=eval_policy)
     if kind == KIND_FULL_RESHUFFLE:
         path = CONSUMPTION_STAND if play_policy == CONSUMPTION_PI else play_policy
         rounds = []
         for index in range(min(max_rounds, 8)):
-            predeal = evaluate_predeal(initial, budget_seconds=budget_seconds, surrender=surrender)
+            predeal = _predeal_at(
+                initial, round_index=index, path_policy_id=path,
+                checkpoint_cut=len(initial), checkpoint_declared=True,
+                checkpoint_source="full-reshuffle-no-penetration")
             shuffled = list(initial)
             rng.shuffle(shuffled)
             realized, error = None, None
@@ -445,16 +608,21 @@ def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, marg
                 "consumption_policy": path, "path_policy_id": path, "reshuffled": True,
                 "history_removed": False, "play_error": error,
                 "checkpoint_remaining": len(initial),
+                "evaluation_method": eval_method,
+                "evaluation_policy_id": eval_policy,
             })
         return _summarize(kind, rounds, n_decks=n_decks, seed=seed, margin=margin,
                           consumption=path, cut_remaining=len(initial),
                           cut_declared=True, cut_source="full-reshuffle-no-penetration",
                           stop_reason="independent-reset", remaining_at_end=len(initial),
-                          surrender=surrender)
+                          surrender=surrender, **summary_kw)
     if kind == KIND_LATE_RESHUFFLE:
         rounds = []
-        baseline = evaluate_predeal(initial, budget_seconds=budget_seconds, surrender=surrender)
         for index in range(min(max_rounds, 8)):
+            predeal = _predeal_at(
+                initial, round_index=index, path_policy_id=play_policy,
+                checkpoint_cut=len(initial), checkpoint_declared=True,
+                checkpoint_source="late-reshuffle-fixed-pack")
             shuffled = list(initial)
             rng.shuffle(shuffled)
             realized, error = None, None
@@ -464,14 +632,16 @@ def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, marg
                 realized = played["net"]
             except (InsufficientCards, CalculationStopped, ValueError) as err:
                 error = str(err)
-            rounds.append({"round_index": index, "predeal": dict(baseline), "realized_net": realized,
+            rounds.append({"round_index": index, "predeal": predeal, "realized_net": realized,
                            "consumption_policy": play_policy, "path_policy_id": play_policy,
-                           "reshuffled": True, "history_removed": False, "play_error": error})
+                           "reshuffled": True, "history_removed": False, "play_error": error,
+                           "evaluation_method": eval_method,
+                           "evaluation_policy_id": eval_policy})
         return _summarize(kind, rounds, n_decks=n_decks, seed=seed, margin=margin,
                           consumption=play_policy, cut_remaining=len(initial),
                           cut_declared=True, cut_source="late-reshuffle-fixed-pack",
                           stop_reason="independent-reset", remaining_at_end=len(initial),
-                          surrender=surrender)
+                          surrender=surrender, **summary_kw)
     current = list(initial)
     rng.shuffle(current)
     rounds = []
@@ -483,11 +653,13 @@ def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, marg
         if cut > 0 and len(current) <= cut:
             stop_reason = "cut"
             break
-        predeal = evaluate_predeal(current, budget_seconds=budget_seconds, surrender=surrender)
         if kind == KIND_FULL_DEPLETE and len(current) > PREDEAL_MAX_REMAINING:
             policy = CONSUMPTION_STAND
         else:
             policy = play_policy
+        predeal = _predeal_at(
+            current, round_index=index, path_policy_id=policy,
+            checkpoint_cut=cut, checkpoint_declared=cut_declared, checkpoint_source=cut_source)
         try:
             played = play_round(current, policy=policy, budget_seconds=play_budget_seconds,
                                 surrender=surrender)
@@ -499,7 +671,9 @@ def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, marg
             error = str(err)
         rounds.append({"round_index": index, "predeal": predeal, "realized_net": realized,
                        "consumption_policy": policy, "path_policy_id": policy,
-                       "checkpoint_remaining": len(current), "play_error": error})
+                       "checkpoint_remaining": len(current), "play_error": error,
+                       "evaluation_method": eval_method,
+                       "evaluation_policy_id": eval_policy})
         if error:
             stop_reason = "play_error"
             break
@@ -508,7 +682,7 @@ def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, marg
     return _summarize(kind, rounds, n_decks=n_decks, seed=seed, margin=margin,
                       consumption=consumption, cut_remaining=cut, cut_declared=cut_declared,
                       cut_source=cut_source, stop_reason=stop_reason,
-                      remaining_at_end=len(current), surrender=surrender)
+                      remaining_at_end=len(current), surrender=surrender, **summary_kw)
 
 
 def run_independent_shoes(*, n_shoes=3, base_seed=1, **kwargs):
@@ -545,6 +719,8 @@ def run_independent_shoes(*, n_shoes=3, base_seed=1, **kwargs):
                     "play_error": item.get("play_error"),
                     "path_policy_id": item.get("path_policy_id"),
                     "evaluation_policy_id": report.get("evaluation_policy_id"),
+                    "evaluation_method": report.get("evaluation_method"),
+                    "input_scope": (item.get("predeal") or {}).get("input_scope"),
                 }
                 for item in report.get("rounds") or []
             ],
