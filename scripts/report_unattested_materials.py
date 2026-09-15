@@ -12,6 +12,12 @@ sys.path.insert(0, str(ROOT))
 from blackjack_lab.analysis.unused_holdout import SCHEMA, HoldoutError, load_holdout
 
 EVIDENCE = ROOT / ".local-evidence"
+DECLARED_SCHEMAS = {
+    "hakimi-operator-study-v1": "operator_study_declared",
+    "hakimi-fullscreen-acceptance-v1": "fullscreen_declared",
+    "hakimi-table-rule-archive-v1": "table_archive_declared",
+    "hakimi-m4-acceptance-pack-v1": "acceptance_pack_declared",
+}
 
 
 def classify(path):
@@ -19,9 +25,22 @@ def classify(path):
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {"path": str(path), "status": "not_json_holdout"}
-    if not isinstance(payload, dict) or payload.get("schema") != SCHEMA:
-        return {"path": str(path), "status": "not_holdout_schema",
-                "schema": payload.get("schema") if isinstance(payload, dict) else None}
+    if not isinstance(payload, dict):
+        return {"path": str(path), "status": "not_holdout_schema", "schema": None}
+    schema = payload.get("schema")
+    if schema in DECLARED_SCHEMAS:
+        return {
+            "path": str(path),
+            "status": DECLARED_SCHEMAS[schema],
+            "schema": schema,
+            "accepted": False,
+            "paired": False,
+            "independent_video": False,
+            "hand_edited_accepted": payload.get("accepted") is True,
+            "identity_chain": payload.get("identity_chain") or [],
+        }
+    if schema != SCHEMA:
+        return {"path": str(path), "status": "not_holdout_schema", "schema": schema}
     try:
         loaded = load_holdout(payload)
     except HoldoutError as error:
@@ -30,8 +49,10 @@ def classify(path):
     return {
         "path": str(path),
         "status": "attested_package",
-        "independent_video": loaded["independent_video"],
+        "declared_unused_video": loaded.get("declared_unused_video", False),
+        "independent_video": False,
         "source_kind": loaded["source_kind"],
+        "evidence_level": loaded.get("evidence_level"),
         "round_count": len(loaded["rounds"]),
     }
 
@@ -47,18 +68,18 @@ def main():
             elif path.suffix.lower() in {".mp4", ".mkv", ".avi", ".mov", ".webm"}:
                 found.append({"path": str(path), "status": "video_not_attested",
                               "independent_video": False})
-    attested_video = [item for item in found if item.get("independent_video")]
+    declared_video = [item for item in found if item.get("declared_unused_video")]
     report = {
         "evidence_root": str(EVIDENCE),
         "json_files": len(found),
-        "attested_unused_video": len(attested_video),
-        "independent_video": bool(attested_video),
-        "note": "开发录像、合成对照和未声明 JSON 都不能换签成独立未使用录像",
+        "declared_unused_video": len(declared_video),
+        "independent_video": False,
+        "note": "开发录像、合成对照和未声明 JSON 都不能换签成独立未使用录像；具名 video_id 仍只是声明",
         "items": found[:80],
         "truncated": len(found) > 80,
     }
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    print("attested_unused_video", len(attested_video), "independent_video", bool(attested_video))
+    print("declared_unused_video", len(declared_video), "independent_video", False)
 
 
 if __name__ == "__main__":

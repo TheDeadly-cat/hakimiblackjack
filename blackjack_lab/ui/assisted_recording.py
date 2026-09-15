@@ -427,13 +427,14 @@ class AssistedRecording:
         if self.selected and self.selected.status == "pending":
             self._record("discard-draft", self.selected)
             self.selected.status = "discarded"
+            self.observation.defer_unconfirmed()
             self._after_unresolved_change()
 
     def complete_observation_check(self, note="operator_reconcile"):
         """Human finished reviewing suspects. Does not write the ledger or restore overflow silently."""
         if self.unresolved_pending:
             raise DraftError("仍有未处理草稿；请确认、拒绝或撤回后再完成对账")
-        revision = self.observation.reconcile(acknowledge_overflow=True)
+        revision = self.observation.reconcile(acknowledge_overflow=True, clear_deferred=True)
         self._record("observation-check", note=note, generation=revision.generation,
                      seq=revision.seq, requires_observation_check=False)
         self.sync_observation()
@@ -441,12 +442,17 @@ class AssistedRecording:
 
     def _after_unresolved_change(self):
         self.sync_observation()
-        if not self.unresolved_pending:
-            self.observation.reconcile(acknowledge_overflow=False)
 
     def sync_observation(self, feed=None):
         obs = self.observation
         obs.set_unconfirmed(len(self.unresolved_pending))
+        if feed is not None:
+            raw = getattr(feed, "unranked_count", 0)
+            if raw is None:
+                raw = 0
+            if type(raw) is not int or raw < 0:
+                raise DraftError("未定区域数必须是非负整数；不能截断浮点或布尔")
+            obs.set_unresolved_regions(raw)
         if feed is not None and getattr(feed, "replay_mode", False):
             obs.enter_replay()
             obs.note_frame(getattr(feed, "last_change_ns", None))

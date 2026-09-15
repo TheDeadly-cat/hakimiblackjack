@@ -15,7 +15,36 @@ PREDEAL_RESULT_SCHEMA = "hakimi-predeal-result-v1"
 PREDEAL_ENGINE_VERSION = "v0.3f-predeal-small-shoe-1"
 PREDEAL_STRATEGY_VERSION = "predeal-unsplit-composition-optimal-v1"
 PREDEAL_MAX_REMAINING = 16
-PREDEAL_SUPPORT = "S17/3:2/US-peek/late-surrender/unsplit/no-insurance/exact-small-shoe"
+
+
+def legal_predeal_actions(surrender):
+    if surrender is None:
+        return ("stand", "hit", "double")
+    if surrender == "late":
+        return ("stand", "hit", "double", "surrender")
+    raise ValueError("发牌前仅验收无投降或晚投降")
+
+
+def predeal_support_scope(surrender):
+    if surrender is None:
+        tag = "no-surrender"
+    elif surrender == "late":
+        tag = "late-surrender"
+    else:
+        raise ValueError("发牌前仅验收无投降或晚投降")
+    return f"S17/3:2/US-peek/{tag}/unsplit/no-insurance/exact-small-shoe"
+
+
+PREDEAL_SUPPORT = predeal_support_scope("late")
+SURRENDER_UNSET = object()
+
+
+def require_declared_surrender(surrender, *, what="发牌前评估"):
+    """Missing is not silently late. None means no surrender."""
+    if surrender is SURRENDER_UNSET:
+        raise ValueError(f"{what}必须显式给出投降规则，不能默认晚投降")
+    legal_predeal_actions(surrender)
+    return surrender
 
 # Player, dealer up, player, dealer hole. Same three visible cards as P-P-D
 # have equal probability; this order is the American table convention.
@@ -41,7 +70,7 @@ class PreDealInput:
     support_scope: str = PREDEAL_SUPPORT
     deal_order: str = DEAL_ORDER
     max_remaining: int = PREDEAL_MAX_REMAINING
-    surrender: str = "late"
+    surrender: str | None = None
     splits: bool = False
     insurance: bool = False
 
@@ -84,13 +113,22 @@ class PreDealInput:
                 and rules.double_on_totals is None and rules.surrender in (None, "late")
                 and rules.shoe_model == "finite_no_replacement"):
             raise ValueError("发牌前分析仅验收S17、3:2、美式决策前检查、任意两张加倍、无投降/晚投降")
+        if self.surrender not in (None, "late"):
+            raise ValueError("发牌前仅验收无投降或晚投降")
+        if rules.surrender != self.surrender:
+            raise ValueError("发牌前投降规则必须与规则档案一致，并传到求解器")
+        if self.support_scope != predeal_support_scope(self.surrender):
+            raise ValueError("发牌前支持范围必须与投降规则一致")
         info = json.loads(self.information_json)
         if info.get("gap") is not False or info.get("pending_candidates") != 0:
             raise ValueError("存在观察缺口或待核对牌，不能做发牌前精确分析")
         if info.get("unrevealed_out") != 0 or info.get("burn_unknown") != 0:
             raise ValueError("仍有未揭示牌或未知烧牌，剩余组成不是精确已知")
-        if info.get("t_bucket_out", 0) != 0:
-            raise ValueError("十点未细分会使开局组成不是精确已知")
+        t_out = info.get("t_bucket_out", 0)
+        if type(t_out) is not int or t_out < 0:
+            raise ValueError("十点未细分张数必须是非负整数")
+        if t_out and self.splits:
+            raise ValueError("十点未细分不能用于同牌级分牌组成")
         if type(self.through_seq) is not int or self.through_seq < 0:
             raise ValueError("发牌前时点序号无效")
         if len(self.prefix_digest) != 64 or any(c not in "0123456789abcdef" for c in self.prefix_digest):
@@ -102,5 +140,7 @@ class PreDealInput:
     @classmethod
     def from_dict(cls, data):
         data = dict(data)
+        if "surrender" not in data:
+            raise ValueError("发牌前输入必须显式给出投降规则，不能默认晚投降")
         data["counts"] = tuple(data["counts"])
         return cls(**data)

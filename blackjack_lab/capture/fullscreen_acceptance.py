@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import ctypes
+import hashlib
 import os
+from pathlib import Path
 
 from .overlay_exclusion import source_frame_excludes_overlay
 
@@ -25,14 +27,38 @@ def empty_evidence():
             for item in ITEMS}
 
 
-def accepted(evidence=None):
+def files_linked(evidence=None):
+    """True when every checklist item has an existing file and matching digest."""
     evidence = evidence or empty_evidence()
     if set(ITEMS) - set(evidence):
         return False
-    return all(
-        item.get("passed") is True and item.get("evidence_path")
-        for item in evidence.values()
-    )
+    for item in evidence.values():
+        path = item.get("evidence_path")
+        if not path:
+            return False
+        file = Path(path)
+        if not file.is_file():
+            return False
+        expected = item.get("sha256")
+        if expected:
+            actual = hashlib.sha256(file.read_bytes()).hexdigest()
+            if actual.lower() != str(expected).lower():
+                return False
+    return True
+
+
+def accepted(evidence=None):
+    """Software never attests F11. Linked files and checkboxes are not a browser trial."""
+    return False
+
+
+def evidence_level(evidence=None):
+    evidence = evidence or empty_evidence()
+    if not any((item or {}).get("evidence_path") for item in evidence.values()):
+        return "missing"
+    if files_linked(evidence):
+        return "evidence-linked"
+    return "declared"
 
 
 def probe_environment(widget=None):
@@ -66,9 +92,10 @@ def attach_source_frame_probe(evidence, frame, *, felt_bgr, overlay_bgr, evidenc
     """Pixel item only. A synthetic block or overlay screenshot cannot pass F11."""
     evidence = dict(evidence or empty_evidence())
     item = source_frame_excludes_overlay(frame, felt_bgr=felt_bgr, overlay_bgr=overlay_bgr)
-    passed = bool(item["passed"] and evidence_path and source_is_browser_capture)
+    probe_passed = bool(item["passed"] and evidence_path and source_is_browser_capture)
     evidence["source_frame_excludes_overlay"] = {
-        "passed": passed,
+        "passed": False,
+        "probe_passed": probe_passed,
         "evidence_path": evidence_path,
         "notes": item["note"],
         "overlay_fraction": item["overlay_fraction"],
@@ -79,12 +106,46 @@ def attach_source_frame_probe(evidence, frame, *, felt_bgr, overlay_bgr, evidenc
     return evidence
 
 
+def _sanitize_item(item):
+    """Checkboxes are operator notes. Software output cannot keep passed=true."""
+    row = dict(item or {})
+    row["passed"] = False
+    path = row.get("evidence_path")
+    if not path:
+        return row
+    file = Path(path)
+    if not file.is_file():
+        return row
+    actual = hashlib.sha256(file.read_bytes()).hexdigest()
+    expected = row.get("sha256")
+    if expected and str(expected).lower() != actual.lower():
+        row["digest_mismatch"] = True
+        row["actual_sha256"] = actual
+        return row
+    row["sha256"] = actual
+    row["bytes"] = int(file.stat().st_size)
+    return row
+
+
 def report(evidence=None, environment=None):
     evidence = evidence or empty_evidence()
+    sanitized = {key: _sanitize_item(item) for key, item in evidence.items()}
     return {
         "schema": SCHEMA,
-        "accepted": accepted(evidence),
-        "evidence": evidence,
+        "accepted": accepted(sanitized),
+        "evidence_level": evidence_level(sanitized),
+        "evidence": sanitized,
+        "identity_chain": [
+            {
+                "item_id": key,
+                "evidence_path": item.get("evidence_path"),
+                "sha256": item.get("sha256"),
+                "actual_sha256": item.get("actual_sha256"),
+                "digest_mismatch": item.get("digest_mismatch"),
+            }
+            for key, item in sanitized.items()
+            if item.get("evidence_path")
+        ],
         "environment": environment or {"not_acceptance": True},
-        "note": "不能用浮层截图换签源帧；缺项即未通过",
+        "note": "不能用浮层截图换签源帧；勾选和本地文件不能把 F11 写成通过；须在用户浏览器实测",
     }

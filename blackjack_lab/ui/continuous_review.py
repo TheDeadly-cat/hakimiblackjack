@@ -99,6 +99,7 @@ class ContinuousReviewFeed:
                  if (self.epoch, o.observation_id) not in self.work.seen
                  and (self.queue_policy == "all-regions" or o.accepted_rank() is not None)]
         if not fresh:
+            self.work.sync_observation(self)
             return False
         if len(self.work.automatic_pending) >= self.work.capacity:
             if not self.work.overflow:

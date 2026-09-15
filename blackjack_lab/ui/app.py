@@ -470,7 +470,8 @@ class BlackjackLabApp(tk.Tk):
         archive = load_archive(path)
         self.apply_table_archive(archive)
         self.set_status(
-            f"已载入真实桌档案 {archive.table_id} / {archive.source_version}；研究模板未充当该桌。请新建牌靴锁定。")
+            f"已载入真实桌档案声明 {archive.table_id} / {archive.source_version}；"
+            "尚未验收，研究模板未充当该桌。请新建牌靴锁定。")
         self.refresh_all()
 
     @tracked_operation
@@ -1050,7 +1051,9 @@ class BlackjackLabApp(tk.Tk):
     def refresh_topinfo(self, seg, replay) -> None:
         shoe_no = len(replay.segments)
         if self.table_archive is not None:
-            origin = f"真实桌档案 {self.table_archive.table_id}@{self.table_archive.source_version}"
+            origin = (
+                f"真实桌档案声明 {self.table_archive.table_id}@"
+                f"{self.table_archive.source_version}（未验收）")
         else:
             origin = missing_archive()["reason_code"] + "；当前表单不是平台桌规"
         if seg is None:

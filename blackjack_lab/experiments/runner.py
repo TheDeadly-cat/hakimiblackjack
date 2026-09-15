@@ -1,4 +1,5 @@
 """Run declared experiments sequentially on the existing analysis service."""
+import json
 import threading
 from time import sleep, time
 
@@ -86,6 +87,7 @@ class ExperimentRunner:
                 snapshot.hands[0].ranks if getattr(snapshot, "hands", None) else ())),
             "dealer_up": snapshot.dealer_up,
             "legal_actions": list(snapshot.legal_actions),
+            "surrender": json.loads(snapshot.rules_json).get("surrender"),
             "later_event_count_ignored": 0 if later is None else len(later),
             "highest_ev_action": result.get("highest_ev_action"),
             "partial_comparison": result.get("partial_comparison"),
@@ -102,6 +104,7 @@ class ExperimentRunner:
             "reason": error.reason,
             "reason_code": error.code,
             "actions": {},
+            "surrender": getattr(config, "surrender", None),
             "not_a_round_simulation": True,
         }
 
@@ -112,5 +115,6 @@ class ExperimentRunner:
             "reason": "已取消：当前计算已停止，尚未开始的场景不再运行，已完成项保留",
             "reason_code": "CANCELLED",
             "actions": {},
+            "surrender": getattr(config, "surrender", None),
             "not_a_round_simulation": True,
         }

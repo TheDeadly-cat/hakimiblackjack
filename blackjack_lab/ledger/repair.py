@@ -140,7 +140,25 @@ def plan_missed_deal(
 
 
 def apply_repair(ledger: EventLedger, plan: MissedDealPlan) -> EventLedger:
-    """Mutate `ledger` by appending the repair batch. Caller must pass a copy."""
+    """Append the repair batch. Failed replay leaves `ledger` unchanged.
+
+    Disk atomicity remains the store's job. Callers that already copied the
+    ledger still get the repaired copy back; a live ledger is not left with
+    half-applied UNDOs if suffix replay fails.
+    """
+    _assert_plan_matches(ledger, plan)
+    working = copy.deepcopy(ledger)
+    try:
+        _apply_repair_mutating(working, plan)
+    except RepairError:
+        raise
+    except (LedgerError, TableError, ValueError) as exc:
+        raise RepairError("SUFFIX_REPLAY_FAILED", f"预演失败，未改账本：{exc}") from exc
+    ledger.__dict__.update(working.__dict__)
+    return ledger
+
+
+def _assert_plan_matches(ledger: EventLedger, plan: MissedDealPlan) -> None:
     if plan.schema != PLAN_SCHEMA:
         raise RepairError("STALE_PLAN", "不支持的修复计划格式")
     if (len(ledger.events) != plan.base_event_count
@@ -152,45 +170,43 @@ def apply_repair(ledger: EventLedger, plan: MissedDealPlan) -> EventLedger:
         raise RepairError("STALE_PLAN", str(exc)) from exc
     if anchor_now.seq != plan.anchor_seq:
         raise RepairError("STALE_PLAN", "锚点事件已不在原序号")
+
+
+def _apply_repair_mutating(ledger: EventLedger, plan: MissedDealPlan) -> EventLedger:
     suffix_ids = list(plan.suffix_event_ids)
     originals = {ev.event_id: ev for ev in ledger.events}
-    try:
-        for event_id in reversed(suffix_ids):
-            undone = ledger.undo_last(
-                plan.reason,
-                repair={"repair_batch_id": plan.batch_id, "repair_role": "void_suffix"},
-            )
-            if undone.payload["target_event_id"] != event_id:
-                raise RepairError("SUFFIX_REPLAY_FAILED", "撤销目标不是预期的后续事件")
-        missed = plan.missed
-        hand_id = missed.get("hand_id") or _hand_id_from_suffix(originals, suffix_ids, missed.get("seat"))
-        repair_meta = {
-            "repair_batch_id": plan.batch_id,
-            "repair_role": "inserted_missed",
-            "repair_anchor_id": plan.anchor_event_id,
-            "first_readable_at": missed.get("first_readable_at"),
-            "occurred_at": missed.get("occurred_at"),
-        }
-        ledger.deal(
-            missed["seat"], missed.get("rank"),
-            hidden=bool(missed.get("hidden")),
-            unknown=bool(missed.get("unknown")),
-            hand_id=hand_id,
-            suit=missed.get("suit"),
-            track_id=missed.get("track_id"),
-            confirm_status=missed.get("confirm_status") or CONFIRMED,
-            source=SOURCE_REPAIR,
-            observed_at=plan.confirmed_at,
-            repair=repair_meta,
+    for event_id in reversed(suffix_ids):
+        undone = ledger.undo_last(
+            plan.reason,
+            repair={"repair_batch_id": plan.batch_id, "repair_role": "void_suffix"},
         )
-        id_map: Dict[str, str] = {}
-        for event_id in suffix_ids:
-            replayed = _replay_one(ledger, originals[event_id], id_map, plan)
-            id_map[event_id] = replayed.event_id
-    except RepairError:
-        raise
-    except (LedgerError, TableError, ValueError) as exc:
-        raise RepairError("SUFFIX_REPLAY_FAILED", f"预演失败，未改账本：{exc}") from exc
+        if undone.payload["target_event_id"] != event_id:
+            raise RepairError("SUFFIX_REPLAY_FAILED", "撤销目标不是预期的后续事件")
+    missed = plan.missed
+    hand_id = missed.get("hand_id") or _hand_id_from_suffix(originals, suffix_ids, missed.get("seat"))
+    repair_meta = {
+        "repair_batch_id": plan.batch_id,
+        "repair_role": "inserted_missed",
+        "repair_anchor_id": plan.anchor_event_id,
+        "first_readable_at": missed.get("first_readable_at"),
+        "occurred_at": missed.get("occurred_at"),
+    }
+    ledger.deal(
+        missed["seat"], missed.get("rank"),
+        hidden=bool(missed.get("hidden")),
+        unknown=bool(missed.get("unknown")),
+        hand_id=hand_id,
+        suit=missed.get("suit"),
+        track_id=missed.get("track_id"),
+        confirm_status=missed.get("confirm_status") or CONFIRMED,
+        source=SOURCE_REPAIR,
+        observed_at=plan.confirmed_at,
+        repair=repair_meta,
+    )
+    id_map: Dict[str, str] = {}
+    for event_id in suffix_ids:
+        replayed = _replay_one(ledger, originals[event_id], id_map, plan)
+        id_map[event_id] = replayed.event_id
     return ledger
 
 
@@ -220,8 +236,12 @@ def _hand_id_from_suffix(originals, suffix_ids, seat):
     return None
 
 
-def _replay_meta(plan: MissedDealPlan) -> dict:
-    return {"repair_batch_id": plan.batch_id, "repair_role": "replay_suffix"}
+def _replay_meta(plan: MissedDealPlan, original_event_id: str) -> dict:
+    return {
+        "repair_batch_id": plan.batch_id,
+        "repair_role": "replay_suffix",
+        "repair_original_event_id": original_event_id,
+    }
 
 
 def _stamp_replay(event: Event, original: Event) -> Event:
@@ -234,7 +254,7 @@ def _stamp_replay(event: Event, original: Event) -> Event:
 def _replay_one(ledger: EventLedger, original: Event, id_map: Dict[str, str],
                 plan: MissedDealPlan) -> Event:
     payload = original.payload
-    repair = _replay_meta(plan)
+    repair = _replay_meta(plan, original.event_id)
     etype = original.etype
     if etype == CARD_DEALT:
         face = payload["face_state"]

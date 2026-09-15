@@ -113,6 +113,9 @@ class ExperimentWindow(tk.Toplevel):
             "through_seq": self.var_seq.get().strip() or None,
             "db_path": str(self.app.ctrl.store.db_path) if mode == KIND_HISTORY else None,
         }
+        if mode == KIND_SYNTHETIC:
+            surrender = self._session_surrender()
+            data["surrender"] = "none" if surrender is None else surrender
         return config_from_mapping(data, uuid.uuid4().hex)
 
     def start(self):
@@ -181,23 +184,32 @@ class ExperimentWindow(tk.Toplevel):
         self.thread.start()
         self.after(50, self._poll)
 
+    def _session_surrender(self):
+        builder = getattr(self.app, "_build_rules", None)
+        if callable(builder):
+            return builder().surrender
+        raise RuntimeError("对照实验没有会话规则，不能默认晚投降")
+
     def _research_report(self, kind):
+        surrender = self._session_surrender()
         if kind == "shoes":
             from ..analysis.shoe_windows import KIND_LATE_DEPLETE, run_independent_shoes
             return run_independent_shoes(kind=KIND_LATE_DEPLETE, remaining=8, n_shoes=3,
-                                         max_rounds=3, n_decks=6, base_seed=1)
+                                         max_rounds=3, n_decks=6, base_seed=1, surrender=surrender)
         if kind == "interval":
             from ..analysis.composition_interval import evaluate_interval
-            return evaluate_interval([[10, 9, 8, 7, 6, 5], [10, 10, 9, 8, 7, 6]])
+            return evaluate_interval([[10, 9, 8, 7, 6, 5], [10, 10, 9, 8, 7, 6]],
+                                     surrender=surrender)
         if kind == "contrast":
             from ..analysis.shoe_windows import CONSUMPTION_BASIC, CONSUMPTION_STAND, run_policy_contrast
             return run_policy_contrast(pack=[10, 9, 8, 7, 6, 5, 4, 3, 2, 10], seed=1,
-                                       max_rounds=2, policies=(CONSUMPTION_STAND, CONSUMPTION_BASIC))
+                                       max_rounds=2, policies=(CONSUMPTION_STAND, CONSUMPTION_BASIC),
+                                       surrender=surrender)
         from random import Random
         from ..analysis.observation_error import run_observation_error_study
         from ..analysis.shoe_windows import sample_pack
         pack = sample_pack(6, 8, Random(1))
-        return run_observation_error_study(pack=pack, seed=1, max_rounds=3)
+        return run_observation_error_study(pack=pack, seed=1, max_rounds=3, surrender=surrender)
 
     def _done_research(self, report):
         summary = report.get("summary") or {}

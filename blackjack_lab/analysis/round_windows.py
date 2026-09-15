@@ -8,12 +8,15 @@ from __future__ import annotations
 
 from random import Random
 
+from .predeal_contracts import (
+    PREDEAL_STRATEGY_VERSION, SURRENDER_UNSET, legal_predeal_actions, require_declared_surrender,
+)
 from .probability import CalculationStopped, InsufficientCards
-from .research_windows import WINDOW_PRE_DEAL, counts_from_values
+from .research_windows import WINDOW_PRE_DEAL, counts_from_values, evaluation_scope
 from .shoe_windows import (
-    CONSUMPTION_BASIC, CONSUMPTION_PI, CONSUMPTION_STAND,
-    basic_unsplit_action, choose_action, evaluate_predeal, full_pack, play_round,
-    _dealer_stands, _score, _settle,
+    CONSUMPTION_BASIC, CONSUMPTION_PI, CONSUMPTION_STAND, POLICY_DISPLAY,
+    basic_unsplit_action, choose_action, evaluate_predeal, full_pack, observation_remainings,
+    play_round, resolve_cut_remaining, _dealer_stands, _score, _settle,
 )
 
 SCHEMA = "hakimi-round-window-study-v1"
@@ -22,15 +25,17 @@ AFTER_ROUNDS = (3, 6)
 
 
 def play_seated_round(pack, *, n_players=1, target_index=0, target_policy=CONSUMPTION_BASIC,
-                      other_policy=OTHER_STAND, budget_seconds=2.0):
+                      other_policy=OTHER_STAND, budget_seconds=2.0, surrender=SURRENDER_UNSET):
     """Play one unsplit round with 1–7 seats. Target net is the research unit."""
+    surrender = require_declared_surrender(surrender, what="多座位对局")
     if n_players not in range(1, 8):
         raise ValueError("对照只接受 1 到 7 个玩家座位")
     if not 0 <= target_index < n_players:
         raise ValueError("目标座位必须在参与座位内")
     pack = list(pack)
     if n_players == 1:
-        played = play_round(pack, policy=target_policy, budget_seconds=budget_seconds)
+        played = play_round(pack, policy=target_policy, budget_seconds=budget_seconds,
+                            surrender=surrender)
         played = dict(played)
         played.update(n_players=1, target_index=0, other_nets=[],
                       target_net=played["net"], not_multiplayer_ev=True)
@@ -51,7 +56,8 @@ def play_seated_round(pack, *, n_players=1, target_index=0, target_policy=CONSUM
     public = {"up": up, "peek": peek, "n_players": n_players, "target_index": target_index}
     if dealer_bj:
         nets = [0.0 if sorted(hand) == [1, 10] else -1.0 for hand in seats]
-        return _seated_result(nets, target_index, undealt, public, dealer_bj=True)
+        return _seated_result(nets, target_index, undealt, public, dealer_bj=True,
+                              hole=hole, hole_revealed=True)
 
     pending = []
     nets = [None] * n_players
@@ -61,7 +67,7 @@ def play_seated_round(pack, *, n_players=1, target_index=0, target_policy=CONSUM
             nets[index] = 1.5
             continue
         player, action, stake, undealt = _play_unsplit(player, up, hole, undealt, policy,
-                                                       peek, budget_seconds)
+                                                       peek, budget_seconds, surrender)
         if action == "surrender":
             nets[index] = -0.5
         elif _score(player) > 21:
@@ -77,17 +83,21 @@ def play_seated_round(pack, *, n_players=1, target_index=0, target_policy=CONSUM
             dealer_cards.append(undealt.pop(0))
         for index, player, stake in pending:
             nets[index] = float(_settle(player, dealer_cards, stake))
-    return _seated_result(nets, target_index, undealt, public, dealer_bj=False)
+    return _seated_result(nets, target_index, undealt, public, dealer_bj=False,
+                          hole=hole, hole_revealed=bool(pending))
 
 
-def _play_unsplit(player, up, hole, undealt, policy, peek, budget_seconds):
+def _play_unsplit(player, up, hole, undealt, policy, peek, budget_seconds, surrender=SURRENDER_UNSET):
+    surrender = require_declared_surrender(surrender, what="多座位续玩")
     player = list(player)
     undealt = list(undealt)
     action = "stand"
     stake = 1
     if policy == CONSUMPTION_PI:
         counts = counts_from_values([hole, *undealt])
-        action, _solved = choose_action(counts, player, up, peek, budget_seconds=budget_seconds)
+        action, _solved = choose_action(
+            counts, player, up, peek, actions=legal_predeal_actions(surrender),
+            budget_seconds=budget_seconds)
         if action == "surrender":
             return player, action, stake, undealt
         if action == "double":
@@ -123,44 +133,53 @@ def _play_unsplit(player, up, hole, undealt, policy, peek, budget_seconds):
     return player, action, stake, undealt
 
 
-def _seated_result(nets, target_index, remaining, public, *, dealer_bj):
-    return {
+def _seated_result(nets, target_index, remaining, public, *, dealer_bj, hole, hole_revealed):
+    payload = {
         "net": nets[target_index],
         "target_net": nets[target_index],
         "other_nets": [value for index, value in enumerate(nets) if index != target_index],
-        "remaining": list(remaining),
         "n_players": public["n_players"],
         "target_index": target_index,
         "public": public,
         "dealer_bj": dealer_bj,
         "not_multiplayer_ev": True,
     }
+    payload.update(observation_remainings(hole=hole, undealt=remaining, hole_revealed=hole_revealed))
+    return payload
 
 
 def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS, seed=1,
                            target_policy=CONSUMPTION_BASIC, other_policy=OTHER_STAND,
                            budget_seconds=5.0, play_budget_seconds=2.0, pack=None,
-                           target_index=0):
+                           target_index=0, cut_remaining=None, surrender=SURRENDER_UNSET):
+    surrender = require_declared_surrender(surrender, what="前三/六轮消耗对照")
     if n_decks not in (6, 7, 8):
         raise ValueError("整靴研究只接受 6/7/8 副")
     checkpoints = tuple(after_rounds or AFTER_ROUNDS)
-    if any(int(item) < 1 for item in checkpoints):
-        raise ValueError("对照轮数必须为正")
+    if any(type(item) is not int or item < 1 for item in checkpoints):
+        raise ValueError("对照轮数必须为正整数")
+    cut, cut_declared, cut_source = resolve_cut_remaining(
+        n_decks, pack=pack, cut_remaining=cut_remaining)
     rng = Random(seed)
     current = list(pack) if pack is not None else full_pack(n_decks)
     rng.shuffle(current)
     history = []
     snapshots = []
-    wanted = {int(item) for item in checkpoints}
+    wanted = set(checkpoints)
+    stop_reason = "complete"
     for index in range(max(wanted)):
+        if cut > 0 and len(current) <= cut:
+            stop_reason = "cut"
+            break
         try:
             played = play_seated_round(
                 current, n_players=n_players, target_index=target_index,
                 target_policy=target_policy, other_policy=other_policy,
-                budget_seconds=play_budget_seconds)
+                budget_seconds=play_budget_seconds, surrender=surrender)
         except (InsufficientCards, CalculationStopped, ValueError) as error:
             history.append({"round_index": index, "play_error": str(error),
                             "physical_remaining": len(current)})
+            stop_reason = "play_error"
             break
         current = list(played["remaining"])
         history.append({
@@ -170,7 +189,8 @@ def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS,
             "physical_remaining": len(current),
         })
         if index + 1 in wanted:
-            predeal = evaluate_predeal(current, budget_seconds=budget_seconds)
+            predeal = evaluate_predeal(current, budget_seconds=budget_seconds,
+                                       surrender=surrender)
             snapshots.append({
                 "after_rounds": index + 1,
                 "n_players": n_players,
@@ -180,7 +200,9 @@ def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS,
                 "target_net_sum": sum(item["target_net"] for item in history if "target_net" in item),
                 "other_net_sum": sum(sum(item.get("other_nets") or ()) for item in history),
                 "other_seat_count": n_players - 1,
+                "not_fixed_card_subtraction": True,
             })
+    scope = evaluation_scope([item["predeal"] for item in snapshots])
     return {
         "schema": SCHEMA,
         "window": WINDOW_PRE_DEAL,
@@ -192,9 +214,35 @@ def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS,
         "not_multiplayer_ev": True,
         "not_a_reliable_window_claim": True,
         "independent_video": False,
+        "current_hand_not_used_as_opening": True,
         "target_policy": target_policy,
         "other_policy": other_policy,
+        "path_policy_id": target_policy,
+        "path_policy_display": POLICY_DISPLAY.get(target_policy, target_policy),
+        "evaluation_policy_id": PREDEAL_STRATEGY_VERSION,
+        "surrender": surrender,
+        "cut_remaining": cut,
+        "cut_declared": cut_declared,
+        "cut_source": cut_source,
+        "stop_reason": stop_reason,
+        "remaining_at_end": len(current),
         "rounds": history,
         "snapshots": snapshots,
-        "note": "固定移除65/130张不是三/六轮；其他座位只消耗牌，不是独立样本，也不是多玩家EV",
+        "summary": {
+            "snapshot_count": len(snapshots),
+            "complete_evaluation": scope["complete_evaluation"],
+            "zero_window": scope["zero_window"],
+            "no_positive_signal_detected": scope["no_positive_signal_detected"],
+            "incomplete_cannot_claim_zero_window": scope["incomplete_cannot_claim_zero_window"],
+            "unavailable": scope["unavailable"],
+            "positive": scope["positive"],
+            "nonpositive": scope["nonpositive"],
+            "evaluated_count": scope["evaluated_count"],
+            "unassessable_count": scope["unassessable_count"],
+            "verified_no_positive_over_declared_domain": scope["verified_no_positive_over_declared_domain"],
+            "note": "3/6轮快照全部 unsupported/timeout 时不能写成已证明零窗口",
+        },
+        "note": "三/六轮是实际耗牌快照，不是固定减65/130张；其他座位只消耗牌，不是独立样本，也不是多玩家EV；"
+                "玩具硬规则不是已核验基本策略；发牌前精确评估仍≤16；"
+                "zero_window 只在快照全部可评且无正 EV 时为真",
     }

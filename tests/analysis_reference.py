@@ -92,10 +92,13 @@ def reference(cards, player, up, peek=False, actions=("stand", "hit", "double", 
             entries.append((dist, F(len(group), len(ws))))
         return average(entries)
 
+    def can_draw(ws, depth):
+        return any(depth + 1 < len(w) for w in ws)
+
     @lru_cache(None)
     def optimal(ws, hand, depth):
         staying = stand(ws, hand, depth)
-        if points(hand) == 21:
+        if points(hand) == 21 or not can_draw(ws, depth):
             return staying
         drawing = hit(ws, hand, depth)
         return drawing if expected(drawing) > expected(staying) else staying
@@ -105,23 +108,30 @@ def reference(cards, player, up, peek=False, actions=("stand", "hit", "double", 
     bust = F(0)
     for w in worlds:
         weight = F(1, len(worlds))
-        draw[w[1]] += weight
         dealer[dealer_end(up, w, 0)] += weight
-        if points(tuple(player) + (w[1],)) > 21:
-            bust += weight
+        if len(w) > 1:
+            draw[w[1]] += weight
+            if points(tuple(player) + (w[1],)) > 21:
+                bust += weight
     results = {}
     for action in actions:
         if action == "stand":
             dist = stand(worlds, tuple(player), 0)
         elif action == "hit":
+            if not can_draw(worlds, 0):
+                continue
             dist = hit(worlds, tuple(player), 0)
         elif action == "double":
+            if not can_draw(worlds, 0):
+                continue
             dist = hit(worlds, tuple(player), 0, True)
         elif action == "surrender":
             dist = {F(-1, 2): F(1)}
+        else:
+            continue
         results[action] = {"ev": expected(dist), "net_distribution": dist}
     # Deliberately illegal benchmark: observe the actual hole before continuation.
-    if "hit" in actions:
+    if "hit" in actions and can_draw(worlds, 0):
         per_hole = defaultdict(list)
         for w in worlds:
             per_hole[w[0]].append(w)

@@ -53,6 +53,9 @@ class TableRuleArchive:
             "verify_date": self.verify_date,
             "notes": self.notes,
             "rules": json.loads(self.rules.to_json()),
+            "accepted": False,
+            "evidence_level": "declared",
+            "note": "档案字段齐全只是声明层级；须由人验收后才能作为 M4 table_rules 通过",
         }
 
 
@@ -79,6 +82,8 @@ def missing_archive():
     return {
         "schema": ARCHIVE_SCHEMA,
         "status": "missing",
+        "evidence_level": "missing",
+        "accepted": False,
         "reason_code": "NO_VERIFIED_TABLE_ARCHIVE",
         "reason": "尚无带来源与核对日期的真实桌档案；分析可继续使用用户主动选择的研究模板，但不能把该模板写成平台桌规",
     }

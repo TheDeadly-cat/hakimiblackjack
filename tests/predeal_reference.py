@@ -25,6 +25,14 @@ def _remaining(cards, p1, up, p2):
     return tuple(left)
 
 
+def _legal_actions(surrender):
+    if surrender is None:
+        return ("stand", "hit", "double")
+    if surrender == "late":
+        return ("stand", "hit", "double", "surrender")
+    raise ValueError("reference only covers no-surrender or late surrender")
+
+
 def _pick(actions):
     best, best_ev = "stand", actions["stand"]["ev"]
     for name in ("hit", "double", "surrender"):
@@ -33,8 +41,9 @@ def _pick(actions):
     return best
 
 
-def predeal_reference(cards, *, illegal_skip_dealer_bj=False):
+def predeal_reference(cards, *, illegal_skip_dealer_bj=False, surrender="late"):
     cards = tuple(cards)
+    actions = _legal_actions(surrender)
     worlds = _unique_worlds(cards)
     if len(cards) < 4:
         raise ValueError("Need four cards to deal a round")
@@ -61,7 +70,7 @@ def predeal_reference(cards, *, illegal_skip_dealer_bj=False):
                 mixed[F(-1)] += weight * p_bj
                 if p_bj < 1:
                     inner = reference(_remaining(cards, p1, up, p2), player, up, True,
-                                      actions=("stand", "hit", "double", "surrender"))
+                                      actions=actions)
                     chosen = _pick(inner["actions"])
                     for payoff, probability in inner["actions"][chosen]["net_distribution"].items():
                         mixed[payoff] += probability * weight * (1 - p_bj)
@@ -70,7 +79,7 @@ def predeal_reference(cards, *, illegal_skip_dealer_bj=False):
             mixed[F(3, 2)] += weight
             continue
         inner = reference(_remaining(cards, p1, up, p2), player, up, up in (1, 10),
-                          actions=("stand", "hit", "double", "surrender"))
+                          actions=actions)
         chosen = _pick(inner["actions"])
         for payoff, probability in inner["actions"][chosen]["net_distribution"].items():
             mixed[payoff] += probability * weight

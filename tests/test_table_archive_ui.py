@@ -57,6 +57,7 @@ class TableArchiveUITest(unittest.TestCase):
         self.assertEqual("lab-table-fixture", self.app.table_archive.table_id)
         self.app.refresh_all()
         self.assertIn("lab-table-fixture", self.app.var_topinfo.get())
+        self.assertIn("未验收", self.app.var_topinfo.get())
         self.app.act_research_template()
         self.assertIsNone(self.app.table_archive)
 

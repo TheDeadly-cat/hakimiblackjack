@@ -42,7 +42,7 @@ SOURCE_REPAIR = "回溯修复"
 # Optional payload keys for append-only retrospective repair. Not SQLite columns.
 REPAIR_PAYLOAD_KEYS = {
     "repair_batch_id", "repair_role", "repair_anchor_id",
-    "first_readable_at", "occurred_at",
+    "repair_original_event_id", "first_readable_at", "occurred_at",
 }
 REPAIR_ROLES = ("void_suffix", "inserted_missed", "replay_suffix")
 
@@ -125,7 +125,7 @@ class Event:
         if not required <= self.payload.keys() or self.payload.keys() - required - optional:
             raise ValueError(f"{self.etype}事件负载缺少字段或含未支持字段")
         for name in ("seat", "hand_id", "new_hand_id", "track_id", "target_event_id", "shoe_id", "round_id",
-                     "repair_batch_id", "repair_anchor_id"):
+                     "repair_batch_id", "repair_anchor_id", "repair_original_event_id"):
             value = self.payload.get(name)
             if value is not None and (not isinstance(value, str) or not value.strip()):
                 raise ValueError(f"事件{name}必须为有效文本身份")

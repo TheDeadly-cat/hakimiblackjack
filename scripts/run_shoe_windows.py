@@ -20,7 +20,7 @@ KINDS = {
 }
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description="发牌前窗口合成实验；剩余>16记未支持，不把当前手牌EV改称开局优势")
     parser.add_argument("--kind", choices=sorted(KINDS), default="full-reshuffle")
     parser.add_argument("--decks", type=int, default=6, choices=(6, 7, 8))
@@ -28,16 +28,24 @@ def main():
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--margin", type=float, default=0.01)
     parser.add_argument("--max-rounds", type=int, default=40)
-    args = parser.parse_args()
+    parser.add_argument("--cut-remaining", type=int, default=None,
+                        help="切牌后剩余张数；整靴耗牌缺省 52")
+    parser.add_argument("--surrender", choices=("none", "late"), required=True,
+                        help="发牌前规则；不能省略成晚投降")
+    args = parser.parse_args(argv)
+    from blackjack_lab.analysis.research_windows import parse_surrender_token
     report = run_window_study(kind=KINDS[args.kind], n_decks=args.decks, remaining=args.remaining,
-                              seed=args.seed, margin=args.margin, max_rounds=args.max_rounds)
+                              seed=args.seed, margin=args.margin, max_rounds=args.max_rounds,
+                              cut_remaining=args.cut_remaining,
+                              surrender=parse_surrender_token(args.surrender))
     summary = dict(report["summary"])
     body = {key: value for key, value in report.items() if key != "rounds"}
     body["summary"] = summary
     print(json.dumps(body, ensure_ascii=False, indent=2))
     print("rounds", summary["round_count"], "available", summary["predeal_available"],
           "unsupported", summary["predeal_unsupported"], "timeout", summary["predeal_timeout"],
-          "zero_window", summary["zero_window"])
+          "zero_window", summary["zero_window"],
+          "incomplete_cannot_claim_zero_window", summary["incomplete_cannot_claim_zero_window"])
 
 
 if __name__ == "__main__":

@@ -6,10 +6,11 @@ from ..analysis.split_service import SPLIT_ACTION_ZH
 from ..observation.currency import REASON_ZH
 
 
-def format_split_result(result, historical=False, live_applicable=True, applicability_reason=None):
+def format_split_result(result, historical=False, live_applicable=True, applicability_reason=None,
+                        applicability_kind=None):
     info = result['input']
     das = is_das_engine(result.get('engine_version'))
-    prefix = result_heading(historical, live_applicable)
+    prefix = result_heading(historical, live_applicable, applicability_kind)
     lines = [f"{prefix}{info['seat']} · {info['n_decks']}副 · 庄家 {info['dealer_up']}",
              '两手顺序分牌DAS' if das else '两手顺序分牌']
     details = [f"选中手：{info['hand_id']}", f"当前行动手：{info['active_hand_id'] or '两手均已完成'}"]

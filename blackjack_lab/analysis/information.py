@@ -59,6 +59,8 @@ def build_input(ledger, seat, hand_id=None, through_seq=None):
         from .split_information import build_split_input
         return build_split_input(ledger.session_id, current, seat, hand_id, seq, prefix)
     hands = table.players[seat].hands
+    if not hands:
+        raise InputUnavailable("PLAYER_INCOMPLETE", "目标手牌尚未完整确认")
     if len(hands) != 1 or any(h.from_split for h in hands):
         raise InputUnavailable("SPLIT_HAND_UNSUPPORTED", "分牌后的EV尚未实现；可查看分牌前的部分动作比较", UNSUPPORTED)
     hand = hands[0]

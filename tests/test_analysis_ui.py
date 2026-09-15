@@ -78,6 +78,32 @@ class TestAnalysisUI(unittest.TestCase):
         self.assertEqual(len(self.app.ctrl.analysis_store.list()[0]), 3)
         self.assertEqual(self.errors, [])
 
+    def test_no_surrender_current_hand_summary_does_not_fill_late(self):
+        self.app.act_research_template()
+        self.app.var_surrender.set("不支持")
+        self.app.act_new_shoe()
+        self.app.act_new_round()
+        self.app.var_target.set("庄家")
+        self.app.refresh_all()
+        self.app.act_card("10")
+        self.app.act_hidden_card()
+        self.app.var_target.set("玩家1")
+        self.app.refresh_all()
+        self.app.act_card("10")
+        self.app.act_card("6")
+        self.app.act_peek_negative()
+        self.app.update()
+        self.assertIsNone(self.app.ctrl.current_rules().surrender)
+        panel = self.app.analysis_panel
+        panel.compute_button.invoke()
+        result = self.wait_result()
+        self.assertEqual("available", result["status"])
+        self.assertNotIn("surrender", result["input"]["legal_actions"])
+        displayed = panel.text.get("1.0", "end")
+        self.assertIn("无投降", displayed)
+        self.assertNotIn("晚投降", displayed)
+        self.assertEqual(self.errors, [])
+
     def test_pair_shows_partial_comparison_without_recommendation(self):
         self.start(cards=("8", "8"), up="6")
         self.app.analysis_panel.compute_button.invoke()

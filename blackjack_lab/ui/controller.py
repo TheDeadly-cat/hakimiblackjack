@@ -208,8 +208,11 @@ class SessionController:
             from ..analysis.research_windows import build_predeal_input
             info = json.loads(original["information_json"])
             if info.get("source") == "explicit-composition":
+                from ..core.rules import RuleProfile
+                rules = RuleProfile.from_json(original["rules_json"])
                 return build_predeal_input(counts=tuple(original["counts"]),
-                                           session_id=original["session_id"])
+                                           session_id=original["session_id"],
+                                           rules=rules)
             ledger = self.store.load_ledger(original["session_id"], original["through_seq"])
             if not self.analysis_store.matches_prefix(saved, ledger):
                 raise LedgerError("原分析关联的事件前缀摘要不匹配，拒绝复算")

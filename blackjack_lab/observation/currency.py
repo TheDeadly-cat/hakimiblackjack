@@ -1,8 +1,9 @@
 """Live-table currency for analysis. Never writes the ledger or consumes cards.
 
-Unconfirmed drafts, source freeze, and queue overflow do not change confirmed
-history. They can only prevent calling an as-of-ledger result "current table".
-Overflow stays incomplete until an explicit human observation check.
+Source freshness (window, generation, freeze, disconnect) is independent of
+knowledge change (new suspects, unresolved regions, deferred hides, overflow).
+A frame clock tick is not a knowledge change. Replay and manual as-of numbers
+may be computable without being labeled as the current live table.
 """
 from __future__ import annotations
 
@@ -27,6 +28,23 @@ REASON_FROZEN = "source_frozen"
 REASON_STOPPED = "source_stopped"
 REASON_SWITCHED = "source_switched"
 REASON_MISSING = "source_missing"
+REASON_MANUAL = "manual_asof"
+REASON_REPLAY = "replay_not_live"
+REASON_DEFERRED = "deferred_unconfirmed"
+REASON_REGIONS = "unresolved_regions"
+REASON_INPUT = "input_changed"
+
+KIND_LIVE_CURRENT = "live_current"
+KIND_MANUAL_ASOF = "manual_asof"
+KIND_REPLAY = "replay"
+KIND_SYNTHETIC = "synthetic"
+KIND_STALE = "stale_asof"
+
+
+def _nonneg_int(value, name):
+    if type(value) is not int or value < 0:
+        raise ValueError(f"{name}必须是非负整数；不能把 {value!r} 截成整数")
+    return value
 
 REASON_ZH = {
     REASON_ALIGNED: "观察与已确认记录一致",
@@ -36,6 +54,11 @@ REASON_ZH = {
     REASON_STOPPED: "来源已停止或结束",
     REASON_SWITCHED: "来源已切换，须重新绑定",
     REASON_MISSING: "尚未收到来源画面",
+    REASON_MANUAL: "截至人工确认记录，不是当前真实牌桌",
+    REASON_REPLAY: "录像回放可计算，但不适用于当前真实牌桌",
+    REASON_DEFERRED: "草稿被撤回或暂时跳过，尚未完成对账",
+    REASON_REGIONS: "仍有未定区域未审，队列空不等于对账完成",
+    REASON_INPUT: "研究输入已改变，旧结果不再作为当前请求",
 }
 
 
@@ -66,14 +89,51 @@ class ObservationRevision:
     last_frame_ns: int | None
     reconciled_ns: int | None
     seq: int
+    unresolved_regions: int = 0
+    deferred_unconfirmed: int = 0
+    knowledge_seq: int = 0
+
+    def knowledge_identity(self):
+        return (
+            self.generation,
+            self.mode,
+            self.pending_unconfirmed,
+            self.overflow_unacknowledged,
+            self.unresolved_regions,
+            self.deferred_unconfirmed,
+            self.knowledge_seq,
+        )
+
+    def source_freshness(self):
+        return (self.generation, self.mode, self.source_status)
+
+    def knowledge_clear(self):
+        return (
+            self.pending_unconfirmed == 0
+            and not self.overflow_unacknowledged
+            and self.unresolved_regions == 0
+            and self.deferred_unconfirmed == 0
+        )
+
+    def knowledge_block_reason(self):
+        if self.pending_unconfirmed > 0:
+            return REASON_UNCONFIRMED
+        if self.overflow_unacknowledged:
+            return REASON_OVERFLOW
+        if self.deferred_unconfirmed > 0:
+            return REASON_DEFERRED
+        if self.unresolved_regions > 0:
+            return REASON_REGIONS
+        return None
 
     def live_table_applicable(self):
-        if self.pending_unconfirmed > 0:
-            return False, REASON_UNCONFIRMED
-        if self.overflow_unacknowledged:
-            return False, REASON_OVERFLOW
-        if self.mode in (MODE_MANUAL, MODE_REPLAY):
-            return True, REASON_ALIGNED
+        blocked = self.knowledge_block_reason()
+        if blocked:
+            return False, blocked
+        if self.mode == MODE_MANUAL:
+            return False, REASON_MANUAL
+        if self.mode == MODE_REPLAY:
+            return False, REASON_REPLAY
         if self.source_status == STATUS_FROZEN:
             return False, REASON_FROZEN
         if self.source_status == STATUS_STOPPED:
@@ -82,7 +142,35 @@ class ObservationRevision:
             return False, REASON_SWITCHED
         if self.source_status == STATUS_MISSING:
             return False, REASON_MISSING
-        return True, REASON_ALIGNED
+        if self.mode == MODE_LIVE and self.source_status == STATUS_LIVE:
+            return True, REASON_ALIGNED
+        return False, REASON_MISSING
+
+    def applicability_kind(self):
+        if self.mode == MODE_REPLAY:
+            return KIND_REPLAY
+        if self.mode == MODE_MANUAL:
+            return KIND_MANUAL_ASOF
+        ok, _reason = self.live_table_applicable()
+        return KIND_LIVE_CURRENT if ok else KIND_STALE
+
+    def display_policy(self):
+        """What this revision may show. Hide/skip never clears an observation obligation."""
+        ok, reason = self.live_table_applicable()
+        kind = self.applicability_kind()
+        return {
+            "applicability_kind": kind,
+            "reason": reason,
+            "asof_compute_allowed": True,
+            "asof_numbers_display_allowed": True,
+            "live_table_label_allowed": bool(ok),
+            "timely_live_claim_allowed": bool(ok) and kind == KIND_LIVE_CURRENT,
+            "replay_is_not_live": self.mode == MODE_REPLAY,
+            "manual_is_not_live": self.mode == MODE_MANUAL,
+            "knowledge_clear": self.knowledge_clear(),
+            "knowledge_identity": self.knowledge_identity(),
+            "source_freshness": self.source_freshness(),
+        }
 
 
 class ObservationState:
@@ -93,9 +181,12 @@ class ObservationState:
         self._pending = 0
         self._overflow_unacked = False
         self._overflow_count = 0
+        self._unresolved_regions = 0
+        self._deferred = 0
         self._last_frame_ns = None
         self._reconciled_ns = None
         self._seq = 0
+        self._knowledge_seq = 0
         self._listeners = []
 
     def add_listener(self, callback):
@@ -116,10 +207,15 @@ class ObservationState:
     def overflow_count(self):
         return self._overflow_count
 
-    def _bump(self):
-        self._seq += 1
+    def _notify(self):
         for callback in list(self._listeners):
             callback()
+
+    def _bump(self, *, knowledge=False):
+        self._seq += 1
+        if knowledge:
+            self._knowledge_seq += 1
+        self._notify()
 
     def revision(self):
         return ObservationRevision(
@@ -131,22 +227,38 @@ class ObservationState:
             last_frame_ns=self._last_frame_ns,
             reconciled_ns=self._reconciled_ns,
             seq=self._seq,
+            unresolved_regions=self._unresolved_regions,
+            deferred_unconfirmed=self._deferred,
+            knowledge_seq=self._knowledge_seq,
         )
 
     def live_table_applicable(self):
         return self.revision().live_table_applicable()
 
     def set_unconfirmed(self, count):
-        count = max(0, int(count))
+        count = _nonneg_int(count, "未确认候选数")
         if count != self._pending:
             self._pending = count
-            self._bump()
+            self._bump(knowledge=True)
+
+    def set_unresolved_regions(self, count):
+        count = _nonneg_int(count, "未定区域数")
+        if count != self._unresolved_regions:
+            self._unresolved_regions = count
+            self._bump(knowledge=True)
+
+    def defer_unconfirmed(self, extra=1):
+        extra = _nonneg_int(extra, "撤回草稿数")
+        if extra:
+            self._deferred += extra
+            self._bump(knowledge=True)
 
     def mark_overflow(self, extra=1):
-        self._overflow_count += max(0, int(extra))
+        extra = _nonneg_int(extra, "溢出增量")
+        self._overflow_count += extra
         if not self._overflow_unacked:
             self._overflow_unacked = True
-            self._bump()
+            self._bump(knowledge=True)
 
     def connect_source(self, generation):
         generation = str(generation)
@@ -154,19 +266,19 @@ class ObservationState:
             self._generation = generation
             self._mode = MODE_LIVE
             self._source_status = STATUS_MISSING
-            self._bump()
+            self._bump(knowledge=True)
 
     def enter_manual(self):
         if self._mode != MODE_MANUAL or self._source_status != STATUS_IDLE:
             self._mode = MODE_MANUAL
             self._source_status = STATUS_IDLE
-            self._bump()
+            self._bump(knowledge=True)
 
     def enter_replay(self):
         if self._mode != MODE_REPLAY:
             self._mode = MODE_REPLAY
             self._source_status = STATUS_STOPPED
-            self._bump()
+            self._bump(knowledge=True)
 
     def disconnect_live(self):
         if self._mode == MODE_LIVE and self._source_status != STATUS_STOPPED:
@@ -183,9 +295,11 @@ class ObservationState:
     def note_frame(self, last_frame_ns):
         self._last_frame_ns = last_frame_ns
 
-    def reconcile(self, *, acknowledge_overflow=False):
+    def reconcile(self, *, acknowledge_overflow=False, clear_deferred=False):
         self._reconciled_ns = time.perf_counter_ns()
         if acknowledge_overflow:
             self._overflow_unacked = False
-        self._bump()
+        if clear_deferred:
+            self._deferred = 0
+        self._bump(knowledge=True)
         return self.revision()

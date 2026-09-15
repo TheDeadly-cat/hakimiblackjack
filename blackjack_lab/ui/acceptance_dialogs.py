@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from ..capture.fullscreen_acceptance import ITEMS, empty_evidence, probe_environment, report
-from ..observation.operator_study import trial, write_export
+from ..observation.operator_study import optional_identity_fields, trial, write_export
 
 
 class FullscreenAcceptanceDialog(tk.Toplevel):
@@ -92,6 +92,12 @@ def export_operator_trials(app):
     repair = simpledialog.askinteger("修复耗时秒", "回溯修复耗时（秒）：", parent=app, minvalue=0)
     if None in (elapsed, keys, clicks, backlog, missed, duplicates, repair):
         return None
+    operator_id = simpledialog.askstring(
+        "操作者ID", "可选。空则只记录条件，不能声称已配对：", parent=app)
+    video_id = simpledialog.askstring(
+        "录像ID", "可选。空则不能声称已配对：", parent=app)
+    pair_id = simpledialog.askstring(
+        "配对ID", "可选。空则不能声称已配对：", parent=app)
     path = filedialog.asksaveasfilename(
         parent=app, defaultextension=".json", initialfile="operator-study.json",
         filetypes=[("操作者对照", "*.json")])
@@ -100,7 +106,8 @@ def export_operator_trials(app):
     recorded = trial(
         condition, human_run=bool(human), elapsed_seconds=elapsed, keystrokes=keys,
         clicks=clicks, backlog_peak=backlog, missed_cards=missed, duplicates=duplicates,
-        repair_seconds=repair, pause_reconcile_not_realtime=True)
+        repair_seconds=repair, pause_reconcile_not_realtime=True,
+        **optional_identity_fields(operator_id=operator_id, video_id=video_id, pair_id=pair_id))
     body = write_export(path, [recorded])
     app.set_status("已导出操作者对照；auto_prompt_default=" + str(body["auto_prompt_default"]))
     return body

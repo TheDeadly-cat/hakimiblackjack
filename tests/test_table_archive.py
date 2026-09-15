@@ -27,6 +27,8 @@ class TableArchiveTest(unittest.TestCase):
         self.assertEqual("missing", missing["status"])
         self.assertEqual("NO_VERIFIED_TABLE_ARCHIVE", missing["reason_code"])
         self.assertIn("研究模板", missing["reason"])
+        self.assertFalse(missing["accepted"])
+        self.assertEqual("missing", missing["evidence_level"])
 
     def test_complete_archive_roundtrip(self):
         rules = RuleProfile(
@@ -51,6 +53,37 @@ class TableArchiveTest(unittest.TestCase):
         self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["schema"], archive.schema)
         again = archive_from_profile(rules, "fixture-1", "测试夹具，不是已验收真实赌场桌")
         self.assertEqual(again.table_id, "lab-table-fixture")
+        saved = json.loads(path.read_text(encoding="utf-8"))
+        self.assertFalse(saved["accepted"])
+        self.assertEqual("declared", saved["evidence_level"])
+
+    def test_hand_edited_accepted_flag_cannot_pass_m4(self):
+        rules = RuleProfile(
+            profile_id="example-table-not-live", version=1, n_decks=6,
+            table_id="lab-table-fixture", rule_source="自建书面核对，不是线上平台条款",
+            verify_date="2026-09-14", confirm_status="已确认",
+            dealer_soft17="S17", blackjack_payout=(3, 2), american_hole_card=True,
+            check_bj_when="before_player_actions_A_T", dealer_bj_extra_bet_rule="all_bets_lost",
+            burn_cards_known=True, initial_burn_count=0, start_from_new_shoe=True,
+        )
+        archive = TableRuleArchive(
+            table_id="lab-table-fixture", rule_source="自建书面核对，不是线上平台条款",
+            source_version="fixture-1", verify_date="2026-09-14", rules=rules,
+        )
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = Path(tmp.name) / "archive.json"
+        payload = archive.to_dict()
+        payload["accepted"] = True
+        payload["evidence_level"] = "reviewed"
+        path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        loaded = load_archive(path)
+        restamped = loaded.to_dict()
+        self.assertFalse(restamped["accepted"])
+        self.assertEqual("declared", restamped["evidence_level"])
+        save_archive(loaded, path)
+        saved = json.loads(path.read_text(encoding="utf-8"))
+        self.assertFalse(saved["accepted"])
 
     def test_archive_from_research_rules_is_refused(self):
         with self.assertRaises(TableArchiveError) as caught:

@@ -8,13 +8,20 @@ retitled current-hand EV. Timeouts stay timeouts. Zero-window shoes are valid.
 from __future__ import annotations
 
 from random import Random
+from time import time
 
-from .actions import solve_counts
-from .contracts import UNSUPPORTED, TIMEOUT, AVAILABLE, FAILED
+from .actions import HIT_CONTINUATION_COMPOSITION, solve_counts
+from .contracts import UNSUPPORTED, TIMEOUT, AVAILABLE, FAILED, digest
 from .predeal import solve_predeal_counts
-from .predeal_contracts import PREDEAL_MAX_REMAINING, PREDEAL_STRATEGY_VERSION
+from .predeal_contracts import (
+    PREDEAL_MAX_REMAINING, PREDEAL_STRATEGY_VERSION, SURRENDER_UNSET,
+    legal_predeal_actions, require_declared_surrender,
+)
 from .probability import CalculationStopped, InsufficientCards
-from .research_windows import WINDOW_PRE_DEAL, counts_from_values
+from .research_windows import (
+    EV_POSITIVE, WINDOW_PRE_DEAL, classify_opening_window, counts_from_values,
+    evaluation_scope, window_state,
+)
 from ..core.cards import hand_total
 
 SCHEMA = "hakimi-shoe-window-study-v1"
@@ -25,7 +32,14 @@ KIND_FULL_DEPLETE = "full-deplete-stand-then-exact"
 CONSUMPTION_STAND = "always-stand-v1"
 CONSUMPTION_PI = PREDEAL_STRATEGY_VERSION
 CONSUMPTION_BASIC = "basic-s17-unsplit-no-double-v1"
+CONSUMPTION_TOY_HARD = CONSUMPTION_BASIC
 ACTION_ORDER = ("stand", "hit", "double", "surrender")
+RESEARCH_DEFAULT_CUT_REMAINING = 52
+POLICY_DISPLAY = {
+    CONSUMPTION_STAND: "冻结停牌消耗策略",
+    CONSUMPTION_BASIC: "玩具硬点数消耗策略（不是已核验基本策略表）",
+    CONSUMPTION_PI: "小牌靴精确未分牌可见信息最优（≤16）",
+}
 
 
 def basic_unsplit_action(player, up):
@@ -75,12 +89,27 @@ def sample_pack(n_decks, remaining, rng):
     return rng.sample(pack, remaining)
 
 
-def choose_action(counts, player, up, peek, actions=None, budget_seconds=2.0):
-    actions = tuple(actions or ACTION_ORDER)
-    solved = solve_counts(counts, tuple(player), up, peek, actions=actions,
-                          budget_seconds=budget_seconds)
+def resolve_cut_remaining(n_decks, *, pack=None, cut_remaining=None):
+    """Declared cut depth. Undeclared full-shoe deplete uses research default 52, not a lucky tail."""
+    if cut_remaining is not None:
+        if type(cut_remaining) is not int or cut_remaining < 0:
+            raise ValueError("切牌剩余必须是非负整数")
+        return cut_remaining, True, "caller"
+    if pack is None and n_decks in (6, 7, 8):
+        return RESEARCH_DEFAULT_CUT_REMAINING, True, "research-default-52"
+    return 0, False, "undeclared-play-to-exhaustion"
+
+
+def choose_action(counts, player, up, peek, actions=None, budget_seconds=2.0,
+                  hit_continuation=HIT_CONTINUATION_COMPOSITION):
+    if not actions:
+        raise ValueError("动作集合必须显式给出，不能默认含投降")
+    actions = tuple(actions)
+    solved = solve_counts(
+        counts, tuple(player), up, peek, actions=actions,
+        budget_seconds=budget_seconds, hit_continuation=hit_continuation)
     best_name, best_ev = None, None
-    for name in ACTION_ORDER:
+    for name in actions:
         item = solved["actions"].get(name)
         if not item:
             continue
@@ -88,6 +117,8 @@ def choose_action(counts, player, up, peek, actions=None, budget_seconds=2.0):
             best_name, best_ev = name, item["ev"]
     if best_name is None:
         raise ValueError("可见信息下没有可执行动作")
+    if best_name == "surrender" and "surrender" not in actions:
+        raise ValueError("无投降规则下不能选择投降")
     return best_name, solved
 
 
@@ -104,8 +135,52 @@ def _settle(player, dealer, stake):
     return 0.0
 
 
-def play_round(pack, *, policy=CONSUMPTION_PI, budget_seconds=2.0, decisions=None):
+def observation_remainings(*, hole, undealt, hole_revealed):
+    """Private remaining is the next-round shoe. Public remaining is unseen ranks.
+
+    An unrevealed hole has already left the shoe, but its rank is still unseen.
+    Public remaining therefore keeps that hole; it is not the next-round truth.
+    """
+    private = list(undealt)
+    public = list(undealt) if hole_revealed else [hole, *undealt]
+    return {
+        "remaining": private,
+        "private_remaining": private,
+        "public_remaining": public,
+        "hole_revealed": bool(hole_revealed),
+        "public_remaining_is_not_private_truth": sorted(public) != sorted(private),
+    }
+
+
+def public_dealt_cards(pack, consumed, hole_revealed):
+    """Face-up events only. An unrevealed hole is not a public deal."""
+    if type(consumed) is not int or consumed < 4:
+        raise ValueError("本轮公开事件必须发完初始四张")
+    pack = list(pack)
+    if consumed > len(pack):
+        raise ValueError("消耗张数超过本轮牌序")
+    cards = list(pack[:3])
+    if hole_revealed:
+        cards.append(pack[3])
+    cards.extend(pack[4:consumed])
+    return cards
+
+
+def remaining_after_events(pack, dealt):
+    """Subtract believed deals from the pre-round pack. Missing ranks are inconsistent."""
+    left = list(pack)
+    for card in dealt:
+        try:
+            left.remove(card)
+        except ValueError:
+            return None
+    return left
+
+
+def play_round(pack, *, policy=CONSUMPTION_PI, budget_seconds=2.0, decisions=None,
+               surrender=SURRENDER_UNSET):
     """Play one unsplit round. `pack[0:4]` is P, up, P, hole. Returns remaining undealt."""
+    surrender = require_declared_surrender(surrender, what="整轮对局")
     pack = list(pack)
     if len(pack) < 4:
         raise InsufficientCards("剩余牌不足下一轮初始四张")
@@ -116,24 +191,35 @@ def play_round(pack, *, policy=CONSUMPTION_PI, budget_seconds=2.0, decisions=Non
     dealer_bj = sorted((up, hole)) == [1, 10]
     peek = up in (1, 10) and not dealer_bj
     public = {"player": tuple(player), "up": up, "peek": peek, "policy": policy}
+
+    def _done(payload, *, hole_revealed):
+        payload.update(observation_remainings(hole=hole, undealt=undealt, hole_revealed=hole_revealed))
+        consumed = len(pack) - len(undealt)
+        payload["consumed"] = consumed
+        payload["public_dealt"] = public_dealt_cards(pack, consumed, hole_revealed)
+        payload["public"] = public
+        payload["natural"] = natural
+        payload["dealer_bj"] = dealer_bj
+        return payload
+
     if dealer_bj:
-        return {"net": 0.0 if natural else -1.0, "remaining": undealt, "action": None,
-                "public": public, "natural": natural, "dealer_bj": True, "stake": 1}
+        return _done({"net": 0.0 if natural else -1.0, "action": None, "stake": 1},
+                     hole_revealed=True)
     if natural:
-        return {"net": 1.5, "remaining": undealt, "action": "stand",
-                "public": public, "natural": True, "dealer_bj": False, "stake": 1}
+        return _done({"net": 1.5, "action": "stand", "stake": 1}, hole_revealed=True)
 
     action = "stand"
     stake = 1
     if policy == CONSUMPTION_PI:
         counts = counts_from_values([hole, *undealt])
-        action, _solved = choose_action(counts, player, up, peek, budget_seconds=budget_seconds)
+        action, _solved = choose_action(
+            counts, player, up, peek, actions=legal_predeal_actions(surrender),
+            budget_seconds=budget_seconds)
         if decisions is not None:
             decisions.append({"player": tuple(player), "up": up, "peek": peek,
                               "action": action, "counts": counts})
         if action == "surrender":
-            return {"net": -0.5, "remaining": undealt, "action": action,
-                    "public": public, "natural": False, "dealer_bj": False, "stake": 1}
+            return _done({"net": -0.5, "action": action, "stake": 1}, hole_revealed=False)
         if action == "double":
             if not undealt:
                 raise InsufficientCards("加倍时没有可补的牌")
@@ -169,41 +255,63 @@ def play_round(pack, *, policy=CONSUMPTION_PI, budget_seconds=2.0, decisions=Non
         raise ValueError("未知消耗策略")
 
     if _score(player) > 21:
-        return {"net": -float(stake), "remaining": undealt, "action": action,
-                "public": public, "natural": False, "dealer_bj": False, "stake": stake}
+        return _done({"net": -float(stake), "action": action, "stake": stake}, hole_revealed=False)
     dealer = [up, hole]
     while not _dealer_stands(dealer):
         if not undealt:
             raise InsufficientCards("庄家尚需补牌但合成小牌靴已耗尽")
         dealer.append(undealt.pop(0))
-    return {"net": float(_settle(player, dealer, stake)), "remaining": undealt, "action": action,
-            "public": public, "natural": False, "dealer_bj": False, "stake": stake}
+    return _done({"net": float(_settle(player, dealer, stake)), "action": action, "stake": stake},
+                 hole_revealed=True)
 
 
-def evaluate_predeal(pack, budget_seconds=5.0):
+def evaluate_predeal(pack, budget_seconds=5.0, surrender=SURRENDER_UNSET):
+    surrender = require_declared_surrender(surrender, what="发牌前评估")
     remaining = len(pack)
     counts = counts_from_values(pack)
-    record = {"physical_remaining": remaining, "counts": list(counts), "window": WINDOW_PRE_DEAL}
+    record = {
+        "physical_remaining": remaining,
+        "counts": list(counts),
+        "window": WINDOW_PRE_DEAL,
+        "window_kind": WINDOW_PRE_DEAL,
+        "source_mode": "synthetic-composition",
+        "strategy_id": PREDEAL_STRATEGY_VERSION,
+        "rules_digest": digest({"surrender": surrender, "window": WINDOW_PRE_DEAL}),
+        "method": None,
+        "knowledge_revision": None,
+        "ledger_prefix_digest": None,
+        "information_cutoff": None,
+        "result_ready_at": None,
+        "decision_deadline": None,
+        "timely": False,
+        "not_a_reliable_window_claim": True,
+        "surrender": surrender,
+        "legal_actions": list(legal_predeal_actions(surrender)),
+    }
     if remaining > PREDEAL_MAX_REMAINING:
         record.update(status=UNSUPPORTED, reason_code="PREDEAL_SHOE_TOO_LARGE",
                       reason=f"剩余{remaining}张超过精确穷举上限{PREDEAL_MAX_REMAINING}", ev=None)
-        return record
-    if remaining < 4:
+    elif remaining < 4:
         record.update(status="inapplicable", reason_code="PREDEAL_TOO_FEW_CARDS",
                       reason="剩余牌不足下一轮初始四张", ev=None)
-        return record
-    try:
-        numbers = solve_predeal_counts(counts, budget_seconds=budget_seconds)
-        record.update(status=AVAILABLE, reason_code="CALCULATED", ev=numbers["ev"],
-                      variance=numbers["variance"], outcomes=numbers["outcomes"],
-                      elapsed_seconds=numbers["elapsed_seconds"])
-    except CalculationStopped as error:
-        record.update(status=TIMEOUT, reason_code=str(error),
-                      reason="预算到期，发牌前请求未完成；未使用当前手牌结果", ev=None)
-    except InsufficientCards as error:
-        record.update(status=UNSUPPORTED, reason_code="INSUFFICIENT_CARDS", reason=str(error), ev=None)
-    except Exception as error:
-        record.update(status=FAILED, reason_code="CALCULATION_FAILED", reason=str(error), ev=None)
+    else:
+        try:
+            numbers = solve_predeal_counts(
+                counts, budget_seconds=budget_seconds, surrender=surrender)
+            record.update(status=AVAILABLE, reason_code="CALCULATED", ev=numbers["ev"],
+                          variance=numbers["variance"], outcomes=numbers["outcomes"],
+                          elapsed_seconds=numbers["elapsed_seconds"],
+                          legal_actions=list(numbers["legal_actions"]),
+                          method=numbers.get("method"),
+                          result_ready_at=time())
+        except CalculationStopped as error:
+            record.update(status=TIMEOUT, reason_code=str(error),
+                          reason="预算到期，发牌前请求未完成；未使用当前手牌结果", ev=None)
+        except InsufficientCards as error:
+            record.update(status=UNSUPPORTED, reason_code="INSUFFICIENT_CARDS", reason=str(error), ev=None)
+        except Exception as error:
+            record.update(status=FAILED, reason_code="CALCULATION_FAILED", reason=str(error), ev=None)
+    record["window_state"] = window_state(record)
     return record
 
 
@@ -215,12 +323,15 @@ def _pay_distribution(pays):
     return buckets
 
 
-def _summarize(kind, rounds, *, n_decks, seed, margin, consumption):
+def _summarize(kind, rounds, *, n_decks, seed, margin, consumption,
+               cut_remaining=0, cut_declared=False, cut_source="undeclared-play-to-exhaustion",
+               stop_reason=None, remaining_at_end=None, surrender=SURRENDER_UNSET):
+    surrender = require_declared_surrender(surrender, what="整靴窗口摘要")
     available = [item for item in rounds if item["predeal"].get("status") == AVAILABLE]
-    positive = [item for item in available if item["predeal"]["ev"] > 0]
     margin_hits = [item for item in available if item["predeal"]["ev"] > margin]
     realized = [item["realized_net"] for item in rounds if item.get("realized_net") is not None]
     streaks = _positive_streaks(rounds)
+    scope = evaluation_scope([item["predeal"] for item in rounds])
     return {
         "schema": SCHEMA,
         "kind": kind,
@@ -229,7 +340,22 @@ def _summarize(kind, rounds, *, n_decks, seed, margin, consumption):
         "margin": margin,
         "strategy_version": PREDEAL_STRATEGY_VERSION,
         "consumption_policy": consumption,
+        "path_policy_id": consumption,
+        "evaluation_policy_id": PREDEAL_STRATEGY_VERSION,
+        "evaluation_policy_note": "快照发牌前EV仍按精确未分牌最优；不是当前耗牌策略自己的开局EV",
+        "path_policy_display": POLICY_DISPLAY.get(consumption, consumption),
+        "cut_remaining": cut_remaining,
+        "cut_declared": cut_declared,
+        "cut_source": cut_source,
+        "stop_reason": stop_reason,
+        "remaining_at_end": remaining_at_end,
+        "information_scope": "ideal_composition",
+        "ideal_full_observation": True,
+        "next_remaining_source": "environment-private",
+        "public_observer_is_not_private_remaining": True,
+        "current_hand_not_used_as_opening": True,
         "window": WINDOW_PRE_DEAL,
+        "surrender": surrender,
         "not_a_reliable_window_claim": True,
         "rounds": rounds,
         "summary": {
@@ -238,21 +364,35 @@ def _summarize(kind, rounds, *, n_decks, seed, margin, consumption):
             "predeal_unsupported": sum(1 for item in rounds if item["predeal"].get("status") == UNSUPPORTED),
             "predeal_timeout": sum(1 for item in rounds if item["predeal"].get("status") == TIMEOUT),
             "predeal_failed": sum(1 for item in rounds if item["predeal"].get("status") == FAILED),
-            "positive_ev": len(positive),
+            "positive_ev": scope["positive"],
+            "nonpositive_ev": scope["nonpositive"],
             "negative_ev": sum(1 for item in available if item["predeal"]["ev"] < 0),
+            "indeterminate_ev": scope["indeterminate"],
+            "unavailable_ev": scope["unavailable"],
             "exceeds_margin": len(margin_hits),
-            "zero_window": len(positive) == 0,
+            "zero_window": scope["zero_window"],
+            "no_positive_signal_detected": scope["no_positive_signal_detected"],
+            "no_positive_window_in_complete_evaluation": scope["no_positive_window_in_complete_evaluation"],
+            "incomplete_cannot_claim_zero_window": scope["incomplete_cannot_claim_zero_window"],
+            "complete_evaluation": scope["complete_evaluation"],
+            "evaluated_count": scope["evaluated_count"],
+            "unassessable_count": scope["unassessable_count"],
+            "verified_no_positive_over_declared_domain": scope["verified_no_positive_over_declared_domain"],
             "signal_coverage": (len(available) / len(rounds) if rounds else 0.0),
             "sample_unit": "round-within-shoe",
             "mean_available_ev": (sum(item["predeal"]["ev"] for item in available) / len(available)
                                   if available else None),
-            "positive_ev_rate_among_available": (len(positive) / len(available) if available else None),
+            "positive_ev_rate_among_available": (scope["positive"] / len(available) if available else None),
             "exceeds_margin_rate_among_available": (len(margin_hits) / len(available) if available else None),
             "realized_mean": (sum(realized) / len(realized) if realized else None),
+            "realized_count": len(realized),
             "realized_distribution": _pay_distribution(realized),
             "realized_path_is_not_counterfactual_truth": True,
             "positive_streak_max": max(streaks, default=0),
             "positive_streaks": streaks,
+            "stop_reason": stop_reason,
+            "cut_remaining": cut_remaining,
+            "remaining_at_end": remaining_at_end,
         },
     }
 
@@ -260,8 +400,7 @@ def _summarize(kind, rounds, *, n_decks, seed, margin, consumption):
 def _positive_streaks(rounds):
     streaks, current = [], 0
     for item in rounds:
-        ev = item.get("predeal", {}).get("ev")
-        if item.get("predeal", {}).get("status") == AVAILABLE and ev is not None and ev > 0:
+        if classify_opening_window(item.get("predeal")) == EV_POSITIVE:
             current += 1
             continue
         if current:
@@ -274,9 +413,13 @@ def _positive_streaks(rounds):
 
 def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, margin=0.01,
                      budget_seconds=5.0, max_rounds=80, play_budget_seconds=2.0,
-                     play_policy=None):
+                     play_policy=None, surrender=SURRENDER_UNSET, cut_remaining=None):
+    surrender = require_declared_surrender(surrender, what="整靴窗口研究")
     rng = Random(seed)
-    play_policy = play_policy or CONSUMPTION_PI
+    if play_policy is None:
+        play_policy = CONSUMPTION_STAND if kind == KIND_FULL_RESHUFFLE else CONSUMPTION_PI
+    cut, cut_declared, cut_source = resolve_cut_remaining(
+        n_decks, pack=pack, cut_remaining=cut_remaining)
     if pack is not None:
         initial = list(pack)
     elif kind in (KIND_LATE_DEPLETE, KIND_LATE_RESHUFFLE):
@@ -284,42 +427,70 @@ def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, marg
     else:
         initial = full_pack(n_decks)
     if kind == KIND_FULL_RESHUFFLE:
+        path = CONSUMPTION_STAND if play_policy == CONSUMPTION_PI else play_policy
         rounds = []
         for index in range(min(max_rounds, 8)):
-            predeal = evaluate_predeal(initial, budget_seconds=budget_seconds)
-            rounds.append({"round_index": index, "predeal": predeal, "realized_net": None,
-                           "consumption_policy": None})
+            predeal = evaluate_predeal(initial, budget_seconds=budget_seconds, surrender=surrender)
+            shuffled = list(initial)
+            rng.shuffle(shuffled)
+            realized, error = None, None
+            try:
+                played = play_round(shuffled, policy=path, budget_seconds=play_budget_seconds,
+                                    surrender=surrender)
+                realized = played["net"]
+            except (InsufficientCards, CalculationStopped, ValueError) as err:
+                error = str(err)
+            rounds.append({
+                "round_index": index, "predeal": predeal, "realized_net": realized,
+                "consumption_policy": path, "path_policy_id": path, "reshuffled": True,
+                "history_removed": False, "play_error": error,
+                "checkpoint_remaining": len(initial),
+            })
         return _summarize(kind, rounds, n_decks=n_decks, seed=seed, margin=margin,
-                          consumption="none-reshuffle-full-pack")
+                          consumption=path, cut_remaining=len(initial),
+                          cut_declared=True, cut_source="full-reshuffle-no-penetration",
+                          stop_reason="independent-reset", remaining_at_end=len(initial),
+                          surrender=surrender)
     if kind == KIND_LATE_RESHUFFLE:
         rounds = []
-        baseline = evaluate_predeal(initial, budget_seconds=budget_seconds)
+        baseline = evaluate_predeal(initial, budget_seconds=budget_seconds, surrender=surrender)
         for index in range(min(max_rounds, 8)):
             shuffled = list(initial)
             rng.shuffle(shuffled)
+            realized, error = None, None
             try:
-                played = play_round(shuffled, policy=play_policy, budget_seconds=play_budget_seconds)
+                played = play_round(shuffled, policy=play_policy, budget_seconds=play_budget_seconds,
+                                    surrender=surrender)
                 realized = played["net"]
-            except (InsufficientCards, CalculationStopped, ValueError) as error:
-                realized = None
-                played = {"error": str(error)}
+            except (InsufficientCards, CalculationStopped, ValueError) as err:
+                error = str(err)
             rounds.append({"round_index": index, "predeal": dict(baseline), "realized_net": realized,
-                           "consumption_policy": play_policy, "play_error": played.get("error")})
+                           "consumption_policy": play_policy, "path_policy_id": play_policy,
+                           "reshuffled": True, "history_removed": False, "play_error": error})
         return _summarize(kind, rounds, n_decks=n_decks, seed=seed, margin=margin,
-                          consumption=play_policy)
+                          consumption=play_policy, cut_remaining=len(initial),
+                          cut_declared=True, cut_source="late-reshuffle-fixed-pack",
+                          stop_reason="independent-reset", remaining_at_end=len(initial),
+                          surrender=surrender)
     current = list(initial)
     rng.shuffle(current)
     rounds = []
+    stop_reason = "max_rounds"
     for index in range(max_rounds):
         if len(current) < 4:
+            stop_reason = "exhausted"
             break
-        predeal = evaluate_predeal(current, budget_seconds=budget_seconds)
+        if cut > 0 and len(current) <= cut:
+            stop_reason = "cut"
+            break
+        predeal = evaluate_predeal(current, budget_seconds=budget_seconds, surrender=surrender)
         if kind == KIND_FULL_DEPLETE and len(current) > PREDEAL_MAX_REMAINING:
             policy = CONSUMPTION_STAND
         else:
             policy = play_policy
         try:
-            played = play_round(current, policy=policy, budget_seconds=play_budget_seconds)
+            played = play_round(current, policy=policy, budget_seconds=play_budget_seconds,
+                                surrender=surrender)
             realized = played["net"]
             current = list(played["remaining"])
             error = None
@@ -327,17 +498,24 @@ def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, marg
             realized = None
             error = str(err)
         rounds.append({"round_index": index, "predeal": predeal, "realized_net": realized,
-                       "consumption_policy": policy, "play_error": error})
+                       "consumption_policy": policy, "path_policy_id": policy,
+                       "checkpoint_remaining": len(current), "play_error": error})
         if error:
+            stop_reason = "play_error"
             break
     consumption = (CONSUMPTION_STAND + "+" + play_policy if kind == KIND_FULL_DEPLETE
                    else play_policy)
     return _summarize(kind, rounds, n_decks=n_decks, seed=seed, margin=margin,
-                      consumption=consumption)
+                      consumption=consumption, cut_remaining=cut, cut_declared=cut_declared,
+                      cut_source=cut_source, stop_reason=stop_reason,
+                      remaining_at_end=len(current), surrender=surrender)
 
 
 def run_independent_shoes(*, n_shoes=3, base_seed=1, **kwargs):
     """Aggregate window studies at the shoe unit. Rounds inside a shoe stay dependent."""
+    surrender = require_declared_surrender(
+        kwargs.get("surrender", SURRENDER_UNSET), what="独立牌靴汇总")
+    kwargs["surrender"] = surrender
     if n_shoes < 1:
         raise ValueError("独立牌靴数必须为正")
     shoes = []
@@ -350,10 +528,34 @@ def run_independent_shoes(*, n_shoes=3, base_seed=1, **kwargs):
             "kind": report.get("kind"),
             "n_decks": report.get("n_decks"),
             "not_a_reliable_window_claim": True,
+            "path_policy_id": report.get("path_policy_id"),
+            "evaluation_policy_id": report.get("evaluation_policy_id"),
+            "cut_remaining": report.get("cut_remaining"),
+            "cut_declared": report.get("cut_declared"),
+            "stop_reason": report.get("stop_reason"),
+            "remaining_at_end": report.get("remaining_at_end"),
+            "surrender": report.get("surrender"),
+            "checkpoints": [
+                {
+                    "round_index": item.get("round_index"),
+                    "predeal_remaining": (item.get("predeal") or {}).get("physical_remaining"),
+                    "remaining_after_round": item.get("checkpoint_remaining"),
+                    "predeal": item.get("predeal"),
+                    "realized_net": item.get("realized_net"),
+                    "play_error": item.get("play_error"),
+                    "path_policy_id": item.get("path_policy_id"),
+                    "evaluation_policy_id": report.get("evaluation_policy_id"),
+                }
+                for item in report.get("rounds") or []
+            ],
             "summary": summary,
         })
     coverages = [item["summary"]["signal_coverage"] for item in shoes]
     zero = sum(1 for item in shoes if item["summary"]["zero_window"])
+    incomplete = sum(1 for item in shoes if item["summary"]["incomplete_cannot_claim_zero_window"])
+    no_signal = sum(1 for item in shoes if item["summary"]["no_positive_signal_detected"])
+    complete_no_window = sum(
+        1 for item in shoes if item["summary"]["no_positive_window_in_complete_evaluation"])
     positive_shoes = sum(1 for item in shoes if item["summary"]["positive_ev"] > 0)
     exceeds_shoes = sum(1 for item in shoes if item["summary"]["exceeds_margin"] > 0)
     negative_shoes = sum(1 for item in shoes if item["summary"]["negative_ev"] > 0)
@@ -362,6 +564,8 @@ def run_independent_shoes(*, n_shoes=3, base_seed=1, **kwargs):
     for item in shoes:
         for key, count in (item["summary"].get("realized_distribution") or {}).items():
             pooled[key] = pooled.get(key, 0) + count
+    complete_shoes = n_shoes - incomplete
+    zero_window_rate = (zero / complete_shoes) if complete_shoes else None
     return {
         "schema": "hakimi-independent-shoe-ensemble-v1",
         "window": WINDOW_PRE_DEAL,
@@ -374,26 +578,39 @@ def run_independent_shoes(*, n_shoes=3, base_seed=1, **kwargs):
         "base_seed": base_seed,
         "kind": kwargs.get("kind"),
         "n_decks": kwargs.get("n_decks", 6),
+        "surrender": surrender,
         "shoes": shoes,
         "summary": {
             "zero_window_shoes": zero,
-            "zero_window_rate": zero / n_shoes,
+            "complete_shoes": complete_shoes,
+            "zero_window_rate": zero_window_rate,
+            "incomplete_shoes": incomplete,
+            "incomplete_shoe_rate": incomplete / n_shoes,
+            "incomplete_cannot_claim_zero_window": complete_shoes == 0,
+            "no_positive_signal_shoes": no_signal,
+            "no_positive_signal_rate": no_signal / n_shoes,
+            "complete_no_positive_window_shoes": complete_no_window,
             "positive_ev_shoes": positive_shoes,
-            "positive_ev_shoe_rate": positive_shoes / n_shoes,
+            "positive_ev_shoe_rate": (positive_shoes / complete_shoes) if complete_shoes else None,
             "negative_ev_shoes": negative_shoes,
             "exceeds_margin_shoes": exceeds_shoes,
-            "exceeds_margin_shoe_rate": exceeds_shoes / n_shoes,
+            "exceeds_margin_shoe_rate": (exceeds_shoes / complete_shoes) if complete_shoes else None,
             "mean_signal_coverage": sum(coverages) / len(coverages),
             "max_positive_streak_across_shoes": max(streaks, default=0),
             "mean_positive_streak_max": sum(streaks) / len(streaks),
             "realized_distribution_pooled_not_independent": pooled,
-            "note": "按独立牌靴汇总；同靴内各轮相关，不能当独立样本。收益分布按轮合并只供描述，不是独立抽样。不是未使用真实录像。",
+            "note": "按独立牌靴汇总；同靴内各轮相关，不能当独立样本。"
+                    "zero_window_rate 只在有完整评估的牌靴上计算；全不完整时为 null，不能写成已证明零窗口频率。"
+                    "收益分布按轮合并只供描述，不是独立抽样。不是未使用真实录像。",
         },
     }
 
 
 def run_policy_contrast(*, pack, seed=1, policies=None, kind=KIND_LATE_DEPLETE, **kwargs):
     """Same shuffle origin, separate remaining paths. Not a shared counterfactual."""
+    surrender = require_declared_surrender(
+        kwargs.get("surrender", SURRENDER_UNSET), what="策略耗牌对照")
+    kwargs["surrender"] = surrender
     policies = tuple(policies or (CONSUMPTION_STAND, CONSUMPTION_BASIC))
     if len(policies) < 2:
         raise ValueError("耗牌对照至少需要两种策略")
@@ -406,6 +623,8 @@ def run_policy_contrast(*, pack, seed=1, policies=None, kind=KIND_LATE_DEPLETE, 
         remaining_paths.append(remaining)
         arms.append({
             "policy": policy,
+            "path_policy_id": policy,
+            "evaluation_policy_id": PREDEAL_STRATEGY_VERSION,
             "summary": report["summary"],
             "physical_remaining_by_round": remaining,
             "realized_nets": [item.get("realized_net") for item in report["rounds"]],
@@ -419,19 +638,25 @@ def run_policy_contrast(*, pack, seed=1, policies=None, kind=KIND_LATE_DEPLETE, 
         "independent_video": False,
         "seed": seed,
         "kind": kind,
+        "surrender": surrender,
         "policies": list(policies),
         "arms": arms,
         "remaining_paths_equal": remaining_paths and all(path == remaining_paths[0] for path in remaining_paths),
-        "note": "同一洗牌起点、各自耗牌；不能把一条实现路径当所有反事实策略的共同真值",
+        "path_policy_id_by_arm": [arm["path_policy_id"] for arm in arms],
+        "evaluation_policy_id": PREDEAL_STRATEGY_VERSION,
+        "note": "同一洗牌起点、各自耗牌；path_policy 是消耗路径，evaluation_policy 是快照所用精确未分牌最优；"
+                "不能把一条实现路径当所有反事实策略的共同真值，也不能把玩具硬规则叫已核验基本策略",
     }
 
 
-def physical_mean(pack, n_plays, seed, budget_seconds=2.0):
+def physical_mean(pack, n_plays, seed, budget_seconds=2.0, surrender=SURRENDER_UNSET):
+    surrender = require_declared_surrender(surrender, what="物理排列均值")
     rng = Random(seed)
     pays = []
     base = list(pack)
     for _ in range(n_plays):
         shuffled = list(base)
         rng.shuffle(shuffled)
-        pays.append(play_round(shuffled, policy=CONSUMPTION_PI, budget_seconds=budget_seconds)["net"])
+        pays.append(play_round(shuffled, policy=CONSUMPTION_PI, budget_seconds=budget_seconds,
+                               surrender=surrender)["net"])
     return sum(pays) / len(pays), pays

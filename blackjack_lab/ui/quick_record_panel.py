@@ -357,7 +357,8 @@ class QuickRecordPanel(tk.Toplevel):
         self.attempt(run)
 
     def export_operator_study(self):
-        from ..observation.operator_study import trial_from_usage, write_export
+        from ..observation.operator_study import (
+            optional_identity_fields, trial_from_usage, write_export)
         human = messagebox.askyesno(
             "操作者对照", "这是配对真人试验记录吗？选否则保持结论：不能改自动提示默认。", parent=self)
         if not messagebox.askyesno(
@@ -369,6 +370,12 @@ class QuickRecordPanel(tk.Toplevel):
         repair = simpledialog.askinteger("修复耗时秒", "回溯修复耗时（秒）：", parent=self, minvalue=0)
         if None in (missed, duplicates, repair):
             return
+        operator_id = simpledialog.askstring(
+            "操作者ID", "可选。空则只记录条件，不能声称已配对：", parent=self)
+        video_id = simpledialog.askstring(
+            "录像ID", "可选。空则不能声称已配对：", parent=self)
+        pair_id = simpledialog.askstring(
+            "配对ID", "可选。空则不能声称已配对：", parent=self)
         path = filedialog.asksaveasfilename(
             parent=self, defaultextension=".json", initialfile="operator-study.json",
             filetypes=[("操作者对照", "*.json")])
@@ -376,7 +383,8 @@ class QuickRecordPanel(tk.Toplevel):
             return
         recorded = trial_from_usage(
             "assisted", self.usage, human_run=bool(human), missed_cards=missed,
-            duplicates=duplicates, repair_seconds=repair, pause_reconcile_not_realtime=True)
+            duplicates=duplicates, repair_seconds=repair, pause_reconcile_not_realtime=True,
+            **optional_identity_fields(operator_id=operator_id, video_id=video_id, pair_id=pair_id))
         body = write_export(path, [recorded])
         self.var_status.set("已导出操作者对照；auto_prompt_default=" + str(body["auto_prompt_default"]))
 

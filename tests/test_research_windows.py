@@ -4,8 +4,8 @@ import unittest
 from blackjack_lab.analysis.contracts import PENDING
 from blackjack_lab.analysis.research_windows import (
     WINDOW_CURRENT_HAND, WINDOW_PRE_DEAL, build_predeal_input,
-    hypothetical_winrate_not_equal_to_ev, net_ev, net_outcome_summary,
-    result_heading, window_kind_for_current_analysis,
+    hypothetical_winrate_not_equal_to_ev, knowledge_revision_token, net_ev, net_outcome_summary,
+    result_heading, source_mode_from_information, window_kind_for_current_analysis,
 )
 
 
@@ -16,6 +16,19 @@ class ResearchWindowTest(unittest.TestCase):
         self.assertTrue(result_heading().startswith("当前"))
         self.assertIn("截至已确认记录", result_heading(live_applicable=False))
         self.assertTrue(result_heading(historical=True).startswith("历史分析"))
+        self.assertIn("录像回放", result_heading(applicability_kind="replay"))
+        self.assertIn("截至人工确认记录", result_heading(applicability_kind="manual_asof"))
+        self.assertTrue(result_heading(applicability_kind="synthetic").startswith("合成研究"))
+
+    def test_information_source_is_not_a_live_catch(self):
+        self.assertEqual("synthetic-composition",
+                         source_mode_from_information({"source": "explicit-composition"}))
+        self.assertEqual("ledger-prefix",
+                         source_mode_from_information('{"source":"ledger-prefix"}'))
+        self.assertEqual("unknown", source_mode_from_information(None))
+        self.assertEqual("unknown", source_mode_from_information("{"))
+        self.assertIsNone(knowledge_revision_token(None))
+        self.assertEqual(64, len(knowledge_revision_token(("gen", "live", 0, False, 0, 0, 1))))
 
     def test_predeal_empty_call_is_missing_not_a_retitled_current_hand(self):
         with self.assertRaises(Exception) as caught:
@@ -35,6 +48,7 @@ class ResearchWindowTest(unittest.TestCase):
         self.assertAlmostEqual(net_ev(dist), 0.005)
         self.assertAlmostEqual(sum(net_outcome_summary(dist).values()), 1.0)
 
+
     def test_capability_matrix_keeps_full_shoe_opening_experimental(self):
         from blackjack_lab.core.rules import CAPABILITY_MATRIX, EXPERIMENTAL, UNSUPPORTED
         opening = CAPABILITY_MATRIX["下一轮开局天然BJ概率/开局优势"]
@@ -47,6 +61,8 @@ class ResearchWindowTest(unittest.TestCase):
         self.assertEqual(UNSUPPORTED, CAPABILITY_MATRIX["用户全屏浏览器捕获与热键验收"][0])
         self.assertEqual(UNSUPPORTED, CAPABILITY_MATRIX["操作者对照效率实验"][0])
         self.assertEqual(UNSUPPORTED, CAPABILITY_MATRIX["真实目标桌规则档案"][0])
+        self.assertEqual(UNSUPPORTED, CAPABILITY_MATRIX["真实材料未勾选验收包"][0])
+        self.assertEqual(UNSUPPORTED, CAPABILITY_MATRIX["发布冻结"][0])
         self.assertEqual(EXPERIMENTAL, CAPABILITY_MATRIX["回溯插入漏牌的原子修复"][0])
         self.assertIn("历史前缀", CAPABILITY_MATRIX["回溯插入漏牌的原子修复"][1])
         self.assertEqual(EXPERIMENTAL, CAPABILITY_MATRIX["本地牌面识别/屏幕捕获"][0])
@@ -56,6 +72,19 @@ class ResearchWindowTest(unittest.TestCase):
         interval = CAPABILITY_MATRIX["未知组成区间研究"]
         self.assertEqual(EXPERIMENTAL, interval[0])
         self.assertIn("平均牌靴", interval[1])
+        self.assertIn("调用方", interval[1])
+
+    def test_surrender_token_is_explicit(self):
+        from blackjack_lab.analysis.research_windows import parse_surrender_token
+        self.assertIsNone(parse_surrender_token("none"))
+        self.assertIsNone(parse_surrender_token("不支持"))
+        self.assertEqual("late", parse_surrender_token("late"))
+        with self.assertRaises(ValueError):
+            parse_surrender_token("early")
+        with self.assertRaises(ValueError):
+            parse_surrender_token(None)
+        with self.assertRaises(ValueError):
+            parse_surrender_token("")
 
     def test_research_template_is_not_a_platform_table(self):
         from blackjack_lab.analysis.contracts import research_rules

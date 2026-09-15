@@ -20,7 +20,7 @@ from ..core.rules import RuleProfile, FINITE_NO_REPLACEMENT
 from ..core.shoe import ShoeState
 from ..core.table import (
     ACTION_DOUBLE, ACTION_SPLIT, DEALER, PHASE_DEALING, PHASE_IN_PROGRESS,
-    TableState,
+    PHASE_UNSETTLED, TableState,
 )
 from .events import (
     BURN_CARDS, CANDIDATE, CARD_DEALT, CARD_REVEALED, CONFIRMED,
@@ -548,7 +548,7 @@ class EventLedger:
                 if results is not None:
                     cur.settlements.extend(results)
                 else:
-                    table.phase = "已结束未结算"
+                    table.phase = PHASE_UNSETTLED
                     cur.unsettled_rounds.append(table.round_no)
 
             elif ev.etype == SHOE_ENDED:

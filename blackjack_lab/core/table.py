@@ -19,6 +19,7 @@ PHASE_NO_ROUND = "未开轮"
 PHASE_DEALING = "发牌中"
 PHASE_IN_PROGRESS = "进行中"
 PHASE_SETTLED = "已结算"
+PHASE_UNSETTLED = "已结束未结算"
 
 ACTION_HIT = "补牌"
 ACTION_STAND = "停牌"
