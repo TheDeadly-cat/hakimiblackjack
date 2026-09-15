@@ -127,5 +127,41 @@ def conclude(trials):
 def write_export(path, trials):
     body = conclude(trials)
     body["trials"] = list(trials)
+    body["accepted"] = False
+    body["paired"] = False
+    body["auto_prompt_default"] = False
     Path(path).write_text(json.dumps(body, ensure_ascii=False, indent=2), encoding="utf-8")
     return body
+
+
+def load_export(path):
+    """Reload trials and re-conclude. Hand-edited accepted=true does not survive."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or data.get("schema") != SCHEMA:
+        raise ValueError("操作者对照导出格式不正确")
+    trials = data.get("trials") or []
+    if not isinstance(trials, list):
+        raise ValueError("操作者对照试验列表格式不正确")
+    body = conclude(trials)
+    body["trials"] = list(trials)
+    body["accepted"] = False
+    body["paired"] = False
+    body["auto_prompt_default"] = False
+    return body
+
+
+def append_export(path, trial, *more):
+    """Add trials to an existing export. A second save must not erase the first pair leg."""
+    dest = Path(path)
+    trials = []
+    if dest.is_file():
+        data = json.loads(dest.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or data.get("schema") != SCHEMA:
+            raise ValueError("操作者对照导出格式不正确")
+        existing = data.get("trials") or []
+        if not isinstance(existing, list):
+            raise ValueError("操作者对照试验列表格式不正确")
+        trials = list(existing)
+    for item in (trial,) + more:
+        trials.append(item)
+    return write_export(dest, trials)

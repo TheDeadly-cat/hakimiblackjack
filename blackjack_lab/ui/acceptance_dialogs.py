@@ -2,12 +2,36 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from ..capture.fullscreen_acceptance import ITEMS, empty_evidence, probe_environment, report
-from ..observation.operator_study import optional_identity_fields, trial, write_export
+from ..observation.operator_study import append_export, optional_identity_fields, trial
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_M4_INBOX = _REPO_ROOT / ".local-evidence" / "m4-inbox"
+_M4_PACK = _REPO_ROOT / ".local-evidence" / "m4-acceptance-pending.json"
+
+
+def _drop_m4_inbox(item_id, path):
+    """Copy a local export into the M4 inbox. Never marks the pack accepted."""
+    src = Path(path)
+    dest_dir = _M4_INBOX / item_id
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / src.name
+    if src.resolve() != dest.resolve():
+        shutil.copy2(src, dest)
+    if _M4_PACK.is_file():
+        from ..analysis.acceptance_pack import ingest_inbox
+        from ..analysis.evidence import write_manifest
+        pack = json.loads(_M4_PACK.read_text(encoding="utf-8"))
+        pack = ingest_inbox(pack, _M4_INBOX)
+        if pack.get("accepted") or pack.get("passed"):
+            raise RuntimeError("收件箱绑定不得把验收包写成通过")
+        write_manifest(_M4_PACK, pack)
+    return dest
 
 
 class FullscreenAcceptanceDialog(tk.Toplevel):
@@ -67,6 +91,7 @@ class FullscreenAcceptanceDialog(tk.Toplevel):
         if not path:
             return
         body = self.save_to(path)
+        _drop_m4_inbox("fullscreen_f11", path)
         self.app.set_status("已保存全屏验收清单；accepted=" + str(body["accepted"]))
         messagebox.showinfo("全屏验收", body["note"] + "\naccepted=" + str(body["accepted"]), parent=self)
 
@@ -108,6 +133,10 @@ def export_operator_trials(app):
         clicks=clicks, backlog_peak=backlog, missed_cards=missed, duplicates=duplicates,
         repair_seconds=repair, pause_reconcile_not_realtime=True,
         **optional_identity_fields(operator_id=operator_id, video_id=video_id, pair_id=pair_id))
-    body = write_export(path, [recorded])
-    app.set_status("已导出操作者对照；auto_prompt_default=" + str(body["auto_prompt_default"]))
+    body = append_export(path, recorded)
+    _drop_m4_inbox("operator_pairs", path)
+    app.set_status(
+        "已追加操作者对照；accepted=" + str(body["accepted"])
+        + " declared_pair_ids=" + str(body.get("declared_pair_ids"))
+        + " " + str(body.get("reason_code")))
     return body

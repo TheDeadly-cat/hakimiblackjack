@@ -150,6 +150,58 @@ class OperatorStudyTest(unittest.TestCase):
         self.assertFalse(saved["auto_prompt_default"])
         self.assertEqual("NEED_PAIRED_HUMAN_TRIALS", saved["reason_code"])
 
+    def test_second_save_appends_pair_leg_without_accepting(self):
+        from blackjack_lab.observation.operator_study import append_export, load_export
+        metrics = dict(elapsed_seconds=20, keystrokes=8, clicks=5, backlog_peak=1,
+                       missed_cards=0, duplicates=0, repair_seconds=3,
+                       pause_reconcile_not_realtime=True, operator_id="Shawn",
+                       video_id="v-sep", pair_id="pair-1")
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "operator.json"
+            first = append_export(path, trial("manual", human_run=True, **metrics))
+            self.assertEqual("NEED_PAIRED_HUMAN_TRIALS", first["reason_code"])
+            self.assertEqual(1, len(first["trials"]))
+            tampered = json.loads(path.read_text(encoding="utf-8"))
+            tampered["accepted"] = True
+            tampered["paired"] = True
+            path.write_text(json.dumps(tampered), encoding="utf-8")
+            second = append_export(path, trial("assisted", human_run=True, **metrics))
+            loaded = load_export(path)
+        self.assertEqual(2, len(second["trials"]))
+        self.assertTrue(second["declared_pair_ids"])
+        self.assertFalse(second["accepted"])
+        self.assertFalse(second["paired"])
+        self.assertFalse(loaded["accepted"])
+        self.assertEqual("HUMAN_PAIRS_PRESENT_DEFAULT_UNCHANGED", second["reason_code"])
+        self.assertEqual(["manual", "assisted"], [item["condition"] for item in second["trials"]])
+
+    def test_append_cli_does_not_accept(self):
+        import subprocess
+        import sys
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "pair.json"
+            common = [
+                sys.executable, str(root / "scripts" / "append_operator_trial.py"),
+                "--output", str(path), "--elapsed-seconds", "12", "--keystrokes", "4",
+                "--clicks", "2", "--backlog-peak", "1", "--missed-cards", "0",
+                "--duplicates", "0", "--repair-seconds", "0",
+                "--operator-id", "Shawn", "--video-id", "clip", "--pair-id", "p1",
+                "--human-run",
+            ]
+            first = subprocess.run(common + ["--condition", "manual"], cwd=str(root),
+                                   capture_output=True, text=True, timeout=30)
+            second = subprocess.run(common + ["--condition", "assisted"], cwd=str(root),
+                                    capture_output=True, text=True, timeout=30)
+            self.assertEqual(0, first.returncode, first.stderr)
+            self.assertEqual(0, second.returncode, second.stderr)
+            body = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(2, len(body["trials"]))
+            self.assertTrue(body["declared_pair_ids"])
+            self.assertFalse(body["accepted"])
+            self.assertFalse(body["paired"])
+            self.assertFalse(body["auto_prompt_default"])
+
 
 class FullscreenAcceptanceTest(unittest.TestCase):
     def test_empty_evidence_is_not_acceptance(self):

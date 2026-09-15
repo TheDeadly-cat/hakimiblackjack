@@ -358,7 +358,8 @@ class QuickRecordPanel(tk.Toplevel):
 
     def export_operator_study(self):
         from ..observation.operator_study import (
-            optional_identity_fields, trial_from_usage, write_export)
+            append_export, optional_identity_fields, trial_from_usage)
+        from .acceptance_dialogs import _drop_m4_inbox
         human = messagebox.askyesno(
             "操作者对照", "这是配对真人试验记录吗？选否则保持结论：不能改自动提示默认。", parent=self)
         if not messagebox.askyesno(
@@ -385,8 +386,12 @@ class QuickRecordPanel(tk.Toplevel):
             "assisted", self.usage, human_run=bool(human), missed_cards=missed,
             duplicates=duplicates, repair_seconds=repair, pause_reconcile_not_realtime=True,
             **optional_identity_fields(operator_id=operator_id, video_id=video_id, pair_id=pair_id))
-        body = write_export(path, [recorded])
-        self.var_status.set("已导出操作者对照；auto_prompt_default=" + str(body["auto_prompt_default"]))
+        body = append_export(path, recorded)
+        _drop_m4_inbox("operator_pairs", path)
+        self.var_status.set(
+            "已追加操作者对照；accepted=" + str(body["accepted"])
+            + " declared_pair_ids=" + str(body.get("declared_pair_ids"))
+            + " " + str(body.get("reason_code")))
 
     def mark_gap(self):
         def run():
