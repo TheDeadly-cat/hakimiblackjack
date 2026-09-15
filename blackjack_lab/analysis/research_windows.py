@@ -10,6 +10,8 @@ EV are three different claims. Win rate is not a substitute for net EV.
 """
 from __future__ import annotations
 
+import math
+
 from .contracts import (
     AVAILABLE, FAILED, INAPPLICABLE, PENDING, UNSUPPORTED, InputUnavailable, canonical, digest,
     research_rules,
@@ -48,23 +50,59 @@ WINDOW_STATE_NAMES = {
 
 
 def _finite_ev(value):
+    if type(value) is bool:
+        return None
     try:
         number = float(value)
     except (TypeError, ValueError):
         return None
-    if number != number or number in (float("inf"), float("-inf")):
+    if not math.isfinite(number):
         return None
     return number
+
+
+def _declared_near_zero_band(record):
+    """Conservative sign band only. Not a verified bound on the whole solver."""
+    if not isinstance(record, dict):
+        return None
+    value = record.get("numerical_tolerance")
+    if type(value) is bool:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(number) or number < 0:
+        return None
+    return number
+
+
+def _opening_window_kind(record):
+    if record.get("window_kind") == WINDOW_CURRENT_HAND or record.get("window") == WINDOW_CURRENT_HAND:
+        return WINDOW_CURRENT_HAND
+    if record.get("window_kind") == WINDOW_PRE_DEAL or record.get("window") == WINDOW_PRE_DEAL:
+        return WINDOW_PRE_DEAL
+    return None
+
+
+def _opening_method_identity(record):
+    for key in ("evaluation_method", "method"):
+        value = record.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 def classify_ev_record(record):
     """Split evaluable sign from missing/failed evaluation.
 
-    positive: status available and EV > 0
+    positive: status available and EV is finite and greater than any declared
+        near-zero band
     nonpositive: available and EV is a finite number that is not > 0
-    indeterminate: interval/model incomplete, or a Monte Carlo point estimate
-        that is not allowed to claim a window
-    unavailable: unsupported, timeout, missing, failed, or no finite EV
+    indeterminate: interval/model incomplete, a Monte Carlo point estimate
+        that is not allowed to claim a window, or a positive value inside a
+        declared near-zero band
+    unavailable: unsupported, timeout, missing, failed, bool/non-finite EV
     """
     if not isinstance(record, dict):
         return EV_UNAVAILABLE
@@ -73,21 +111,73 @@ def classify_ev_record(record):
     ev = _finite_ev(record.get("ev"))
     if record.get("status") != AVAILABLE or ev is None:
         return EV_UNAVAILABLE
-    return EV_POSITIVE if ev > 0 else EV_NONPOSITIVE
+    if ev > 0:
+        band = _declared_near_zero_band(record)
+        if band is not None and ev <= band:
+            return EV_INDETERMINATE
+        return EV_POSITIVE
+    return EV_NONPOSITIVE
 
 
 def classify_opening_window(record):
     """Opening-window state. Current-hand EV cannot satisfy this."""
     if not isinstance(record, dict):
         return EV_UNAVAILABLE
-    if record.get("window") == WINDOW_CURRENT_HAND or record.get("window_kind") == WINDOW_CURRENT_HAND:
+    kind = _opening_window_kind(record)
+    if kind != WINDOW_PRE_DEAL:
         return EV_UNAVAILABLE
-    return classify_ev_record(record)
+    state = classify_ev_record(record)
+    if state in EVALUABLE_EV_STATES and _opening_method_identity(record) is None:
+        return EV_UNAVAILABLE
+    return state
 
 
 def window_state(record):
     """4.4 opening-window label: supported sign, indeterminate, or unavailable."""
     return WINDOW_STATE_NAMES[classify_opening_window(record)]
+
+
+def deadline_supports_timely_claim(result):
+    """True only when a comparable deadline exists and the result beat it.
+
+    Missing deadline: research as-of is allowed; a timely-catch claim is not.
+    """
+    allowed, _reason = assess_timely_live_claim(result, live_applicable=True)
+    return allowed
+
+
+def assess_timely_live_claim(result, *, live_applicable=False, historical=False,
+                             observation_moved=False, input_moved=False,
+                             recomputed_from=None):
+    """Separate 'matches the current record' from 'ready before the decision closed'."""
+    if historical or recomputed_from is not None:
+        return False, "historical_recompute"
+    if observation_moved or input_moved:
+        return False, "stale_input_or_knowledge"
+    if live_applicable is not True:
+        return False, "not_live_current"
+    if not isinstance(result, dict):
+        return False, "result_missing"
+    deadline = result.get("decision_deadline")
+    ready = result.get("result_ready_at")
+    if deadline is None:
+        return False, "decision_deadline_unknown"
+    if ready is None:
+        return False, "result_ready_at_unknown"
+    deadline_value = _finite_ev(deadline)
+    ready_value = _finite_ev(ready)
+    if deadline_value is None or ready_value is None:
+        return False, "illegal_timestamp"
+    domain = result.get("clock_domain")
+    deadline_clock = result.get("decision_deadline_clock") or domain
+    ready_clock = result.get("result_ready_clock") or domain
+    if not isinstance(deadline_clock, str) or not deadline_clock.strip():
+        return False, "clock_domain_incomparable"
+    if deadline_clock != ready_clock:
+        return False, "clock_domain_incomparable"
+    if ready_value > deadline_value:
+        return False, "result_after_deadline"
+    return True, "before_deadline"
 
 
 def evaluation_scope(records):

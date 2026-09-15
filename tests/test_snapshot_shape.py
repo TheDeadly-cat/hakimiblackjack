@@ -75,7 +75,21 @@ class TestSnapshotShapes(unittest.TestCase):
             self.saved["result"], self.saved["snapshot_id"], timely_live_claim=True)
         self.assertFalse(historical["timely_live_claim"])
         live = self.store.save(self.saved["result"], timely_live_claim=True)
-        self.assertTrue(live["timely_live_claim"])
+        self.assertFalse(live["timely_live_claim"])
+
+    def test_timely_live_claim_requires_a_comparable_deadline(self):
+        result = copy.deepcopy(self.saved["result"])
+        ready = float(result["result_ready_at"])
+        result["decision_deadline"] = ready + 1
+        result["clock_domain"] = "utc"
+        late = copy.deepcopy(result)
+        late["result_ready_at"] = ready + 5
+        caught = self.store.save(result, timely_live_claim=True)
+        missed = self.store.save(late, timely_live_claim=True)
+        unknown = self.store.save(self.saved["result"], timely_live_claim=True)
+        self.assertTrue(caught["timely_live_claim"])
+        self.assertFalse(missed["timely_live_claim"])
+        self.assertFalse(unknown["timely_live_claim"])
 
     def test_scalar_array_and_null_roots_have_controlled_errors(self):
         for data in (None, [], "history", 12, 1.5, True):

@@ -207,7 +207,7 @@ class AnalysisObservationUITest(unittest.TestCase):
         self.assertEqual(self.errors, [])
         self.assertNotIn("当前 · ", self.displayed().splitlines()[0])
 
-    def test_live_current_snapshot_may_claim_timely_manual_cannot(self):
+    def test_live_current_snapshot_shows_live_label_without_a_timely_catch(self):
         self.start_hand()
         self.compute(expect_live=False)
         self.assertFalse(self.app.analysis_panel.saved["timely_live_claim"])
@@ -215,9 +215,10 @@ class AnalysisObservationUITest(unittest.TestCase):
         self.app.analysis_panel.calculate_current()
         self.wait_result()
         self.assertTrue(self.app.analysis_panel.live_applicable)
-        self.assertTrue(self.app.analysis_panel.saved["timely_live_claim"])
+        self.assertFalse(self.app.analysis_panel.saved["timely_live_claim"])
         self.assertEqual(
             knowledge_revision_token(self.app.analysis_panel.request_observation),
             self.app.analysis_panel.last_result["knowledge_revision"])
         self.assertIn("当前 · ", self.displayed())
+        self.assertIsNone(self.app.analysis_panel.last_result.get("decision_deadline"))
         self.assertEqual(self.errors, [])

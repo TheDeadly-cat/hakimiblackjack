@@ -8,9 +8,9 @@ from ..analysis.contracts import RESULT_SCHEMA, STATUS_ZH, ACTION_ZH, AVAILABLE,
 from ..analysis.predeal_contracts import PREDEAL_RESULT_SCHEMA, PreDealInput
 from ..analysis.research_windows import (
     CURRENT_HAND_SCOPE, KIND_LIVE_CURRENT, KIND_MANUAL_ASOF, KIND_REPLAY, KIND_STALE,
-    KIND_SYNTHETIC, WINDOW_PRE_DEAL, build_predeal_input, counts_from_values, format_outcome_line,
-    format_predeal_result, knowledge_revision_token, parse_remaining_tokens, parse_surrender_token,
-    research_rules, result_heading,
+    KIND_SYNTHETIC, WINDOW_PRE_DEAL, assess_timely_live_claim, build_predeal_input,
+    counts_from_values, format_outcome_line, format_predeal_result, knowledge_revision_token,
+    parse_remaining_tokens, parse_surrender_token, research_rules, result_heading,
 )
 from ..analysis.service import AnalysisService
 from ..observation.currency import REASON_INPUT, REASON_SWITCHED, REASON_ZH
@@ -555,12 +555,18 @@ class AnalysisPanel(ttk.Frame):
         if not self.last_result or self.last_result["status"] != AVAILABLE:
             return
         try:
+            timely, _reason = assess_timely_live_claim(
+                self.last_result,
+                live_applicable=self.live_applicable,
+                historical=bool(self.recomputed_from),
+                observation_moved=self._observation_moved_during_request,
+                input_moved=self._input_moved_during_request,
+                recomputed_from=self.recomputed_from,
+            )
             timely = bool(
-                self.live_applicable
-                and not self.recomputed_from
+                timely
                 and self._display_kind() == KIND_LIVE_CURRENT
-                and not self._observation_moved_during_request
-                and not self._input_moved_during_request)
+            )
             self.saved = self.app.ctrl.analysis_store.save(
                 self.last_result, self.recomputed_from, timely_live_claim=timely)
             self.persistence.set("已保存分析快照 " + self.saved["snapshot_id"][:10])

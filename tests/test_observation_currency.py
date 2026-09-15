@@ -7,8 +7,8 @@ from blackjack_lab.core.rules import RuleProfile
 from blackjack_lab.observation.currency import (
     KIND_LIVE_CURRENT, KIND_MANUAL_ASOF, KIND_REPLAY, MODE_LIVE, MODE_MANUAL, MODE_REPLAY,
     REASON_ALIGNED, REASON_DEFERRED, REASON_FROZEN, REASON_MANUAL, REASON_OVERFLOW,
-    REASON_REGIONS, REASON_REPLAY, REASON_STOPPED, REASON_UNCONFIRMED,
-    STATUS_FROZEN, STATUS_LIVE, STATUS_STOPPED, ObservationState,
+    REASON_REGION_EVENTS, REASON_REPLAY, REASON_STOPPED, REASON_UNCONFIRMED,
+    REGION_KIND_GEOMETRY, STATUS_FROZEN, STATUS_LIVE, STATUS_STOPPED, ObservationState,
 )
 from blackjack_lab.ui.assisted_recording import AssistedRecording, DraftError
 from blackjack_lab.ui.controller import SessionController
@@ -85,8 +85,26 @@ class ObservationStateTest(unittest.TestCase):
         obs.connect_source("src-1")
         obs.note_source(STATUS_LIVE)
         obs.set_unresolved_regions(2)
-        self.assertEqual((False, REASON_REGIONS), obs.live_table_applicable())
+        self.assertEqual((False, REASON_REGION_EVENTS), obs.live_table_applicable())
         obs.set_unresolved_regions(0)
+        self.assertEqual((False, REASON_REGION_EVENTS), obs.live_table_applicable())
+        obs.reconcile()
+        self.assertEqual((True, REASON_ALIGNED), obs.live_table_applicable())
+
+    def test_geometry_debug_regions_do_not_latch_live_block(self):
+        obs = ObservationState()
+        obs.connect_source("src-1")
+        obs.note_source(STATUS_LIVE)
+        obs.set_unresolved_regions(3, kind=REGION_KIND_GEOMETRY)
+        self.assertEqual((True, REASON_ALIGNED), obs.live_table_applicable())
+        self.assertFalse(obs.revision().region_events_pending)
+
+    def test_fresh_live_source_with_zero_regions_is_aligned_before_reconcile(self):
+        obs = ObservationState()
+        obs.connect_source("src-1")
+        obs.note_source(STATUS_LIVE)
+        self.assertIsNone(obs.revision().reconciled_ns)
+        self.assertEqual(0, obs.revision().unresolved_regions)
         self.assertEqual((True, REASON_ALIGNED), obs.live_table_applicable())
 
     def test_bool_and_float_counts_are_rejected(self):

@@ -32,7 +32,10 @@ REASON_MANUAL = "manual_asof"
 REASON_REPLAY = "replay_not_live"
 REASON_DEFERRED = "deferred_unconfirmed"
 REASON_REGIONS = "unresolved_regions"
+REASON_REGION_EVENTS = "unresolved_region_events"
 REASON_INPUT = "input_changed"
+REGION_KIND_DEAL = "deal_event"
+REGION_KIND_GEOMETRY = "geometry_debug"
 
 KIND_LIVE_CURRENT = "live_current"
 KIND_MANUAL_ASOF = "manual_asof"
@@ -58,6 +61,7 @@ REASON_ZH = {
     REASON_REPLAY: "录像回放可计算，但不适用于当前真实牌桌",
     REASON_DEFERRED: "草稿被撤回或暂时跳过，尚未完成对账",
     REASON_REGIONS: "仍有未定区域未审，队列空不等于对账完成",
+    REASON_REGION_EVENTS: "发牌疑点仍待确认；画面上消失不等于已经解决",
     REASON_INPUT: "研究输入已改变，旧结果不再作为当前请求",
 }
 
@@ -92,6 +96,7 @@ class ObservationRevision:
     unresolved_regions: int = 0
     deferred_unconfirmed: int = 0
     knowledge_seq: int = 0
+    region_events_pending: bool = False
 
     def knowledge_identity(self):
         return (
@@ -101,6 +106,7 @@ class ObservationRevision:
             self.overflow_unacknowledged,
             self.unresolved_regions,
             self.deferred_unconfirmed,
+            self.region_events_pending,
             self.knowledge_seq,
         )
 
@@ -113,6 +119,7 @@ class ObservationRevision:
             and not self.overflow_unacknowledged
             and self.unresolved_regions == 0
             and self.deferred_unconfirmed == 0
+            and not self.region_events_pending
         )
 
     def knowledge_block_reason(self):
@@ -122,6 +129,8 @@ class ObservationRevision:
             return REASON_OVERFLOW
         if self.deferred_unconfirmed > 0:
             return REASON_DEFERRED
+        if self.region_events_pending:
+            return REASON_REGION_EVENTS
         if self.unresolved_regions > 0:
             return REASON_REGIONS
         return None
@@ -182,6 +191,9 @@ class ObservationState:
         self._overflow_unacked = False
         self._overflow_count = 0
         self._unresolved_regions = 0
+        self._geometry_regions = 0
+        self._region_events_pending = False
+        self._acknowledged_region_count = 0
         self._deferred = 0
         self._last_frame_ns = None
         self._reconciled_ns = None
@@ -230,6 +242,7 @@ class ObservationState:
             unresolved_regions=self._unresolved_regions,
             deferred_unconfirmed=self._deferred,
             knowledge_seq=self._knowledge_seq,
+            region_events_pending=self._region_events_pending,
         )
 
     def live_table_applicable(self):
@@ -241,10 +254,22 @@ class ObservationState:
             self._pending = count
             self._bump(knowledge=True)
 
-    def set_unresolved_regions(self, count):
+    def set_unresolved_regions(self, count, *, kind=REGION_KIND_DEAL):
         count = _nonneg_int(count, "未定区域数")
+        if kind not in (REGION_KIND_DEAL, REGION_KIND_GEOMETRY):
+            raise ValueError("未定区域种类只接受 deal_event 或 geometry_debug")
+        if kind == REGION_KIND_GEOMETRY:
+            self._geometry_regions = count
+            return
+        knowledge = False
+        if count > self._acknowledged_region_count:
+            if not self._region_events_pending:
+                knowledge = True
+            self._region_events_pending = True
         if count != self._unresolved_regions:
             self._unresolved_regions = count
+            knowledge = True
+        if knowledge:
             self._bump(knowledge=True)
 
     def defer_unconfirmed(self, extra=1):
@@ -301,5 +326,7 @@ class ObservationState:
             self._overflow_unacked = False
         if clear_deferred:
             self._deferred = 0
+        self._region_events_pending = False
+        self._acknowledged_region_count = self._unresolved_regions
         self._bump(knowledge=True)
         return self.revision()

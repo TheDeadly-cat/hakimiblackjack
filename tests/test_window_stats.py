@@ -4,15 +4,23 @@ import unittest
 from blackjack_lab.analysis.contracts import AVAILABLE, FAILED, TIMEOUT, UNSUPPORTED
 from blackjack_lab.analysis.research_windows import (
     EV_INDETERMINATE, EV_NONPOSITIVE, EV_POSITIVE, EV_UNAVAILABLE, WINDOW_CURRENT_HAND,
-    WINDOW_NONPOSITIVE_SUPPORTED, WINDOW_POSITIVE_SUPPORTED, classify_ev_record,
-    classify_opening_window, confusion_matrix, evaluation_scope, window_state,
+    WINDOW_NONPOSITIVE_SUPPORTED, WINDOW_POSITIVE_SUPPORTED, WINDOW_PRE_DEAL,
+    assess_timely_live_claim, classify_ev_record, classify_opening_window, confusion_matrix,
+    evaluation_scope, window_state,
 )
 from blackjack_lab.analysis.shoe_windows import KIND_FULL_RESHUFFLE, run_independent_shoes
 from blackjack_lab.analysis.unused_holdout import SCHEMA, compare_holdout
 
 
-def _record(status, ev=None):
-    return {"status": status, "ev": ev}
+def _record(status, ev=None, **extra):
+    body = {
+        "status": status,
+        "ev": ev,
+        "window_kind": WINDOW_PRE_DEAL,
+        "method": "exact-enumeration",
+    }
+    body.update(extra)
+    return body
 
 
 class WindowStatSemanticsTest(unittest.TestCase):
@@ -32,15 +40,56 @@ class WindowStatSemanticsTest(unittest.TestCase):
             "status": AVAILABLE, "ev": 0.7, "window": WINDOW_CURRENT_HAND}))
         self.assertEqual(WINDOW_POSITIVE_SUPPORTED, window_state(_record(AVAILABLE, 0.01)))
         self.assertEqual(WINDOW_NONPOSITIVE_SUPPORTED, window_state(_record(AVAILABLE, 0.0)))
-        self.assertEqual("indeterminate", window_state({
-            "status": AVAILABLE, "ev": 0.04, "window_claim_allowed": False}))
+        self.assertEqual("indeterminate", window_state(_record(
+            AVAILABLE, 0.04, window_claim_allowed=False)))
         self.assertEqual("unavailable", window_state({
             "status": AVAILABLE, "ev": 0.7, "window_kind": WINDOW_CURRENT_HAND}))
 
+    def test_bool_and_near_zero_ev_are_not_positive_supported(self):
+        self.assertEqual(EV_UNAVAILABLE, classify_ev_record(_record(AVAILABLE, True)))
+        self.assertEqual("unavailable", window_state(_record(AVAILABLE, True)))
+        self.assertEqual(EV_INDETERMINATE, classify_ev_record(_record(
+            AVAILABLE, 1e-16, numerical_tolerance=1e-10)))
+        self.assertEqual("indeterminate", window_state(_record(
+            AVAILABLE, 1e-16, numerical_tolerance=1e-10)))
+        self.assertEqual(EV_POSITIVE, classify_ev_record(_record(
+            AVAILABLE, 0.01, numerical_tolerance=1e-10)))
+
+    def test_opening_window_requires_kind_and_method_identity(self):
+        self.assertEqual("unavailable", window_state({
+            "status": AVAILABLE, "ev": 0.1}))
+        self.assertEqual("unavailable", window_state({
+            "status": AVAILABLE, "ev": 0.1, "window_kind": WINDOW_PRE_DEAL}))
+        self.assertEqual(WINDOW_POSITIVE_SUPPORTED, window_state({
+            "status": AVAILABLE, "ev": 0.1, "window_kind": WINDOW_PRE_DEAL,
+            "method": "exact-enumeration"}))
+        self.assertEqual(WINDOW_POSITIVE_SUPPORTED, window_state({
+            "status": AVAILABLE, "ev": 0.1, "window": WINDOW_PRE_DEAL,
+            "evaluation_method": "fixed-composition-mc"}))
+
+    def test_timely_claim_needs_a_comparable_deadline(self):
+        result = _record(AVAILABLE, 0.1, result_ready_at=10.0)
+        self.assertEqual((False, "decision_deadline_unknown"),
+                         assess_timely_live_claim(result, live_applicable=True))
+        result["decision_deadline"] = 9.0
+        self.assertEqual((False, "clock_domain_incomparable"),
+                         assess_timely_live_claim(result, live_applicable=True))
+        result["clock_domain"] = "utc"
+        self.assertEqual((False, "result_after_deadline"),
+                         assess_timely_live_claim(result, live_applicable=True))
+        result["decision_deadline"] = 11.0
+        self.assertEqual((True, "before_deadline"),
+                         assess_timely_live_claim(result, live_applicable=True))
+        self.assertEqual((False, "not_live_current"),
+                         assess_timely_live_claim(result, live_applicable=False))
+        self.assertEqual((False, "historical_recompute"),
+                         assess_timely_live_claim(result, live_applicable=True, recomputed_from="a" * 32))
+        result["decision_deadline"] = True
+        self.assertEqual((False, "illegal_timestamp"),
+                         assess_timely_live_claim(result, live_applicable=True))
+
     def test_monte_carlo_point_estimate_is_not_a_proven_window(self):
-        records = [{
-            "status": AVAILABLE, "ev": 0.04, "window_claim_allowed": False,
-        } for _ in range(3)]
+        records = [_record(AVAILABLE, 0.04, window_claim_allowed=False) for _ in range(3)]
         scope = evaluation_scope(records)
         self.assertEqual(3, scope["indeterminate"])
         self.assertEqual(0, scope["positive"])

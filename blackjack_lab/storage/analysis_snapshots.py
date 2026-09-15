@@ -8,6 +8,7 @@ import uuid
 
 from ..analysis.contracts import RESULT_SCHEMA, STATUS_ZH, ACTION_ZH, canonical, digest
 from ..analysis.predeal_contracts import PREDEAL_RESULT_SCHEMA
+from ..analysis.research_windows import deadline_supports_timely_claim
 from .safe_files import atomic_write
 
 SNAPSHOT_SCHEMA = "hakimi-analysis-snapshot-v1"
@@ -291,7 +292,11 @@ class AnalysisSnapshots:
         body = {
             "schema": SNAPSHOT_SCHEMA, "snapshot_id": snapshot_id, "saved_at": time(),
             "recomputed_from": recomputed_from,
-            "timely_live_claim": bool(timely_live_claim is True and recomputed_from is None),
+            "timely_live_claim": bool(
+                timely_live_claim is True
+                and recomputed_from is None
+                and deadline_supports_timely_claim(result)
+            ),
             "result": result,
         }
         envelope = {**body, "content_digest": digest(body)}
