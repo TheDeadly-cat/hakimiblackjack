@@ -58,3 +58,25 @@ class TestExperimentUI(unittest.TestCase):
         self.assertTrue(any("停牌" in str(row) or "补牌" in str(row) for row in rows))
         self.assertIn("JSON", window.var_status.get())
         self.assertEqual(self.errors, [])
+        for item in saved["record"]["items"]:
+            self.assertIsNone(item.get("surrender"))
+            self.assertNotIn("surrender", item["legal_actions"])
+
+    def test_synthetic_config_follows_session_surrender(self):
+        self.app.var_surrender.set("不支持")
+        self.app.act_experiments()
+        window = self.app.experiment_window
+        none = window._config()
+        self.assertIsNone(none.surrender)
+        self.app.var_surrender.set("late")
+        late = window._config()
+        self.assertEqual("late", late.surrender)
+
+    def test_research_interval_uses_session_surrender_rule(self):
+        self.app.var_surrender.set("不支持")
+        self.app.act_experiments()
+        window = self.app.experiment_window
+        self.assertIsNone(window._session_surrender())
+        report = window._research_report("interval")
+        self.assertIsNone(report["surrender"])
+        self.assertNotIn("surrender", report["legal_actions"])

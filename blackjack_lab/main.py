@@ -20,6 +20,7 @@ def main() -> int:
                         help="检查本机 Python/Tk/.NET 分牌依赖，不安装软件、不提权")
     parser.add_argument("--prepare-split", action="store_true", help="离线准备当前源码对应的 Windows 分牌数值程序")
     parser.add_argument("--db", type=Path, help="指定 SQLite 文件（省略则使用项目 data 目录）")
+    parser.add_argument("--quick", action="store_true", help="同时打开置顶辅助记牌条；不自动开靴或录牌")
     args = parser.parse_args()
     if args.check_environment:
         from .analysis.environment import format_report, inspect_environment
@@ -50,6 +51,8 @@ def main() -> int:
 
     from .ui.app import BlackjackLabApp, DEFAULT_DB
     app = BlackjackLabApp(args.db or DEFAULT_DB)
+    if args.quick:
+        app.after(100, app.act_quick_record)
     app.mainloop()
     return 0
 

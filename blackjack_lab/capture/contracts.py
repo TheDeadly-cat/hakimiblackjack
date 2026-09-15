@@ -150,6 +150,9 @@ class FramePacket:
     # 采集后端已到达但被采样率丢弃的帧数，以及队列挤掉的帧数。
     dropped_before: int = 0
     pixels: Any = field(default=None, repr=False, compare=False)
+    # Exact decoded video index, when supplied by a video producer. WGC time
+    # and the intake sequence must never be mistaken for this index.
+    source_frame_index: Optional[int] = None
 
     @property
     def width(self) -> int:
@@ -183,6 +186,8 @@ class FramePacket:
             "is_black": self.is_black,
             "dropped_before": self.dropped_before,
             "has_pixels": self.pixels is not None,
+            **({"source_frame_index": self.source_frame_index}
+               if self.source_frame_index is not None else {}),
         }
 
 
@@ -194,6 +199,7 @@ class CaptureStats:
     accepted: int = 0
     dropped_by_sampling: int = 0
     dropped_by_queue: int = 0
+    dropped_by_generation: int = 0
     repeats: int = 0
     black_frames: int = 0
     # None = 尚未发生。不要用 0 当哨兵：注入的测试时钟可以合法地等于 0。
@@ -222,6 +228,7 @@ class CaptureStats:
             "accepted": self.accepted,
             "dropped_by_sampling": self.dropped_by_sampling,
             "dropped_by_queue": self.dropped_by_queue,
+            "dropped_by_generation": self.dropped_by_generation,
             "repeats": self.repeats,
             "black_frames": self.black_frames,
             "resize_events": self.resize_events,

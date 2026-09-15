@@ -14,7 +14,8 @@ from blackjack_lab.vision.contracts import REVIEW_PENDING
 from blackjack_lab.vision.deps import VisionDependencyError, cv2_available
 from blackjack_lab.vision.evidence_store import EvidenceStore
 from blackjack_lab.vision.image_io import load_image
-from blackjack_lab.vision.pipeline import default_templates_dir, recognize_loaded, recognize_path
+from blackjack_lab.vision.pipeline import default_templates_dir, recognize_loaded
+from blackjack_lab.vision.model_adapter import TrainedModelAdapter, load_style, prepare_style_image
 
 
 def _ensure_templates() -> Path:
@@ -25,10 +26,25 @@ def _ensure_templates() -> Path:
     return templates
 
 
-def run_cli(image: Path, json_out: Path | None, evidence: Path | None) -> int:
-    templates = _ensure_templates()
-    loaded = load_image(image)
-    result = recognize_loaded(loaded, templates_dir=templates)
+def selected_model(model, style):
+    if model and not style:
+        raise ValueError("--model 必须同时指定 --style，不能猜测牌面样式")
+    selected = load_style(style) if style else None
+    adapter = TrainedModelAdapter(model, style_id=selected.style_id) if model else None
+    return selected, adapter
+
+
+def recognize_image(image, selected, adapter):
+    layout, canvas = prepare_style_image(load_image(image), selected)
+    templates = _ensure_templates() if adapter is None and layout.felt_kind != "navy" else None
+    result = recognize_loaded(canvas, layout=layout, templates_dir=templates, adapter=adapter)
+    return canvas, result
+
+
+def run_cli(image: Path, json_out: Path | None, evidence: Path | None, *,
+            model: Path | None = None, style: Path | None = None) -> int:
+    selected, adapter = selected_model(model, style)
+    loaded, result = recognize_image(image, selected, adapter)
     if evidence:
         EvidenceStore(evidence).save_result(loaded, result)
     text = result.to_json()
@@ -39,14 +55,15 @@ def run_cli(image: Path, json_out: Path | None, evidence: Path | None) -> int:
     return 0
 
 
-def run_gui(initial: Path | None) -> int:
+def run_gui(initial: Path | None, *, model: Path | None = None,
+            style: Path | None = None) -> int:
     import tkinter as tk
     from tkinter import filedialog, messagebox, ttk
 
     from blackjack_lab.vision.image_io import crop_rgb, write_png_rgb
     import tempfile
 
-    templates = _ensure_templates()
+    selected, adapter = selected_model(model, style)
     root = tk.Tk()
     root.title("Hakimi 识牌演示 V0.3a（图像待核对，不入账）")
     root.geometry("1100x760")
@@ -86,8 +103,7 @@ def run_gui(initial: Path | None) -> int:
             child.destroy()
         log.delete("1.0", tk.END)
         try:
-            loaded = load_image(path)
-            result = recognize_loaded(loaded, templates_dir=templates)
+            loaded, result = recognize_image(path, selected, adapter)
         except (VisionDependencyError, Exception) as exc:
             messagebox.showerror("识牌失败", str(exc))
             return
@@ -126,25 +142,29 @@ def run_gui(initial: Path | None) -> int:
     return 0
 
 
-def main() -> int:
+def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="V0.3a 离线识牌演示（不入账）")
     parser.add_argument("image", nargs="?", type=Path, help="本地 PNG/JPEG")
     parser.add_argument("--gui", action="store_true", help="打开核对窗口")
     parser.add_argument("--json", type=Path, help="把候选 JSON 写到文件")
     parser.add_argument("--evidence", type=Path, help="保存裁片到目录（仍不写账本）")
-    args = parser.parse_args()
+    parser.add_argument("--model", type=Path, help="明确的本地 model.npz / manifest.json 所在目录")
+    parser.add_argument("--style", type=Path, help="与模型绑定的样式/区域 JSON")
+    args = parser.parse_args(argv)
+    if args.model and not args.style:
+        parser.error("--model 必须同时指定 --style")
     if args.gui:
         image = args.image
         if image is None:
             default_smoke = ROOT / "fixtures" / "vision" / "synthetic-v1" / "smoke" / "all13.png"
             image = default_smoke if default_smoke.is_file() else None
-        return run_gui(image)
+        return run_gui(image, model=args.model, style=args.style)
     if not args.image:
         parser.error("命令行模式需要图片路径；或加 --gui")
     if not cv2_available():
         print("缺少识牌依赖。pip install -r requirements-vision.txt", file=sys.stderr)
         return 2
-    return run_cli(args.image, args.json, args.evidence)
+    return run_cli(args.image, args.json, args.evidence, model=args.model, style=args.style)
 
 
 if __name__ == "__main__":

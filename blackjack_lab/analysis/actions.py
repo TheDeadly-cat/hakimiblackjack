@@ -1,7 +1,9 @@
 """Single unsplit hand, exact finite enumeration in double-precision arithmetic.
 
-After HIT, continuation chooses HIT or STAND at each visible-information state.
-The choice is made after marginalizing the hole card, never separately per hole.
+After HIT, continuation is one of: visible-composition-optimal HIT/STAND,
+always-stand, or the toy hard chart. The choice never peeks a specific hole.
+Composition-optimal continuation still depends on remaining counts, so it is
+not one information-feasible π across unknown packs.
 """
 from functools import lru_cache
 from time import perf_counter
@@ -9,12 +11,32 @@ from time import perf_counter
 from .probability import FiniteModel, remove, total, LABELS, DEALER_LABELS
 
 
+HIT_CONTINUATION_COMPOSITION = "composition-optimal"
+HIT_CONTINUATION_STAND = "always-stand"
+HIT_CONTINUATION_TOY = "toy-hard"
+HIT_CONTINUATION_STRATEGIES = {
+    HIT_CONTINUATION_COMPOSITION: "after-hit-visible-composition-optimal-hit-stand-v1",
+    HIT_CONTINUATION_STAND: "after-hit-always-stand-v1",
+    HIT_CONTINUATION_TOY: "after-hit-toy-hard-unsplit-v1",
+}
+
+
 def expectation(distribution):
     return distribution[2] - distribution[0]
 
 
+def _toy_hard_action(score, up):
+    if score >= 17:
+        return "stand"
+    if score <= 11:
+        return "hit"
+    if up in (2, 3, 4, 5, 6):
+        return "stand"
+    return "hit"
+
+
 def solve_counts(counts, player, dealer_up, peek_negative, actions=("stand", "hit", "double"),
-                 budget_seconds=5.0, cancelled=None):
+                 budget_seconds=5.0, cancelled=None, hit_continuation=HIT_CONTINUATION_COMPOSITION):
     counts, player = tuple(counts), tuple(player)
     if len(counts) != 10 or any(type(n) is not int or n < 0 for n in counts):
         raise ValueError("需要十个非负整数点值桶")
@@ -22,6 +44,8 @@ def solve_counts(counts, player, dealer_up, peek_negative, actions=("stand", "hi
         raise ValueError("非法玩家或庄家牌面")
     if type(peek_negative) is not bool:
         raise ValueError("检查状态必须明确")
+    if hit_continuation not in HIT_CONTINUATION_STRATEGIES:
+        raise ValueError("补牌后续只接受组成最优、冻结停牌或玩具硬规则")
     start = perf_counter()
     model = FiniteModel(dealer_up, peek_negative, budget_seconds, cancelled)
     hard, ace = sum(player), 1 in player
@@ -48,11 +72,18 @@ def solve_counts(counts, player, dealer_up, peek_negative, actions=("stand", "hi
     @lru_cache(maxsize=50_000)
     def continuation(c, h, a):
         model.check()
-        if total(h, a) > 21:
+        score = total(h, a)
+        if score > 21:
             return (1.0, 0.0, 0.0)
         standing = stand(c, h, a)
-        if total(h, a) == 21 or sum(c) < 2:
+        if score == 21 or sum(c) < 2:
             return standing
+        if hit_continuation == HIT_CONTINUATION_STAND:
+            return standing
+        if hit_continuation == HIT_CONTINUATION_TOY:
+            if _toy_hard_action(score, dealer_up) == "stand":
+                return standing
+            return hit(c, h, a, False)
         hitting = hit(c, h, a, False)
         # This comparison happens in the common information set across holes.
         return hitting if expectation(hitting) > expectation(standing) else standing
@@ -71,8 +102,15 @@ def solve_counts(counts, player, dealer_up, peek_negative, actions=("stand", "hi
                 result[j] += probability * p
         return tuple(result)
 
-    probabilities = model.target_draw(counts)
-    bust = sum(p for i, p in enumerate(probabilities) if total(hard + i + 1, ace or i == 0) > 21)
+    size = sum(counts)
+    next_draw_defined = size >= 2
+    if next_draw_defined:
+        probabilities = model.target_draw(counts)
+        bust = sum(p for i, p in enumerate(probabilities) if total(hard + i + 1, ace or i == 0) > 21)
+    else:
+        # Only the hole remains. Stand vs dealer is defined; there is no next draw.
+        probabilities = (0.0,) * 10
+        bust = 0.0
     dealer = model.dealer_distribution(counts)
     outcomes = {}
     natural = len(player) == 2 and sorted(player) == [1, 10]
@@ -87,17 +125,21 @@ def solve_counts(counts, player, dealer_up, peek_negative, actions=("stand", "hi
                 continue
             if action == "double" and len(player) != 2:
                 continue
+            if not next_draw_defined:
+                continue
             distribution = hit(counts, hard, ace, action == "double")
             outcomes[action] = dict(zip(("-2", "0", "2") if action == "double" else ("-1", "0", "1"), distribution))
         elif action == "surrender":
             outcomes[action] = {"-0.5": 1.0}
     return {
         "next_draw": dict(zip(LABELS, probabilities)), "hit_bust": bust,
+        "next_draw_defined": next_draw_defined,
         "dealer_distribution": dict(zip(DEALER_LABELS, dealer)),
         "actions": {action: {"ev": sum(float(k) * p for k, p in dist.items()),
                              "net_distribution": dist} for action, dist in outcomes.items()},
         "method": "exact_finite_enumeration_float64", "approximation": "仅IEEE754双精度舍入；无抽样或截断",
         "elapsed_seconds": perf_counter() - start, "nodes": model.nodes,
-        "strategy": "after-hit-visible-composition-optimal-hit-stand-v1",
+        "strategy": HIT_CONTINUATION_STRATEGIES[hit_continuation],
+        "hit_continuation": hit_continuation,
         "ev_unit": "相对原始1单位初始注的最终净收益（不含返还本金）",
     }

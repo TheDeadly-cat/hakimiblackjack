@@ -47,6 +47,7 @@ class ExperimentConfig:
     config_version: int = CONFIG_VERSION
     removal_kind: str = REMOVAL_FIXED
     not_a_round_simulation: bool = True
+    surrender: str | None = None
 
     def to_dict(self):
         return asdict(self)

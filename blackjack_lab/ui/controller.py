@@ -169,6 +169,22 @@ class SessionController:
         meta = self._event_meta(evidence, source, correction_id, observed_at)
         return self._apply("correct", event_id, payload_fix, reason, **meta)
 
+    def preview_missed_deal(self, after_event_id, seat, rank=None, **kwargs):
+        from ..ledger.repair import plan_missed_deal
+        return plan_missed_deal(self.ledger, after_event_id, seat=seat, rank=rank, **kwargs)
+
+    def commit_repair(self, plan):
+        from ..ledger.repair import apply_repair
+        candidate = apply_repair(copy.deepcopy(self.ledger), plan)
+        self.store.save_ledger(candidate)
+        self.ledger = candidate
+        self.commit_revision += 1
+        self._publish_context_change()
+        return plan
+
+    def repair_missed_deal(self, after_event_id, seat, rank=None, **kwargs):
+        return self.commit_repair(self.preview_missed_deal(after_event_id, seat, rank, **kwargs))
+
     def import_file(self, path):
         candidate = import_csv(path) if Path(path).suffix.lower() == ".csv" else import_json(path)
         self.store.save_ledger(candidate)  # 全部验证后原子写入；不覆盖同ID不同内容
@@ -182,8 +198,35 @@ class SessionController:
     def analysis_input(self, seat, hand_id=None, through_seq=None):
         return build_input(self.ledger, seat, hand_id, through_seq)
 
+    def predeal_input(self, through_seq=None):
+        from ..analysis.research_windows import build_predeal_input
+        return build_predeal_input(self.ledger, through_seq=through_seq)
+
     def recompute_input(self, saved):
         original = saved["result"]["input"]
+        if original.get("schema") == "hakimi-offline-mc-input-v1":
+            from ..analysis.research_windows import build_offline_mc_input
+            ledger = self.store.load_ledger(original["session_id"], original["through_seq"])
+            if not self.analysis_store.matches_prefix(saved, ledger):
+                raise LedgerError("原分析关联的事件前缀摘要不匹配，拒绝复算")
+            return build_offline_mc_input(
+                ledger, policy=original["policy_id"], n_samples=original["n_samples"],
+                seed=original["seed"], through_seq=original["through_seq"],
+                family_size=original.get("family_size", 1), alpha=original.get("alpha", 0.05),
+                play_budget_seconds=original.get("play_budget_seconds", 2.0))
+        if original.get("schema") == "hakimi-predeal-input-v1":
+            from ..analysis.research_windows import build_predeal_input
+            info = json.loads(original["information_json"])
+            if info.get("source") == "explicit-composition":
+                from ..core.rules import RuleProfile
+                rules = RuleProfile.from_json(original["rules_json"])
+                return build_predeal_input(counts=tuple(original["counts"]),
+                                           session_id=original["session_id"],
+                                           rules=rules)
+            ledger = self.store.load_ledger(original["session_id"], original["through_seq"])
+            if not self.analysis_store.matches_prefix(saved, ledger):
+                raise LedgerError("原分析关联的事件前缀摘要不匹配，拒绝复算")
+            return build_predeal_input(ledger, through_seq=original["through_seq"])
         ledger = self.store.load_ledger(original["session_id"], original["through_seq"])
         if not self.analysis_store.matches_prefix(saved, ledger):
             raise LedgerError("原分析关联的事件前缀摘要不匹配，拒绝复算")

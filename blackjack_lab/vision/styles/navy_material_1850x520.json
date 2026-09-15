@@ -1,0 +1,12 @@
+{
+  "layout_profile_id": "navy-material-1850x520-unassigned",
+  "style_id": "navy-live-felt-v1",
+  "style_claim": "local-material-development",
+  "platform_claim": "none",
+  "canvas": {"width": 1850, "height": 520},
+  "felt_kind": "navy",
+  "regions": {
+    "unassigned": {"x": 0, "y": 0, "w": 1850, "h": 520, "seat_hint": null}
+  },
+  "notes": "用于已裁出的1850x520采集牌区；不再套用旧小窗口裁剪。座位尚未标定，全部候选需人工指定归属。"
+}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from pathlib import Path
 
 from .deps import ImageRejected, cv2_available, load_cv2
@@ -53,13 +54,9 @@ class VideoReader:
             raise VideoRejected("解码录像需要识牌依赖：pip install -r requirements-vision.txt")
         self.path = validate_local_video_path(path)
         size = self.path.stat().st_size
-        if size <= 32 * 1024 * 1024:
-            self.asset_sha256 = sha256_bytes(self.path.read_bytes())
-        else:
-            # 大文件不全量读入：前 2MiB + 长度。原文件只读、不改写。
-            with self.path.open("rb") as handle:
-                prefix = handle.read(2 * 1024 * 1024)
-            self.asset_sha256 = sha256_bytes(prefix + str(size).encode("ascii"))
+        # 全内容流式摘要：相同前缀和长度的不同录像不能共享来源身份。
+        with self.path.open("rb") as handle:
+            self.asset_sha256 = hashlib.file_digest(handle, "sha256").hexdigest()
         self._cv2 = load_cv2()
         self._cap = self._cv2.VideoCapture(str(self.path))
         if not self._cap.isOpened():
@@ -110,8 +107,24 @@ class VideoReader:
         self._index = frame_index
         height, width = bgr.shape[:2]
         rgb = self._cv2.cvtColor(bgr, self._cv2.COLOR_BGR2RGB).tobytes()
-        frame_digest = sha256_bytes(f"{self.asset.sha256}:{frame_index}".encode("ascii"))
+        frame_digest = sha256_bytes(rgb)
         return LoadedImage(
             path=self.path, width=int(width), height=int(height),
             sha256=frame_digest, rgb=rgb, byte_size=len(rgb), format="video-frame",
         )
+
+    def advance(self, frame_index: int) -> LoadedImage:
+        """Decode forward without repeatedly seeking back to a codec keyframe.
+
+        Skipped frames are decoded/discarded, not materialized as RGB evidence.
+        Random access remains in seek(); the realtime scheduler uses this path.
+        """
+        if self._cap is None or frame_index <= self._index:
+            raise VideoRejected("前进读帧需要已打开录像和递增帧号")
+        if self.asset.frame_count and frame_index >= self.asset.frame_count:
+            raise VideoRejected("超过录像末尾")
+        while self._index+1 < frame_index:
+            if not self._cap.grab():
+                raise VideoRejected("跳帧解码失败，不能假装该区间已观察")
+            self._index += 1
+        return self.seek(frame_index)

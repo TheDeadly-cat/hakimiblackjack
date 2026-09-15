@@ -47,6 +47,7 @@ class FrameIntake:
         self.source_id = source_id
         self._lock = threading.Lock()
         self._queue: deque = deque(maxlen=int(queue_length))
+        self._preview: Optional[FramePacket] = None
         self._layout_version = int(layout_version)
         self._stream_epoch = 0
         self._crop = crop
@@ -90,16 +91,19 @@ class FrameIntake:
         with self._lock:
             self._stopped = True
             self._queue.clear()
+            self._preview = None
 
     def mark_denied(self, reason: str) -> None:
         with self._lock:
             self._denied_reason = reason
             self._queue.clear()
+            self._preview = None
 
     def mark_source_lost(self) -> None:
         with self._lock:
             self._source_lost = True
             self._queue.clear()
+            self._preview = None
 
     def new_epoch(self, reason: str) -> int:
         """切源、改区域、录像跳转等使旧推理结果作废。队列中的旧帧一并丢弃。"""
@@ -109,6 +113,7 @@ class FrameIntake:
     def _new_epoch_locked(self, reason: str) -> int:
         self._stream_epoch += 1
         self._queue.clear()
+        self._preview = None
         self._last_signature = None
         self._pending_drops = 0
         self._epoch_reasons.append({"epoch": self._stream_epoch, "reason": reason})
@@ -134,6 +139,7 @@ class FrameIntake:
 
     def offer(self, array, *,
               media_time_ns: Optional[int] = None,
+              source_frame_index: Optional[int] = None,
               now_ns: Optional[int] = None,
               wall_time: Optional[float] = None) -> Optional[FramePacket]:
         """接收一帧原始 BGRA 缓冲。
@@ -141,13 +147,16 @@ class FrameIntake:
         array 是采集后端的可复用内存视图；本方法负责复制出独占像素，
         调用方返回后可以随意覆盖该缓冲。
         """
+        if source_frame_index is not None and (type(source_frame_index) is not int or source_frame_index < 0):
+            raise CaptureRejected("原录像帧号必须是非负整数")
         now = time.perf_counter_ns() if now_ns is None else now_ns
         np = _load_numpy()
 
         with self._lock:
             self.stats.arrived += 1
             self.stats.last_frame_monotonic_ns = now
-            if self._stopped or self._denied_reason:
+            if self._stopped or self._denied_reason or self._source_lost:
+                self.stats.dropped_by_generation += 1
                 return None
 
             height, width = int(array.shape[0]), int(array.shape[1])
@@ -192,6 +201,10 @@ class FrameIntake:
         is_black = looks_black(pixels)
 
         with self._lock:
+            if (self._stopped or self._denied_reason or self._source_lost
+                    or stream_epoch != self._stream_epoch or layout_version != self._layout_version):
+                self.stats.dropped_by_generation += 1
+                return None
             self._frame_seq += 1
             is_repeat = signature == self._last_signature
             self._last_signature = signature
@@ -211,10 +224,12 @@ class FrameIntake:
                 is_black=is_black,
                 dropped_before=pending,
                 pixels=pixels,
+                source_frame_index=source_frame_index,
             )
             if len(self._queue) == self._queue.maxlen:
                 self.stats.dropped_by_queue += 1
             self._queue.append(packet)
+            self._preview = packet
             self.stats.accepted += 1
             self.stats.last_accepted_monotonic_ns = now
             if is_repeat:
@@ -224,6 +239,18 @@ class FrameIntake:
         return packet
 
     # ---- 消费方入口 ----
+
+    def preview(self) -> Optional[FramePacket]:
+        """Read the latest owned frame without competing with the inference queue.
+
+        One retained frame bounds memory. A source/layout change invalidates it;
+        UI reads never create additional evidence or increment capture counters.
+        """
+        with self._lock:
+            packet = self._preview
+            if packet is None or packet.stream_epoch != self._stream_epoch or packet.layout_version != self._layout_version:
+                return None
+            return packet
 
     def latest(self) -> Optional[FramePacket]:
         """取最新一帧并清空队列；被跳过的帧计入丢帧，不假装观察完整。"""

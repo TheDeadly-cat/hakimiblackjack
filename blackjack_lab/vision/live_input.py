@@ -62,7 +62,7 @@ def frame_to_loaded(packet: FrameLike) -> LoadedImage:
     rgb = np.ascontiguousarray(pixels[:, :, ::-1]).tobytes()
     digest = hashlib.sha256(
         f"{packet.source_id}:{packet.stream_epoch}:{packet.frame_id}:"
-        f"{packet.frame_content_signature}".encode("ascii")
+        f"{packet.frame_content_signature}".encode("utf-8")
     ).hexdigest()
     pseudo = Path("live") / packet.source_id.replace(":", "-") / f"frame-{packet.frame_id:09d}"
     return LoadedImage(
@@ -231,7 +231,8 @@ def capture_crop_pixels(style: LiveStyle, source_width: int,
 
 
 def recognize_frame(packet: FrameLike, style: LiveStyle, *,
-                    templates_dir: Optional[Path] = None) -> RecognitionResult:
+                    templates_dir: Optional[Path] = None, adapter=None,
+                    runtime=None) -> Optional[RecognitionResult]:
     """识别一帧实时画面。仍然只产生候选，不写账本。
 
     冻结帧照样返回结果供预览，但会标出来，由上层决定不重复计为新证据。
@@ -240,12 +241,24 @@ def recognize_frame(packet: FrameLike, style: LiveStyle, *,
 
     loaded = frame_to_loaded(packet)
     layout = layout_for_frame(style, packet.width, packet.height)
-    result = recognize_loaded(
-        loaded, layout=layout, templates_dir=templates_dir,
-        source_declaration=SOURCE_LIVE_CAPTURE,
-    )
+    if runtime is not None:
+        if adapter is not None:
+            raise ImageRejected("runtime 已负责模型选择，不得另传 adapter")
+        result = runtime.recognize_loaded(
+            loaded, layout=layout, templates_dir=templates_dir,
+            source_key=f"{packet.source_id}:{packet.stream_epoch}:{packet.layout_version}",
+            source_declaration=SOURCE_LIVE_CAPTURE)
+        if result is None:
+            return None  # Source/ROI/model changed while this frame ran.
+    else:
+        result = recognize_loaded(
+            loaded, layout=layout, templates_dir=templates_dir, adapter=adapter,
+            source_declaration=SOURCE_LIVE_CAPTURE,
+        )
     # 实时来源有真实采集时钟，不必用模型运行时间冒充。
     result.captured_at = packet.observed_at
+    for obs in result.observations:
+        obs.captured_at = packet.observed_at
     result.clock_note = "captured_at 来自捕获时刻；media_time_ns 由采集后端给出。"
     warnings = list(result.warnings)
     warnings.append(

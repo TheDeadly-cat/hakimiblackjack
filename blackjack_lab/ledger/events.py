@@ -37,6 +37,14 @@ SOURCE_SIMULATOR = "自建模拟器"
 SOURCE_LICENSED_VIDEO = "授权离线素材"
 SOURCE_LICENSED_CAPTURE = "授权窗口捕获"
 SOURCE_VISION_CONFIRMED = "识牌人工确认"
+SOURCE_REPAIR = "回溯修复"
+
+# Optional payload keys for append-only retrospective repair. Not SQLite columns.
+REPAIR_PAYLOAD_KEYS = {
+    "repair_batch_id", "repair_role", "repair_anchor_id",
+    "repair_original_event_id", "first_readable_at", "occurred_at",
+}
+REPAIR_ROLES = ("void_suffix", "inserted_missed", "replay_suffix")
 
 # 确认状态
 CONFIRMED = "已确认"
@@ -113,12 +121,21 @@ class Event:
             CORRECTION: ({"target_event_id", "payload_fix"}, {"reason", "target_etype"}),
         }
         required, optional = schemas[self.etype]
+        optional = set(optional) | REPAIR_PAYLOAD_KEYS
         if not required <= self.payload.keys() or self.payload.keys() - required - optional:
             raise ValueError(f"{self.etype}事件负载缺少字段或含未支持字段")
-        for name in ("seat", "hand_id", "new_hand_id", "track_id", "target_event_id", "shoe_id", "round_id"):
+        for name in ("seat", "hand_id", "new_hand_id", "track_id", "target_event_id", "shoe_id", "round_id",
+                     "repair_batch_id", "repair_anchor_id", "repair_original_event_id"):
             value = self.payload.get(name)
             if value is not None and (not isinstance(value, str) or not value.strip()):
                 raise ValueError(f"事件{name}必须为有效文本身份")
+        role = self.payload.get("repair_role")
+        if role is not None and role not in REPAIR_ROLES:
+            raise ValueError("未知修复角色")
+        for name in ("first_readable_at", "occurred_at"):
+            value = self.payload.get(name)
+            if value is not None and (type(value) not in (int, float) or not math.isfinite(value)):
+                raise ValueError("可读或发生时点必须为有限时间戳")
         if "count" in self.payload and (type(self.payload["count"]) is not int or self.payload["count"] <= 0):
             raise ValueError("烧牌事件数量必须为正整数")
         if "settle" in self.payload and self.payload["settle"] is not None and type(self.payload["settle"]) is not bool:
@@ -167,6 +184,21 @@ class Event:
             confirm_status=d.get("confirm_status", CONFIRMED),
             evidence=d.get("evidence"), rule_version=d.get("rule_version"),
         )
+
+
+def merge_repair_payload(payload: Dict[str, Any], repair: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Copy payload and attach optional repair keys. None values are omitted."""
+    payload = dict(payload)
+    if not repair:
+        return payload
+    if not isinstance(repair, dict):
+        raise ValueError("修复负载必须为对象")
+    extra = {key: value for key, value in repair.items() if value is not None}
+    unknown = set(extra) - REPAIR_PAYLOAD_KEYS
+    if unknown:
+        raise ValueError("修复负载含未支持字段")
+    payload.update(extra)
+    return payload
 
 
 # ---- 便捷构造函数，统一必填字段校验 ----

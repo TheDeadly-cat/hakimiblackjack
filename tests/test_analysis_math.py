@@ -71,6 +71,17 @@ class TestIndependentMath(unittest.TestCase):
         result = solve_counts(counts, (3, 5), 10, True)
         self.assertGreater(result["actions"]["hit"]["ev"], result["actions"]["double"]["ev"] / 2 + 0.05)
 
+    def test_terminal_twenty_vs_twenty_does_not_need_a_draw(self):
+        actual = solve_counts((0,) * 9 + (1,), (10, 10), 10, True,
+                              actions=("stand", "hit", "double", "surrender"))
+        self.assertFalse(actual["next_draw_defined"])
+        self.assertAlmostEqual(actual["actions"]["stand"]["ev"], 0.0, delta=1e-12)
+        self.assertNotIn("hit", actual["actions"])
+        self.assertNotIn("double", actual["actions"])
+        expected = reference((10,), (10, 10), 10, True)
+        self.assertEqual(expected["actions"]["stand"]["ev"], Fraction(0))
+        self.assertNotIn("hit", expected["actions"])
+
 
 if __name__ == "__main__":
     unittest.main()

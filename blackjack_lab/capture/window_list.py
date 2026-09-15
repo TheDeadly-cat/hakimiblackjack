@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .contracts import CaptureRejected
+from .overlay_exclusion import is_lab_overlay
 
 _user32 = ctypes.WinDLL("user32", use_last_error=True)
 _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -43,8 +44,8 @@ _user32.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
 _user32.GetClientRect.restype = wintypes.BOOL
 _user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
 _user32.GetWindowThreadProcessId.restype = wintypes.DWORD
-_user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
-_user32.GetWindowLongW.restype = wintypes.LONG
+_user32.GetForegroundWindow.argtypes = []
+_user32.GetForegroundWindow.restype = wintypes.HWND
 
 _GWL_EXSTYLE = -20
 _WS_EX_TOOLWINDOW = 0x00000080
@@ -180,12 +181,25 @@ def describe_window(hwnd: int) -> WindowInfo:
     )
 
 
+def should_list_window(info: WindowInfo, *, own_pid: int,
+                       min_width: int = MIN_LISTED_WIDTH,
+                       min_height: int = MIN_LISTED_HEIGHT) -> bool:
+    """Own process, lab overlays, and tiny windows are not table sources."""
+    if info.process_id == own_pid:
+        return False
+    if is_lab_overlay(info):
+        return False
+    if info.width < min_width or info.height < min_height:
+        return False
+    return True
+
+
 def list_capturable_windows(*, exclude_self: bool = True,
                             min_width: int = MIN_LISTED_WIDTH,
                             min_height: int = MIN_LISTED_HEIGHT) -> List[WindowInfo]:
     """列出可选的顶层窗口，按面积从大到小。
 
-    排除本进程窗口，避免把自己的预览再捕一遍形成反馈循环。
+    排除本进程窗口和本工具浮层，避免把自己的预览再捕一遍形成反馈循环。
     """
     own_pid = os.getpid() if exclude_self else -1
     found: List[WindowInfo] = []
@@ -203,9 +217,8 @@ def list_capturable_windows(*, exclude_self: bool = True,
             info = describe_window(hwnd)
         except CaptureRejected:  # pragma: no cover - 枚举过程中窗口被关闭
             return True
-        if info.process_id == own_pid:
-            return True
-        if info.width < min_width or info.height < min_height:
+        if not should_list_window(info, own_pid=own_pid, min_width=min_width,
+                                  min_height=min_height):
             return True
         found.append(info)
         return True
@@ -217,6 +230,45 @@ def list_capturable_windows(*, exclude_self: bool = True,
             raise CaptureRejected(f"枚举窗口失败，错误码 {error}")
     found.sort(key=lambda w: w.width * w.height, reverse=True)
     return found
+
+
+def foreground_window():
+    """Current foreground window geometry. Not a fullscreen acceptance result."""
+    hwnd = int(_user32.GetForegroundWindow() or 0)
+    if not hwnd:
+        return None
+    try:
+        return describe_window(hwnd)
+    except CaptureRejected:
+        return None
+
+
+def observe_foreground(*, screen_width=None, screen_height=None):
+    """Record which window had focus. looks_monitor_sized is not accepted=true."""
+    payload = {
+        "not_acceptance": True,
+        "supported": os.name == "nt",
+        "note": "前台窗口几何和是否接近屏幕尺寸，都不是 F11 验收通过",
+    }
+    if os.name != "nt":
+        return payload
+    info = foreground_window()
+    if info is None:
+        payload["foreground"] = None
+        payload["looks_monitor_sized"] = False
+        return payload
+    width = int(screen_width or 0)
+    height = int(screen_height or 0)
+    looks = bool(
+        width > 0 and height > 0
+        and not info.minimized
+        and info.width >= width - 16
+        and info.height >= height - 16
+    )
+    payload["foreground"] = info.as_dict()
+    payload["looks_monitor_sized"] = looks
+    payload["lab_overlay"] = bool(is_lab_overlay(info))
+    return payload
 
 
 def find_window_by_title(fragment: str) -> Optional[WindowInfo]:

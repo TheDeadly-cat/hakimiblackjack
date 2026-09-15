@@ -19,6 +19,21 @@ NAVY_ACCEPT = 0.62
 NAVY_MARGIN = 0.04
 
 
+def _normalise_rank_mask(mask):
+    """模板和观测使用相同紧裁/等比留边，避免把有留白模板与拉伸角标相比。"""
+    cv2, np = load_cv2(), load_numpy()
+    points = cv2.findNonZero((mask > 100).astype(np.uint8))
+    if points is None:
+        return None
+    x, y, w, h = cv2.boundingRect(points)
+    scale = min((RANK_W - 6) / w, (RANK_H - 6) / h)
+    sw, sh = max(1, round(w * scale)), max(1, round(h * scale))
+    canvas = np.zeros((RANK_H, RANK_W), dtype=np.uint8)
+    ox, oy = (RANK_W - sw) // 2, (RANK_H - sh) // 2
+    canvas[oy:oy+sh, ox:ox+sw] = cv2.resize(mask[y:y+h, x:x+w], (sw,sh), interpolation=cv2.INTER_AREA)
+    return canvas
+
+
 def _hershey_rank(rank: str):
     cv2 = load_cv2()
     np = load_numpy()
@@ -30,7 +45,7 @@ def _hershey_rank(rank: str):
     x = max(1, (RANK_W - tw) // 2)
     y = min(RANK_H - 4, (RANK_H + th) // 2)
     cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, 255, thick, cv2.LINE_AA)
-    return img
+    return _normalise_rank_mask(img)
 
 
 def built_in_rank_templates() -> Dict[str, "object"]:
@@ -62,7 +77,7 @@ def isolate_rank_ink(bgr):
     corner = bgr[0:max(1, int(h * 0.55)), 0:max(1, int(w * 0.55))]
     if corner.size == 0:
         return None
-    zoom = cv2.resize(corner, (RANK_W * 2, RANK_H * 2), interpolation=cv2.INTER_CUBIC)
+    zoom = cv2.resize(corner, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
     gray = cv2.cvtColor(zoom, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (3, 3), 0)
     white = int(np.median(blur[blur > 120])) if np.any(blur > 120) else int(blur.max())
@@ -77,7 +92,7 @@ def isolate_rank_ink(bgr):
     x0, y0 = max(0, x - pad), max(0, y - pad)
     x1, y1 = min(inv.shape[1], x + rw + pad), min(inv.shape[0], y + rh + pad)
     roi = inv[y0:y1, x0:x1]
-    return cv2.resize(roi, (RANK_W, RANK_H), interpolation=cv2.INTER_AREA)
+    return _normalise_rank_mask(roi)
 
 
 def match_rank_ink(rank_img, templates: Dict[str, "object"]) -> List[RankHypothesis]:
