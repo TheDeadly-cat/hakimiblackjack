@@ -72,6 +72,73 @@ class TableArchiveUITest(unittest.TestCase):
         self.assertTrue(saved["environment"]["not_acceptance"])
         self.assertGreater(saved["environment"]["screen_width"], 0)
 
+    def test_fullscreen_wizard_does_not_accept(self):
+        from blackjack_lab.capture.fullscreen_wizard import as_fullscreen_evidence, record_step
+        self.app.act_fullscreen_wizard()
+        dialog = self.app._fullscreen_wizard
+        record_step(dialog.session, "enter_f11", notes="ui-unit")
+        body = as_fullscreen_evidence(dialog.session)
+        self.assertFalse(body["accepted"])
+        self.assertFalse(body["wizard"]["required_complete"])
+
+    def test_event_draft_dialog_pages_without_accepting(self):
+        self.app.act_event_draft()
+        dialog = self.app._event_draft_dialog
+        self.assertFalse(dialog.draft["accepted"])
+        self.assertGreaterEqual(len(dialog._pages()), 1)
+        self.assertTrue(dialog.var_skip_waiting.get())
+        self.assertFalse(dialog._page()["waiting_only"])
+        first = dialog.var_title.get()
+        dialog._next()
+        dialog._prev()
+        self.assertTrue(dialog.var_title.get())
+        self.assertIn("accepted=false", dialog.var_status.get())
+        self.assertNotEqual("", first)
+
+    def test_rules_diff_dialog_from_dev_felt_stays_unaccepted(self):
+        self.app.act_rules_diff()
+        dialog = self.app._rules_diff_dialog
+        self.assertIsNotNone(dialog.body)
+        self.assertFalse(dialog.body["accepted"])
+        self.assertFalse(dialog.body["applies_to_live_table"])
+        self.assertIsNone(dialog.body["n_decks"])
+        self.assertFalse(dialog.body.get("public_help_applies_to_this_table"))
+        self.assertEqual(8, dialog.body.get("public_help_candidate_n_decks"))
+        self.assertTrue(dialog.body.get("public_help_peek_conflict"))
+        shown = dialog.text.get("1.0", "end")
+        self.assertIn("n_decks", shown)
+        self.assertIn("conflict_in_public_help", shown)
+        self.assertIn("公开规则页", shown)
+        self.assertTrue(dialog.var_title.get())
+        first = dialog.var_title.get()
+        dialog._next_row()
+        self.assertNotEqual(first, dialog.var_title.get())
+        dialog._prev_row()
+        self.assertEqual(first, dialog.var_title.get())
+        from unittest.mock import patch
+        with patch("blackjack_lab.ui.wizard_dialogs.messagebox.showerror") as err:
+            dialog._decide("matches_this_table")
+            err.assert_called()
+        self.assertIsNone(dialog.body["n_decks"])
+        self.assertFalse(dialog.body["accepted"])
+
+    def test_event_draft_import_needs_open_shoe_and_does_not_invent_cards(self):
+        from unittest.mock import patch
+        from blackjack_lab.ledger.events import CARD_DEALT
+        self.app.act_event_draft()
+        dialog = self.app._event_draft_dialog
+        with patch("blackjack_lab.ui.wizard_dialogs.messagebox.showerror") as err:
+            dialog._import()
+            err.assert_called()
+        self.assertFalse(dialog.draft["accepted"])
+        self.app.act_research_template()
+        self.app.act_new_shoe()
+        dialog._import()
+        self.assertEqual(0, sum(1 for event in self.app.ctrl.ledger.events if event.etype == CARD_DEALT))
+        self.assertIn("offline_mc_ready=false", dialog.var_status.get())
+        self.assertIn("accepted=false", dialog.var_status.get())
+        self.assertFalse(dialog.draft["accepted"])
+
     def test_locked_shoe_still_shows_missing_or_archive_origin(self):
         self.app.act_research_template()
         self.app.act_new_shoe()

@@ -204,6 +204,16 @@ class SessionController:
 
     def recompute_input(self, saved):
         original = saved["result"]["input"]
+        if original.get("schema") == "hakimi-offline-mc-input-v1":
+            from ..analysis.research_windows import build_offline_mc_input
+            ledger = self.store.load_ledger(original["session_id"], original["through_seq"])
+            if not self.analysis_store.matches_prefix(saved, ledger):
+                raise LedgerError("原分析关联的事件前缀摘要不匹配，拒绝复算")
+            return build_offline_mc_input(
+                ledger, policy=original["policy_id"], n_samples=original["n_samples"],
+                seed=original["seed"], through_seq=original["through_seq"],
+                family_size=original.get("family_size", 1), alpha=original.get("alpha", 0.05),
+                play_budget_seconds=original.get("play_budget_seconds", 2.0))
         if original.get("schema") == "hakimi-predeal-input-v1":
             from ..analysis.research_windows import build_predeal_input
             info = json.loads(original["information_json"])

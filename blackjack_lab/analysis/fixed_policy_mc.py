@@ -14,6 +14,7 @@ from random import Random
 from statistics import mean, stdev
 from time import perf_counter, time
 
+from .bounded_mean import bounded_mean_interval
 from .predeal_contracts import (
     PREDEAL_MAX_REMAINING, PREDEAL_STRATEGY_VERSION, SURRENDER_UNSET,
     require_declared_surrender,
@@ -33,6 +34,12 @@ POLICY_TOY_HARD = CONSUMPTION_BASIC
 POLICY_LEGAL_UNSPLIT = CONSUMPTION_LEGAL_UNSPLIT
 INPUT_SCOPE_FIXED_COMPOSITION = "fixed_composition"
 INPUT_SCOPE_REMAINING_COUNT_PRIOR = "remaining_count_prior"
+# Conservative legal net-pay support for the current unsplit, no-insurance,
+# at-most-one-double, 3:2 S17 model. Other games must pass their own bounds.
+UNSPLIT_NO_INSURANCE_DOUBLE_PAY_LOW = -2.0
+UNSPLIT_NO_INSURANCE_DOUBLE_PAY_HIGH = 2.0
+FORMAL_CI_METHOD = "hoeffding_fixed_n_finite_family_v1"
+WALD_CI_METHOD = "wald_normal_mean_sample_sd"
 SUPPORTED_POLICIES = {
     POLICY_ALWAYS_STAND: "冻结停牌消耗；不是最优策略",
     POLICY_TOY_HARD: "玩具硬点数消耗；不是已核验基本策略表",
@@ -165,7 +172,7 @@ def _net_summary(pays):
     }
 
 
-def _rules_snapshot(n_decks, surrender, input_scope):
+def _rules_snapshot(n_decks, surrender, input_scope, pay_low, pay_high):
     return {
         "dealer_soft17": "S17",
         "blackjack_payout": [3, 2],
@@ -176,6 +183,8 @@ def _rules_snapshot(n_decks, surrender, input_scope):
         "double_after_split": False,
         "n_decks": n_decks,
         "input_scope": input_scope,
+        "payoff_support": [pay_low, pay_high],
+        "payoff_support_source": "unsplit_no_insurance_single_double_3to2_conservative",
     }
 
 
@@ -214,7 +223,10 @@ def _parent_composition(*, n_decks, remaining, pack):
 
 def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=1024, seed=1,
                           remaining=None, pack=None, surrender=SURRENDER_UNSET, cancelled=None,
-                          budget_seconds=None, play_budget_seconds=2.0, z=1.96):
+                          budget_seconds=None, play_budget_seconds=2.0, z=1.96, alpha=0.05,
+                          family_size=1, pay_low=UNSPLIT_NO_INSURANCE_DOUBLE_PAY_LOW,
+                          pay_high=UNSPLIT_NO_INSURANCE_DOUBLE_PAY_HIGH,
+                          numerical_tolerance=1e-10):
     """Independent Monte Carlo of one next round under a frozen unsplit policy.
 
     `budget_seconds` is an offline wall-clock bound, not the interactive 5s exact cap.
@@ -226,6 +238,17 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
     n_samples = _require_positive_int(n_samples, "样本数")
     seed = _require_nonneg_int(seed, "种子")
     z_value = _require_finite_number(z, "区间z", positive=True)
+    alpha_value = _require_finite_number(alpha, "family_alpha", positive=True)
+    if not 0 < alpha_value < 1:
+        raise FixedPolicyError("ILLEGAL_NUMBER", "family_alpha 必须在 (0,1)")
+    family_size = _require_positive_int(family_size, "family_size")
+    pay_low = _require_finite_number(pay_low, "收益下界")
+    pay_high = _require_finite_number(pay_high, "收益上界")
+    if pay_low >= pay_high:
+        raise FixedPolicyError("ILLEGAL_NUMBER", "收益界必须严格有序，且来自规则而不是样本极值")
+    band = _require_finite_number(numerical_tolerance, "numerical_tolerance")
+    if band < 0:
+        raise FixedPolicyError("ILLEGAL_NUMBER", "numerical_tolerance 必须非负")
     try:
         play_budget_seconds = _require_finite_number(play_budget_seconds, "单局预算", positive=True)
         if budget_seconds is not None:
@@ -241,11 +264,14 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
     parent, composition_counts, physical, decks_out = _parent_composition(
         n_decks=n_decks, remaining=remaining, pack=pack)
     input_scope = _input_scope(pack=pack, remaining=remaining, n_decks=n_decks)
-    rules = _rules_snapshot(decks_out, surrender, input_scope)
+    rules = _rules_snapshot(decks_out, surrender, input_scope, pay_low, pay_high)
     sample_plan = {
         "n_samples_planned": n_samples,
         "seed": seed,
         "ci_z": z_value,
+        "alpha_family": alpha_value,
+        "family_size": family_size,
+        "payoff_support": [pay_low, pay_high],
         "input_scope": input_scope,
         "draw_size": physical,
         "play_budget_seconds": play_budget_seconds,
@@ -260,7 +286,8 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
     })
     algorithm_digest = digest({
         "method": METHOD,
-        "ci_method": "wald_normal_mean_sample_sd",
+        "ci_method": FORMAL_CI_METHOD,
+        "diagnostic_ci_method": WALD_CI_METHOD,
         "sample_plan": sample_plan,
     })
     rng = Random(seed)
@@ -301,6 +328,7 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
     se = subsample_se if complete else None
     lo = (population_ev - z_value * se) if se is not None else None
     hi = (population_ev + z_value * se) if se is not None else None
+    wald_degenerate = bool(complete and (se is None or se == 0))
     nets = _net_summary(pays) if complete else {
         "net_pay_counts": {},
         "net_distribution": {},
@@ -309,23 +337,29 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
         "p_lose": None,
         "n": n_ok,
     }
-    statistical_positive = False
-    statistical_nonpositive = False
-    window_claim_allowed = False
-    if complete and se is not None and input_scope == INPUT_SCOPE_FIXED_COMPOSITION:
-        if lo > 0:
-            statistical_positive = True
-            window_claim_allowed = True
-            sign_status = "point_ci_excludes_zero_positive"
-            sign_reason = "固定组成、预注册样本完成且 Wald 下界>0；统计正，不是精确最优、不是 timely、不是桌面已证"
-        elif hi <= 0:
-            statistical_nonpositive = True
-            window_claim_allowed = True
-            sign_status = "point_ci_excludes_zero_nonpositive"
-            sign_reason = "固定组成、预注册样本完成且 Wald 上界≤0；统计非正，不是精确最优"
-        else:
-            sign_status = "indeterminate"
-            sign_reason = "固定组成已完成，但区间含零；不能宣称确定符号"
+    try:
+        formal = bounded_mean_interval(
+            pays, planned_n=n_samples, n_failed=n_failed, n_not_run=n_not_run,
+            lower_payoff=pay_low, upper_payoff=pay_high, alpha_family=alpha_value,
+            family_size=family_size, positive_threshold=band,
+            fixed_composition=input_scope == INPUT_SCOPE_FIXED_COMPOSITION,
+            fixed_policy=True, iid_design_declared=True)
+    except ValueError as error:
+        raise FixedPolicyError("ILLEGAL_PAYOFF_SUPPORT", str(error)) from error
+    statistical_positive = bool(formal["statistical_positive"])
+    statistical_nonpositive = bool(formal["statistical_nonpositive"])
+    window_claim_allowed = bool(formal["window_claim_allowed"])
+    formal_lo = formal.get("ci_low")
+    formal_hi = formal.get("ci_high")
+    if complete and window_claim_allowed and statistical_positive:
+        sign_status = "bounded_ci_excludes_zero_positive"
+        sign_reason = (
+            "固定组成、预注册样本完成且有界Hoeffding下界高于近零带；"
+            "统计正，不是精确最优、不是 timely、不是桌面已证。Wald 只作诊断"
+        )
+    elif complete and window_claim_allowed and statistical_nonpositive:
+        sign_status = "bounded_ci_excludes_zero_nonpositive"
+        sign_reason = "固定组成、预注册样本完成且有界Hoeffding上界不高于近零带的负侧；统计非正，不是精确最优"
     elif not complete:
         sign_status = "indeterminate"
         sign_reason = "未完成预注册样本或存在失败/未跑样本；成功子样本均值不能代表计划总体"
@@ -334,7 +368,7 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
         sign_reason = "剩余张数先验每次重抽组成，不能作为正式窗口声称"
     else:
         sign_status = "indeterminate"
-        sign_reason = "精度不足，不能宣称确定符号"
+        sign_reason = "有界区间含零或过近零；Wald 退化或过窄不能当作正式符号"
     source_mode = ("synthetic-composition" if input_scope == INPUT_SCOPE_FIXED_COMPOSITION
                    else "sampled-remaining")
     cancel_latency = None
@@ -394,9 +428,20 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
         "std": sample_std,
         "standard_error": se,
         "ci_z": z_value,
-        "ci_low": lo,
-        "ci_high": hi,
-        "ci_method": "wald_normal_mean_sample_sd",
+        "wald_ci_low": lo,
+        "wald_ci_high": hi,
+        "wald_degenerate": wald_degenerate,
+        "ci_low": formal_lo,
+        "ci_high": formal_hi,
+        "ci_method": FORMAL_CI_METHOD,
+        "diagnostic_ci_method": WALD_CI_METHOD,
+        "alpha_family": alpha_value,
+        "family_size": family_size,
+        "alpha_per_claim": formal.get("alpha_per_claim"),
+        "payoff_support": [pay_low, pay_high],
+        "payoff_support_note": "当前未分牌、不买保险、最多一次加倍、3:2 模型的保守净收益界；其他玩法必须另核",
+        "hoeffding_radius": formal.get("radius"),
+        "numerical_tolerance": band,
         "net_pay_counts": nets["net_pay_counts"],
         "net_distribution": nets["net_distribution"],
         "p_win": nets["p_win"],
@@ -414,7 +459,7 @@ def evaluate_fixed_policy(*, n_decks=6, policy=POLICY_ALWAYS_STAND, n_samples=10
         "cancel_latency_seconds": cancel_latency,
         "hardware_note": "吞吐按本机墙钟与已尝试样本；峰值RSS是进程工作集，不是精度证明；取消延迟是察觉 cancelled() 之后到回执写出的墙钟，不是整段任务时长",
         "cancelled": stopped == "cancelled",
-        "note": "固定策略蒙特卡洛；失败/未跑样本使总体EV为空；统计符号不是精确最优、不是 timely、不是桌面已证",
+        "note": "固定策略蒙特卡洛；失败/未跑样本使总体EV为空；正式符号用有界Hoeffding，Wald只作诊断；不是 timely、不是桌面已证",
     }
     report["window_state"] = window_state(report)
     return report

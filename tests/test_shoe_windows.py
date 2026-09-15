@@ -344,3 +344,33 @@ class ShoeWindowStudyTest(unittest.TestCase):
             self.assertEqual(UNSUPPORTED, item["predeal"]["status"])
             self.assertEqual("PREDEAL_SHOE_TOO_LARGE", item["predeal"]["reason_code"])
             self.assertEqual(EVALUATION_EXACT_SMALL, item["predeal"]["evaluation_method"])
+
+    def test_mc_family_size_is_prespecified_not_the_realized_round_count(self):
+        report = run_window_study(
+            kind=KIND_FULL_DEPLETE, n_decks=6, seed=1, max_rounds=3, surrender=None,
+            evaluation_method=EVALUATION_FIXED_POLICY_MC,
+            evaluation_policy_id=CONSUMPTION_STAND, mc_n_samples=8)
+        self.assertEqual(3, report["mc_family_size"])
+        self.assertEqual(0.05, report["mc_alpha"])
+        self.assertEqual(3, report["summary"]["round_count"])
+        for item in report["rounds"]:
+            self.assertEqual(3, item["predeal"]["family_size"])
+            self.assertEqual(0.05 / 3, item["predeal"]["alpha_per_claim"])
+            self.assertEqual("hoeffding_fixed_n_finite_family_v1", item["predeal"]["ci_method"])
+            self.assertFalse(item["predeal"]["statistical_positive"])
+
+    def test_mc_deplete_does_not_switch_play_to_exact_optimal(self):
+        report = run_window_study(
+            kind=KIND_FULL_DEPLETE, n_decks=6, seed=1, max_rounds=3, surrender=None,
+            evaluation_method=EVALUATION_FIXED_POLICY_MC,
+            evaluation_policy_id=CONSUMPTION_STAND, mc_n_samples=8)
+        self.assertEqual(CONSUMPTION_STAND, report["path_policy_id"])
+        self.assertNotIn("+", report["path_policy_id"])
+        self.assertNotEqual(PREDEAL_STRATEGY_VERSION, report["path_policy_id"])
+        self.assertEqual(CONSUMPTION_STAND, report["evaluation_policy_id"])
+        self.assertTrue(report["methods_not_merged"])
+        for item in report["rounds"]:
+            self.assertEqual(CONSUMPTION_STAND, item["path_policy_id"])
+            self.assertEqual(CONSUMPTION_STAND, item["consumption_policy"])
+            self.assertEqual(EVALUATION_FIXED_POLICY_MC, item["predeal"]["evaluation_method"])
+            self.assertTrue(item["predeal"]["not_merged_with_exact_optimal"])

@@ -44,8 +44,8 @@ _user32.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
 _user32.GetClientRect.restype = wintypes.BOOL
 _user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
 _user32.GetWindowThreadProcessId.restype = wintypes.DWORD
-_user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
-_user32.GetWindowLongW.restype = wintypes.LONG
+_user32.GetForegroundWindow.argtypes = []
+_user32.GetForegroundWindow.restype = wintypes.HWND
 
 _GWL_EXSTYLE = -20
 _WS_EX_TOOLWINDOW = 0x00000080
@@ -230,6 +230,45 @@ def list_capturable_windows(*, exclude_self: bool = True,
             raise CaptureRejected(f"枚举窗口失败，错误码 {error}")
     found.sort(key=lambda w: w.width * w.height, reverse=True)
     return found
+
+
+def foreground_window():
+    """Current foreground window geometry. Not a fullscreen acceptance result."""
+    hwnd = int(_user32.GetForegroundWindow() or 0)
+    if not hwnd:
+        return None
+    try:
+        return describe_window(hwnd)
+    except CaptureRejected:
+        return None
+
+
+def observe_foreground(*, screen_width=None, screen_height=None):
+    """Record which window had focus. looks_monitor_sized is not accepted=true."""
+    payload = {
+        "not_acceptance": True,
+        "supported": os.name == "nt",
+        "note": "前台窗口几何和是否接近屏幕尺寸，都不是 F11 验收通过",
+    }
+    if os.name != "nt":
+        return payload
+    info = foreground_window()
+    if info is None:
+        payload["foreground"] = None
+        payload["looks_monitor_sized"] = False
+        return payload
+    width = int(screen_width or 0)
+    height = int(screen_height or 0)
+    looks = bool(
+        width > 0 and height > 0
+        and not info.minimized
+        and info.width >= width - 16
+        and info.height >= height - 16
+    )
+    payload["foreground"] = info.as_dict()
+    payload["looks_monitor_sized"] = looks
+    payload["lab_overlay"] = bool(is_lab_overlay(info))
+    return payload
 
 
 def find_window_by_title(fragment: str) -> Optional[WindowInfo]:

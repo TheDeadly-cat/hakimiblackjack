@@ -9,6 +9,10 @@ from .contracts import (AnalysisInput, ENGINE_VERSION, STRATEGY_VERSION, RESULT_
                         AVAILABLE, INAPPLICABLE, UNSUPPORTED, PENDING, TIMEOUT, CANCELLED, STALE, FAILED, ACTION_ZH)
 from .research_windows import WINDOW_CURRENT_HAND, window_state
 from .predeal_contracts import PREDEAL_INPUT_SCHEMA, PREDEAL_RESULT_SCHEMA, PreDealInput
+from .offline_mc_contracts import (
+    OFFLINE_MC_INPUT_SCHEMA, OFFLINE_MC_MAX_BUDGET_SECONDS, OFFLINE_MC_RESULT_SCHEMA,
+    OfflineMcInput,
+)
 from .probability import CalculationStopped, InsufficientCards
 from .split_contracts import SplitAnalysisInput, SPLIT_INPUT_SCHEMA, SPLIT_RESULT_SCHEMA
 
@@ -16,6 +20,8 @@ from .split_contracts import SplitAnalysisInput, SPLIT_INPUT_SCHEMA, SPLIT_RESUL
 def _result_schema(snapshot):
     if isinstance(snapshot, SplitAnalysisInput):
         return SPLIT_RESULT_SCHEMA
+    if isinstance(snapshot, OfflineMcInput):
+        return OFFLINE_MC_RESULT_SCHEMA
     if isinstance(snapshot, PreDealInput):
         return PREDEAL_RESULT_SCHEMA
     return RESULT_SCHEMA
@@ -33,7 +39,7 @@ def base_result(snapshot, request_id):
     if getattr(snapshot, "window", None):
         result["window"] = snapshot.window
         result["window_kind"] = snapshot.window
-    elif not isinstance(snapshot, (SplitAnalysisInput, PreDealInput)):
+    elif not isinstance(snapshot, (SplitAnalysisInput, PreDealInput, OfflineMcInput)):
         result["window"] = WINDOW_CURRENT_HAND
         result["window_kind"] = WINDOW_CURRENT_HAND
         result["source_mode"] = "ledger-prefix"
@@ -53,6 +59,9 @@ def calculate(snapshot, request_id=None, budget_seconds=5.0):
     if isinstance(snapshot, SplitAnalysisInput):
         from .split_service import calculate_split
         return calculate_split(snapshot, request_id, budget_seconds)
+    if isinstance(snapshot, OfflineMcInput):
+        from .offline_mc import calculate_offline_mc
+        return calculate_offline_mc(snapshot, request_id, budget_seconds)
     if isinstance(snapshot, PreDealInput):
         from .predeal import calculate_predeal
         return calculate_predeal(snapshot, request_id, budget_seconds)
@@ -131,6 +140,8 @@ def _input_type(data):
     schema = data.get("schema")
     if schema == SPLIT_INPUT_SCHEMA:
         return SplitAnalysisInput
+    if schema == OFFLINE_MC_INPUT_SCHEMA:
+        return OfflineMcInput
     if schema == PREDEAL_INPUT_SCHEMA:
         return PreDealInput
     return AnalysisInput
@@ -174,8 +185,9 @@ class AnalysisService:
 
     def start(self, snapshot, budget_seconds=5.0):
         snapshot.validate()
-        if not math.isfinite(budget_seconds) or not 0 < budget_seconds <= 5:
-            raise ValueError("计算预算必须大于0且不超过5秒")
+        cap = OFFLINE_MC_MAX_BUDGET_SECONDS if isinstance(snapshot, OfflineMcInput) else 5.0
+        if not math.isfinite(budget_seconds) or not 0 < budget_seconds <= cap:
+            raise ValueError(f"计算预算必须大于0且不超过{cap:g}秒")
         self.cancel(STALE)
         request_id = uuid.uuid4().hex
         receive, send = mp.get_context("spawn").Pipe(duplex=False)

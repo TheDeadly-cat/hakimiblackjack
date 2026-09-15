@@ -140,3 +140,89 @@ def export_operator_trials(app):
         + " declared_pair_ids=" + str(body.get("declared_pair_ids"))
         + " " + str(body.get("reason_code")))
     return body
+
+
+class ScopeSignoffDialog(tk.Toplevel):
+    """Human records a bounded confirmation. Software cannot fill the name or phrase."""
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.app = app
+        self.title("范围内人工签收（软件不能代签）")
+        self.geometry("640x420")
+        from ..analysis.acceptance_pack import (
+            HUMAN_CONFIRMATION_PHRASE, SCOPE_LABELS, SCOPES,
+        )
+        self._scopes = SCOPES
+        self._labels = SCOPE_LABELS
+        self._phrase = HUMAN_CONFIRMATION_PHRASE
+        ttk.Label(
+            self, wraplength=600,
+            text="技术完成、范围内签收和发布授权不是同一个勾选。"
+                 "软件只保存你写下的确认，不会把全局验收包标成通过。",
+        ).pack(anchor="w", padx=8, pady=6)
+        form = ttk.Frame(self)
+        form.pack(fill=tk.BOTH, expand=True, padx=8)
+        self.var_scope = tk.StringVar(value=SCOPE_LABELS[SCOPES[0]])
+        self.var_name = tk.StringVar(value="")
+        self.var_commit = tk.StringVar(value="")
+        self.var_criteria = tk.StringVar(value="")
+        self.var_result = tk.StringVar(value="accepted")
+        self.var_phrase = tk.StringVar(value="")
+        ttk.Label(form, text="范围").grid(row=0, column=0, sticky="w")
+        ttk.Combobox(
+            form, textvariable=self.var_scope, state="readonly", width=36,
+            values=[SCOPE_LABELS[scope] for scope in SCOPES],
+        ).grid(row=0, column=1, sticky="w", pady=3)
+        ttk.Label(form, text="确认人姓名").grid(row=1, column=0, sticky="w")
+        ttk.Entry(form, textvariable=self.var_name, width=40).grid(row=1, column=1, sticky="w")
+        ttk.Label(form, text="代码版本").grid(row=2, column=0, sticky="w")
+        ttk.Entry(form, textvariable=self.var_commit, width=40).grid(row=2, column=1, sticky="w")
+        ttk.Label(form, text="验收标准").grid(row=3, column=0, sticky="w")
+        ttk.Entry(form, textvariable=self.var_criteria, width=40).grid(row=3, column=1, sticky="w")
+        ttk.Label(form, text="结果").grid(row=4, column=0, sticky="w")
+        ttk.Combobox(
+            form, textvariable=self.var_result, state="readonly", width=18,
+            values=("accepted", "rejected", "deferred"),
+        ).grid(row=4, column=1, sticky="w")
+        ttk.Label(
+            form, wraplength=520,
+            text="请抄写：" + HUMAN_CONFIRMATION_PHRASE,
+        ).grid(row=5, column=0, columnspan=2, sticky="w", pady=(8, 2))
+        ttk.Entry(form, textvariable=self.var_phrase, width=56).grid(
+            row=6, column=0, columnspan=2, sticky="ew")
+        ttk.Button(form, text="保存范围内签收", command=self.save).grid(
+            row=7, column=0, columnspan=2, pady=12)
+
+    def save(self):
+        from ..analysis.acceptance_pack import (
+            SCOPE_LABELS, SCOPES, freeze_status, record_scope_signoff,
+        )
+        from ..analysis.evidence import write_manifest
+        label = self.var_scope.get()
+        scope = next(item for item in SCOPES if SCOPE_LABELS[item] == label)
+        pack = {"schema": "hakimi-m4-acceptance-pack-v1", "items": {}, "scope_signoffs": []}
+        if _M4_PACK.is_file():
+            pack = json.loads(_M4_PACK.read_text(encoding="utf-8"))
+        try:
+            pack = record_scope_signoff(
+                pack, scope=scope, attested_by=self.var_name.get(),
+                code_commit=self.var_commit.get(), criteria=self.var_criteria.get(),
+                result=self.var_result.get(), confirmation_phrase=self.var_phrase.get(),
+                recorded_by="ui-scope-signoff")
+        except Exception as error:
+            messagebox.showerror("不能签收", str(error), parent=self)
+            return
+        _M4_PACK.parent.mkdir(parents=True, exist_ok=True)
+        write_manifest(_M4_PACK, pack)
+        status = freeze_status(
+            code_commit=self.var_commit.get().strip() or None, m4_pack=pack, scope=scope)
+        self.app.set_status(
+            f"已保存{SCOPE_LABELS[scope]}签收；全局accepted={pack['accepted']}；"
+            f"该范围scope_accepted={status['scope_accepted']}")
+        messagebox.showinfo(
+            "范围内签收",
+            f"已保存。全局验收包仍为未通过。\n该范围：{SCOPE_LABELS[scope]}\n"
+            f"scope_accepted={status['scope_accepted']}\nready还取决于干净SHA与绑定测试。",
+            parent=self)
+        self.destroy()

@@ -177,7 +177,7 @@ def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS,
                            budget_seconds=5.0, play_budget_seconds=2.0, pack=None,
                            target_index=0, cut_remaining=None, surrender=SURRENDER_UNSET,
                            evaluation_method=EVALUATION_EXACT_SMALL, evaluation_policy_id=None,
-                           mc_n_samples=64, mc_seed=None, mc_z=1.96):
+                           mc_n_samples=64, mc_seed=None, mc_z=1.96, mc_alpha=0.05):
     surrender = require_declared_surrender(surrender, what="前三/六轮消耗对照")
     if n_decks not in (6, 7, 8):
         raise ValueError("整靴研究只接受 6/7/8 副")
@@ -197,6 +197,7 @@ def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS,
     history = []
     snapshots = []
     wanted = set(checkpoints)
+    mc_family_size = max(1, len(checkpoints))
     stop_reason = "complete"
     mc_base_seed = seed if mc_seed is None else mc_seed
     for index in range(max(wanted)):
@@ -225,7 +226,8 @@ def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS,
                 current, surrender=surrender, evaluation_method=eval_method,
                 evaluation_policy_id=evaluation_policy_id, budget_seconds=budget_seconds,
                 mc_n_samples=mc_n_samples, mc_seed=mc_base_seed + index + 1, mc_z=mc_z,
-                mc_play_budget_seconds=play_budget_seconds)
+                mc_play_budget_seconds=play_budget_seconds, mc_family_size=mc_family_size,
+                mc_alpha=mc_alpha)
             predeal = dict(predeal)
             predeal["path_policy_id"] = target_policy
             predeal["cut_policy"] = {
@@ -268,6 +270,8 @@ def run_round_window_study(*, n_decks=6, n_players=1, after_rounds=AFTER_ROUNDS,
         "evaluation_method": eval_method,
         "evaluation_policy_id": eval_policy,
         "methods_not_merged": True,
+        "mc_family_size": mc_family_size,
+        "mc_alpha": mc_alpha,
         "surrender": surrender,
         "cut_remaining": cut,
         "cut_declared": cut_declared,

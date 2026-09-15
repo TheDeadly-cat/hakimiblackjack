@@ -23,6 +23,68 @@ def _frame_indexes(frame_count, max_frames):
     return [(index * (frame_count - 1)) // (count - 1) for index in range(count)]
 
 
+def extract_stills_without_rehash(video_path, output_dir, *, indexes=None, max_frames=4):
+    """Decode a few stills without hashing the source video.
+
+    Frame PNG hashes are fine. The source file is not re-read for SHA-256.
+    Stills are not card ground truth and do not accept M4.
+    """
+    from ..vision.deps import load_cv2
+    from ..vision.image_io import write_png_rgb
+
+    source = Path(video_path)
+    dest = Path(output_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    frames_dir = dest / "frames"
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    cv2 = load_cv2()
+    cap = cv2.VideoCapture(str(source))
+    if not cap.isOpened():
+        raise RuntimeError("无法打开录像抽帧；不重试绕过")
+    try:
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+        fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
+        count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        if width <= 0 or height <= 0 or count < 1:
+            raise RuntimeError("录像没有有效画面或帧数")
+        chosen = list(indexes) if indexes is not None else _frame_indexes(count, max_frames)
+        frames = []
+        for frame_index in chosen:
+            if frame_index < 0 or frame_index >= count:
+                raise ValueError(f"帧号越界: {frame_index}")
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+            ok, bgr = cap.read()
+            if not ok or bgr is None:
+                raise RuntimeError(f"读帧失败: {frame_index}")
+            rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            still = frames_dir / f"frame-{frame_index:06d}.png"
+            write_png_rgb(still, int(rgb.shape[1]), int(rgb.shape[0]), rgb.tobytes())
+            frames.append({
+                "path": str(still),
+                "sha256": sha256_file(still),
+                "frame_index": int(frame_index),
+                "time_ms": int(round(1000.0 * frame_index / fps)) if fps > 0 else None,
+                "width": int(rgb.shape[1]),
+                "height": int(rgb.shape[0]),
+                "role": "development-still-not-ground-truth",
+            })
+    finally:
+        cap.release()
+    return {
+        "accepted": False,
+        "source_hashed": False,
+        "video_path": str(source),
+        "video_bytes": int(source.stat().st_size),
+        "width": width,
+        "height": height,
+        "fps": fps,
+        "frame_count": count,
+        "frames": frames,
+        "note": "未重新哈希源片；静帧不是逐牌真值，也不能把材料写成已验收",
+    }
+
+
 def extract_review_frames(video_path, output_dir, *, max_frames=8, write_manifest_file=True):
     """Seek evenly spaced frames, write PNG stills, hash source and stills.
 

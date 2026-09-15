@@ -7,9 +7,10 @@ import unittest
 from pathlib import Path
 
 from blackjack_lab.analysis.acceptance_pack import (
-    INTERACTIVE_EXACT_BUDGET_SECONDS, PREDEAL_MAX_REMAINING, SCHEMA, SHIPPED_HEAD,
-    SQLITE_SCHEMA, bind_item_artifact, build_acceptance_pack, freeze_status, hash_tree,
-    ingest_inbox, record_named_review,
+    HUMAN_CONFIRMATION_PHRASE, INTERACTIVE_EXACT_BUDGET_SECONDS, PREDEAL_MAX_REMAINING,
+    SCHEMA, SCOPE_OFFLINE_RESEARCH, SHIPPED_HEAD, SQLITE_SCHEMA, amend_named_review,
+    bind_item_artifact, build_acceptance_pack, freeze_status, hash_tree, ingest_inbox,
+    record_named_review, record_scope_signoff,
 )
 from blackjack_lab.analysis.evidence import (
     LEVEL_DECLARED, LEVEL_EVIDENCE_LINKED, LEVEL_MISSING, LEVEL_REVIEWED, EvidenceError, sha256_file,
@@ -92,13 +93,15 @@ class AcceptancePackTest(unittest.TestCase):
             for item in body["items"].values():
                 self.assertFalse(item["passed"])
 
-    def test_freeze_never_ready_and_rejects_accepted_pack(self):
+    def test_freeze_default_is_not_ready_and_ignores_hand_edited_accept(self):
         status = freeze_status(
             code_commit="abc", dirty_worktree=False, tests_bound_to_sha=True,
             pr_body_updated=True, human_commit_authorized=True,
             m4_pack=build_acceptance_pack())
         self.assertFalse(status["ready"])
         self.assertFalse(status["accepted"])
+        self.assertTrue(status["technical_ready"])
+        self.assertIn("release_not_signed_by_human", status["blockers"])
         self.assertIn("m4_materials_not_accepted", status["blockers"])
         self.assertEqual(SHIPPED_HEAD, status["shipped_head"])
         self.assertEqual(EXACT_CAP, status["predeal_max_remaining"])
@@ -108,9 +111,9 @@ class AcceptancePackTest(unittest.TestCase):
         self.assertEqual(5.0, status["interactive_exact_budget_seconds"])
         self.assertEqual(INTERACTIVE_EXACT_BUDGET_SECONDS,
                          status["interactive_exact_budget_seconds"])
-        with self.assertRaises(EvidenceError) as caught:
-            freeze_status(m4_pack={"accepted": True})
-        self.assertEqual("AI_CANNOT_ACCEPT", caught.exception.code)
+        ignored = freeze_status(m4_pack={"accepted": True}, code_commit="abc")
+        self.assertFalse(ignored["ready"])
+        self.assertIn("untrusted_global_accepted_without_human_signoff", ignored["blockers"])
         with self.assertRaises(EvidenceError) as dirty:
             freeze_status(human_commit_authorized=True, dirty_worktree=True)
         self.assertEqual("FREEZE_DIRTY", dirty.exception.code)
@@ -122,6 +125,7 @@ class AcceptancePackTest(unittest.TestCase):
         freeze = CAPABILITY_MATRIX["发布冻结"]
         self.assertEqual(UNSUPPORTED, freeze[0])
         self.assertIn("脏工作树", freeze[1])
+        self.assertIn("人工", freeze[1])
 
     def test_hand_edited_passed_flags_cannot_drop_human_blockers(self):
         pack = build_acceptance_pack()
@@ -179,6 +183,11 @@ class AcceptancePackTest(unittest.TestCase):
             self.assertTrue(item["human_reviewed"])
             self.assertFalse(item["passed"])
             self.assertFalse(reviewed["accepted"])
+            self.assertEqual("artifact-identity-and-stated-range", item["review_scope"])
+            self.assertIn("逐牌真值", item["review_excludes"])
+            self.assertEqual(1, len(item["review_records"]))
+            self.assertEqual("Shawn", item["review_records"][0]["declarant"])
+            self.assertEqual("software-recorder", item["review_records"][0]["recorded_by"])
             self.assertEqual(5, len(reviewed["human_blockers"]))
             with self.assertRaises(EvidenceError) as caught:
                 record_named_review(pack, "table_rules", attested_by="  ")
@@ -228,3 +237,65 @@ class AcceptancePackTest(unittest.TestCase):
             self.assertEqual(1, len(again["items"]["table_rules"]["artifacts"]))
             self.assertEqual([], again["inbox_bound"])
             self.assertFalse(again["accepted"])
+
+    def test_named_review_correction_keeps_history(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "clip.bin"
+            path.write_bytes(b"video-bytes")
+            pack = bind_item_artifact(build_acceptance_pack(), "authorized_shoe_video", path)
+            pack = record_named_review(
+                pack, "authorized_shoe_video", attested_by="Shawn",
+                review_scope="open-shoe-to-cut-or-shuffle",
+                includes=("录像从开靴到所述停止/换靴阶段",),
+                recorded_by="Grok")
+            pack = amend_named_review(
+                pack, "authorized_shoe_video", attested_by="Shawn",
+                correction="不包含逐牌真值、无漏帧或未使用留出")
+            records = pack["items"]["authorized_shoe_video"]["review_records"]
+            self.assertEqual(2, len(records))
+            self.assertEqual("open-shoe-to-cut-or-shuffle", records[0]["review_scope"])
+            self.assertIn("correction", records[1])
+            self.assertFalse(pack["accepted"])
+
+    def test_software_cannot_sign_a_scope_and_human_can_freeze_offline_scope(self):
+        pack = build_acceptance_pack()
+        with self.assertRaises(EvidenceError) as caught:
+            record_scope_signoff(
+                pack, scope=SCOPE_OFFLINE_RESEARCH, attested_by="Grok",
+                code_commit="abc", criteria="synthetic study export",
+                result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE)
+        self.assertEqual("SOFTWARE_CANNOT_SIGN", caught.exception.code)
+        with self.assertRaises(EvidenceError) as phrase:
+            record_scope_signoff(
+                pack, scope=SCOPE_OFFLINE_RESEARCH, attested_by="Shawn",
+                code_commit="abc", criteria="synthetic study export",
+                result="accepted", confirmation_phrase="ok")
+        self.assertEqual("CONFIRMATION_PHRASE_REQUIRED", phrase.exception.code)
+        signed = record_scope_signoff(
+            pack, scope=SCOPE_OFFLINE_RESEARCH, attested_by="Shawn",
+            code_commit="abc123",
+            criteria="合成牌靴、合法未分牌策略、有界Hoeffding、完整检查点导出",
+            result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE)
+        self.assertFalse(signed["accepted"])
+        self.assertEqual(1, len(signed["scope_signoffs"]))
+        frozen = freeze_status(
+            code_commit="abc123", dirty_worktree=False, tests_bound_to_sha=True,
+            pr_body_updated=True, m4_pack=signed, scope=SCOPE_OFFLINE_RESEARCH)
+        self.assertTrue(frozen["technical_ready"])
+        self.assertTrue(frozen["scope_accepted"])
+        self.assertTrue(frozen["ready"])
+        self.assertFalse(frozen["accepted"])
+        self.assertFalse(frozen["release_authorized"])
+        later = record_scope_signoff(
+            signed, scope=SCOPE_OFFLINE_RESEARCH, attested_by="Shawn",
+            code_commit="def456",
+            criteria="newer checkout",
+            result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE)
+        self.assertTrue(later["scope_signoffs"][0]["superseded"])
+        self.assertFalse(later["scope_signoffs"][1]["superseded"])
+        stale = freeze_status(
+            code_commit="abc123", dirty_worktree=False, tests_bound_to_sha=True,
+            pr_body_updated=True, m4_pack=later, scope=SCOPE_OFFLINE_RESEARCH)
+        self.assertFalse(stale["ready"])
+        self.assertIn("scope_not_signed_by_human", stale["blockers"])
+

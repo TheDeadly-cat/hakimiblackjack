@@ -37,7 +37,7 @@ def sha256_file(path):
     return digest.hexdigest()
 
 
-def classify_artifacts(artifacts):
+def classify_artifacts(artifacts, *, verify_digest=True):
     """Classify a list of {path, sha256?, role} without ever returning accepted."""
     artifacts = list(artifacts or [])
     if not artifacts:
@@ -66,9 +66,13 @@ def classify_artifacts(artifacts):
             missing.append({"role": item.get("role"), "path": str(path)})
             continue
         expected = item.get("sha256")
-        actual = sha256_file(file)
-        if expected and str(expected).lower() != actual.lower():
-            mismatch.append({"role": item.get("role"), "path": str(path)})
+        if verify_digest:
+            actual = sha256_file(file)
+            if expected and str(expected).lower() != actual.lower():
+                mismatch.append({"role": item.get("role"), "path": str(path)})
+                continue
+        elif not expected:
+            missing.append({"role": item.get("role"), "path": str(path), "reason": "digest-not-bound"})
             continue
         linked += 1
     if missing or mismatch or linked != declared:
@@ -86,8 +90,9 @@ def classify_artifacts(artifacts):
     }
 
 
-def classify_review(*, artifacts, attested_by=None, human_reviewed=False, accepted=False):
-    binding = classify_artifacts(artifacts)
+def classify_review(*, artifacts, attested_by=None, human_reviewed=False, accepted=False,
+                    verify_digest=True):
+    binding = classify_artifacts(artifacts, verify_digest=verify_digest)
     if accepted is True:
         raise EvidenceError("AI_CANNOT_ACCEPT", "软件不能把 accepted=true 写成通过")
     if human_reviewed is True and not (isinstance(attested_by, str) and attested_by.strip()):

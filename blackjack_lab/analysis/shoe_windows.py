@@ -393,7 +393,8 @@ def evaluate_predeal(pack, budget_seconds=5.0, surrender=SURRENDER_UNSET):
 
 def evaluate_checkpoint(pack, *, surrender, evaluation_method=EVALUATION_EXACT_SMALL,
                         evaluation_policy_id=None, budget_seconds=5.0, mc_n_samples=64,
-                        mc_seed=1, mc_z=1.96, mc_play_budget_seconds=2.0):
+                        mc_seed=1, mc_z=1.96, mc_play_budget_seconds=2.0, mc_family_size=1,
+                        mc_alpha=0.05):
     """Evaluate one remaining pack. Exact and frozen-policy MC stay separate methods."""
     surrender = require_declared_surrender(surrender, what="检查点评估")
     method = evaluation_method or EVALUATION_EXACT_SMALL
@@ -415,6 +416,7 @@ def evaluate_checkpoint(pack, *, surrender, evaluation_method=EVALUATION_EXACT_S
     report = dict(evaluate_fixed_policy(
         pack=list(pack), policy=policy, n_samples=mc_n_samples, seed=mc_seed,
         surrender=surrender, z=mc_z, play_budget_seconds=mc_play_budget_seconds,
+        family_size=mc_family_size, alpha=mc_alpha,
     ))
     report["evaluation_method"] = EVALUATION_FIXED_POLICY_MC
     report["evaluation_policy_id"] = policy
@@ -433,7 +435,8 @@ def _pay_distribution(pays):
 def _summarize(kind, rounds, *, n_decks, seed, margin, consumption,
                cut_remaining=0, cut_declared=False, cut_source="undeclared-play-to-exhaustion",
                stop_reason=None, remaining_at_end=None, surrender=SURRENDER_UNSET,
-               evaluation_method=EVALUATION_EXACT_SMALL, evaluation_policy_id=None):
+               evaluation_method=EVALUATION_EXACT_SMALL, evaluation_policy_id=None,
+               mc_family_size=None, mc_alpha=None):
     surrender = require_declared_surrender(surrender, what="整靴窗口摘要")
     available = [item for item in rounds
                  if item["predeal"].get("status") == AVAILABLE and item["predeal"].get("ev") is not None]
@@ -460,6 +463,8 @@ def _summarize(kind, rounds, *, n_decks, seed, margin, consumption,
             "检查点EV按冻结策略MC；不是精确最优，也不是耗牌路径与评估方法的合并曲线"
         ),
         "methods_not_merged": True,
+        "mc_family_size": mc_family_size,
+        "mc_alpha": mc_alpha,
         "path_policy_display": POLICY_DISPLAY.get(consumption, consumption),
         "cut_remaining": cut_remaining,
         "cut_declared": cut_declared,
@@ -550,20 +555,33 @@ def _attach_checkpoint(predeal, *, path_policy_id, cut, cut_declared, cut_source
     return record
 
 
+def _planned_mc_family_size(initial, *, cut, max_rounds, kind):
+    """Prespecified checkpoint budget. Do not use the realized round count after play."""
+    if kind == KIND_FULL_RESHUFFLE:
+        return max(1, min(max_rounds, 8))
+    playable = max(0, len(initial) - max(int(cut or 0), 0))
+    return max(1, min(max_rounds, max(playable, 4) // 4))
+
+
 def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, margin=0.01,
                      budget_seconds=5.0, max_rounds=80, play_budget_seconds=2.0,
                      play_policy=None, surrender=SURRENDER_UNSET, cut_remaining=None,
                      evaluation_method=EVALUATION_EXACT_SMALL, evaluation_policy_id=None,
-                     mc_n_samples=64, mc_seed=None, mc_z=1.96):
+                     mc_n_samples=64, mc_seed=None, mc_z=1.96, mc_alpha=0.05):
     surrender = require_declared_surrender(surrender, what="整靴窗口研究")
     rng = Random(seed)
-    if play_policy is None:
-        play_policy = CONSUMPTION_STAND if kind == KIND_FULL_RESHUFFLE else CONSUMPTION_PI
     eval_method = evaluation_method or EVALUATION_EXACT_SMALL
     if eval_method == EVALUATION_EXACT_SMALL:
         eval_policy = PREDEAL_STRATEGY_VERSION
     else:
         eval_policy = evaluation_policy_id or CONSUMPTION_STAND
+    if play_policy is None:
+        if eval_method == EVALUATION_FIXED_POLICY_MC:
+            play_policy = eval_policy
+        elif kind == KIND_FULL_RESHUFFLE:
+            play_policy = CONSUMPTION_STAND
+        else:
+            play_policy = CONSUMPTION_PI
     cut, cut_declared, cut_source = resolve_cut_remaining(
         n_decks, pack=pack, cut_remaining=cut_remaining)
     if pack is not None:
@@ -573,19 +591,25 @@ def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, marg
     else:
         initial = full_pack(n_decks)
     mc_base_seed = seed if mc_seed is None else mc_seed
+    mc_family_size = _planned_mc_family_size(
+        initial, cut=cut, max_rounds=max_rounds, kind=kind)
 
     def _predeal_at(current, *, round_index, path_policy_id, checkpoint_cut, checkpoint_declared,
                     checkpoint_source):
         record = evaluate_checkpoint(
             current, surrender=surrender, evaluation_method=eval_method,
-            evaluation_policy_id=evaluation_policy_id, budget_seconds=budget_seconds,
+            evaluation_policy_id=eval_policy if eval_method == EVALUATION_FIXED_POLICY_MC
+            else evaluation_policy_id, budget_seconds=budget_seconds,
             mc_n_samples=mc_n_samples, mc_seed=mc_base_seed + round_index, mc_z=mc_z,
-            mc_play_budget_seconds=play_budget_seconds)
+            mc_play_budget_seconds=play_budget_seconds, mc_family_size=mc_family_size,
+            mc_alpha=mc_alpha)
         return _attach_checkpoint(
             record, path_policy_id=path_policy_id, cut=checkpoint_cut,
             cut_declared=checkpoint_declared, cut_source=checkpoint_source)
 
-    summary_kw = dict(evaluation_method=eval_method, evaluation_policy_id=eval_policy)
+    summary_kw = dict(
+        evaluation_method=eval_method, evaluation_policy_id=eval_policy,
+        mc_family_size=mc_family_size, mc_alpha=mc_alpha)
     if kind == KIND_FULL_RESHUFFLE:
         path = CONSUMPTION_STAND if play_policy == CONSUMPTION_PI else play_policy
         rounds = []
@@ -653,7 +677,8 @@ def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, marg
         if cut > 0 and len(current) <= cut:
             stop_reason = "cut"
             break
-        if kind == KIND_FULL_DEPLETE and len(current) > PREDEAL_MAX_REMAINING:
+        if (kind == KIND_FULL_DEPLETE and eval_method == EVALUATION_EXACT_SMALL
+                and len(current) > PREDEAL_MAX_REMAINING):
             policy = CONSUMPTION_STAND
         else:
             policy = play_policy
@@ -677,8 +702,10 @@ def run_window_study(*, kind, n_decks=6, remaining=None, pack=None, seed=1, marg
         if error:
             stop_reason = "play_error"
             break
-    consumption = (CONSUMPTION_STAND + "+" + play_policy if kind == KIND_FULL_DEPLETE
-                   else play_policy)
+    if kind == KIND_FULL_DEPLETE and eval_method == EVALUATION_EXACT_SMALL:
+        consumption = CONSUMPTION_STAND + "+" + play_policy
+    else:
+        consumption = play_policy
     return _summarize(kind, rounds, n_decks=n_decks, seed=seed, margin=margin,
                       consumption=consumption, cut_remaining=cut, cut_declared=cut_declared,
                       cut_source=cut_source, stop_reason=stop_reason,

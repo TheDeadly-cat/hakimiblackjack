@@ -29,7 +29,6 @@ class FixedPolicyMonteCarloTest(unittest.TestCase):
         self.assertFalse(report["timely"])
         self.assertTrue(report["not_a_reliable_window_claim"])
         self.assertEqual(INPUT_SCOPE_FIXED_COMPOSITION, report["input_scope"])
-        self.assertEqual("nonpositive_supported", report["window_state"])
         self.assertEqual(64, len(report["rules_digest"]))
         self.assertEqual(64, len(report["policy_digest"]))
         self.assertEqual(64, len(report["algorithm_digest"]))
@@ -39,9 +38,18 @@ class FixedPolicyMonteCarloTest(unittest.TestCase):
         self.assertTrue(report["not_exact_optimal"])
         self.assertFalse(report["exact_positive"])
         self.assertFalse(report["desktop_attested"])
-        self.assertTrue(report["window_claim_allowed"])
-        self.assertTrue(report["statistical_nonpositive"])
-        self.assertLessEqual(report["ci_high"], 0)
+        self.assertFalse(report["window_claim_allowed"])
+        self.assertFalse(report["statistical_nonpositive"])
+        self.assertFalse(report["statistical_positive"])
+        self.assertEqual("indeterminate", report["window_state"])
+        self.assertTrue(report["wald_degenerate"])
+        self.assertAlmostEqual(report["wald_ci_low"], 0.0, delta=1e-12)
+        self.assertAlmostEqual(report["wald_ci_high"], 0.0, delta=1e-12)
+        self.assertGreater(report["ci_high"], 0)
+        self.assertLess(report["ci_low"], 0)
+        self.assertEqual("hoeffding_fixed_n_finite_family_v1", report["ci_method"])
+        self.assertEqual("wald_normal_mean_sample_sd", report["diagnostic_ci_method"])
+        self.assertEqual([-2.0, 2.0], report["payoff_support"])
         self.assertTrue(report["complete_pre_registered_sample"])
         self.assertEqual(0, report["n_failed"])
         self.assertAlmostEqual(report["ev"], 0.0, delta=1e-12)
@@ -54,16 +62,19 @@ class FixedPolicyMonteCarloTest(unittest.TestCase):
         self.assertEqual(16, PREDEAL_MAX_REMAINING)
         self.assertEqual(5.0, report["interactive_exact_budget_seconds"])
 
-    def test_positive_wald_interval_is_statistical_not_exact_optimal_live(self):
+    def test_positive_wald_interval_is_diagnostic_not_formal_sign(self):
         report = evaluate_fixed_policy(
             pack=ACE_THREE_TENS, policy=POLICY_ALWAYS_STAND, n_samples=200, seed=3,
             surrender=None)
         self.assertGreater(report["ev"], 0)
         self.assertEqual(INPUT_SCOPE_FIXED_COMPOSITION, report["input_scope"])
-        self.assertTrue(report["window_claim_allowed"])
-        self.assertTrue(report["statistical_positive"])
-        self.assertEqual("positive_supported", report["window_state"])
-        self.assertGreater(report["ci_low"], 0)
+        self.assertGreater(report["wald_ci_low"], 0)
+        self.assertFalse(report["wald_degenerate"])
+        self.assertLessEqual(report["ci_low"], 0)
+        self.assertFalse(report["window_claim_allowed"])
+        self.assertFalse(report["statistical_positive"])
+        self.assertEqual("indeterminate", report["window_state"])
+        self.assertEqual("hoeffding_fixed_n_finite_family_v1", report["ci_method"])
         self.assertTrue(report["not_exact_optimal"])
         self.assertFalse(report["exact_positive"])
         self.assertFalse(report["timely"])
@@ -282,3 +293,55 @@ class FixedPolicyMonteCarloTest(unittest.TestCase):
         self.assertEqual(full["composition_counts"], same_count["composition_counts"])
         self.assertEqual(312, sum(full["composition_counts"]))
         self.assertNotEqual(full["algorithm_digest"], prior["algorithm_digest"])
+
+    def test_six_card_two_wins_seed_two_are_not_a_statistical_positive(self):
+        oracle = six_card_oracle(False)
+        self.assertEqual("0", oracle["ev_fraction"])
+        report = evaluate_fixed_policy(
+            pack=SIX_CARD_PACK, policy=POLICY_ALWAYS_STAND, n_samples=2, seed=2,
+            surrender=None)
+        self.assertAlmostEqual(report["ev"], 1.0, delta=1e-12)
+        self.assertEqual(1.0, report["p_win"])
+        self.assertEqual(0.0, report["std"])
+        self.assertEqual(0.0, report["standard_error"])
+        self.assertTrue(report["wald_degenerate"])
+        self.assertAlmostEqual(report["wald_ci_low"], 1.0, delta=1e-12)
+        self.assertAlmostEqual(report["wald_ci_high"], 1.0, delta=1e-12)
+        self.assertLessEqual(report["ci_low"], 0)
+        self.assertFalse(report["statistical_positive"])
+        self.assertFalse(report["window_claim_allowed"])
+        self.assertEqual("indeterminate", report["window_state"])
+        self.assertEqual([-2.0, 2.0], report["payoff_support"])
+        self.assertEqual(1, report["family_size"])
+
+    def test_two_zero_samples_are_not_statistical_nonpositive(self):
+        report = evaluate_fixed_policy(
+            pack=FOUR_TENS, policy=POLICY_ALWAYS_STAND, n_samples=2, seed=1, surrender=None)
+        self.assertAlmostEqual(report["ev"], 0.0, delta=1e-12)
+        self.assertTrue(report["wald_degenerate"])
+        self.assertFalse(report["statistical_nonpositive"])
+        self.assertFalse(report["window_claim_allowed"])
+        self.assertGreater(report["ci_high"], 0)
+
+    def test_failed_samples_cannot_publish_a_sign(self):
+        report = evaluate_fixed_policy(
+            pack=(10, 9, 8), policy=POLICY_ALWAYS_STAND, n_samples=5, seed=1, surrender=None)
+        self.assertIsNone(report["ci_low"])
+        self.assertIsNone(report["ci_high"])
+        self.assertFalse(report["statistical_positive"])
+        self.assertFalse(report["statistical_nonpositive"])
+        self.assertFalse(report["window_claim_allowed"])
+
+    def test_family_size_widens_the_formal_interval(self):
+        one = evaluate_fixed_policy(
+            pack=ACE_THREE_TENS, policy=POLICY_ALWAYS_STAND, n_samples=80, seed=3,
+            surrender=None, family_size=1)
+        many = evaluate_fixed_policy(
+            pack=ACE_THREE_TENS, policy=POLICY_ALWAYS_STAND, n_samples=80, seed=3,
+            surrender=None, family_size=40)
+        self.assertEqual(one["ev"], many["ev"])
+        self.assertEqual(one["wald_ci_low"], many["wald_ci_low"])
+        self.assertLess(many["ci_low"], one["ci_low"])
+        self.assertGreater(many["ci_high"], one["ci_high"])
+        self.assertEqual(0.05 / 40, many["alpha_per_claim"])
+        self.assertFalse(many["window_claim_allowed"])

@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from blackjack_lab.analysis.experiment_export import write_window_study
 from blackjack_lab.analysis.shoe_windows import (
     KIND_FULL_DEPLETE, KIND_FULL_RESHUFFLE, KIND_LATE_DEPLETE, KIND_LATE_RESHUFFLE,
     CONSUMPTION_BASIC, CONSUMPTION_LEGAL_UNSPLIT, CONSUMPTION_STAND,
@@ -45,21 +46,31 @@ def main(argv=None):
     parser.add_argument("--evaluation-method", choices=sorted(EVAL_METHODS), default="exact-small",
                         help="检查点评估方法；缺省仍是≤16精确穷举，不会把MC与最优并成一条曲线")
     parser.add_argument("--evaluation-policy", choices=sorted(EVAL_POLICIES), default="always-stand",
-                        help="仅 fixed-policy-mc 使用的冻结策略")
+                        help="仅 fixed-policy-mc 使用的冻结评估策略")
+    parser.add_argument("--play-policy", choices=sorted(EVAL_POLICIES), default=None,
+                        help="耗牌策略；MC 缺省与评估策略相同，不会在剩余≤16时改走精确最优")
     parser.add_argument("--mc-samples", type=int, default=64)
     parser.add_argument("--mc-seed", type=int, default=None)
+    parser.add_argument("--output-dir", default=None,
+                        help="写入完整 study.json、检查点表、运行身份和可重算摘要；缺省只打印去掉 rounds 的概要")
     args = parser.parse_args(argv)
     from blackjack_lab.analysis.research_windows import parse_surrender_token
     eval_method = EVAL_METHODS[args.evaluation_method]
     eval_policy = EVAL_POLICIES[args.evaluation_policy] if eval_method == EVALUATION_FIXED_POLICY_MC else None
+    play_policy = EVAL_POLICIES[args.play_policy] if args.play_policy else None
     report = run_window_study(kind=KINDS[args.kind], n_decks=args.decks, remaining=args.remaining,
                               seed=args.seed, margin=args.margin, max_rounds=args.max_rounds,
                               cut_remaining=args.cut_remaining,
                               surrender=parse_surrender_token(args.surrender),
                               evaluation_method=eval_method,
                               evaluation_policy_id=eval_policy,
+                              play_policy=play_policy,
                               mc_n_samples=args.mc_samples,
                               mc_seed=args.mc_seed)
+    if args.output_dir:
+        written = write_window_study(report, args.output_dir)
+        print(json.dumps(written, ensure_ascii=False, indent=2))
+        return
     summary = dict(report["summary"])
     body = {key: value for key, value in report.items() if key != "rounds"}
     body["summary"] = summary

@@ -6,18 +6,22 @@ from tkinter import ttk, messagebox
 
 from ..analysis.contracts import RESULT_SCHEMA, STATUS_ZH, ACTION_ZH, AVAILABLE, STALE, InputUnavailable
 from ..analysis.predeal_contracts import PREDEAL_RESULT_SCHEMA, PreDealInput
+from ..analysis.offline_mc_contracts import OFFLINE_MC_RESULT_SCHEMA, OfflineMcInput
+from ..analysis.offline_mc import format_offline_mc_result
+from ..analysis.fixed_policy_mc import POLICY_ALWAYS_STAND
 from ..analysis.research_windows import (
     CURRENT_HAND_SCOPE, KIND_LIVE_CURRENT, KIND_MANUAL_ASOF, KIND_REPLAY, KIND_STALE,
-    KIND_SYNTHETIC, WINDOW_PRE_DEAL, assess_timely_live_claim, build_predeal_input,
-    counts_from_values, format_outcome_line, format_predeal_result, knowledge_revision_token,
-    parse_remaining_tokens, parse_surrender_token, research_rules, result_heading,
+    KIND_SYNTHETIC, WINDOW_PRE_DEAL, assess_timely_live_claim, build_offline_mc_input,
+    build_predeal_input, counts_from_values, format_outcome_line, format_predeal_result,
+    knowledge_revision_token, parse_remaining_tokens, parse_surrender_token, research_rules,
+    result_heading,
 )
 from ..analysis.service import AnalysisService
 from ..observation.currency import REASON_INPUT, REASON_SWITCHED, REASON_ZH
 from ..storage.analysis_snapshots import is_minimal_result
 from ..analysis.split_contracts import SPLIT_RESULT_SCHEMA
 
-DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA, PREDEAL_RESULT_SCHEMA}
+DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA, PREDEAL_RESULT_SCHEMA, OFFLINE_MC_RESULT_SCHEMA}
 
 
 def _current_hand_rule_line(info):
@@ -39,6 +43,10 @@ def _current_hand_rule_line(info):
 
 def format_result(result, historical=False, live_applicable=True, applicability_reason=None,
                   applicability_kind=None):
+    if result.get("schema") == OFFLINE_MC_RESULT_SCHEMA:
+        return format_offline_mc_result(result, historical, live_applicable=live_applicable,
+                                        applicability_reason=applicability_reason,
+                                        applicability_kind=applicability_kind)
     if result.get("schema") == PREDEAL_RESULT_SCHEMA:
         return format_predeal_result(result, historical, live_applicable=live_applicable,
                                      applicability_reason=applicability_reason,
@@ -122,6 +130,7 @@ class AnalysisPanel(ttk.Frame):
         self._observation_moved_during_request = False
         self._input_moved_during_request = False
         self._request_window = None
+        self._request_offline = False
         self.status = tk.StringVar(value="先选择研究模板并录入当前手牌")
         self.persistence = tk.StringVar(value="结果会独立保存，原始事件不变")
         self.auto = tk.BooleanVar(value=False)
@@ -140,6 +149,10 @@ class AnalysisPanel(ttk.Frame):
         self.predeal_button = ttk.Button(predeal_bar, text="计算发牌前优势", command=self.calculate_predeal)
         self.predeal_button.pack(side=tk.LEFT)
         self.predeal_button.state(["disabled"])
+        self.offline_button = ttk.Button(
+            predeal_bar, text="按已确认账本离线评估", command=self.calculate_offline_mc)
+        self.offline_button.pack(side=tk.LEFT, padx=(6, 0))
+        self.offline_button.state(["disabled"])
         self.var_predeal_remaining = tk.StringVar(value="")
         ttk.Label(predeal_bar, text="合成剩余").pack(side=tk.LEFT, padx=(8, 2))
         self.predeal_entry = ttk.Entry(predeal_bar, textvariable=self.var_predeal_remaining, width=18)
@@ -207,6 +220,8 @@ class AnalysisPanel(ttk.Frame):
             raw = (self.last_result.get("input") or {}).get("information_json")
             if isinstance(raw, str) and "explicit-composition" in raw:
                 return KIND_SYNTHETIC
+        if self.last_result and self.last_result.get("schema") == OFFLINE_MC_RESULT_SCHEMA:
+            return KIND_MANUAL_ASOF
         if self.live_applicable:
             return KIND_LIVE_CURRENT
         kind = self._applicability_kind or KIND_STALE
@@ -229,6 +244,9 @@ class AnalysisPanel(ttk.Frame):
         if result["status"] == AVAILABLE:
             if result.get("schema") == PREDEAL_RESULT_SCHEMA:
                 summary = f"发牌前净 EV {result['ev']:+.6f}"
+            elif result.get("schema") == OFFLINE_MC_RESULT_SCHEMA:
+                ev = result.get("ev")
+                summary = (f"离线MC EV {ev:+.6f}" if ev is not None else result.get("reason") or "离线MC")
             else:
                 summary = ("部分动作比较，不给唯一推荐" if result["partial_comparison"] else
                            "已计算动作EV均为负" if result.get("all_computed_ev_negative") else "计算完成（所声明模型）")
@@ -365,7 +383,7 @@ class AnalysisPanel(ttk.Frame):
         if self._closed:
             return
         self._refresh_predeal_gate()
-        if self.recomputed_from or self._request_window != WINDOW_PRE_DEAL:
+        if self.recomputed_from or self._request_window != WINDOW_PRE_DEAL or self._request_offline:
             return
         if self.request_id is None and not self.last_result:
             return
@@ -409,6 +427,43 @@ class AnalysisPanel(ttk.Frame):
             self.predeal_button.state(["disabled"])
         else:
             self.predeal_button.state(["!disabled"])
+        try:
+            self._offline_snapshot()
+        except (InputUnavailable, ValueError):
+            self.offline_button.state(["disabled"])
+        else:
+            self.offline_button.state(["!disabled"])
+        if (self._request_offline and self.request_digest and not self.recomputed_from
+                and (self.request_id is not None or self.last_result)):
+            current = self._current_offline_digest()
+            if current != self.request_digest:
+                self._input_moved_during_request = True
+                self.live_applicable = False
+                self._applicability_reason = REASON_INPUT
+                self._applicability_kind = KIND_STALE
+                if self.last_result:
+                    self.status.set(self._status_for_result(self.last_result))
+                    self.persistence.set("账本前缀已改变；离线结果保留为截至旧时点的记录")
+                    self._refresh_result_text()
+
+    def _offline_snapshot(self, template=None):
+        policy = template.policy_id if template is not None else POLICY_ALWAYS_STAND
+        n_samples = template.n_samples if template is not None else 256
+        seed = template.seed if template is not None else 1
+        family_size = template.family_size if template is not None else 1
+        alpha = template.alpha if template is not None else 0.05
+        return build_offline_mc_input(
+            self.app.ctrl.ledger, policy=policy, n_samples=n_samples, seed=seed,
+            family_size=family_size, alpha=alpha)
+
+    def _current_offline_digest(self):
+        try:
+            template = None
+            if self.last_result and self.last_result.get("schema") == OFFLINE_MC_RESULT_SCHEMA:
+                template = OfflineMcInput.from_dict(self.last_result["input"])
+            return self._offline_snapshot(template).input_digest
+        except Exception:
+            return None
 
     def calculate_current(self):
         self._cancel_auto()
@@ -434,6 +489,17 @@ class AnalysisPanel(ttk.Frame):
             self._set_text("")
             self.status.set(f"待核对：{error}")
 
+    def calculate_offline_mc(self):
+        self._cancel_auto()
+        try:
+            snapshot = self._offline_snapshot()
+            self.start(snapshot, budget_seconds=30.0)
+        except Exception as error:
+            self.recomputed_from = None
+            self._invalidate_current()
+            self._set_text("")
+            self.status.set(f"待核对：{error}")
+
     def start(self, snapshot, recomputed_from=None, budget_seconds=5.0):
         self._cancel_auto()
         if not recomputed_from:
@@ -441,6 +507,10 @@ class AnalysisPanel(ttk.Frame):
                 current = self._predeal_snapshot()
                 if current.input_digest != snapshot.input_digest:
                     raise InputUnavailable("TARGET_CHANGED", "发牌前输入已改变，请按当前组成重新计算")
+            elif isinstance(snapshot, OfflineMcInput):
+                current = self._offline_snapshot(snapshot)
+                if current.input_digest != snapshot.input_digest:
+                    raise InputUnavailable("TARGET_CHANGED", "账本前缀已改变，请按当前已确认记录重新计算")
             else:
                 segment = self.app._current_seg()
                 hand_id = self.app._selected_hand_id(segment) if segment else None
@@ -450,7 +520,10 @@ class AnalysisPanel(ttk.Frame):
         self.context_key = self._live_key()
         self.request_key = self.context_key
         self.request_digest = snapshot.input_digest
-        self._request_window = WINDOW_PRE_DEAL if isinstance(snapshot, PreDealInput) else "current_hand"
+        self._request_offline = isinstance(snapshot, OfflineMcInput)
+        self._request_window = (
+            WINDOW_PRE_DEAL if isinstance(snapshot, (PreDealInput, OfflineMcInput)) else "current_hand"
+        )
         self.request_observation = self._observation_revision()
         self.result_source_generation = (
             self.request_observation.generation if self.request_observation is not None else "")
@@ -466,6 +539,10 @@ class AnalysisPanel(ttk.Frame):
             self.live_applicable = False
             self._applicability_reason = None
             self._applicability_kind = KIND_SYNTHETIC
+        elif isinstance(snapshot, OfflineMcInput):
+            self.live_applicable = False
+            self._applicability_reason = None
+            self._applicability_kind = KIND_MANUAL_ASOF
         else:
             self.live_applicable = bool(ok)
             self._applicability_reason = None if self.live_applicable else reason
@@ -477,6 +554,8 @@ class AnalysisPanel(ttk.Frame):
         waiting = "正在按当时可见信息计算；可以继续录入或取消。"
         if synthetic:
             waiting = "正在按合成剩余组成计算；结果不是当前真实牌桌。"
+        elif isinstance(snapshot, OfflineMcInput):
+            waiting = "正在按已确认账本冻结组成做离线MC；结果不是及时发现，也不能当作桌面已证。"
         elif not recomputed_from and not ok:
             waiting = "正在按已确认记录计算；结果不能自动当作当前牌桌信号。"
         self._set_text(waiting)
@@ -509,7 +588,10 @@ class AnalysisPanel(ttk.Frame):
                 self._observation_moved_during_request = True
             input_matches_now = True
             if self._request_window == WINDOW_PRE_DEAL and not self.recomputed_from:
-                input_matches_now = self._current_predeal_digest() == result.get("input_digest")
+                if self._request_offline:
+                    input_matches_now = self._current_offline_digest() == result.get("input_digest")
+                else:
+                    input_matches_now = self._current_predeal_digest() == result.get("input_digest")
                 if not input_matches_now:
                     self._input_moved_during_request = True
             synthetic = result.get("schema") == PREDEAL_RESULT_SCHEMA and "explicit-composition" in str(
@@ -521,6 +603,10 @@ class AnalysisPanel(ttk.Frame):
             elif synthetic:
                 self.live_applicable = False
                 self._applicability_kind = KIND_SYNTHETIC
+                self._applicability_reason = None
+            elif result.get("schema") == OFFLINE_MC_RESULT_SCHEMA:
+                self.live_applicable = False
+                self._applicability_kind = KIND_MANUAL_ASOF
                 self._applicability_reason = None
             else:
                 self.live_applicable = bool(
@@ -598,6 +684,8 @@ class AnalysisPanel(ttk.Frame):
             r = item["result"]
             stamp = datetime.fromtimestamp(item["saved_at"]).strftime("%Y-%m-%d %H:%M:%S")
             identity = ("仅存储信封，无分析数值" if is_minimal_result(r) else
+                        f"离线MC剩余{r['input'].get('physical_remaining')} · #{r['input']['through_seq']} · {r['engine_version']}"
+                        if r.get("schema") == OFFLINE_MC_RESULT_SCHEMA else
                         f"发牌前剩余{r['input'].get('physical_remaining', sum(r['input'].get('counts') or ()))} · #{r['input']['through_seq']} · {r['engine_version']}"
                         if r.get("schema") == PREDEAL_RESULT_SCHEMA else
                         f"{r['input']['seat']} · #{r['input']['through_seq']} · {r['engine_version']}")

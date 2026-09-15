@@ -8,11 +8,12 @@ import uuid
 
 from ..analysis.contracts import RESULT_SCHEMA, STATUS_ZH, ACTION_ZH, canonical, digest
 from ..analysis.predeal_contracts import PREDEAL_RESULT_SCHEMA
+from ..analysis.offline_mc_contracts import OFFLINE_MC_RESULT_SCHEMA
 from ..analysis.research_windows import deadline_supports_timely_claim
 from .safe_files import atomic_write
 
 SNAPSHOT_SCHEMA = "hakimi-analysis-snapshot-v1"
-SUPPORTED_RESULTS = {RESULT_SCHEMA, "hakimi-analysis-result-v2", PREDEAL_RESULT_SCHEMA}
+SUPPORTED_RESULTS = {RESULT_SCHEMA, "hakimi-analysis-result-v2", PREDEAL_RESULT_SCHEMA, OFFLINE_MC_RESULT_SCHEMA}
 
 
 class SnapshotFormatError(ValueError):
@@ -68,6 +69,9 @@ def _validate_result(result):
         return
     if result["schema"] == PREDEAL_RESULT_SCHEMA:
         _validate_predeal_result(result)
+        return
+    if result["schema"] == OFFLINE_MC_RESULT_SCHEMA:
+        _validate_offline_mc_result(result)
         return
     for name in ("session_id", "shoe_id", "round_id", "seat", "hand_id"):
         _text(info.get(name), "result.input." + name)
@@ -187,6 +191,55 @@ def _validate_predeal_result(result):
         for net, probability in distribution.items():
             if abs(float(net) + 0.5) < 1e-9:
                 _require(probability <= 1e-12, "result.net_distribution", "无投降不得含投降收益")
+
+
+def _validate_offline_mc_result(result):
+    from ..analysis.offline_mc_contracts import OfflineMcInput
+    from ..analysis.predeal_contracts import legal_predeal_actions
+    from ..analysis.research_windows import WINDOW_PRE_DEAL, source_mode_from_information, window_state
+    try:
+        snapshot = OfflineMcInput.from_dict(result["input"])
+        snapshot.validate()
+    except (KeyError, TypeError, ValueError, AttributeError, RecursionError) as error:
+        raise SnapshotFormatError("result.input：无效离线MC输入：" + str(error)) from error
+    _require(result.get("window") == WINDOW_PRE_DEAL, "result.window", "必须为发牌前窗口")
+    inferred = source_mode_from_information(result["input"].get("information_json"))
+    if result.get("source_mode") is not None:
+        _require(result["source_mode"] == inferred, "result.source_mode", "必须与输入来源一致")
+    _require(result.get("timely") is not True, "result.timely", "离线MC不能标成当时抓住的窗口")
+    _require(result.get("not_a_reliable_window_claim") is True,
+             "result.not_a_reliable_window_claim", "离线MC不能写成可靠窗口")
+    _require(result.get("not_exact_optimal") is True, "result.not_exact_optimal", "离线MC不是精确最优")
+    _require(result["input_digest"] == snapshot.input_digest, "result.input_digest", "与离线MC输入不一致")
+    _require(result.get("rules_digest") == snapshot.rules_digest, "result.rules_digest", "与规则快照不一致")
+    _hex(result.get("rules_digest"), 64, "result.rules_digest")
+    for name in ("engine_version", "strategy_version", "status", "reason"):
+        _text(result.get(name), "result." + name)
+    _number(result.get("elapsed_seconds"), "result.elapsed_seconds")
+    _require(type(result.get("partial_comparison")) is bool, "result.partial_comparison", "必须为布尔值")
+    _require("surrender" in result and result.get("surrender") in (None, "late"),
+             "result.surrender", "必须显式为无投降或晚投降")
+    legal = result.get("legal_actions")
+    _require(isinstance(legal, (list, tuple)), "result.legal_actions", "必须为动作列表")
+    _require(tuple(legal) == legal_predeal_actions(result["surrender"]),
+             "result.legal_actions", "必须与投降规则一致")
+    if "window_state" in result:
+        _require(result["window_state"] == window_state(result),
+                 "result.window_state", "必须与开局窗口分类一致")
+    if result["status"] != "available":
+        return
+    _require(result.get("ci_method") == "hoeffding_fixed_n_finite_family_v1",
+             "result.ci_method", "正式区间必须是有界Hoeffding")
+    _require(result.get("complete_pre_registered_sample") is True,
+             "result.complete_pre_registered_sample", "可用结果必须完成预注册样本")
+    _number(result.get("ev"), "result.ev")
+    distribution = result.get("net_distribution")
+    _require(isinstance(distribution, dict) and bool(distribution), "result.net_distribution", "必须为收益对象")
+    support = result.get("payoff_support")
+    _require(isinstance(support, (list, tuple)) and len(support) == 2, "result.payoff_support", "必须声明模型收益界")
+    _require(type(result.get("family_size")) is int and result["family_size"] >= 1,
+             "result.family_size", "必须为正整数")
+    _require(result.get("policy_id") == snapshot.policy_id, "result.policy_id", "必须与冻结策略一致")
 
 
 def _validate_split_result(result):

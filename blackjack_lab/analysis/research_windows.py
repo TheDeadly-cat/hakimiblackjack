@@ -471,12 +471,7 @@ def build_predeal_input(ledger=None, *, counts=None, through_seq=None, rules=Non
                         session_id="synthetic-predeal"):
     """Independent pre-deal entry. Current-hand EV cannot satisfy this."""
     from .predeal_contracts import PREDEAL_MAX_REMAINING, PreDealInput, predeal_support_scope
-    from ..core.cards import TEN_RANKS
     from ..core.rules import CONFIRM_VERIFIED
-    from ..core.table import (
-        PHASE_DEALING, PHASE_IN_PROGRESS, PHASE_NO_ROUND, PHASE_SETTLED, PHASE_UNSETTLED,
-    )
-    from ..ledger.ledger import EventLedger
 
     if counts is not None:
         try:
@@ -516,6 +511,34 @@ def build_predeal_input(ledger=None, *, counts=None, through_seq=None, rules=Non
 
     if ledger is None:
         raise InputUnavailable("PREDEAL_INPUT_MISSING", "发牌前分析需要剩余牌靴组成，或已确认账本时点", PENDING)
+    state = inspect_ledger_opening(ledger, through_seq)
+    if state["remaining"] > PREDEAL_MAX_REMAINING:
+        raise InputUnavailable(
+            "PREDEAL_SHOE_TOO_LARGE",
+            f"本版发牌前精确入口只穷举剩余≤{PREDEAL_MAX_REMAINING}张；当前剩余{state['remaining']}张，6/7/8副整靴开局需另开离线实验。",
+            UNSUPPORTED,
+        )
+    if state["remaining"] < 4:
+        raise InputUnavailable("PREDEAL_TOO_FEW_CARDS", "剩余牌不足下一轮初始四张", INAPPLICABLE)
+    return PreDealInput(
+        counts=state["counts"], physical_remaining=state["remaining"],
+        rules_json=state["rules"].to_json(),
+        information_json=canonical(state["information"]), session_id=ledger.session_id,
+        shoe_id=state["current"].shoe_id, round_id=state["current"].round_id or "predeal-next",
+        through_seq=state["seq"], prefix_digest=state["prefix_digest"],
+        n_decks=state["rules"].n_decks, surrender=state["rules"].surrender,
+        support_scope=predeal_support_scope(state["rules"].surrender),
+    )
+
+
+def inspect_ledger_opening(ledger, through_seq=None):
+    """Freeze a confirmed ledger prefix. Unknown cards are not averaged into a pack."""
+    from ..core.cards import TEN_RANKS
+    from ..core.rules import CONFIRM_VERIFIED
+    from ..core.table import (
+        PHASE_DEALING, PHASE_IN_PROGRESS, PHASE_NO_ROUND, PHASE_SETTLED, PHASE_UNSETTLED,
+    )
+    from ..ledger.ledger import EventLedger
 
     all_events = ledger.to_list()
     seq = all_events[-1]["seq"] if through_seq is None and all_events else through_seq
@@ -568,25 +591,45 @@ def build_predeal_input(ledger=None, *, counts=None, through_seq=None, rules=Non
     remaining = shoe.physical_remaining()
     if remaining is None or remaining != sum(counts):
         raise InputUnavailable("COUNT_INCONSISTENT", "发牌前物理剩余与牌面十桶不一致")
-    if remaining > PREDEAL_MAX_REMAINING:
-        raise InputUnavailable(
-            "PREDEAL_SHOE_TOO_LARGE",
-            f"本版发牌前精确入口只穷举剩余≤{PREDEAL_MAX_REMAINING}张；当前剩余{remaining}张，6/7/8副整靴开局需另开离线实验。",
-            UNSUPPORTED,
-        )
-    if remaining < 4:
-        raise InputUnavailable("PREDEAL_TOO_FEW_CARDS", "剩余牌不足下一轮初始四张", INAPPLICABLE)
     information = {"gap": False, "pending_candidates": 0, "unrevealed_out": 0,
                    "burn_unknown": 0, "t_bucket_out": shoe.t_bucket_out,
                    "remaining_is_complete": True,
                    "ten_rank_identity_known": shoe.t_bucket_out == 0,
                    "source": "ledger-prefix", "phase": table.phase}
-    return PreDealInput(
-        counts=counts, physical_remaining=remaining, rules_json=rules.to_json(),
-        information_json=canonical(information), session_id=ledger.session_id,
-        shoe_id=current.shoe_id, round_id=current.round_id or "predeal-next",
-        through_seq=seq, prefix_digest=digest(prefix), n_decks=rules.n_decks,
-        surrender=rules.surrender, support_scope=predeal_support_scope(rules.surrender),
+    return {
+        "seq": seq,
+        "prefix": prefix,
+        "prefix_digest": digest(prefix),
+        "current": current,
+        "rules": rules,
+        "shoe": shoe,
+        "table": table,
+        "counts": counts,
+        "remaining": remaining,
+        "information": information,
+    }
+
+
+def build_offline_mc_input(ledger, *, policy, n_samples, seed, through_seq=None,
+                           family_size=1, alpha=0.05, play_budget_seconds=2.0):
+    """Confirmed ledger remaining → frozen-policy MC. Does not use the 16-card exact cap."""
+    from .offline_mc_contracts import OfflineMcInput, pack_from_counts
+    if ledger is None:
+        raise InputUnavailable("PREDEAL_INPUT_MISSING", "离线MC需要已确认账本时点", PENDING)
+    state = inspect_ledger_opening(ledger, through_seq)
+    if state["remaining"] < 4:
+        raise InputUnavailable("PREDEAL_TOO_FEW_CARDS", "剩余牌不足下一轮初始四张", INAPPLICABLE)
+    pack = pack_from_counts(state["counts"])
+    return OfflineMcInput(
+        counts=state["counts"], pack=pack, physical_remaining=state["remaining"],
+        rules_json=state["rules"].to_json(),
+        information_json=canonical(state["information"]),
+        session_id=ledger.session_id, shoe_id=state["current"].shoe_id,
+        round_id=state["current"].round_id or "predeal-next",
+        through_seq=state["seq"], prefix_digest=state["prefix_digest"],
+        n_decks=state["rules"].n_decks, surrender=state["rules"].surrender,
+        policy_id=policy, n_samples=n_samples, seed=seed, family_size=family_size,
+        alpha=alpha, play_budget_seconds=play_budget_seconds,
     )
 
 

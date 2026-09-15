@@ -115,6 +115,11 @@ class BlackjackLabApp(tk.Tk):
         self.table_archive = None
         self.archive_source_version = ""
         self._fullscreen_dialog = None
+        self._fullscreen_wizard = None
+        self._operator_wizard = None
+        self._rules_diff_dialog = None
+        self._event_draft_dialog = None
+        self._scope_signoff_dialog = None
         self.var_participants = {name: tk.BooleanVar(value=name == "玩家1") for name in SEAT_NAMES[1:]}
         self._hand_ids = {}
         self.vision_session = None
@@ -379,7 +384,13 @@ class BlackjackLabApp(tk.Tk):
             ("悬浮记牌", self.act_quick_record),
             ("牌记录详细纠错", self.act_detailed_card_correction),
             ("全屏验收清单", self.act_fullscreen_acceptance),
+            ("全屏验收向导", self.act_fullscreen_wizard),
+            ("范围内人工签收", self.act_scope_signoff),
             ("导出操作者对照", self.act_operator_study),
+            ("配对操作向导", self.act_operator_wizard),
+            ("规则差异表", self.act_rules_diff),
+            ("十段用途确认", self.act_material_roles),
+            ("开发片事件草稿", self.act_event_draft),
             ("刷新界面", self.act_refresh),
         ]:
             ttk.Button(more, text=text, command=cmd).pack(side=tk.LEFT, padx=3)
@@ -500,6 +511,47 @@ class BlackjackLabApp(tk.Tk):
             self._fullscreen_dialog.lift()
             return
         self._fullscreen_dialog = FullscreenAcceptanceDialog(self)
+
+    def _open_wizard(self, attr, factory):
+        existing = getattr(self, attr, None)
+        if existing is not None and existing.winfo_exists():
+            existing.lift()
+            return existing
+        dialog = factory(self)
+        setattr(self, attr, dialog)
+        return dialog
+
+    @tracked_operation
+    def act_fullscreen_wizard(self):
+        from .wizard_dialogs import FullscreenWizardDialog
+        self._open_wizard("_fullscreen_wizard", FullscreenWizardDialog)
+
+    @tracked_operation
+    def act_operator_wizard(self):
+        from .wizard_dialogs import OperatorWizardDialog
+        self._open_wizard("_operator_wizard", OperatorWizardDialog)
+
+    @tracked_operation
+    def act_rules_diff(self):
+        from .wizard_dialogs import RulesDiffDialog
+        self._open_wizard("_rules_diff_dialog", RulesDiffDialog)
+
+    def act_material_roles(self):
+        from .wizard_dialogs import MaterialRoleDialog
+        self._open_wizard("_material_role_dialog", MaterialRoleDialog)
+
+    @tracked_operation
+    def act_event_draft(self):
+        from .wizard_dialogs import EventDraftDialog
+        self._open_wizard("_event_draft_dialog", EventDraftDialog)
+
+    @tracked_operation
+    def act_scope_signoff(self):
+        from .acceptance_dialogs import ScopeSignoffDialog
+        if getattr(self, "_scope_signoff_dialog", None) is not None and self._scope_signoff_dialog.winfo_exists():
+            self._scope_signoff_dialog.lift()
+            return
+        self._scope_signoff_dialog = ScopeSignoffDialog(self)
 
     @tracked_operation
     def act_operator_study(self):

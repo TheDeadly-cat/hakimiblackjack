@@ -18,10 +18,13 @@ def main():
     parser.add_argument("--pack", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--notes", default="具名核验已记录；软件仍不得勾选 accepted")
+    parser.add_argument("--recorded-by", default="software-recorder")
+    parser.add_argument("--review-scope", default="artifact-identity-and-stated-range")
     args = parser.parse_args()
     pack = json.loads(args.pack.read_text(encoding="utf-8"))
     pack = record_named_review(
-        pack, args.item, attested_by=args.attested_by, notes=args.notes)
+        pack, args.item, attested_by=args.attested_by, notes=args.notes,
+        recorded_by=args.recorded_by, review_scope=args.review_scope)
     item = pack["items"][args.item]
     if pack.get("accepted") or pack.get("passed") or item.get("passed"):
         raise SystemExit("核验记录不得把验收项写成通过")
