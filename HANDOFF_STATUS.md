@@ -30,11 +30,13 @@
 
 漏牌修复：分牌后缀可重放，同靴跨轮后缀可重放；历史前缀仍看不到后来插入的牌。重放事件带 `repair_original_event_id` 指向原事件。发生时间只记在负载，`observed_at` 是确认时间，不能把早期发生时间当成当时已确认。内存应用失败不留半截撤销；进程从 SQLite 恢复后仍能分开当时前缀与修复后当前。已保存分析快照不因修复改 EV 或当成当时抓住窗口。跨新靴与纠错后缀继续拒绝，未删保护检查。
 
-## M4：证据层与未勾选验收包已接线，真实材料仍缺
+## M4：证据层与未勾选验收包已接线，真实材料仍未验收
 
 `analysis/evidence.py`：missing / declared / evidence-linked / reviewed；软件不能写 `accepted=true`。全屏 `accepted()` 恒为 False。操作者对照匹配的 operator/video/pair 字符串只记 `declared_pair_ids`，`paired` 仍为 False。真实桌档案 `missing_archive` 显式 `accepted=False`。
 
-勾选与本地文件存在不能把 F11 写成 `accepted=true`（`fullscreen_acceptance.accepted()` 恒为 False；文件齐备最多 `evidence-linked`）。软件保存的全屏清单会清掉单项 `passed=true`，并写入文件 SHA 身份链；摘要不符仍是 `declared`。像素探针即使声称浏览器采集也不能把该项写成通过。手工把某项 `passed=true` 写进 JSON 再绑定文件时，软件会清掉勾选并始终列出五项 `human_blockers`。`bind_item_artifact` / `python scripts/bind_acceptance_artifact.py` 可把本机文件挂到某一项并哈希，该项 `passed` 仍为 false。`python scripts/extract_review_frames.py --video <本地录像> --output-dir <目录>` 可抽待审帧并哈希源片与 PNG；`--bind-pack` / `--pack-output` 可把待审帧挂到未勾选验收包。`attach_review_frames` 可按 SHA 挂到未勾选的授权原片项。`accepted` / `independent_video` / `unused_*` / `human_run` 恒为 false，不能挂到未使用声明项，不改写原片，不能代替授权原片或未使用声明。
+勾选与本地文件存在不能把 F11 写成 `accepted=true`（`fullscreen_acceptance.accepted()` 恒为 False；文件齐备最多 `evidence-linked`）。软件保存的全屏清单会清掉单项 `passed=true`，并写入文件 SHA 身份链；摘要不符仍是 `declared`。像素探针即使声称浏览器采集也不能把该项写成通过。手工把某项 `passed=true` 写进 JSON 再绑定文件时，软件会清掉勾选并始终列出五项 `human_blockers`。`bind_item_artifact` / `python scripts/bind_acceptance_artifact.py` 可把本机文件挂到某一项并哈希，该项 `passed` 仍为 false。具名核验走 `record_named_review` / `python scripts/record_acceptance_review.py --attested-by <姓名>`：已链接文件可升到 `reviewed`，仍不得 `accepted=true`，五项 `human_blockers` 仍在。把文件放进 `.local-evidence/m4-inbox/<item_id>/` 后跑 `python scripts/ingest_m4_inbox.py` 只会哈希绑定，不能勾选；本机证据目录不入库。`python scripts/extract_review_frames.py --video <本地录像> --output-dir <目录>` 可抽待审帧并哈希源片与 PNG；`--bind-pack` / `--pack-output` 可把待审帧挂到未勾选验收包。`attach_review_frames` 可按 SHA 挂到未勾选的授权原片项。`accepted` / `independent_video` / `unused_*` / `human_run` 恒为 false，不能挂到未使用声明项，不改写原片，不能代替授权原片或未使用声明。
+
+2026-09-15 Shawn：NVIDIA Desktop **9 月**录屏被他说明为开靴到红牌停手、之后工作人员洗牌更新牌盒的完整对局。软件可对那些本机路径做 SHA 绑定与具名核验记录，**不得** `accepted=true`，也不得入库。`Desktop 2026.09.12 - 12.58.11.02.mp4` 已用于 navy-live 开发，不能登记为未使用留出。口头「Stake / Evolution / 接近美式 21 点」不能代替目标桌规则页或可核对截图。操作者对照他选择尚无配对导出。F11 仍缺。五项 `human_blockers` 仍在。
 
 操作者对照：`trial` / `trial_from_usage` 保留 `operator_id` / `video_id` / `pair_id`；`conclude` / `write_export` 写出 `identity_chain`。现有导出对话框可选填这三项，空则仍只记录条件。匹配字符串只记 `declared_pair_ids`，`paired` / `accepted` / `auto_prompt_default` 仍为 False。真实桌档案导出始终 `accepted=false`、`evidence_level=declared`；手工把 JSON 改成 `accepted=true` 后再加载仍会盖回未通过。界面顶栏把已载入档案标成「声明未验收」。`scripts/report_unattested_materials.py` 扫描操作者/全屏/桌档案/验收包时也不认手改 `accepted=true`。
 

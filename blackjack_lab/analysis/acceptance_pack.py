@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .evidence import (
     LEVEL_DECLARED, LEVEL_EVIDENCE_LINKED, LEVEL_MISSING, LEVEL_REVIEWED, EvidenceError,
-    classify_artifacts, run_manifest, sha256_file,
+    classify_artifacts, classify_review, run_manifest, sha256_file,
 )
 from .predeal_contracts import PREDEAL_MAX_REMAINING
 
@@ -153,6 +153,55 @@ def bind_item_artifact(pack, item_id, path, *, role=None, notes=None):
     pack["items"][item_id]["artifacts"] = artifacts
     pack["items"][item_id]["evidence_level"] = binding["evidence_level"]
     pack["items"][item_id]["binding"] = binding
+    pack["items"][item_id]["passed"] = False
+    if notes:
+        pack["items"][item_id]["notes"] = notes
+    return _refresh_pack_level(pack)
+
+
+def ingest_inbox(pack, inbox_root):
+    """Bind files dropped into per-item inbox folders. Never accepts."""
+    root = Path(inbox_root)
+    root.mkdir(parents=True, exist_ok=True)
+    bound = []
+    seen = {
+        (item_id, artifact.get("sha256"))
+        for item_id, item in pack.get("items", {}).items()
+        for artifact in (item.get("artifacts") or [])
+    }
+    for item_id, _label in ITEMS:
+        folder = root / item_id
+        folder.mkdir(parents=True, exist_ok=True)
+        for path in sorted(p for p in folder.iterdir() if p.is_file() and not p.name.startswith(".")):
+            digest = sha256_file(path)
+            if (item_id, digest) in seen:
+                continue
+            pack = bind_item_artifact(
+                pack, item_id, path,
+                notes="从 M4 收件箱哈希绑定；人尚未核验，不能勾选")
+            seen.add((item_id, digest))
+            bound.append({"item_id": item_id, "path": str(path.resolve()), "sha256": digest})
+    pack["inbox_root"] = str(root.resolve())
+    pack["inbox_bound"] = bound
+    pack["inbox_is_not_acceptance"] = True
+    return _refresh_pack_level(pack)
+
+
+def record_named_review(pack, item_id, *, attested_by, notes=None):
+    """Record a named human review of already-linked artifacts. Never accepts."""
+    if item_id not in dict(ITEMS):
+        raise ValueError(f"未知验收项: {item_id}")
+    _refresh_pack_level(pack)
+    binding = classify_review(
+        artifacts=pack["items"][item_id].get("artifacts") or [],
+        attested_by=attested_by,
+        human_reviewed=True,
+        accepted=False,
+    )
+    pack["items"][item_id]["binding"] = binding
+    pack["items"][item_id]["evidence_level"] = binding["evidence_level"]
+    pack["items"][item_id]["attested_by"] = binding["attested_by"]
+    pack["items"][item_id]["human_reviewed"] = binding["evidence_level"] == LEVEL_REVIEWED
     pack["items"][item_id]["passed"] = False
     if notes:
         pack["items"][item_id]["notes"] = notes
