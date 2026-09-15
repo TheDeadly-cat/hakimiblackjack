@@ -117,4 +117,4 @@ python scripts/verify_release.py
 
 原 V0.1/V0.2a 文档、首轮失败输出与旧回执保留为历史证据。当前能力以本 README 和本版验收回执为准。许可证边界见 `NOTICE.md`。没有平台控制、自动下注或云端识牌；真实媒体、标签、模型和用户账本仅保存在本机。
 
-`review_tests/` 保留原增量审查包的4项交接用例、48场景脚本和来源摘要。`verify_review_handoff.py` 不改写原脚本，使用当前完整工程执行并在唯一目录保存新输出；原数学5项属于主测试集的重叠检查，48个场景不计作48项新增 unittest。完整验收与 Windows CI 均包含这一步。
+`review_tests/` 保留原增量审查包的4项交接用例、48场景脚本和来源摘要。`verify_review_handoff.py` 不改写原脚本，使用当前完整工程执行并在唯一目录保存新输出；原数学5项必须仍存在、实际执行并通过，后续新增数学测试允许存在并单独统计，48个场景不计作48项新增 unittest。回执写出 `failed_conditions`。完整验收与 Windows CI 均包含这一步。

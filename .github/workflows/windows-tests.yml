@@ -38,7 +38,21 @@ jobs:
       - name: Seeded independent simulation cross-check
         run: python -c "from scripts.analysis_checks import monte_carlo; r=monte_carlo(6, samples=2500); print(r); assert all(a['passed'] for a in r['actions'].values())"
       - name: Original review handoff and 48 supplementary scenarios
-        run: python scripts/verify_review_handoff.py
+        id: review-handoff
+        run: python scripts/verify_review_handoff.py --output "${{ runner.temp }}/review-handoff"
+      - name: Upload review-handoff failure artifacts
+        if: failure() && steps.review-handoff.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: review-handoff-receipt
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/review-handoff/receipt.json
+            ${{ runner.temp }}/review-handoff/artifact-manifest.json
+            ${{ runner.temp }}/review-handoff/original-math.txt
+            ${{ runner.temp }}/review-handoff/original-48-scenarios.txt
+            ${{ runner.temp }}/review-handoff/original-handoff.txt
+            ${{ runner.temp }}/review-handoff/supplementary/supplementary-math-rerun.json
       - name: Original N1 supplemental snapshot tests
         run: python -m unittest discover -s docs/acceptance/n1-20260910-220300-9f6f68/original -p test_snapshot_shape.py -v
 
