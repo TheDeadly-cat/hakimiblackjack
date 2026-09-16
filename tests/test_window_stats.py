@@ -52,6 +52,11 @@ class WindowStatSemanticsTest(unittest.TestCase):
             AVAILABLE, 1e-16, numerical_tolerance=1e-10)))
         self.assertEqual("indeterminate", window_state(_record(
             AVAILABLE, 1e-16, numerical_tolerance=1e-10)))
+        self.assertEqual(EV_INDETERMINATE, classify_ev_record(_record(
+            AVAILABLE, -1e-16, numerical_tolerance=1e-10)))
+        self.assertEqual("indeterminate", window_state(_record(
+            AVAILABLE, -1e-16, numerical_tolerance=1e-10)))
+        self.assertEqual(EV_NONPOSITIVE, classify_ev_record(_record(AVAILABLE, -0.2)))
         self.assertEqual(EV_POSITIVE, classify_ev_record(_record(
             AVAILABLE, 0.01, numerical_tolerance=1e-10)))
 

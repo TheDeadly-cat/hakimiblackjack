@@ -64,3 +64,31 @@ class WindowStudyExportTest(unittest.TestCase):
         summary = json.loads(Path(written["summary"]).read_text(encoding="utf-8"))
         self.assertEqual(len(study["rounds"]), summary["round_count"])
         self.assertEqual(study["stop_reason"], summary["stop_reason"])
+
+    def test_summary_does_not_upgrade_uncertain_or_current_hand_to_opening_positive(self):
+        from blackjack_lab.analysis.experiment_export import (
+            checkpoint_row, summary_from_checkpoint_rows,
+        )
+        from blackjack_lab.analysis.research_windows import WINDOW_CURRENT_HAND, WINDOW_PRE_DEAL
+        tiny = checkpoint_row({
+            "predeal": {
+                "status": "available", "ev": 1e-16, "numerical_tolerance": 1e-10,
+                "window_kind": WINDOW_PRE_DEAL, "method": "fixed_policy_monte_carlo",
+                "window_state": "indeterminate",
+            }})
+        flagged = checkpoint_row({
+            "predeal": {
+                "status": "available", "ev": 1.0, "indeterminate": True,
+                "window_kind": WINDOW_PRE_DEAL, "method": "fixed_policy_monte_carlo",
+            }})
+        current_hand = checkpoint_row({
+            "predeal": {
+                "status": "available", "ev": 0.7,
+                "window": WINDOW_CURRENT_HAND, "window_kind": WINDOW_CURRENT_HAND,
+                "method": "exact-enumeration",
+            }})
+        missing_kind = checkpoint_row({
+            "predeal": {"status": "available", "ev": 0.4}})
+        summary = summary_from_checkpoint_rows([tiny, flagged, current_hand, missing_kind])
+        self.assertEqual(0, summary["positive_ev"])
+        self.assertGreaterEqual(summary["indeterminate_ev"] + summary["unavailable_ev"], 4)

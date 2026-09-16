@@ -111,11 +111,13 @@ def classify_ev_record(record):
     ev = _finite_ev(record.get("ev"))
     if record.get("status") != AVAILABLE or ev is None:
         return EV_UNAVAILABLE
+    band = _declared_near_zero_band(record)
     if ev > 0:
-        band = _declared_near_zero_band(record)
         if band is not None and ev <= band:
             return EV_INDETERMINATE
         return EV_POSITIVE
+    if ev < 0 and band is not None and -ev <= band:
+        return EV_INDETERMINATE
     return EV_NONPOSITIVE
 
 

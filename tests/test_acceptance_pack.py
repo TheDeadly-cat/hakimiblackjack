@@ -8,10 +8,13 @@ from pathlib import Path
 
 from blackjack_lab.analysis.acceptance_pack import (
     HUMAN_CONFIRMATION_PHRASE, INTERACTIVE_EXACT_BUDGET_SECONDS, PREDEAL_MAX_REMAINING,
-    SCHEMA, SCOPE_OFFLINE_RESEARCH, SHIPPED_HEAD, SQLITE_SCHEMA, amend_named_review,
-    bind_item_artifact, build_acceptance_pack, freeze_status, hash_tree, ingest_inbox,
-    record_named_review, record_scope_signoff,
+    SCHEMA, SCOPE_FULLSCREEN_MANUAL, SCOPE_OFFLINE_RESEARCH, SCOPE_TABLE_ASSISTED,
+    SHIPPED_HEAD, SQLITE_SCHEMA, MODEL_NONE_DECLARED, TESTS_RECEIPT_NOT_ATTACHED,
+    amend_named_review, bind_item_artifact, build_acceptance_pack, digest_declared,
+    expire_stale_scope_signoffs, freeze_status, hash_tree, ingest_inbox,
+    pack_materials_digest, record_named_review, record_scope_signoff,
 )
+from blackjack_lab.analysis.contracts import research_rules
 from blackjack_lab.analysis.evidence import (
     LEVEL_DECLARED, LEVEL_EVIDENCE_LINKED, LEVEL_MISSING, LEVEL_REVIEWED, EvidenceError, sha256_file,
 )
@@ -19,6 +22,24 @@ from blackjack_lab.analysis.predeal_contracts import PREDEAL_MAX_REMAINING as EX
 from blackjack_lab.core.rules import CAPABILITY_MATRIX, UNSUPPORTED
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _offline_identity():
+    return {
+        "rules_digest": digest_declared("rules", json.loads(
+            research_rules(6, surrender=None).to_json())),
+        "strategy_digest": digest_declared("strategy", {"policy": "always_stand"}),
+        "model_digest": MODEL_NONE_DECLARED,
+        "tests_receipt_digest": TESTS_RECEIPT_NOT_ATTACHED,
+    }
+
+
+def _table_identity():
+    return {
+        "rules_digest": digest_declared("rules", {"source": "felt-screenshot-fixture"}),
+        "model_digest": MODEL_NONE_DECLARED,
+        "tests_receipt_digest": TESTS_RECEIPT_NOT_ATTACHED,
+    }
 
 
 class AcceptancePackTest(unittest.TestCase):
@@ -275,14 +296,17 @@ class AcceptancePackTest(unittest.TestCase):
             pack, scope=SCOPE_OFFLINE_RESEARCH, attested_by="Shawn",
             code_commit="abc123",
             criteria="合成牌靴、合法未分牌策略、有界Hoeffding、完整检查点导出",
-            result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE)
+            result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE,
+            **_offline_identity())
         self.assertFalse(signed["accepted"])
         self.assertEqual(1, len(signed["scope_signoffs"]))
+        self.assertEqual(MODEL_NONE_DECLARED, signed["scope_signoffs"][0]["model_digest"])
         frozen = freeze_status(
             code_commit="abc123", dirty_worktree=False, tests_bound_to_sha=True,
             pr_body_updated=True, m4_pack=signed, scope=SCOPE_OFFLINE_RESEARCH)
         self.assertTrue(frozen["technical_ready"])
         self.assertTrue(frozen["scope_accepted"])
+        self.assertTrue(frozen["identity_ok"])
         self.assertTrue(frozen["ready"])
         self.assertFalse(frozen["accepted"])
         self.assertFalse(frozen["release_authorized"])
@@ -290,7 +314,8 @@ class AcceptancePackTest(unittest.TestCase):
             signed, scope=SCOPE_OFFLINE_RESEARCH, attested_by="Shawn",
             code_commit="def456",
             criteria="newer checkout",
-            result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE)
+            result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE,
+            **_offline_identity())
         self.assertTrue(later["scope_signoffs"][0]["superseded"])
         self.assertFalse(later["scope_signoffs"][1]["superseded"])
         stale = freeze_status(
@@ -298,4 +323,78 @@ class AcceptancePackTest(unittest.TestCase):
             pr_body_updated=True, m4_pack=later, scope=SCOPE_OFFLINE_RESEARCH)
         self.assertFalse(stale["ready"])
         self.assertIn("scope_not_signed_by_human", stale["blockers"])
+
+    def test_offline_signoff_requires_rules_and_does_not_wait_on_f11(self):
+        pack = build_acceptance_pack()
+        with self.assertRaises(EvidenceError) as missing:
+            record_scope_signoff(
+                pack, scope=SCOPE_OFFLINE_RESEARCH, attested_by="Shawn",
+                code_commit="abc123", criteria="synthetic study export",
+                result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE)
+        self.assertEqual("SCOPE_IDENTITY_REQUIRED", missing.exception.code)
+        signed = record_scope_signoff(
+            pack, scope=SCOPE_OFFLINE_RESEARCH, attested_by="Shawn",
+            code_commit="abc123", criteria="synthetic study export",
+            result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE,
+            **_offline_identity())
+        self.assertEqual("none-bound", signed["scope_signoffs"][0]["materials_digest"])
+        self.assertFalse(signed["items"]["fullscreen_f11"]["artifacts"])
+        frozen = freeze_status(
+            code_commit="abc123", dirty_worktree=False, tests_bound_to_sha=True,
+            pr_body_updated=True, m4_pack=signed, scope=SCOPE_OFFLINE_RESEARCH)
+        self.assertTrue(frozen["ready"])
+        self.assertNotIn("scope_materials_not_bound", frozen["blockers"])
+
+    def test_material_change_expires_old_signoff_and_keeps_history(self):
+        with tempfile.TemporaryDirectory() as folder:
+            first = Path(folder) / "clip-a.bin"
+            second = Path(folder) / "clip-b.bin"
+            first.write_bytes(b"first-bytes")
+            second.write_bytes(b"second-bytes")
+            pack = bind_item_artifact(build_acceptance_pack(), "authorized_shoe_video", first)
+            pack = bind_item_artifact(pack, "table_rules", first, role="table_rules")
+            signed = record_scope_signoff(
+                pack, scope=SCOPE_TABLE_ASSISTED, attested_by="Shawn",
+                code_commit="abc123",
+                criteria="实际规则、来源、协同效率和时点",
+                result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE,
+                **_table_identity())
+            frozen = freeze_status(
+                code_commit="abc123", dirty_worktree=False, tests_bound_to_sha=True,
+                pr_body_updated=True, m4_pack=signed, scope=SCOPE_TABLE_ASSISTED)
+            self.assertTrue(frozen["ready"])
+            bind_item_artifact(signed, "authorized_shoe_video", second)
+            stale = freeze_status(
+                code_commit="abc123", dirty_worktree=False, tests_bound_to_sha=True,
+                pr_body_updated=True, m4_pack=signed, scope=SCOPE_TABLE_ASSISTED,
+                expire_stale=True)
+            self.assertFalse(stale["ready"])
+            self.assertTrue(stale["identity_stale"])
+            self.assertIn("scope_identity_changed", stale["blockers"])
+            self.assertTrue(signed["scope_signoffs"][0]["expired"])
+            self.assertEqual("identity_changed", signed["scope_signoffs"][0]["expired_reason"])
+            self.assertEqual(1, len(signed["scope_signoffs"]))
+            expire_stale_scope_signoffs(signed)
+            self.assertEqual(1, len(signed["scope_signoffs"]))
+            self.assertNotEqual(
+                pack_materials_digest(signed, SCOPE_TABLE_ASSISTED),
+                signed["scope_signoffs"][0]["materials_digest"])
+
+    def test_fullscreen_signoff_does_not_require_holdout_video(self):
+        with tempfile.TemporaryDirectory() as folder:
+            evidence = Path(folder) / "f11.json"
+            evidence.write_text("{}", encoding="utf-8")
+            pack = bind_item_artifact(build_acceptance_pack(), "fullscreen_f11", evidence)
+            signed = record_scope_signoff(
+                pack, scope=SCOPE_FULLSCREEN_MANUAL, attested_by="Shawn",
+                code_commit="abc123",
+                criteria="本机输入、纠错、保存恢复与焦点可靠",
+                result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE)
+            self.assertFalse(signed["items"]["unused_attestation"]["artifacts"])
+            frozen = freeze_status(
+                code_commit="abc123", dirty_worktree=False, tests_bound_to_sha=True,
+                pr_body_updated=True, m4_pack=signed, scope=SCOPE_FULLSCREEN_MANUAL)
+            self.assertTrue(frozen["ready"])
+            self.assertFalse(frozen["accepted"])
+            self.assertNotIn("m4_materials_not_accepted", frozen["blockers"])
 

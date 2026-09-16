@@ -116,7 +116,7 @@ class LocalStore:
         with self.conn:
             return self._insert(ev)
 
-    def save_ledger(self, ledger):
+    def save_ledger(self, ledger, extra_meta=None):
         ledger.replay()
         # 只接受现有记录的完整前缀延长，导入不能删除或篡改历史。
         existing = self.load_events(ledger.session_id)
@@ -124,7 +124,25 @@ class LocalStore:
             raise ValueError("导入与本地会话历史冲突，请保留两份记录核对")
         with self.conn:
             self.conn.execute("INSERT OR IGNORE INTO sessions(session_id,name,created_at,note) VALUES(?,?,?,?)", (ledger.session_id, "导入/恢复会话", time.time(), ""))
-            return sum(self._insert(ev) for ev in ledger.events)
+            written = sum(self._insert(ev) for ev in ledger.events)
+            for key, value in dict(extra_meta or {}).items():
+                self._set_meta(key, value)
+            return written
+
+    def list_draft_import_receipts(self, session_id, shoe_id=None):
+        rows = self.conn.execute(
+            "SELECT key, value FROM meta WHERE key LIKE ?",
+            (f"draft_import:{session_id}:%",),
+        ).fetchall()
+        receipts = []
+        for row in rows:
+            try:
+                body = json.loads(row["value"])
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+            if shoe_id is None or body.get("shoe_id") == shoe_id:
+                receipts.append(body)
+        return receipts
 
     def load_events(self, session_id: Optional[str] = None, through_seq=None):
         if through_seq is not None:

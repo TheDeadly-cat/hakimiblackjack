@@ -656,8 +656,12 @@ class DraftImportTest(unittest.TestCase):
         self.assertEqual(1, result["card_dealt"])
         dealt = [event for event in ctrl.ledger.events if event.etype == CARD_DEALT]
         self.assertEqual(["K"], [event.payload["rank"] for event in dealt])
-        self.assertTrue(any(event.etype == OBSERVATION_GAP and "切牌" in event.payload["reason"]
-                            for event in ctrl.ledger.events))
+        self.assertFalse(any(event.etype == CARD_DEALT and event.payload.get("rank") in (None, "cut")
+                             for event in ctrl.ledger.events))
+        self.assertTrue(result["cut_card_marker"])
+        self.assertFalse(any(
+            event.etype == OBSERVATION_GAP and "切牌" in event.payload["reason"]
+            for event in ctrl.ledger.events))
         with self.assertRaises(Exception) as caught:
             build_offline_mc_input(
                 ctrl.ledger, policy=POLICY_ALWAYS_STAND, n_samples=8, seed=1)
@@ -858,3 +862,49 @@ class MaterialRoleTest(unittest.TestCase):
                        confirmed_by="Shawn")
         self.assertEqual("Shawn", row["role_confirmed_by"])
         self.assertFalse(inventory["accepted"])
+
+
+class WizardUsageContractTest(unittest.TestCase):
+    def test_existing_wizards_export_evidence_without_accepting(self):
+        session = start_session(environment={"not_acceptance": True, "monitor_count": 1})
+        for step_id in (
+            "enter_f11", "invoke_panel", "enter_two_cards", "correct_one_card",
+            "return_to_browser", "interrupt_source",
+        ):
+            record_step(session, step_id, notes="usage-harness")
+        skip_untested(session, "dpi_variants", reason="单屏未测")
+        skip_untested(session, "multi_monitor", reason="没有第二块显示器")
+        identity = allocate_pair_identity(operator_name="Shawn", video_label="usage-harness")
+        operator = start_operator(identity=identity)
+        metrics = dict(elapsed_seconds=9, keystrokes=3, clicks=1, backlog_peak=0,
+                       missed_cards=0, duplicates=0, repair_seconds=1)
+        record_leg(operator, "manual", human_run=True, **metrics)
+        record_leg(operator, "assisted", human_run=True, **metrics)
+        with tempfile.TemporaryDirectory() as folder:
+            f11_path = Path(folder) / "fullscreen-wizard.json"
+            pair_path = Path(folder) / "operator-pair.json"
+            f11_body = as_fullscreen_evidence(session)
+            f11_path.write_text(json.dumps(f11_body, ensure_ascii=False), encoding="utf-8")
+            pair_body = export_session(operator, pair_path)
+            from blackjack_lab.analysis.acceptance_pack import (
+                SCOPE_FULLSCREEN_MANUAL, bind_item_artifact, build_acceptance_pack,
+                freeze_status, record_scope_signoff, HUMAN_CONFIRMATION_PHRASE,
+            )
+            pack = bind_item_artifact(build_acceptance_pack(), "fullscreen_f11", f11_path)
+            pack = bind_item_artifact(pack, "operator_pairs", pair_path)
+            signed = record_scope_signoff(
+                pack, scope=SCOPE_FULLSCREEN_MANUAL, attested_by="Shawn",
+                code_commit="abc123",
+                criteria="本机输入、纠错、保存恢复与焦点可靠",
+                result="accepted", confirmation_phrase=HUMAN_CONFIRMATION_PHRASE)
+        self.assertTrue(session["ready_for_human_fullscreen_signoff"])
+        self.assertFalse(f11_body["accepted"])
+        self.assertFalse(pair_body["accepted"])
+        self.assertFalse(pair_body["paired"])
+        self.assertFalse(signed["accepted"])
+        frozen = freeze_status(
+            code_commit="abc123", dirty_worktree=False, tests_bound_to_sha=True,
+            pr_body_updated=True, m4_pack=signed, scope=SCOPE_FULLSCREEN_MANUAL)
+        self.assertTrue(frozen["ready"])
+        self.assertFalse(frozen["accepted"])
+        self.assertFalse(signed["items"]["unused_attestation"]["artifacts"])

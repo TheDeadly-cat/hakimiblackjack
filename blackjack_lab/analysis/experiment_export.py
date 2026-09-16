@@ -11,7 +11,7 @@ from ..experiments.contracts import ExperimentError
 from ..experiments.results import claim_output_dir
 from ..storage.safe_files import atomic_write
 from .contracts import canonical
-from .research_windows import WINDOW_PRE_DEAL, evaluation_scope
+from .research_windows import evaluation_scope
 
 STUDY_RUN_SCHEMA = "hakimi-window-study-run-v1"
 CHECKPOINT_FIELDS = (
@@ -21,7 +21,13 @@ CHECKPOINT_FIELDS = (
     "source_mode", "elapsed_seconds", "play_error", "statistical_positive",
     "statistical_nonpositive", "window_claim_allowed", "sign_status", "sign_reason",
     "n_ok", "n_failed", "n_not_run", "family_size", "hoeffding_radius",
-    "consumption_policy", "stop_reason_local",
+    "consumption_policy", "stop_reason_local", "classification",
+)
+
+CLASSIFICATION_KEYS = (
+    "status", "ev", "window", "window_kind", "evaluation_method", "method",
+    "window_claim_allowed", "indeterminate", "numerical_tolerance",
+    "sign_status", "ci_low", "ci_high",
 )
 
 
@@ -67,6 +73,15 @@ def checkpoint_row(item):
     row["family_size"] = predeal.get("family_size")
     row["hoeffding_radius"] = predeal.get("hoeffding_radius")
     row["consumption_policy"] = item.get("consumption_policy") or item.get("path_policy_id")
+    classification = {}
+    for key in CLASSIFICATION_KEYS:
+        if key in predeal:
+            classification[key] = predeal.get(key)
+        elif key in item:
+            classification[key] = item.get(key)
+    if "window_state" in predeal:
+        classification["recorded_window_state"] = predeal.get("window_state")
+    row["classification"] = classification
     return row
 
 
@@ -75,16 +90,19 @@ def checkpoint_rows(report):
 
 
 def _scope_record(row):
-    record = {
-        "status": row.get("status"),
-        "ev": row.get("ev"),
-        "window": WINDOW_PRE_DEAL,
-        "window_kind": WINDOW_PRE_DEAL,
-        "evaluation_method": row.get("evaluation_method"),
-        "method": row.get("evaluation_method"),
-    }
-    if row.get("window_claim_allowed") is not None:
-        record["window_claim_allowed"] = row["window_claim_allowed"]
+    """Rebuild classification input. Do not invent an opening-window kind."""
+    src = dict(row.get("classification") or {})
+    record = {}
+    for key in CLASSIFICATION_KEYS:
+        if key in src:
+            record[key] = src[key]
+        elif key in row and row.get(key) is not None and key not in ("window", "window_kind"):
+            record[key] = row[key]
+    if "window" not in record and "window_kind" not in record:
+        record["indeterminate"] = True
+        record["legacy_missing_window_kind"] = True
+        if src.get("recorded_window_state"):
+            record["recorded_window_state"] = src.get("recorded_window_state")
     return record
 
 

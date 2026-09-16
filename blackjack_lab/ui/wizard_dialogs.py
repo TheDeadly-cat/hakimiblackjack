@@ -25,7 +25,7 @@ from ..core.table_rules_diff import (
 )
 from ..core.table import DEALER
 from ..analysis.shoe_round_pages import crop_style_region
-from ..ledger.draft_import import apply_event_draft
+from ..ledger.draft_import import DraftImportError, apply_event_draft
 from ..observation.operator_wizard import (
     export_session, record_leg, start_session as start_operator,
 )
@@ -36,6 +36,85 @@ _DEV_CLIP = "Desktop 2026.09.12 - 12.58.11.02.mp4"
 _LOCAL_DRAFT = Path(__file__).resolve().parents[2] / ".local-evidence" / "dev-clip-12.58.11.02-event-draft.json"
 _LOCAL_FELT = Path(__file__).resolve().parents[2] / ".local-evidence" / "dev-clip-12.58.11.02-rounds" / "felt" / "felt-046080.png"
 _CROP_DIR = Path(__file__).resolve().parents[2] / ".local-evidence" / "event-draft-crops"
+
+
+def usage_folder(app):
+    session = getattr(app, "usage_session", None)
+    if not isinstance(session, dict) or not session.get("folder"):
+        return None
+    folder = Path(session["folder"])
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def append_usage_event(app, kind, **fields):
+    """Append one usage-test event. Never marks accepted."""
+    folder = usage_folder(app)
+    if folder is None:
+        return None
+    ctrl = getattr(app, "ctrl", None)
+    ledger = getattr(ctrl, "ledger", None)
+    payload = {
+        "kind": kind,
+        "t": time.time(),
+        "accepted": False,
+        "session_id": getattr(ctrl, "session_id", None),
+        "commit_revision": getattr(ctrl, "commit_revision", None),
+        "event_count": len(getattr(ledger, "events", None) or []),
+    }
+    payload.update(fields)
+    with (folder / "wizard-log.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    return folder
+
+
+def write_usage_json(app, name, body):
+    folder = usage_folder(app)
+    if folder is None:
+        return None
+    path = folder / name
+    payload = dict(body or {})
+    payload["accepted"] = False
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
+def _dialog_alive(dialog):
+    return dialog is not None and bool(getattr(dialog, "winfo_exists", lambda: False)())
+
+
+def write_usage_snapshot(app, reason):
+    ctrl = getattr(app, "ctrl", None)
+    ledger = getattr(ctrl, "ledger", None)
+    wizard = getattr(app, "_fullscreen_wizard", None)
+    operator = getattr(app, "_operator_wizard", None)
+    wizard_session = wizard.session if _dialog_alive(wizard) else {}
+    operator_session = operator.session if _dialog_alive(operator) else {}
+    body = {
+        "reason": reason,
+        "accepted": False,
+        "session_id": getattr(ctrl, "session_id", None),
+        "commit_revision": getattr(ctrl, "commit_revision", None),
+        "event_count": len(getattr(ledger, "events", None) or []),
+        "fullscreen_required_complete": bool(wizard_session.get("required_complete")),
+        "fullscreen_recorded_steps": list(wizard_session.get("recorded_steps") or []),
+        "operator_pair_id": ((operator_session.get("identity") or {}).get("pair_id")),
+        "note": "实测快照，不是验收通过。",
+    }
+    append_usage_event(
+        app, "snapshot", reason=reason,
+        fullscreen_required_complete=body["fullscreen_required_complete"],
+        operator_pair_id=body["operator_pair_id"])
+    return write_usage_json(app, "usage-final.json", body)
+
+
+def _still_dir(app):
+    folder = usage_folder(app)
+    if folder is None:
+        return _WIZARD_STILLS
+    dest = folder / "stills"
+    dest.mkdir(parents=True, exist_ok=True)
+    return dest
 
 
 class FullscreenWizardDialog(tk.Toplevel):
@@ -64,6 +143,7 @@ class FullscreenWizardDialog(tk.Toplevel):
         self.var_status = tk.StringVar()
         ttk.Label(self, textvariable=self.var_status, wraplength=580).pack(anchor="w", padx=8)
         self._refresh()
+        append_usage_event(self.app, "fullscreen_wizard_opened")
 
     def _refresh(self):
         conclude_session(self.session)
@@ -91,7 +171,7 @@ class FullscreenWizardDialog(tk.Toplevel):
                     (info.get("x") or 0) + info["width"],
                     (info.get("y") or 0) + info["height"])
         still = grab_foreground_still(
-            _WIZARD_STILLS, hwnd=hwnd, bbox=bbox,
+            _still_dir(self.app), hwnd=hwnd, bbox=bbox,
             step_id=(current_step(self.session) or {}).get("id") or "step")
         body["still"] = {key: still.get(key) for key in (
             "capture_ok", "path", "sha256", "bytes", "error", "not_acceptance")}
@@ -106,6 +186,7 @@ class FullscreenWizardDialog(tk.Toplevel):
         record_step(
             self.session, step["id"], notes=self.var_notes.get(),
             observation=observation, evidence_path=evidence_path)
+        self._persist_fullscreen("recorded", step["id"], observation)
         self.var_notes.set("")
         self._refresh()
 
@@ -117,6 +198,7 @@ class FullscreenWizardDialog(tk.Toplevel):
         record_step(
             self.session, step["id"], notes=self.var_notes.get(), failed=True,
             observation=observation, evidence_path=evidence_path)
+        self._persist_fullscreen("failed", step["id"], observation)
         self.var_notes.set("")
         self._refresh()
 
@@ -131,18 +213,36 @@ class FullscreenWizardDialog(tk.Toplevel):
         except ValueError as error:
             messagebox.showerror("不能标未测", str(error), parent=self)
             return
+        self._persist_fullscreen("skipped", step["id"], None)
         self.var_notes.set("")
         self._refresh()
 
-    def _save(self):
-        path = filedialog.asksaveasfilename(
-            parent=self, defaultextension=".json", initialfile="fullscreen-wizard.json",
-            filetypes=[("全屏向导", "*.json")])
-        if not path:
-            return
+    def _persist_fullscreen(self, status, step_id, observation):
         body = as_fullscreen_evidence(self.session)
-        Path(path).write_text(json.dumps(body, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_usage_json(self.app, "fullscreen-wizard-live.json", body)
+        still = None
+        if isinstance(observation, dict):
+            still = (observation.get("still") or {}).get("path")
+        append_usage_event(
+            self.app, "fullscreen_step", status=status, step_id=step_id,
+            capture_ok=bool(((observation or {}).get("still") or {}).get("capture_ok"))
+            if isinstance(observation, dict) else None,
+            evidence_path=still,
+            required_complete=bool(self.session.get("required_complete")))
+
+    def _save(self):
+        body = as_fullscreen_evidence(self.session)
+        path = write_usage_json(self.app, "fullscreen-wizard.json", body)
+        if path is None:
+            chosen = filedialog.asksaveasfilename(
+                parent=self, defaultextension=".json", initialfile="fullscreen-wizard.json",
+                filetypes=[("全屏向导", "*.json")])
+            if not chosen:
+                return
+            path = Path(chosen)
+            path.write_text(json.dumps(body, ensure_ascii=False, indent=2), encoding="utf-8")
         _drop_m4_inbox("fullscreen_f11", path)
+        append_usage_event(self.app, "fullscreen_saved", path=str(path))
         self.app.set_status("已保存全屏向导证据；accepted=" + str(body["accepted"]))
         messagebox.showinfo("全屏向导", body["note"] + "\naccepted=" + str(body["accepted"]), parent=self)
 
@@ -196,6 +296,13 @@ class OperatorWizardDialog(tk.Toplevel):
         ttk.Button(self, text="导出配对文件", command=self._export).pack()
         self.started = time.time()
         self._refresh()
+        append_usage_event(
+            self.app, "operator_wizard_opened",
+            operator_id=ident["operator_id"], video_id=ident["video_id"],
+            pair_id=ident["pair_id"])
+        write_usage_json(self.app, "operator-pair-live.json", {
+            "identity": ident, "accepted": False, "paired": False,
+        })
 
     def _refresh(self):
         leg = self.session.get("current_leg")
@@ -231,19 +338,34 @@ class OperatorWizardDialog(tk.Toplevel):
             return
         self.started = time.time()
         self._refresh()
+        append_usage_event(self.app, "operator_leg", leg=leg, next_leg=self.session.get("current_leg"))
+        write_usage_json(self.app, "operator-pair-live.json", {
+            "identity": self.session.get("identity"),
+            "accepted": False,
+            "paired": False,
+            "current_leg": self.session.get("current_leg"),
+        })
 
     def _export(self):
-        path = filedialog.asksaveasfilename(
-            parent=self, defaultextension=".json", initialfile="operator-pair-wizard.json",
-            filetypes=[("操作者对照", "*.json")])
-        if not path:
-            return
+        folder = usage_folder(self.app)
+        if folder is not None:
+            path = folder / "operator-pair-wizard.json"
+        else:
+            chosen = filedialog.asksaveasfilename(
+                parent=self, defaultextension=".json", initialfile="operator-pair-wizard.json",
+                filetypes=[("操作者对照", "*.json")])
+            if not chosen:
+                return
+            path = chosen
         try:
             body = export_session(self.session, path)
         except Exception as error:
             messagebox.showerror("不能导出", str(error), parent=self)
             return
         _drop_m4_inbox("operator_pairs", path)
+        append_usage_event(
+            self.app, "operator_exported", path=str(path),
+            pair_id=(self.session.get("identity") or {}).get("pair_id"))
         self.app.set_status(
             "已导出配对向导；accepted=" + str(body["accepted"])
             + " paired=" + str(body["paired"]))
@@ -741,6 +863,15 @@ class EventDraftDialog(tk.Toplevel):
     def _import(self):
         try:
             result = apply_event_draft(self.app.ctrl, self.draft, seat=self.var_seat.get())
+        except DraftImportError as error:
+            title = "已提交，显示失败" if error.committed else "不能写入账本"
+            messagebox.showerror(title, str(error), parent=self)
+            if error.committed:
+                try:
+                    self.app.refresh_all()
+                except Exception:
+                    pass
+            return
         except Exception as error:
             messagebox.showerror("不能写入账本", str(error), parent=self)
             return

@@ -45,9 +45,34 @@ from ..analysis.split_contracts import DAS_PROFILE, SPLIT_PROFILE, das_research_
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DB = PROJECT_ROOT / "data" / "blackjack_lab.db"
+USAGE_SESSION_SCHEMA = "hakimi-usage-session-v1"
 SEAT_NAMES = [DEALER] + [player_seat_name(i) for i in range(1, 8)]
 CARD_BUTTONS = ("A", "2", "3", "4", "5", "6", "7", "8", "9", "10",
                 "J", "Q", "K")
+
+
+def usage_session_paths(root=None, stamp=None):
+    """Create a throwaway lab database. Never points at the user default ledger."""
+    from time import strftime, localtime
+    root = Path(root or PROJECT_ROOT)
+    stamp = stamp or strftime("%Y%m%d-%H%M%S", localtime())
+    folder = root / ".local-evidence" / "usage-sessions" / stamp
+    folder.mkdir(parents=True, exist_ok=True)
+    db = (folder / "lab.db").resolve()
+    default_db = DEFAULT_DB.resolve()
+    if db == default_db or default_db in db.parents:
+        raise RuntimeError("实测会话不得使用用户默认账本路径")
+    manifest = {
+        "schema": USAGE_SESSION_SCHEMA,
+        "accepted": False,
+        "passed": False,
+        "db": str(db),
+        "default_user_db": str(default_db),
+        "note": "临时实测会话。不读写用户默认账本。向导记录不等于验收通过。",
+    }
+    (folder / "session.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"folder": folder, "db": db, "manifest": manifest}
 
 
 def tracked_operation(function):
@@ -1275,6 +1300,12 @@ class BlackjackLabApp(tk.Tk):
         return status
 
     def on_close(self):
+        if getattr(self, "usage_session", None):
+            from .wizard_dialogs import write_usage_snapshot
+            try:
+                write_usage_snapshot(self, "app_close")
+            except Exception:
+                pass
         if self._quick_panel is not None:
             self._quick_panel.destroy()
         win = getattr(self, "_vision_win", None)

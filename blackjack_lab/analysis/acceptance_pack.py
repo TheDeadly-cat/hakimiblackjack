@@ -1,6 +1,8 @@
 """Unchecked M4 acceptance pack. Software never marks human items passed."""
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from time import time
 
@@ -54,6 +56,37 @@ SOFTWARE_ATTESTER_NAMES = frozenset({
 DEFAULT_REVIEW_EXCLUDES = (
     "逐牌真值", "无漏帧", "未使用留出", "规则认证", "操作效率", "桌面已证",
 )
+IDENTITY_SCHEMA = "hakimi-scope-identity-v1"
+CRITERIA_VERSION_SCHEMA = "hakimi-scope-criteria-v1"
+MODEL_NONE_DECLARED = "none_declared"
+TESTS_RECEIPT_NOT_ATTACHED = "tests-not-attached"
+MATERIALS_NONE_BOUND = "none-bound"
+IDENTITY_NOT_APPLICABLE = "not_applicable"
+IDENTITY_KEYS = (
+    "materials_digest",
+    "rules_digest",
+    "strategy_digest",
+    "model_digest",
+    "criteria_version",
+    "tests_receipt_digest",
+)
+SCOPE_MATERIAL_ITEMS = {
+    SCOPE_OFFLINE_RESEARCH: (),
+    SCOPE_FULLSCREEN_MANUAL: ("fullscreen_f11",),
+    SCOPE_TABLE_ASSISTED: (
+        "table_rules", "authorized_shoe_video", "unused_attestation", "operator_pairs",
+    ),
+    SCOPE_RELEASE: (
+        "table_rules", "authorized_shoe_video", "unused_attestation",
+        "fullscreen_f11", "operator_pairs",
+    ),
+}
+SCOPE_REQUIRES_BOUND_MATERIALS = {
+    SCOPE_OFFLINE_RESEARCH: False,
+    SCOPE_FULLSCREEN_MANUAL: True,
+    SCOPE_TABLE_ASSISTED: True,
+    SCOPE_RELEASE: True,
+}
 
 
 def empty_item(label):
@@ -275,6 +308,144 @@ def amend_named_review(pack, item_id, *, attested_by, correction, recorded_by="s
     return pack
 
 
+def _identity_digest(payload):
+    body = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def digest_declared(kind, payload):
+    """Stable digest for a declared rules/strategy/model/tests payload."""
+    return _identity_digest({"schema": IDENTITY_SCHEMA, "kind": kind, "payload": payload})
+
+
+def criteria_version(criteria):
+    return _identity_digest({
+        "schema": CRITERIA_VERSION_SCHEMA,
+        "criteria": (criteria or "").strip(),
+    })
+
+
+def pack_materials_digest(pack, scope):
+    """Hash bound artifacts for one scope. Empty stays an explicit none-bound marker."""
+    if scope not in SCOPES:
+        raise ValueError(f"未知签收范围: {scope}")
+    rows = []
+    items = (pack or {}).get("items") or {}
+    for item_id in SCOPE_MATERIAL_ITEMS.get(scope, ()):
+        for artifact in (items.get(item_id) or {}).get("artifacts") or []:
+            rows.append({
+                "item_id": item_id,
+                "path": artifact.get("path"),
+                "sha256": artifact.get("sha256"),
+            })
+    if not rows:
+        return MATERIALS_NONE_BOUND
+    return _identity_digest({"schema": IDENTITY_SCHEMA, "scope": scope, "artifacts": rows})
+
+
+def identity_snapshot(record):
+    return {key: record.get(key) for key in IDENTITY_KEYS}
+
+
+def _has_frozen_identity(record):
+    return all(record.get(key) not in (None, "") for key in IDENTITY_KEYS)
+
+
+def _identity_matches(signed, current):
+    if not signed or not current:
+        return False
+    return all(signed.get(key) == current.get(key) for key in IDENTITY_KEYS)
+
+
+def build_scope_identity(pack, scope, *, criteria, materials_digest=None, rules_digest=None,
+                         strategy_digest=None, model_digest=None, tests_receipt_digest=None,
+                         criteria_version_value=None):
+    """Freeze what this signoff is actually about. Missing required fields stay missing."""
+    if scope not in SCOPES:
+        raise ValueError(f"未知签收范围: {scope}")
+    identity = {
+        "materials_digest": materials_digest or pack_materials_digest(pack, scope),
+        "rules_digest": rules_digest,
+        "strategy_digest": strategy_digest,
+        "model_digest": model_digest,
+        "criteria_version": criteria_version_value or criteria_version(criteria),
+        "tests_receipt_digest": tests_receipt_digest,
+    }
+    if scope == SCOPE_OFFLINE_RESEARCH:
+        identity["model_digest"] = identity["model_digest"] or MODEL_NONE_DECLARED
+        identity["tests_receipt_digest"] = (
+            identity["tests_receipt_digest"] or TESTS_RECEIPT_NOT_ATTACHED)
+    elif scope == SCOPE_FULLSCREEN_MANUAL:
+        identity["model_digest"] = identity["model_digest"] or MODEL_NONE_DECLARED
+        identity["rules_digest"] = identity["rules_digest"] or IDENTITY_NOT_APPLICABLE
+        identity["strategy_digest"] = identity["strategy_digest"] or IDENTITY_NOT_APPLICABLE
+        identity["tests_receipt_digest"] = (
+            identity["tests_receipt_digest"] or TESTS_RECEIPT_NOT_ATTACHED)
+    elif scope == SCOPE_TABLE_ASSISTED:
+        identity["model_digest"] = identity["model_digest"] or MODEL_NONE_DECLARED
+        identity["strategy_digest"] = identity["strategy_digest"] or IDENTITY_NOT_APPLICABLE
+        identity["tests_receipt_digest"] = (
+            identity["tests_receipt_digest"] or TESTS_RECEIPT_NOT_ATTACHED)
+    elif scope == SCOPE_RELEASE:
+        identity["model_digest"] = identity["model_digest"] or MODEL_NONE_DECLARED
+        identity["tests_receipt_digest"] = (
+            identity["tests_receipt_digest"] or TESTS_RECEIPT_NOT_ATTACHED)
+    return identity
+
+
+def _require_scope_identity(scope, identity):
+    missing = [key for key in IDENTITY_KEYS if identity.get(key) in (None, "")]
+    if scope in (SCOPE_OFFLINE_RESEARCH, SCOPE_TABLE_ASSISTED, SCOPE_RELEASE):
+        if identity.get("rules_digest") in (None, "", IDENTITY_NOT_APPLICABLE):
+            missing.append("rules_digest")
+    if scope in (SCOPE_OFFLINE_RESEARCH, SCOPE_RELEASE):
+        if identity.get("strategy_digest") in (None, "", IDENTITY_NOT_APPLICABLE):
+            missing.append("strategy_digest")
+    missing = sorted(set(missing))
+    if missing:
+        raise EvidenceError(
+            "SCOPE_IDENTITY_REQUIRED",
+            "范围内签收必须冻结材料/规则/策略/模型/标准/测试回执身份：" + ", ".join(missing))
+    return identity
+
+
+def _expire_record(record, reason):
+    record["expired"] = True
+    record["expired_reason"] = reason
+    record["expired_at"] = time()
+    return record
+
+
+def expire_stale_scope_signoffs(pack, *, identities=None, code_commit=None):
+    """Mark identity-mismatched signoffs expired. History is kept."""
+    identities = identities or {}
+    for record in pack.get("scope_signoffs") or []:
+        if record.get("superseded") or record.get("expired"):
+            continue
+        scope = record.get("scope")
+        if scope not in SCOPES:
+            continue
+        if code_commit and record.get("code_commit") != code_commit:
+            continue
+        supplied = dict(identities.get(scope) or {})
+        current = build_scope_identity(
+            pack, scope, criteria=record.get("criteria") or "",
+            materials_digest=pack_materials_digest(pack, scope),
+            rules_digest=supplied.get("rules_digest") or record.get("rules_digest"),
+            strategy_digest=supplied.get("strategy_digest") or record.get("strategy_digest"),
+            model_digest=supplied.get("model_digest") or record.get("model_digest"),
+            tests_receipt_digest=(
+                supplied.get("tests_receipt_digest") or record.get("tests_receipt_digest")),
+            criteria_version_value=supplied.get("criteria_version"),
+        )
+        if not _has_frozen_identity(record):
+            _expire_record(record, "identity_missing")
+            continue
+        if not _identity_matches(record, current):
+            _expire_record(record, "identity_changed")
+    return pack
+
+
 def _require_human_attester(attested_by):
     name = (attested_by or "").strip()
     if not name:
@@ -285,7 +456,10 @@ def _require_human_attester(attested_by):
 
 
 def record_scope_signoff(pack, *, scope, attested_by, code_commit, criteria, result,
-                         confirmation_phrase, recorded_by="software-recorder"):
+                         confirmation_phrase, recorded_by="software-recorder",
+                         materials_digest=None, rules_digest=None, strategy_digest=None,
+                         model_digest=None, tests_receipt_digest=None,
+                         criteria_version_value=None):
     """Save a bounded human confirmation. Software cannot invent this row."""
     if scope not in SCOPES:
         raise ValueError(f"未知签收范围: {scope}")
@@ -300,13 +474,19 @@ def record_scope_signoff(pack, *, scope, attested_by, code_commit, criteria, res
         raise EvidenceError("SCOPE_COMMIT_REQUIRED", "范围内签收必须绑定精确代码版本")
     if not isinstance(criteria, str) or not criteria.strip():
         raise EvidenceError("SCOPE_CRITERIA_REQUIRED", "范围内签收必须写明验收标准")
+    identity = _require_scope_identity(scope, build_scope_identity(
+        pack, scope, criteria=criteria,
+        materials_digest=materials_digest, rules_digest=rules_digest,
+        strategy_digest=strategy_digest, model_digest=model_digest,
+        tests_receipt_digest=tests_receipt_digest,
+        criteria_version_value=criteria_version_value))
     _refresh_pack_level(pack)
     history = list(pack.get("scope_signoffs") or [])
     for previous in history:
         if previous.get("scope") == scope and not previous.get("superseded"):
             previous["superseded"] = True
             previous["superseded_reason"] = "replaced_by_later_human_record"
-    history.append({
+    row = {
         "scope": scope,
         "scope_label": SCOPE_LABELS[scope],
         "attested_by": name,
@@ -318,8 +498,11 @@ def record_scope_signoff(pack, *, scope, attested_by, code_commit, criteria, res
         "confirmation_phrase": HUMAN_CONFIRMATION_PHRASE,
         "recorded_at": time(),
         "superseded": False,
+        "expired": False,
         "accepted_global_pack": False,
-    })
+    }
+    row.update(identity)
+    history.append(row)
     pack["scope_signoffs"] = history
     pack["accepted"] = False
     pack["passed"] = False
@@ -328,7 +511,7 @@ def record_scope_signoff(pack, *, scope, attested_by, code_commit, criteria, res
 
 def _active_signoff(signoffs, scope, code_commit):
     for record in reversed(list(signoffs or [])):
-        if record.get("superseded"):
+        if record.get("superseded") or record.get("expired"):
             continue
         if record.get("scope") != scope:
             continue
@@ -342,16 +525,18 @@ def _active_signoff(signoffs, scope, code_commit):
 
 def freeze_status(*, code_commit=None, dirty_worktree=True, tests_bound_to_sha=False,
                   pr_body_updated=False, human_commit_authorized=False, m4_pack=None,
-                  scope=None):
+                  scope=None, identity=None, expire_stale=False):
     """Record whether a named scope can freeze after a human confirmation.
 
     Software never invents the confirmation. Global pack.accepted stays false
     unless a human release signoff exists; a hand-edited accepted=true is ignored.
+    Offline research does not wait on F11; fullscreen manual does not wait on holdout.
     """
     if scope is not None and scope not in SCOPES:
         raise ValueError(f"未知冻结范围: {scope}")
     if human_commit_authorized is True and dirty_worktree is not False:
         raise EvidenceError("FREEZE_DIRTY", "脏工作树不能冒充已授权冻结")
+    target = scope or SCOPE_RELEASE
     signoffs = list((m4_pack or {}).get("scope_signoffs") or [])
     technical = []
     if not code_commit:
@@ -368,15 +553,53 @@ def freeze_status(*, code_commit=None, dirty_worktree=True, tests_bound_to_sha=F
     table = _active_signoff(signoffs, SCOPE_TABLE_ASSISTED, code_commit)
     if claimed_accept and not (release and release.get("result") == "accepted"):
         blockers.append("untrusted_global_accepted_without_human_signoff")
-    target = scope or SCOPE_RELEASE
     signed = _active_signoff(signoffs, target, code_commit)
-    if not signed or signed.get("result") != "accepted":
+    supplied = dict(identity or {})
+    current = build_scope_identity(
+        m4_pack or {}, target, criteria=(signed or {}).get("criteria") or "",
+        materials_digest=pack_materials_digest(m4_pack or {}, target),
+        rules_digest=supplied.get("rules_digest") or (signed or {}).get("rules_digest"),
+        strategy_digest=supplied.get("strategy_digest") or (signed or {}).get("strategy_digest"),
+        model_digest=supplied.get("model_digest") or (signed or {}).get("model_digest"),
+        tests_receipt_digest=(
+            supplied.get("tests_receipt_digest") or (signed or {}).get("tests_receipt_digest")),
+        criteria_version_value=supplied.get("criteria_version"),
+    )
+    signed_ok = False
+    identity_stale = False
+    if not signed:
         blockers.append("scope_not_signed_by_human" if scope else "release_not_signed_by_human")
+    elif not _has_frozen_identity(signed):
+        blockers.append("scope_identity_missing")
+        if expire_stale:
+            _expire_record(signed, "identity_missing")
+    elif not _identity_matches(signed, current):
+        identity_stale = True
+        blockers.append("scope_identity_changed")
+        if expire_stale:
+            _expire_record(signed, "identity_changed")
+    elif signed.get("result") != "accepted":
+        blockers.append("scope_not_signed_by_human" if scope else "release_not_signed_by_human")
+    else:
+        signed_ok = True
+    if SCOPE_REQUIRES_BOUND_MATERIALS.get(target) and current.get("materials_digest") == MATERIALS_NONE_BOUND:
+        blockers.append("scope_materials_not_bound")
     if target == SCOPE_RELEASE:
         if human_commit_authorized is not True:
             blockers.append("no_human_commit_authorization")
         if not table or table.get("result") != "accepted":
             blockers.append("m4_materials_not_accepted")
+        if table and not _has_frozen_identity(table):
+            blockers.append("table_scope_identity_missing")
+        elif table and not _identity_matches(table, build_scope_identity(
+                m4_pack or {}, SCOPE_TABLE_ASSISTED,
+                criteria=table.get("criteria") or "",
+                rules_digest=table.get("rules_digest"),
+                strategy_digest=table.get("strategy_digest"),
+                model_digest=table.get("model_digest"),
+                tests_receipt_digest=table.get("tests_receipt_digest"),
+                criteria_version_value=table.get("criteria_version"))):
+            blockers.append("table_scope_identity_changed")
     ready = not blockers
     return {
         "ready": ready,
@@ -384,7 +607,12 @@ def freeze_status(*, code_commit=None, dirty_worktree=True, tests_bound_to_sha=F
         "technical_ready": not technical,
         "scope": target,
         "scope_label": SCOPE_LABELS[target],
-        "scope_accepted": bool(signed and signed.get("result") == "accepted"),
+        "scope_accepted": signed_ok,
+        "identity_ok": bool(signed and not identity_stale and _has_frozen_identity(signed)
+                            and _identity_matches(signed, current)),
+        "identity_stale": identity_stale,
+        "signed_identity": identity_snapshot(signed) if signed else None,
+        "current_identity": current,
         "release_authorized": bool(release and release.get("result") == "accepted"
                                    and human_commit_authorized is True
                                    and dirty_worktree is False),
@@ -397,5 +625,5 @@ def freeze_status(*, code_commit=None, dirty_worktree=True, tests_bound_to_sha=F
         "predeal_max_remaining": PREDEAL_MAX_REMAINING,
         "interactive_exact_budget_seconds": INTERACTIVE_EXACT_BUDGET_SECONDS,
         "note": "技术完成、范围内人工签收和发布授权是三个状态。软件不得代签。"
-                "手改 accepted=true 不能当作签收。",
+                "手改 accepted=true 不能当作签收。材料/规则/策略/模型/测试回执变化会使旧签收过期。",
     }
