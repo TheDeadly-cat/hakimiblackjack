@@ -26,6 +26,18 @@ _EVENTS = """CREATE TABLE events (
 )"""
 
 
+class DraftReceiptCorrupt(ValueError):
+    """Receipt bytes are retained. Do not treat this as never-imported."""
+
+    def __init__(self, records):
+        self.records = list(records)
+        super().__init__(
+            "DRAFT_IMPORT_RECEIPT_CORRUPT: "
+            f"{len(self.records)} 条导入回执无法解析；原字节已保留，"
+            "须与账本核对一致后才能再导入，不能当作从未导入"
+        )
+
+
 class LocalStore:
     def __init__(self, db_path: str | Path):
         self.db_path = str(db_path)
@@ -135,13 +147,28 @@ class LocalStore:
             (f"draft_import:{session_id}:%",),
         ).fetchall()
         receipts = []
+        corrupt = []
         for row in rows:
             try:
                 body = json.loads(row["value"])
             except (TypeError, ValueError, json.JSONDecodeError):
+                corrupt.append({
+                    "key": row["key"],
+                    "raw_value": row["value"],
+                    "error": "json_decode",
+                })
+                continue
+            if not isinstance(body, dict):
+                corrupt.append({
+                    "key": row["key"],
+                    "raw_value": row["value"],
+                    "error": "not_object",
+                })
                 continue
             if shoe_id is None or body.get("shoe_id") == shoe_id:
                 receipts.append(body)
+        if corrupt:
+            raise DraftReceiptCorrupt(corrupt)
         return receipts
 
     def load_events(self, session_id: Optional[str] = None, through_seq=None):

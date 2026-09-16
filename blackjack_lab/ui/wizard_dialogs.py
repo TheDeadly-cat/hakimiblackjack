@@ -8,7 +8,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from ..analysis.shoe_event_draft import (
-    add_unknown_card, composition_status, confirm_page, development_clip_stub,
+    add_unknown_card, composition_status, confirm_page, confirm_round_coverage,
+    coverage_attestation_valid, development_clip_stub,
     keep_unknown, load_draft, review_pages, set_event_rank, set_event_seat, write_draft,
 )
 from ..capture.fullscreen_acceptance import probe_environment
@@ -83,28 +84,121 @@ def _dialog_alive(dialog):
     return dialog is not None and bool(getattr(dialog, "winfo_exists", lambda: False)())
 
 
+def _load_usage_json(app, name):
+    folder = usage_folder(app)
+    if folder is None:
+        return {}
+    path = folder / name
+    if not path.is_file():
+        return {}
+    try:
+        body = json.loads(path.read_text(encoding="utf-8"))
+    except (TypeError, ValueError, OSError):
+        return {}
+    return body if isinstance(body, dict) else {}
+
+
+def _usage_wizard_session(app):
+    wizard = getattr(app, "_fullscreen_wizard", None)
+    if _dialog_alive(wizard):
+        return dict(wizard.session or {})
+    saved = _load_usage_json(app, "fullscreen-wizard-live.json") or _load_usage_json(
+        app, "fullscreen-wizard.json")
+    return dict(saved.get("wizard") or saved or {})
+
+
+def _usage_operator_session(app):
+    operator = getattr(app, "_operator_wizard", None)
+    if _dialog_alive(operator):
+        return dict(operator.session or {})
+    saved = _load_usage_json(app, "operator-pair-wizard.json")
+    return dict(saved or {})
+
+
+def _enter_f11_observation(wizard_session):
+    for row in wizard_session.get("steps") or []:
+        if row.get("id") != "enter_f11":
+            continue
+        observation = row.get("observation") or {}
+        still = observation.get("still") if isinstance(observation, dict) else {}
+        return {
+            "recorded": row.get("status") == "recorded",
+            "looks_monitor_sized": bool(
+                isinstance(observation, dict) and observation.get("looks_monitor_sized")),
+            "still_capture_ok": bool(isinstance(still, dict) and still.get("capture_ok")),
+            "foreground": observation.get("foreground") if isinstance(observation, dict) else None,
+        }
+    return {
+        "recorded": False,
+        "looks_monitor_sized": False,
+        "still_capture_ok": False,
+        "foreground": None,
+    }
+
+
+def _current_hand_ranks(ctrl):
+    try:
+        current = ctrl.state().current
+        if current is None or current.table is None:
+            return []
+        rows = []
+        for seat, player in (current.table.players or {}).items():
+            for hand in player.hands:
+                rows.append({"seat": seat, "ranks": list(hand.ranks)})
+        return rows
+    except Exception:
+        return []
+
+
+def _usage_source_identity():
+    try:
+        from ..analysis.experiment_export import _source_identity
+        return _source_identity(Path(__file__).resolve().parents[2])
+    except Exception:
+        return {"commit": None, "dirty_worktree": True, "kind": "unversioned-directory"}
+
+
 def write_usage_snapshot(app, reason):
     ctrl = getattr(app, "ctrl", None)
     ledger = getattr(ctrl, "ledger", None)
-    wizard = getattr(app, "_fullscreen_wizard", None)
-    operator = getattr(app, "_operator_wizard", None)
-    wizard_session = wizard.session if _dialog_alive(wizard) else {}
-    operator_session = operator.session if _dialog_alive(operator) else {}
+    wizard_session = _usage_wizard_session(app)
+    operator_session = _usage_operator_session(app)
+    enter_f11 = _enter_f11_observation(wizard_session)
+    session = getattr(app, "usage_session", None) or {}
+    manifest = session.get("manifest") or {}
+    db_path = str(session.get("db") or getattr(getattr(ctrl, "store", None), "db_path", "") or "")
+    default_db = str(manifest.get("default_user_db") or "")
     body = {
+        "schema": "hakimi-usage-run-v1",
         "reason": reason,
         "accepted": False,
+        "passed": False,
+        "live_catchup": False,
+        "pause_and_fill_is_not_realtime": True,
+        "software_cannot_claim_f11": True,
         "session_id": getattr(ctrl, "session_id", None),
         "commit_revision": getattr(ctrl, "commit_revision", None),
         "event_count": len(getattr(ledger, "events", None) or []),
+        "current_hands": _current_hand_ranks(ctrl),
         "fullscreen_required_complete": bool(wizard_session.get("required_complete")),
         "fullscreen_recorded_steps": list(wizard_session.get("recorded_steps") or []),
+        "enter_f11": enter_f11,
         "operator_pair_id": ((operator_session.get("identity") or {}).get("pair_id")),
-        "note": "实测快照，不是验收通过。",
+        "db": db_path,
+        "default_user_db": default_db,
+        "uses_user_default_db": bool(db_path and default_db and db_path == default_db),
+        "source_identity": _usage_source_identity(),
+        "note": (
+            "实测快照，不是验收通过。向导点完不等于 F11 已验收；"
+            "暂停后补齐不能当成实时跟上。"
+        ),
     }
     append_usage_event(
         app, "snapshot", reason=reason,
         fullscreen_required_complete=body["fullscreen_required_complete"],
-        operator_pair_id=body["operator_pair_id"])
+        operator_pair_id=body["operator_pair_id"],
+        looks_monitor_sized=enter_f11["looks_monitor_sized"])
+    write_usage_json(app, "usage_run.json", body)
     return write_usage_json(app, "usage-final.json", body)
 
 
@@ -243,6 +337,7 @@ class FullscreenWizardDialog(tk.Toplevel):
             path.write_text(json.dumps(body, ensure_ascii=False, indent=2), encoding="utf-8")
         _drop_m4_inbox("fullscreen_f11", path)
         append_usage_event(self.app, "fullscreen_saved", path=str(path))
+        write_usage_snapshot(self.app, "fullscreen_save")
         self.app.set_status("已保存全屏向导证据；accepted=" + str(body["accepted"]))
         messagebox.showinfo("全屏向导", body["note"] + "\naccepted=" + str(body["accepted"]), parent=self)
 
@@ -564,7 +659,8 @@ class EventDraftDialog(tk.Toplevel):
             self, wraplength=940,
             text="一轮一页。默认跳过局间遗留。看图核对；确认要写下姓名。软件不能代签。"
                  "多座位请先指定座位再改点数。不清楚就留未知。红牌切牌卡不计牌。"
-                 "写入账本前请先开靴；未确认牌面只会记成观察缺口。",
+                 "写入账本前请先开靴；未确认牌面只会记成观察缺口。"
+                 "整轮观察范围需单独核对，点完已发现的牌不等于没有漏牌。",
         ).pack(anchor="w", padx=8, pady=6)
         nav = ttk.Frame(self)
         nav.pack(fill=tk.X, padx=8)
@@ -608,6 +704,7 @@ class EventDraftDialog(tk.Toplevel):
         ttk.Button(row, text="加一张未知明牌", command=self._add_deal).pack(side=tk.LEFT, padx=4)
         ttk.Button(row, text="加一张未知暗牌", command=self._add_hidden).pack(side=tk.LEFT, padx=4)
         ttk.Button(row, text="确认本页", command=self._confirm).pack(side=tk.LEFT, padx=4)
+        ttk.Button(row, text="确认本轮观察范围", command=self._confirm_coverage).pack(side=tk.LEFT, padx=4)
         ttk.Button(row, text="保存草稿", command=self._save).pack(side=tk.LEFT, padx=4)
         self.var_status = tk.StringVar()
         ttk.Label(self, textvariable=self.var_status, wraplength=940).pack(anchor="w", padx=8)
@@ -792,10 +889,16 @@ class EventDraftDialog(tk.Toplevel):
         status = composition_status(self.draft)
         hidden = max(0, len(review_pages(self.draft)) - len(pages))
         extra = f"；已跳过局间遗留 {hidden} 页" if self.var_skip_waiting.get() and hidden else ""
+        coverage = (
+            "；观察范围已核对"
+            if page["page_id"] not in ("shoe-open", "shoe-end")
+            and coverage_attestation_valid(self.draft, page["page_id"])
+            else "；观察范围未核对"
+        )
         self.var_status.set(
             f"确认牌 {status['confirmed_playing_cards']}；未知 {status['unknown_or_unconfirmed']}；"
             f"切牌标志 {status['cut_markers']}；完整剩余={status['complete_remaining']}；"
-            f"accepted=false{extra}")
+            f"accepted=false{extra}{coverage}")
 
     def _selected_event_id(self):
         selection = self.listbox.curselection()
@@ -820,6 +923,21 @@ class EventDraftDialog(tk.Toplevel):
                          recorded_by="ui-event-draft")
         except (ValueError, KeyError) as error:
             messagebox.showerror("不能确认", str(error), parent=self)
+            return
+        self._refresh()
+
+    def _confirm_coverage(self):
+        page = self._page()
+        if page is None:
+            return
+        try:
+            confirm_round_coverage(
+                self.draft, page["page_id"],
+                confirmed_by=self.var_name.get(),
+                recorded_by="ui-event-draft",
+            )
+        except (ValueError, KeyError) as error:
+            messagebox.showerror("不能确认观察范围", str(error), parent=self)
             return
         self._refresh()
 

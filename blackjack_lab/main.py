@@ -59,7 +59,10 @@ def main() -> int:
         session = usage_session_paths()
         db_path = session["db"]
         print("USAGE_SESSION_DB=" + str(db_path), flush=True)
+        print("USAGE_SESSION_FOLDER=" + str(session["folder"]), flush=True)
         print(session["manifest"]["note"], flush=True)
+        print("关闭窗口后查看该目录的 usage_run.json，并用 python scripts/verify_usage_session.py --folder <目录> 核对。", flush=True)
+        print("向导点完不等于 F11 已验收；暂停后补齐不算实时跟上。", flush=True)
         print("菜单：悬浮记牌、全屏验收向导、配对操作向导。完成后仍须人工签收。", flush=True)
     else:
         db_path = args.db or DEFAULT_DB

@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import math
 from pathlib import Path
 from time import time
 
@@ -89,9 +90,78 @@ def checkpoint_rows(report):
     return [checkpoint_row(item) for item in report.get("rounds") or []]
 
 
+def _json_cell(text, expected_type, name):
+    """Decode nested CSV data. Legacy Python repr is not JSON and is refused."""
+    def reject_constant(value):
+        raise ValueError(f"{name}: non-finite JSON constant {value}")
+    try:
+        value = json.loads(text, parse_constant=reject_constant)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{name}: expected strict JSON; preserve the source file for diagnosis") from error
+    if not isinstance(value, expected_type):
+        raise ValueError(f"{name}: wrong JSON type")
+    return value
+
+
+def checkpoint_row_to_csv(row):
+    """Preserve nested objects as JSON instead of Python str(dict)."""
+    out = {}
+    for key in CHECKPOINT_FIELDS:
+        value = row.get(key)
+        if value is None:
+            out[key] = ""
+        elif key in ("classification", "composition_counts"):
+            out[key] = json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+        else:
+            out[key] = value
+    return out
+
+
+def checkpoint_row_from_csv(row):
+    """Restore the exported column types; never evaluate Python expressions."""
+    ints = {"round_index", "physical_remaining", "n_ok", "n_failed", "n_not_run", "family_size"}
+    floats = {
+        "ev", "ci_low", "ci_high", "wald_ci_low", "wald_ci_high",
+        "elapsed_seconds", "hoeffding_radius",
+    }
+    bools = {"statistical_positive", "statistical_nonpositive", "window_claim_allowed"}
+    out = {}
+    for key in CHECKPOINT_FIELDS:
+        value = row.get(key)
+        if value in (None, ""):
+            out[key] = None
+        elif key == "classification":
+            out[key] = _json_cell(value, dict, key)
+        elif key == "composition_counts":
+            out[key] = _json_cell(value, list, key)
+        elif key in ints:
+            out[key] = int(value)
+        elif key in floats:
+            number = float(value)
+            if not math.isfinite(number):
+                raise ValueError(f"{key}: non-finite value")
+            out[key] = number
+        elif key in bools:
+            if value not in ("True", "False", "true", "false"):
+                raise ValueError(f"{key}: invalid boolean")
+            out[key] = value.lower() == "true"
+        else:
+            out[key] = value
+    return out
+
+
 def _scope_record(row):
     """Rebuild classification input. Do not invent an opening-window kind."""
-    src = dict(row.get("classification") or {})
+    raw = row.get("classification")
+    if isinstance(raw, str):
+        if not raw:
+            raw = None
+        else:
+            row = checkpoint_row_from_csv(row)
+            raw = row.get("classification")
+    if raw is not None and not isinstance(raw, dict):
+        raise ValueError("classification: expected an object")
+    src = dict(raw or {})
     record = {}
     for key in CLASSIFICATION_KEYS:
         if key in src:
@@ -193,7 +263,7 @@ def write_window_study(report, output_dir, *, root=None):
     writer = csv.DictWriter(stream, fieldnames=list(CHECKPOINT_FIELDS), extrasaction="ignore")
     writer.writeheader()
     for row in rows:
-        writer.writerow({key: row.get(key) if row.get(key) is not None else "" for key in CHECKPOINT_FIELDS})
+        writer.writerow(checkpoint_row_to_csv(row))
     atomic_write(csv_path, stream.getvalue().encode("utf-8"), overwrite=False)
     atomic_write(
         identity_path,

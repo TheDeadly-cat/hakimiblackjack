@@ -17,6 +17,11 @@ MARKER_KINDS = frozenset({
     "round_end", "between_rounds", "in_play_still",
 })
 EVENT_KINDS = tuple(sorted(COUNTED_KINDS | MARKER_KINDS | {"unknown_obstructed"}))
+OBSERVATION_RISK_KINDS = frozenset({"dropped_frame", "obstruction", "unknown_obstructed"})
+PASSIVE_IMPORT_KINDS = frozenset({"round_start", "round_end", "in_play_still"})
+SOFTWARE_ATTESTERS = frozenset({
+    "grok", "chatgpt", "codex", "cursor", "software", "ai", "assistant",
+})
 NOTE = (
     "待核对草稿：确认正确的可以批量确认，错的改单张，不清楚的保留未知。"
     "红色切牌卡是流程标志，不得当作普通扑克牌加入记牌数量。"
@@ -68,6 +73,8 @@ def empty_draft(*, video_path=None, video_sha256=None, video_bytes=None,
         "video_path": str(video_path) if video_path else None,
         "video_sha256": video_sha256,
         "video_bytes": video_bytes,
+        "source_span": None,
+        "round_coverage": {},
         "n_decks": None,
         "initial_burn_count": None,
         "burn_cards_known": None,
@@ -147,18 +154,138 @@ def keep_unknown(draft, event_ids=None):
     return draft
 
 
+def _require_human_attester(name, action):
+    if not name or str(name).strip().lower() in SOFTWARE_ATTESTERS:
+        raise ValueError(f"{action}必须由人作出，软件不能代签")
+    return str(name).strip()
+
+
+def observation_risk_blocks(event):
+    """Unresolved deal-observation doubts block round coverage. Excluded background does not."""
+    if event.get("kind") not in OBSERVATION_RISK_KINDS:
+        return False
+    if event.get("affects_composition") is False and event.get("status") == "confirmed":
+        return False
+    return True
+
+
+def blocking_observation_risks(draft, round_id=None):
+    events = draft.get("events") or []
+    risks = []
+    for event in events:
+        if not observation_risk_blocks(event):
+            continue
+        event_round = event.get("round_id")
+        if round_id is None:
+            risks.append(event)
+            continue
+        if event_round in (round_id, None, "", "unassigned"):
+            risks.append(event)
+    return risks
+
+
+def draft_source_span(draft):
+    explicit = draft.get("source_span")
+    if isinstance(explicit, dict):
+        start = explicit.get("start_frame")
+        end = explicit.get("end_frame")
+        if start is not None or end is not None:
+            return {"start_frame": start, "end_frame": end}
+    frames = [
+        event.get("frame_index")
+        for event in draft.get("events") or []
+        if event.get("frame_index") is not None
+    ]
+    if not frames:
+        return None
+    return {"start_frame": min(frames), "end_frame": max(frames)}
+
+
+def round_coverage_identity(draft, round_id):
+    items = [event for event in draft.get("events") or [] if event.get("round_id") == round_id]
+    return json.dumps({
+        "round_id": round_id,
+        "video_sha256": draft.get("video_sha256"),
+        "video_bytes": draft.get("video_bytes"),
+        "source_span": draft_source_span(draft),
+        "events": [
+            {
+                "kind": event.get("kind"),
+                "status": event.get("status"),
+                "rank": event.get("rank"),
+                "seat": event.get("seat"),
+                "count": event.get("count"),
+                "frame_index": event.get("frame_index"),
+                "still_path": event.get("still_path"),
+                "still_sha256": event.get("still_sha256"),
+                "affects_composition": event.get("affects_composition"),
+            }
+            for event in items
+        ],
+    }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def coverage_attestation_valid(draft, round_id):
+    record = (draft.get("round_coverage") or {}).get(round_id)
+    if not isinstance(record, dict):
+        return False
+    return record.get("identity") == round_coverage_identity(draft, round_id)
+
+
+def _cards_confirmed_for_coverage(items):
+    counted = [event for event in items if event.get("kind") in ("deal", "hidden")]
+    if not counted:
+        return False
+    if any(event.get("status") != "confirmed" for event in counted):
+        return False
+    if any(
+        event.get("kind") == "deal" and event.get("rank") in (None, "", "unknown")
+        for event in counted
+    ):
+        return False
+    return True
+
+
+def confirm_round_coverage(draft, round_id, *, confirmed_by, recorded_by="software-recorder",
+                           source_span=None, notes=""):
+    """Second-layer confirmation: observed range for this round is covered. Not a card guess."""
+    attester = _require_human_attester(confirmed_by, "整轮观察范围核对")
+    if round_id in (None, "", "shoe-open", "shoe-end", "unassigned"):
+        raise ValueError("只能对实际对局轮次确认观察范围")
+    items = [event for event in draft.get("events") or [] if event.get("round_id") == round_id]
+    if not items:
+        raise ValueError("没有该轮事件，不能确认观察范围")
+    if not _cards_confirmed_for_coverage(items):
+        raise ValueError("牌面尚未全部核对，不能确认整轮覆盖")
+    if blocking_observation_risks(draft, round_id):
+        raise ValueError("未解决的丢帧、遮挡或未知事件仍可能漏牌，不能确认整轮覆盖")
+    identity = round_coverage_identity(draft, round_id)
+    coverage = dict(draft.get("round_coverage") or {})
+    coverage[round_id] = {
+        "confirmed_by": attester,
+        "recorded_by": recorded_by,
+        "identity": identity,
+        "source_span": source_span or draft_source_span(draft),
+        "video_sha256": draft.get("video_sha256"),
+        "notes": notes or "",
+        "confirmed_at": time(),
+        "synthetic_fixture": "synthetic" in str(notes).lower() or "fixture" in str(notes).lower(),
+    }
+    draft["round_coverage"] = coverage
+    draft["accepted"] = False
+    return coverage[round_id]
+
+
 def confirm_events(draft, event_ids, *, confirmed_by, recorded_by="software-recorder"):
     wanted = set(event_ids)
-    if not confirmed_by or str(confirmed_by).strip().lower() in {
-            "grok", "chatgpt", "codex", "cursor", "software", "ai", "assistant"}:
-        raise ValueError("逐牌确认必须由人作出，软件不能代签")
+    attester = _require_human_attester(confirmed_by, "逐牌确认")
     for event in draft["events"]:
         if event["event_id"] not in wanted:
             continue
         if event["kind"] in COUNTED_KINDS and event.get("rank") in (None, "", "unknown"):
             if event["kind"] == "hidden":
                 event["status"] = "confirmed"
-                event["confirmed_by"] = str(confirmed_by).strip()
+                event["confirmed_by"] = attester
                 event["recorded_by"] = recorded_by
                 event["confirmation"] = "hole_exists_rank_unknown"
                 continue
@@ -171,7 +298,7 @@ def confirm_events(draft, event_ids, *, confirmed_by, recorded_by="software-reco
                 event["confirmation"] = "kept_unknown"
                 continue
         event["status"] = "confirmed"
-        event["confirmed_by"] = str(confirmed_by).strip()
+        event["confirmed_by"] = attester
         event["recorded_by"] = recorded_by
     draft["accepted"] = False
     return draft

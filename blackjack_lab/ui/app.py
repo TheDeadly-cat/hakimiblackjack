@@ -53,9 +53,11 @@ CARD_BUTTONS = ("A", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 
 def usage_session_paths(root=None, stamp=None):
     """Create a throwaway lab database. Never points at the user default ledger."""
+    from os import getpid
     from time import strftime, localtime
+    from uuid import uuid4
     root = Path(root or PROJECT_ROOT)
-    stamp = stamp or strftime("%Y%m%d-%H%M%S", localtime())
+    stamp = stamp or f"{strftime('%Y%m%d-%H%M%S', localtime())}-{getpid()}-{uuid4().hex[:8]}"
     folder = root / ".local-evidence" / "usage-sessions" / stamp
     folder.mkdir(parents=True, exist_ok=True)
     db = (folder / "lab.db").resolve()

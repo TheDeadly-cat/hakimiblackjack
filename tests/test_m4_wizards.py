@@ -581,6 +581,9 @@ class PageConfirmTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             set_event_rank(draft, cut["event_id"], "10")
         self.assertFalse(cut["counted_in_remaining"])
+        from blackjack_lab.analysis.shoe_event_draft import confirm_round_coverage
+        with self.assertRaises(ValueError):
+            confirm_round_coverage(draft, "round-1", confirmed_by="Grok")
         deal = next(event for event in draft["events"] if event["kind"] == "deal")
         set_event_rank(draft, deal["event_id"], "K")
         self.assertEqual("K", deal["rank"])

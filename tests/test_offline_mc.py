@@ -1,4 +1,5 @@
 """Confirmed ledger remaining can feed offline MC without the 16-card exact cap."""
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,6 +7,9 @@ from pathlib import Path
 from blackjack_lab.analysis.contracts import research_rules
 from blackjack_lab.analysis.fixed_policy_mc import POLICY_ALWAYS_STAND
 from blackjack_lab.analysis.offline_mc_contracts import OFFLINE_MC_RESULT_SCHEMA
+from blackjack_lab.analysis.offline_research_sample import (
+    EXPECTED_REMAINING, run_offline_research_sample, three_confirmed_rounds_draft,
+)
 from blackjack_lab.analysis.research_windows import build_offline_mc_input, build_predeal_input
 from blackjack_lab.analysis.service import calculate
 from blackjack_lab.storage.analysis_snapshots import AnalysisSnapshots
@@ -62,74 +66,40 @@ class LedgerOfflineMcTest(unittest.TestCase):
         self.assertEqual(exact.exception.code, offline.exception.code)
 
 
-def _three_confirmed_rounds(n_decks=6):
-    from blackjack_lab.analysis.shoe_event_draft import add_event, confirm_events, empty_draft
-    draft = empty_draft(
-        role="development", filename=f"three-round-{n_decks}d-fixture.mp4")
-    add_event(draft, "burn", status="confirmed", count=0)
-    hands = (
-        (("玩家1", "K"), ("庄家", "10"), ("玩家1", "6"), ("庄家", "9")),
-        (("玩家1", "A"), ("庄家", "10"), ("玩家1", "8"), ("庄家", "7")),
-        (("玩家1", "5"), ("庄家", "K"), ("玩家1", "10"), ("庄家", "8")),
-    )
-    ids = []
-    for index, cards in enumerate(hands, start=1):
-        for seat, rank in cards:
-            event = add_event(
-                draft, "deal", round_id=f"round-{index}", rank=rank, seat=seat, status="draft")
-            ids.append(event["event_id"])
-    confirm_events(draft, ids, confirmed_by="Shawn")
-    return draft
-
-
 class OfflineResearchSampleTest(unittest.TestCase):
     def test_three_confirmed_rounds_import_freeze_and_recompute_after_correction(self):
-        from blackjack_lab.analysis.shoe_windows import full_pack
-        from blackjack_lab.ledger.draft_import import apply_event_draft
-        from blackjack_lab.ledger.events import CARD_DEALT
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        for decks in (6, 7, 8):
-            ctrl = SessionController(Path(tmp.name) / f"sample-{decks}.db")
-            self.addCleanup(ctrl.close)
-            ctrl.new_shoe(research_rules(decks, surrender=None))
-            self.assertEqual(len(full_pack(decks)), ctrl.state().current.shoe.physical_remaining())
-            result = apply_event_draft(ctrl, _three_confirmed_rounds(decks), seat="玩家1")
-            self.assertFalse(result["accepted"])
-            self.assertEqual(12, result["card_dealt"])
-            remaining = ctrl.state().current.shoe.physical_remaining()
-            self.assertEqual(len(full_pack(decks)) - 12, remaining)
-            snapshot = build_offline_mc_input(
-                ctrl.ledger, policy=POLICY_ALWAYS_STAND, n_samples=12, seed=3)
-            self.assertEqual(remaining, snapshot.physical_remaining)
-            self.assertTrue(result["offline_mc_ready"])
+        report = run_offline_research_sample(Path(tmp.name) / "pack", n_samples=12, seed=3)
+        self.assertTrue(report["ok"], report)
+        sample_path = Path(report["sample_run"])
+        self.assertTrue(sample_path.is_file())
+        body = json.loads(sample_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            [{"n_decks": decks, "physical_remaining": remaining}
+             for decks, remaining in EXPECTED_REMAINING.items()],
+            body["expected_remaining"])
+        self.assertTrue(body["not_a_reliable_window_claim"])
+        self.assertFalse(body["accepted"])
+        by_name = {step["step"]: step for step in body["steps"]}
+        for decks, remaining in EXPECTED_REMAINING.items():
+            step = by_name[f"{decks}-deck-three-round"]
+            self.assertEqual(12, step["card_dealt"])
+            self.assertEqual(remaining, step["physical_remaining"])
+            self.assertTrue(step["offline_mc_ready"])
+            self.assertTrue(Path(step["result_path"]).is_file())
+        self.assertTrue(by_name["restart-recompute-correction"]["ok"])
+        self.assertTrue(by_name["observation-gap-control"]["ok"])
+        self.assertNotEqual(
+            by_name["restart-recompute-correction"]["old_snapshot_id"],
+            by_name["restart-recompute-correction"]["new_snapshot_id"])
 
-        ctrl = SessionController(Path(tmp.name) / "sample-flow.db")
-        self.addCleanup(ctrl.close)
-        ctrl.new_shoe(research_rules(6, surrender=None))
-        apply_event_draft(ctrl, _three_confirmed_rounds(6), seat="玩家1")
-        snapshot = build_offline_mc_input(
-            ctrl.ledger, policy=POLICY_ALWAYS_STAND, n_samples=12, seed=5)
-        result = calculate(snapshot, budget_seconds=15)
-        self.assertEqual(OFFLINE_MC_RESULT_SCHEMA, result["schema"])
-        saved = ctrl.analysis_store.save(result)
-        session_id = ctrl.session_id
-        ctrl.close()
-        restarted = SessionController.recover(Path(tmp.name) / "sample-flow.db", session_id)
-        self.addCleanup(restarted.close)
-        loaded = restarted.analysis_store.load(saved["snapshot_id"])
-        self.assertEqual(result["input_digest"], loaded["result"]["input_digest"])
-        again = restarted.recompute_input(saved)
-        self.assertEqual(snapshot.input_digest, again.input_digest)
-        dealt = [event for event in restarted.ledger.events if event.etype == CARD_DEALT]
-        restarted.correct(dealt[0].event_id, {"rank": "A"}, "样板纠错：第一张改为A")
-        current = build_offline_mc_input(
-            restarted.ledger, policy=POLICY_ALWAYS_STAND, n_samples=12, seed=5)
-        self.assertNotEqual(snapshot.prefix_digest, current.prefix_digest)
-        newer = restarted.analysis_store.save(calculate(current, budget_seconds=15), saved["snapshot_id"])
-        self.assertNotEqual(saved["snapshot_id"], newer["snapshot_id"])
-        old = restarted.analysis_store.load(saved["snapshot_id"])
-        self.assertEqual(result["input_digest"], old["result"]["input_digest"])
+    def test_fixture_coverage_is_not_a_live_video_attestation(self):
+        draft = three_confirmed_rounds_draft(6)
+        self.assertEqual(3, len(draft.get("round_coverage") or {}))
+        for record in draft["round_coverage"].values():
+            self.assertTrue(record.get("synthetic_fixture"))
+            self.assertIn("not a real-video", record.get("notes", "").lower())
 
     def test_observation_gap_explains_unavailable_but_recording_continues(self):
         from blackjack_lab.analysis.shoe_event_draft import add_event, empty_draft

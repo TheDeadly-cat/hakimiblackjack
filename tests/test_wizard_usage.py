@@ -24,6 +24,15 @@ class UsageSessionPathsTest(unittest.TestCase):
             self.assertIn("lab.db", str(session["db"]))
             self.assertTrue((session["folder"] / "session.json").is_file())
 
+    def test_auto_stamps_do_not_share_a_database(self):
+        with tempfile.TemporaryDirectory() as folder:
+            first = usage_session_paths(root=folder)
+            second = usage_session_paths(root=folder)
+            self.assertNotEqual(first["db"], second["db"])
+            self.assertNotEqual(first["folder"], second["folder"])
+            self.assertTrue((first["folder"] / "session.json").is_file())
+            self.assertTrue((second["folder"] / "session.json").is_file())
+
 
 class WizardUsageTest(unittest.TestCase):
     def setUp(self):
@@ -155,3 +164,45 @@ class WizardUsageTest(unittest.TestCase):
         self.assertFalse(closed["accepted"])
         self.assertEqual(session_id, closed["session_id"])
         self.assertGreaterEqual(closed["event_count"], 2)
+        usage_run = json.loads(
+            (self.session_paths["folder"] / "usage_run.json").read_text(encoding="utf-8"))
+        self.assertEqual("hakimi-usage-run-v1", usage_run["schema"])
+        self.assertFalse(usage_run["accepted"])
+        self.assertFalse(usage_run["live_catchup"])
+        self.assertTrue(usage_run["pause_and_fill_is_not_realtime"])
+        self.assertTrue(usage_run["software_cannot_claim_f11"])
+        self.assertFalse(usage_run["uses_user_default_db"])
+        self.assertTrue(usage_run["fullscreen_required_complete"])
+        self.assertFalse(usage_run["enter_f11"]["looks_monitor_sized"])
+        hands = [row["ranks"] for row in usage_run["current_hands"] if row["seat"] == "玩家1"]
+        self.assertIn(["K", "Q"], hands)
+        from blackjack_lab.capture.usage_session_report import inspect_usage_session
+        judged = inspect_usage_session(self.session_paths["folder"])
+        self.assertFalse(judged["accepted"])
+        self.assertFalse(judged["live_catchup"])
+        self.assertFalse(judged["uses_user_default_db"])
+        self.assertTrue(judged["software_usage_test_complete"])
+        self.assertFalse(judged["enter_f11_looks_monitor_sized"])
+        self.assertFalse(judged["human_f11_ready_for_signoff"])
+        self.assertIn("human_f11_geometry", judged["missing"])
+
+
+class UsageSessionReportTest(unittest.TestCase):
+    def test_open_wizard_only_is_not_f11_signoff(self):
+        from blackjack_lab.capture.usage_session_report import inspect_usage_session
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(folder, ignore_errors=True))
+        (folder / "session.json").write_text(json.dumps({
+            "schema": "hakimi-usage-session-v1",
+            "accepted": False,
+            "db": str(folder / "lab.db"),
+            "default_user_db": str(DEFAULT_DB.resolve()),
+        }), encoding="utf-8")
+        (folder / "wizard-log.jsonl").write_text(
+            json.dumps({"kind": "fullscreen_wizard_opened", "accepted": False}) + "\n",
+            encoding="utf-8")
+        judged = inspect_usage_session(folder)
+        self.assertFalse(judged["software_usage_test_complete"])
+        self.assertFalse(judged["human_f11_ready_for_signoff"])
+        self.assertIn("usage_run.json", judged["missing"])
+        self.assertIn("human_f11_geometry", judged["missing"])
