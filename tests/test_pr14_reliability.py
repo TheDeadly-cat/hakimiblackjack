@@ -152,11 +152,25 @@ class TestReliabilityBoundaries(unittest.TestCase):
     def press(self, widget, key, repeats=1):
         widget.focus_force()
         self.app.update()
-        for _ in range(repeats):
-            widget.event_generate('<KeyPress-' + key + '>')
+        self.last_key_events = []
+        tag = 'PR14KeyProbe' + str(id(self))
+        original_tags = widget.bindtags()
+        def observe(event):
+            self.last_key_events.append((str(event.type), event.keysym, event.keycode, event.state))
+        bindings = [(sequence, self.app.bind_class(tag, sequence, observe))
+                    for sequence in ('<KeyPress>', '<KeyRelease>')]
+        widget.bindtags((tag, *original_tags))
+        try:
+            for _ in range(repeats):
+                widget.event_generate('<KeyPress-' + key + '>')
+                self.app.update()
+            widget.event_generate('<KeyRelease-' + key + '>')
             self.app.update()
-        widget.event_generate('<KeyRelease-' + key + '>')
-        self.app.update()
+        finally:
+            widget.bindtags(original_tags)
+            for sequence, command in bindings:
+                self.app.unbind_class(tag, sequence)
+                self.app.deletecommand(command)
 
     def continuation(self, participants=('玩家1',), reverse=False):
         self.app.act_research_template(split=True, same_value=True)
@@ -337,7 +351,11 @@ class TestReliabilityBoundaries(unittest.TestCase):
             var.set(name in ('玩家1', '玩家2', '玩家3'))
         self.app.act_new_round()
         for key in ('0', '7', '1', '6', '0', '0', '9', 'period'):
+            before = len(self.app.ctrl.ledger.events)
             self.press(self.app, key)
+            self.assertEqual(len(self.app.ctrl.ledger.events), before + 1,
+                             {'key': key, 'events': self.last_key_events,
+                              'errors': self.errors, 'plan': self.app.ctrl.entry_plan.to_dict()})
         self.assertEqual(self.app.ctrl.state().current.shoe.physical_remaining(), 312 - 8)
         old_path = self.app.ctrl._entry_plan_path()
         for _ in range(3):
