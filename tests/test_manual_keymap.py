@@ -46,6 +46,25 @@ class TestManualKeymap(unittest.TestCase):
         self.assertEqual(resolve("KP_Decimal").kind, KIND_HOLE)
         self.assertEqual(resolve("BackSpace").kind, KIND_UNDO)
 
+    def test_printable_punctuation_matches_symbolic_key_names(self):
+        for literal, symbolic in ((".", "period"), ("+", "plus"), ("-", "minus"),
+                                  ("*", "asterisk"), ("/", "slash"), (" ", "space")):
+            with self.subTest(key=literal):
+                self.assertIsNotNone(resolve(literal))
+                self.assertEqual(resolve(literal), resolve(symbolic))
+                self.assertIsNone(resolve(literal, state=0x0004))
+        self.assertIsNone(resolve("Delete"))
+        self.assertIsNone(resolve("KP_Delete"))
+
+    def test_repeat_guard_normalizes_punctuation_on_press_and_release(self):
+        guard = RepeatGuard()
+        self.assertTrue(guard.accept_press("."))
+        self.assertFalse(guard.accept_press("period"))
+        guard.release("period")
+        self.assertTrue(guard.accept_press("."))
+        guard.release(".")
+        self.assertTrue(guard.accept_press("period"))
+
     def test_long_press_is_one_command(self):
         guard = RepeatGuard()
         self.assertTrue(guard.accept_press("0"))

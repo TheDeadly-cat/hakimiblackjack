@@ -60,7 +60,11 @@ class KeyCommand:
 
 
 def _norm(keysym: str) -> str:
-    return (keysym or "").lower()
+    key = (keysym or "").lower()
+    # Tk versions can report printable punctuation either as a character or
+    # its symbolic name (for example '.' versus 'period' on Windows).
+    return {".": "period", "+": "plus", "-": "minus", "*": "asterisk",
+            "/": "slash", " ": "space"}.get(key, key)
 
 
 def resolve(keysym: str, state: int = 0) -> KeyCommand | None:
