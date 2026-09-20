@@ -345,6 +345,7 @@ class TestReliabilityBoundaries(unittest.TestCase):
         self.assertEqual(self.recover().entry_plan.continuation_seat, '玩家3')
 
     def test_three_player_round_reveal_next_round_and_recover(self):
+        self.app.var_decks.set(6)  # This historical scenario asserts a 312-card shoe.
         self.app.act_research_template()
         self.app.act_new_shoe()
         for name, var in self.app.var_participants.items():

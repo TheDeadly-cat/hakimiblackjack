@@ -1,9 +1,11 @@
 """Compact view of the existing AnalysisPanel request; no worker of its own."""
 import tkinter as tk
+from dataclasses import replace
 from tkinter import ttk
 
 from ..analysis.decision_summary import DecisionSummary, summarize_result, hand_text, input_identity
 from ..core.table import DEALER, ACTION_DOUBLE, ACTION_SPLIT, ACTION_STAND, ACTION_SURRENDER
+from ..ledger.events import FACE_HIDDEN
 
 PALETTE = dict(background='#F3F6F8', surface='#FFFFFF', ink='#173A45', accent='#187365',
                caution='#935213', error='#AD3030', muted='#52636B')
@@ -23,7 +25,8 @@ class CompactPanel(tk.Frame):
         self.message = tk.StringVar()
         self.notes = tk.StringVar()
         self.recording_hint = tk.StringVar()
-        self._label(self, '当前手牌分析', font=('Microsoft YaHei UI', 11, 'bold')).grid(row=0, column=0, sticky='w')
+        self.heading = tk.StringVar()
+        self._label(self, variable=self.heading, font=('Microsoft YaHei UI', 11, 'bold')).grid(row=0, column=0, sticky='w')
         self.identity_label = self._label(self, variable=self.identity, font=('Microsoft YaHei UI', 12, 'bold'), wrap=655)
         self.identity_label.grid(row=1, column=0, sticky='ew', pady=(6, 6))
         selectors = ttk.Frame(self)
@@ -128,14 +131,21 @@ class CompactPanel(tk.Frame):
         if not seg:
             return '庄家明牌 —    |    ' + seat + ' · 尚未录牌'
         dealer = seg.table.dealer.hands
-        up = dealer[0].cards[0].rank if dealer and dealer[0].cards else '—'
+        dealer_text = '庄家 · 尚未录牌'
+        if dealer and dealer[0].cards:
+            cards = dealer[0].cards
+            labels = [('暗牌' if seg.unresolved.get(c.event_id, {}).get('face_state') == FACE_HIDDEN
+                       else '未知') if c.is_unknown else c.rank for c in cards]
+            total, soft = dealer[0].total()
+            score = '点数待确认' if total is None else f"{'软' if soft else ''}{total}点"
+            dealer_text = f"庄家 {' '.join(labels)} · {score}"
         hands = seg.table.seat(seat).hands if seat in seg.table.players else []
         selected = self.app._analysis_hand_id(seg)
         index = next((i for i, h in enumerate(hands) if h.hand_id == selected), None)
         hand = hands[index] if index is not None else None
         if self.panel.current_input:
-            return input_identity(self.panel.current_input.to_dict())
-        return f'庄家明牌 {up}    |    {seat} · ' + (f'第{index + 1}手  {hand_text(c.rank for c in hand.cards)}' if hand else '尚未录牌')
+            return input_identity(self.panel.current_input.to_dict(), dealer_text)
+        return f'{dealer_text}    |    {seat} · ' + (f'第{index + 1}手  {hand_text(c.rank for c in hand.cards)}' if hand else '尚未录牌')
 
     def pending_summary(self):
         panel, app = self.panel, self.app
@@ -165,17 +175,26 @@ class CompactPanel(tk.Frame):
                 elif hands and all(seg.table.split_hand_closed(h) for h in hands):
                     state, text = '等待庄家', '玩家手牌已完成，当前没有玩家操作建议。'
         if panel.unavailable_code == 'ROUND_INACTIVE' and not panel.request_id:
-            state = '本轮未开始／已结束'
+            text = app.recording_inactive_message() or text
+            state = text.split('；')[0]
         return DecisionSummary(state, identity, text)
 
     def render(self):
         panel = self.panel
         self.model = summarize_result(panel.last_result, bool(panel.recomputed_from)) if panel.last_result else self.pending_summary()
+        if not self.model.historical:
+            self.model = replace(self.model, identity=self.live_identity())
         model = self.model
         self.identity.set(model.identity)
         self.state.set(model.state)
         self.message.set(model.message)
         self.notes.set(' '.join(model.notes))
+        inactive = self.app.recording_inactive_message()
+        seg = self.app._current_seg()
+        decks = seg.rules.n_decks if seg else self.app.var_decks.get()
+        target = self.app.var_target.get()
+        hand = f'／第{self.app._hand_ordinal(target)}手' if target != DEALER else ''
+        self.heading.set(f'{decks}副牌 · ' + (inactive.split('；')[0] if inactive else f'当前发牌给：{target}{hand}'))
         warning = model.partial or not model.choices
         self.status_label.configure(fg=PALETTE['caution' if warning else 'accent'])
         (self.empty_result.grid_remove if model.choices else self.empty_result.grid)()
@@ -201,8 +220,9 @@ class CompactPanel(tk.Frame):
         else:
             self.current_button.pack_forget()
         plan = self.app.ctrl.entry_plan
-        self.recording_hint.set(('录入已暂停 · ' if plan and plan.input_paused else '录入 ') + self.app.var_target.get()
-                                + '  ·  0=T  1=A  .=暗牌  Space暂停  Backspace撤销')
+        self.recording_hint.set(inactive or
+                               (('录入已暂停 · ' if plan and plan.input_paused else '录入 ') + self.app.var_target.get()
+                                + '  ·  Ctrl+1–7 切玩家  Ctrl+0 庄家  Tab 下一位  Shift+Tab 上一位'))
         for compact, original in zip(self.action_buttons, (self.app.btn_stand, self.app.btn_double, self.app.btn_split, self.app.btn_surr)):
             compact.state(['disabled'] if original.instate(['disabled']) else ['!disabled'])
         if self.detail_window and self.detail_window.winfo_exists():

@@ -319,7 +319,7 @@ class RoundEntryPlan:
         if index < 0:
             index = 0 if step > 0 else len(self.slots) - 1
         else:
-            index = min(max(index + step, 0), len(self.slots) - 1)
+            index = (index + step) % len(self.slots)
         self.cursor_slot_id = self.slots[index].slot_id
         if self.mode in (MODE_INITIAL, MODE_MANUAL, MODE_UNALIGNED):
             self.mode = MODE_MANUAL

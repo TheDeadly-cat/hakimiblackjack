@@ -22,6 +22,7 @@ class TestPR14Followup(unittest.TestCase):
         self.app.update()
 
     def test_real_eight_key_sequence_asserts_each_durable_step(self):
+        self.app.var_decks.set(6)  # Preserve the original 312-card acceptance scenario.
         self.app.act_research_template()
         self.app.act_new_shoe()
         for name, variable in self.app.var_participants.items():

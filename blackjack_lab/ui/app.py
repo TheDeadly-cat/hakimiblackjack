@@ -27,7 +27,7 @@ from ..core.rules import (
 from ..core.shoe import ConsistencyError
 from ..core.table import (
     ACTION_DOUBLE, ACTION_HIT, ACTION_SPLIT, ACTION_STAND, ACTION_SURRENDER, DEALER,
-    TableError, player_seat_name,
+    PHASE_DEALING, PHASE_IN_PROGRESS, PHASE_NO_ROUND, TableError, player_seat_name,
 )
 from ..ledger.events import (
     CARD_DEALT, CARD_REVEALED, FACE_HIDDEN, FACE_UNKNOWN, SOURCE_MANUAL,
@@ -110,7 +110,7 @@ class BlackjackLabApp(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # 变量
-        self.var_decks = tk.IntVar(value=6)
+        self.var_decks = tk.IntVar(value=8)
         self.var_s17 = tk.StringVar(value="未知")
         self.var_bjp = tk.StringVar(value="3:2")
         self.var_split_match = tk.StringVar(value="same_rank")
@@ -638,7 +638,7 @@ class BlackjackLabApp(tk.Tk):
         current = (self.var_target.get(), self._selected_hand_id(seg))
         index = next((i for i, target in enumerate(targets) if target[:2] == current), 0)
         if targets:
-            seat, hand_id, ordinal = targets[min(max(index + step, 0), len(targets) - 1)]
+            seat, hand_id, ordinal = targets[(index + step) % len(targets)]
             plan.mode = MODE_CONTINUATION
             plan.continuation_seat = seat
             plan.continuation_hand_id = hand_id
@@ -1164,9 +1164,9 @@ class BlackjackLabApp(tk.Tk):
                     for r in results)
             else:
                 txt = "本轮没有已参与的玩家手牌。"
-            messagebox.showinfo("本轮结算（确定性记账，非 EV）", txt)
             self.set_status("本轮已结算，可“新开一轮”继续同一牌靴")
             self.refresh_all()
+            messagebox.showinfo("本轮结算（确定性记账，非 EV）", txt)
         except Exception as e:
             self.fail(e)
 
@@ -1258,7 +1258,24 @@ class BlackjackLabApp(tk.Tk):
         if hasattr(self, 'compact_panel'):
             self.compact_panel.render()
 
+    def recording_inactive_message(self) -> Optional[str]:
+        """Derive the prompt from replay, so undo/recovery cannot retain an ended target."""
+        seg = self._current_seg()
+        if seg is None:
+            return "尚未创建牌靴；请先新建牌靴。"
+        if seg.closed:
+            return "牌靴已结束；请新建牌靴后再录牌。"
+        if seg.table.phase == PHASE_NO_ROUND:
+            return "尚未开轮；确认参与座位后点击“新开一轮”。"
+        if seg.table.phase not in (PHASE_DEALING, PHASE_IN_PROGRESS):
+            return f"本轮{seg.table.phase}；点击“新开一轮”继续同一牌靴。"
+        return None
+
     def refresh_entry_prompt(self) -> None:
+        inactive = self.recording_inactive_message()
+        if inactive:
+            self.var_entry_prompt.set(inactive)
+            return
         plan = self.ctrl.entry_plan
         if plan is None:
             self.var_entry_prompt.set("尚未冻结本轮发牌计划。确认参与座位和本人座位后开新一轮。")

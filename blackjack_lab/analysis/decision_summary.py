@@ -40,7 +40,7 @@ def hand_text(ranks):
     return f"{' '.join(ranks) or '未发牌'}  ·  {score}"
 
 
-def input_identity(info):
+def input_identity(info, dealer_text=None):
     hands = info.get("hands")
     if hands:
         selected = next((i for i, h in enumerate(hands) if h['hand_id'] == info['hand_id']), 0)
@@ -52,7 +52,7 @@ def input_identity(info):
     else:
         text = f"{info['seat']} · 第1手  {hand_text(info.get('player_ranks', ())) }"
     up = {1: 'A', 10: '10点'}.get(info.get('dealer_up'), info.get('dealer_up', '—'))
-    return f"庄家明牌 {up}    |    {text}"
+    return f"{dealer_text or f'庄家明牌 {up}'}    |    {text}"
 
 
 def _number(value):

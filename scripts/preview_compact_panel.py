@@ -18,7 +18,11 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--scenario', choices=('empty', 'single', 'partial', 'split', 'das', 'forced', 'complete'), default='single')
     parser.add_argument('--size', default='720x500')
+    parser.add_argument('--label', help='Distinct window label when another practice is still open')
+    parser.add_argument('--players', type=int, choices=range(1, 8), default=1)
     args = parser.parse_args()
+    if args.players != 1 and args.scenario not in ('single', 'empty'):
+        parser.error('--players is supported only for single or empty recording previews')
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     app = BlackjackLabApp(output / 'preview.db', recording_source=SOURCE_SIMULATOR)
@@ -26,8 +30,10 @@ def main():
         app.var_decks.set(8)
         app.act_research_template(split=args.scenario == 'split', das=args.scenario in ('das', 'forced', 'complete'))
         app.act_new_shoe()
+        for index, variable in enumerate(app.var_participants.values(), 1):
+            variable.set(index <= args.players)
         app.act_new_round()
-        cards = ('T', '6', '6') if args.scenario == 'single' else ('8', '6', '8')
+        cards = ('T',) * args.players + ('6',) + ('6',) * args.players if args.scenario == 'single' else ('8', '6', '8')
         for rank in cards:
             app._key_rank(rank)
         app._key_hole()
@@ -40,7 +46,7 @@ def main():
             app.act_action(ACTION_DOUBLE)
         if args.scenario == 'complete':
             app._key_rank('T')
-    app.title(f'Hakimi · 简洁面板验收 · {args.scenario}（自建临时数据）')
+    app.title(f'Hakimi · {args.label or "简洁面板验收"} · {args.scenario}（自建临时数据）')
     app.geometry(args.size)
     starts = []
     original_start = app.analysis_panel.service.start
@@ -62,6 +68,7 @@ def main():
                        summary=asdict(view.model), result=panel.last_result, requests=starts,
                        saved=panel.saved, events=app.ctrl.ledger.to_list(),
                        entry_prompt=app.var_entry_prompt.get(), recording_target=app.var_target.get(),
+                       heading=view.heading.get(), recording_hint=view.recording_hint.get(),
                        detail_text=panel.text.get('1.0', 'end-1c'),
                        controls=[dict(name=str(w), mapped=bool(w.winfo_ismapped()),
                            x=w.winfo_rootx()-app.winfo_rootx(), y=w.winfo_rooty()-app.winfo_rooty(),

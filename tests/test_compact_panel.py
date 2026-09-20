@@ -187,6 +187,140 @@ class TestCompactPanel(unittest.TestCase):
         self.assertEqual(view.rows[0][1].cget('text'), '唯一合法动作')
         self.assertFalse(view.rows[1][0].winfo_ismapped())
 
+    def deal_practice_round(self):
+        app = self.app
+        app.act_research_template()
+        app.act_new_shoe()
+        app.act_new_round()
+        for rank in ('T', '6', '6'):
+            app._key_rank(rank)
+        app._key_hole()
+        app._key_stand()
+
+    def test_dealer_reveal_draw_undo_and_correction_update_top_cards(self):
+        self.deal_practice_round()
+        app, view = self.app, self.app.compact_panel
+        self.assertIn('庄家 6 暗牌 · 点数待确认', view.identity.get())
+        self.assertIn('当前发牌给：庄家', view.heading.get())
+        app.var_mode.set('揭示')
+        app._key_rank('9')
+        self.assertIn('庄家 6 9 · 15点', view.identity.get())
+        app.var_mode.set('新发牌')
+        app._key_rank('2')
+        self.assertIn('庄家 6 9 2 · 17点', view.identity.get())
+        app.act_undo()
+        self.assertIn('庄家 6 9 · 15点', view.identity.get())
+        app.act_undo()
+        self.assertIn('庄家 6 暗牌 · 点数待确认', view.identity.get())
+        app.var_mode.set('揭示')
+        app._key_rank('9')
+        reveal = app.ctrl.ledger.events[-1]
+        app.ctrl.correct(reveal.event_id, {'rank': 'A'}, '练习纠错')
+        app.refresh_all()
+        self.assertIn('庄家 6 A · 软17点', view.identity.get())
+        self.assertEqual(self.errors, [])
+
+    def test_settlement_recovery_undo_and_new_round_clear_stale_target(self):
+        self.deal_practice_round()
+        app = self.app
+        app.var_mode.set('揭示')
+        app._key_rank('9')
+        app.var_mode.set('新发牌')
+        app._key_rank('2')
+        with patch('blackjack_lab.ui.app.messagebox.showinfo',
+                   side_effect=lambda *args: self.assertNotIn('下一张给', app.var_entry_prompt.get())):
+            app.act_end_round()
+        ledger = app.ctrl.ledger.to_list()
+        from blackjack_lab.ui.app import BlackjackLabApp
+        self.close()
+        self.app = app = BlackjackLabApp(self.db)
+        app.update()
+        self.assertEqual(app.ctrl.ledger.to_list(), ledger)
+        self.assertIn('本轮已结算', app.var_entry_prompt.get())
+        self.assertNotIn('下一张给', app.var_entry_prompt.get())
+        self.assertNotIn('录入 庄家', app.compact_panel.recording_hint.get())
+        self.assertIn('本轮已结算', app.compact_panel.heading.get())
+        self.assertIn('庄家 6 9 2 · 17点', app.compact_panel.identity.get())
+        app.act_undo()
+        self.assertIn('下一张给：庄家', app.var_entry_prompt.get())
+        self.assertIn('当前发牌给：庄家', app.compact_panel.heading.get())
+        app.act_end_round()
+        app.act_new_round()
+        self.assertIn('下一张给：玩家1', app.var_entry_prompt.get())
+        self.assertIn('庄家 · 尚未录牌', app.compact_panel.identity.get())
+        self.assertEqual(self.errors, [])
+
+    def test_unsettled_end_and_closed_shoe_do_not_offer_next_card(self):
+        self.deal_practice_round()
+        self.app.ctrl.end_round_unsettled('练习未揭牌', 'unknown')
+        self.app.refresh_all()
+        self.assertIn('本轮已结束未结算', self.app.var_entry_prompt.get())
+        self.assertNotIn('下一张给', self.app.var_entry_prompt.get())
+        self.app.act_end_shoe()
+        self.assertIn('牌靴已结束', self.app.var_entry_prompt.get())
+        self.assertIn('新建牌靴', self.app.compact_panel.recording_hint.get())
+        self.assertEqual(self.errors, [])
+
+    def test_historical_result_does_not_use_later_dealer_cards(self):
+        self.calculated()
+        app, panel, view = self.app, self.app.analysis_panel, self.app.compact_panel
+        saved = panel.saved
+        hole = next(e for e in app.ctrl.ledger.events if e.payload.get('face_state') == 'hidden')
+        app.ctrl.reveal(hole.event_id, '9')
+        app.refresh_all()
+        self.assertIn('庄家 6 9 · 15点', view.identity.get())
+        panel.start(app.ctrl.recompute_input(saved), saved['snapshot_id'])
+        self.wait_result()
+        self.assertTrue(view.model.historical)
+        self.assertIn('庄家明牌 6', view.identity.get())
+        self.assertNotIn('6 9', view.identity.get())
+        panel.return_to_current()
+        self.assertIn('庄家 6 9 · 15点', view.identity.get())
+
+    def test_eight_deck_default_and_real_keys_cycle_seats_without_recording(self):
+        app, view = self.app, self.app.compact_panel
+        self.assertEqual(app.var_decks.get(), 8)
+        app.act_research_template()
+        app.act_new_shoe()
+        self.assertEqual(app.ctrl.state().current.rules.n_decks, 8)
+        for variable in app.var_participants.values():
+            variable.set(True)
+        app.act_new_round()
+        before = app.ctrl.ledger.to_list()
+        app.focus_force()
+        app.update()
+        for key, state, seat in [('Tab', 0, f'玩家{i}') for i in range(2, 8)] + [
+                ('Tab', 0, '庄家'), ('Tab', 0, '玩家1'), ('Tab', 1, '庄家'),
+                ('2', 4, '玩家2'), ('3', 4, '玩家3'), ('0', 4, '庄家')]:
+            app.event_generate('<KeyPress>', keysym=key, state=state)
+            app.update()
+            app.event_generate('<KeyRelease>', keysym=key, state=state)
+            app.update()
+            self.assertEqual(app.var_target.get(), seat)
+            self.assertIn('当前发牌给：' + seat, view.heading.get())
+        self.assertEqual(app.ctrl.ledger.to_list(), before)
+        self.assertEqual(app.var_analysis_target.get(), '玩家1')
+        self.assertEqual(self.errors, [])
+
+    def test_continuation_navigation_wraps_and_skips_empty_seats(self):
+        app = self.app
+        app.act_research_template()
+        app.act_new_shoe()
+        app.var_participants['玩家3'].set(True)
+        app.act_new_round()
+        for rank in ('T', '9', '6', '6', '7'):
+            app._key_rank(rank)
+        app._key_hole()
+        before = app.ctrl.ledger.to_list()
+        for seat in ('玩家3', '庄家', '玩家1'):
+            app._key_navigate(1)
+            self.assertEqual(app.var_target.get(), seat)
+            self.assertIn('当前发牌给：' + seat, app.compact_panel.heading.get())
+        app._key_navigate(-1)
+        self.assertEqual(app.var_target.get(), '庄家')
+        self.assertEqual(app.ctrl.ledger.to_list(), before)
+        self.assertEqual(self.errors, [])
+
 
 if __name__ == '__main__':
     unittest.main()
