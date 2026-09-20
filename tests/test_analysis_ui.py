@@ -19,7 +19,7 @@ class TestAnalysisUI(unittest.TestCase):
             context = patch("blackjack_lab.ui.app.messagebox." + name, side_effect=effect)
             context.start()
             self.addCleanup(context.stop)
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.addCleanup(self.close)
         self.app.update()
 
@@ -160,7 +160,7 @@ class TestAnalysisUI(unittest.TestCase):
         original_path = self.app.ctrl.analysis_store.directory / (saved["snapshot_id"] + ".json")
         original_bytes = original_path.read_bytes()
         self.close()
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.app.update()
         entries, damaged = self.app.ctrl.analysis_store.list()
         self.assertEqual(len(entries), 1)

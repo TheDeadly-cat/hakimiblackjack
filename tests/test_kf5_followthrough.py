@@ -137,7 +137,7 @@ class TestPR14Followup(unittest.TestCase):
         self.assertIn('录入 玩家1 <- A', self.app.var_status.get())
         before = self.app.ctrl.ledger.to_list()
         self.close_app()
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.app.update()
         self.assert_dealer_projection()
         self.assertEqual(self.app.ctrl.ledger.to_list(), before)
@@ -165,7 +165,7 @@ class TestPR14Followup(unittest.TestCase):
         from blackjack_lab.ui.app import BlackjackLabApp
         before = self.app.ctrl.ledger.to_list()
         self.close_app()
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.app.update()
         self.assertEqual(self.app.ctrl.ledger.to_list(), before)
         self.assertIn('刚刚记入：—', self.app.var_entry_prompt.get())

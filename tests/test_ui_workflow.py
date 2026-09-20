@@ -22,7 +22,7 @@ class TestUIWorkflow(unittest.TestCase):
             context = patch("blackjack_lab.ui.app.messagebox." + name, side_effect=replacement)
             context.start()
             self.addCleanup(context.stop)
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.addCleanup(self.close_app)
         self.app.update()
 
@@ -105,7 +105,7 @@ class TestUIWorkflow(unittest.TestCase):
             self.assertEqual(self.app.ctrl.ledger.to_list(), expected)
         sid = self.app.ctrl.session_id
         self.close_app()
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.assertEqual(self.app.ctrl.session_id, sid)
         self.assertEqual(self.app.ctrl.ledger.to_list(), expected)
         self.assertEqual(len(self.app.ctrl.list_recoverable()), 1)

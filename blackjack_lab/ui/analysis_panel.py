@@ -9,12 +9,17 @@ from ..core.table import player_seat_name
 from ..storage.analysis_snapshots import is_minimal_result
 from ..analysis.split_contracts import SPLIT_RESULT_SCHEMA
 from ..analysis.decision_summary import summarize_result, format_summary_details
+from ..analysis.seat_scenario import note_for
+from .seat_overview import SeatOverview
 
 DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA}
 
 
 def format_result(result, historical=False):
     summary_text = format_summary_details(summarize_result(result, historical))
+    scenario_note = note_for(result['input'])
+    if scenario_note:
+        summary_text = scenario_note + '\n' + summary_text
     if result['schema'] == SPLIT_RESULT_SCHEMA:
         from .split_display import format_split_result
         heading, _, body = format_split_result(result, historical).partition('\n')
@@ -96,7 +101,8 @@ class AnalysisPanel(ttk.Frame):
         self.request_snapshot = None
         self.status = tk.StringVar(value="先选择研究模板并录入当前手牌")
         self.persistence = tk.StringVar(value="结果会独立保存，原始事件不变")
-        self.auto = tk.BooleanVar(value=False)
+        self.auto = tk.BooleanVar(value=app.auto_analysis)
+        self.overview = SeatOverview(self)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(4, weight=1)
         toolbar = ttk.Frame(self)
@@ -175,6 +181,7 @@ class AnalysisPanel(ttk.Frame):
         """Synchronous post-commit / target notification, before any general redraw."""
         if self._closed or self._live_key() == self.context_key:
             return
+        self.overview.sync()
         self.current_input = None
         self.unavailable_code = None
         self._cancel_auto()
@@ -203,7 +210,7 @@ class AnalysisPanel(ttk.Frame):
         self.context_key = key
         hand_id = self.app._analysis_hand_id(segment) if segment else None
         try:
-            self.current_input = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id)
+            self.current_input = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id, other_players_stand=True)
             self.unavailable_code = None
         except InputUnavailable as error:
             self.current_input = None
@@ -214,7 +221,7 @@ class AnalysisPanel(ttk.Frame):
         else:
             self.compute_button.state(["!disabled"])
             if not self.last_result and not self.recomputed_from:
-                self.status.set("可计算：当前单手，正常底牌仍未揭示")
+                self.status.set("可计算：当前玩家，正常底牌仍未揭示")
             if self.auto.get() and not self.recomputed_from and key != self._auto_suppressed_key:
                 self._auto_id = self.after(250, self._run_auto)
         self._notify_views()
@@ -224,7 +231,7 @@ class AnalysisPanel(ttk.Frame):
         try:
             segment = self.app._current_seg()
             hand_id = self.app._analysis_hand_id(segment) if segment else None
-            snapshot = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id)
+            snapshot = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id, other_players_stand=True)
             self.start(snapshot)
         except Exception as error:
             self.recomputed_from = None
@@ -237,7 +244,7 @@ class AnalysisPanel(ttk.Frame):
         if not recomputed_from:
             segment = self.app._current_seg()
             hand_id = self.app._analysis_hand_id(segment) if segment else None
-            current = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id)
+            current = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id, other_players_stand=True)
             if current.input_digest != snapshot.input_digest:
                 raise InputUnavailable("TARGET_CHANGED", "输入已改变，请按当前手牌重新计算")
         self.context_key = self._live_key()
@@ -267,6 +274,8 @@ class AnalysisPanel(ttk.Frame):
                 and result.get("request_id") == self.request_id
                 and result.get("input_digest") == self.request_digest):
             self.last_result = result
+            if not self.recomputed_from:
+                self.overview.accept_selected(result)
             summary = result["reason"]
             if result["status"] == AVAILABLE:
                 summary = ("部分动作比较，不给唯一推荐" if result["partial_comparison"] else
@@ -277,6 +286,8 @@ class AnalysisPanel(ttk.Frame):
                 self.retry_save()
             else:
                 self.persistence.set("没有完成可保存的判断；未使用旧结果")
+        if self.overview.poll():
+            self._notify_views()
         self._poll_id = self.after(50, self._poll)
 
     def retry_save(self):
@@ -299,6 +310,7 @@ class AnalysisPanel(ttk.Frame):
         self._cancel_auto()
         self._auto_suppressed_key = self._live_key()
         self.service.cancel()
+        self.overview.cancel()
         self.request_key = self.request_digest = self.request_id = None
         self.last_result = self.saved = None
         self.recomputed_from = None
@@ -308,6 +320,7 @@ class AnalysisPanel(ttk.Frame):
 
     def return_to_current(self):
         self.cancel()
+        self._auto_suppressed_key = None
         self.context_key = None
         self.on_context(self.app._current_seg())
 
@@ -382,3 +395,4 @@ class AnalysisPanel(ttk.Frame):
         self.after_cancel(self._poll_id)
         self._cancel_auto()
         self.service.close()
+        self.overview.close()

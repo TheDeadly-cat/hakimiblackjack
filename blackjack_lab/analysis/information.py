@@ -9,7 +9,7 @@ from ..ledger.ledger import EventLedger
 from .contracts import AnalysisInput, InputUnavailable, canonical, digest, ACTION_ZH, UNSUPPORTED, INAPPLICABLE
 
 
-def build_input(ledger, seat, hand_id=None, through_seq=None):
+def build_input(ledger, seat, hand_id=None, through_seq=None, *, other_players_stand=False):
     all_events = ledger.to_list()
     seq = all_events[-1]["seq"] if through_seq is None and all_events else through_seq
     if type(seq) is not int or not any(e["seq"] == seq for e in all_events):
@@ -48,12 +48,14 @@ def build_input(ledger, seat, hand_id=None, through_seq=None):
     )
     if not supported:
         raise InputUnavailable("RULE_COMBINATION_UNSUPPORTED", "本版分析仅验收S17、3:2、美式决策前检查、任意两张加倍、无投降/晚投降的模板", UNSUPPORTED)
-    if seat == DEALER or len(table.participants) != 1 or seat not in table.participants:
+    if seat == DEALER or seat not in table.participants or (len(table.participants) != 1 and not other_players_stand):
         raise InputUnavailable("SINGLE_PLAYER_ONLY", "当前仅支持单参与玩家的目标手牌；7座位录牌仍可使用", UNSUPPORTED)
+    from .seat_scenario import scenario_for, with_scenario
+    scenario = scenario_for(table, seat) if len(table.participants) > 1 else None
     from .split_contracts import ALL_SPLIT_PROFILES
     if rules.profile_id in ALL_SPLIT_PROFILES:
         from .split_information import build_split_input
-        return build_split_input(ledger.session_id, current, seat, hand_id, seq, prefix)
+        return with_scenario(build_split_input(ledger.session_id, current, seat, hand_id, seq, prefix), scenario)
     hands = table.players[seat].hands
     if len(hands) != 1 or any(h.from_split for h in hands):
         raise InputUnavailable("SPLIT_HAND_UNSUPPORTED", "分牌后的EV尚未实现；可查看分牌前的部分动作比较", UNSUPPORTED)
@@ -88,7 +90,7 @@ def build_input(ledger, seat, hand_id=None, through_seq=None):
         "gap": shoe.gap, "pending_candidates": shoe.pending_candidates,
         "dealer_hole": "one_unknown_physical_card", "negative_peek": peek,
         "action_states": {a: asdict(state) for a, state in states.items()}}
-    return AnalysisInput(ledger.session_id, current.shoe_id, current.round_id, seq,
+    return with_scenario(AnalysisInput(ledger.session_id, current.shoe_id, current.round_id, seq,
         digest(prefix), seat, hand.hand_id, rules.n_decks, canonical(json.loads(rules.to_json())),
         canonical(information), counts, shoe.physical_remaining(),
-        tuple(values[c.rank] for c in hand.cards), tuple(c.rank for c in hand.cards), up, peek, legal, uncertain)
+        tuple(values[c.rank] for c in hand.cards), tuple(c.rank for c in hand.cards), up, peek, legal, uncertain), scenario)

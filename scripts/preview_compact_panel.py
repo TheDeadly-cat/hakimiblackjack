@@ -33,7 +33,8 @@ def main():
         for index, variable in enumerate(app.var_participants.values(), 1):
             variable.set(index <= args.players)
         app.act_new_round()
-        cards = ('T',) * args.players + ('6',) + ('6',) * args.players if args.scenario == 'single' else ('8', '6', '8')
+        cards = (('T',) * args.players + ('6',) + tuple(str(6 + i % 4) for i in range(args.players))
+                 if args.scenario == 'single' else ('8', '6', '8'))
         for rank in cards:
             app._key_rank(rank)
         app._key_hole()
@@ -55,8 +56,7 @@ def main():
         starts.append(request)
         return request
     app.analysis_panel.service.start = start
-    if args.scenario != 'empty':
-        app.analysis_panel.calculate_current()
+    # The regular application now calculates automatically after the input settles.
 
     def snapshot(closed=False):
         panel, view = app.analysis_panel, app.compact_panel
@@ -69,6 +69,8 @@ def main():
                        saved=panel.saved, events=app.ctrl.ledger.to_list(),
                        entry_prompt=app.var_entry_prompt.get(), recording_target=app.var_target.get(),
                        heading=view.heading.get(), recording_hint=view.recording_hint.get(),
+                       auto=panel.auto.get(), seat_rows={seat: dict(cards=row['cards'], state=row['state'],
+                           result=row['result']) for seat, row in panel.overview.rows.items()},
                        detail_text=panel.text.get('1.0', 'end-1c'),
                        controls=[dict(name=str(w), mapped=bool(w.winfo_ismapped()),
                            x=w.winfo_rootx()-app.winfo_rootx(), y=w.winfo_rooty()-app.winfo_rooty(),

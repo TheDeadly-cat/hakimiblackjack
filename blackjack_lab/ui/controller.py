@@ -192,15 +192,18 @@ class SessionController:
         self._publish_context_change()
         return candidate
 
-    def analysis_input(self, seat, hand_id=None, through_seq=None):
-        return build_input(self.ledger, seat, hand_id, through_seq)
+    def analysis_input(self, seat, hand_id=None, through_seq=None, *, other_players_stand=False):
+        return build_input(self.ledger, seat, hand_id, through_seq, other_players_stand=other_players_stand)
 
     def recompute_input(self, saved):
         original = saved["result"]["input"]
         ledger = self.store.load_ledger(original["session_id"], original["through_seq"])
         if not self.analysis_store.matches_prefix(saved, ledger):
             raise LedgerError("原分析关联的事件前缀摘要不匹配，拒绝复算")
-        return build_input(ledger, original["seat"], original["hand_id"], original["through_seq"])
+        from ..analysis.seat_scenario import MODEL
+        conditional = json.loads(original['information_json']).get('seat_scenario', {}).get('model') == MODEL
+        return build_input(ledger, original["seat"], original["hand_id"], original["through_seq"],
+                           other_players_stand=conditional)
 
     def export_diagnostic(self, session_id, path):
         data = self.store.diagnose_session(session_id)

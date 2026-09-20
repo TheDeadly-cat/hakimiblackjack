@@ -95,9 +95,10 @@ class RoundObservationDialog(simpledialog.Dialog):
 
 
 class BlackjackLabApp(tk.Tk):
-    def __init__(self, db_path: str | Path = DEFAULT_DB, recording_source=SOURCE_MANUAL):
+    def __init__(self, db_path: str | Path = DEFAULT_DB, recording_source=SOURCE_MANUAL, *, auto_analysis=True):
         super().__init__()
         self.recording_source = recording_source
+        self.auto_analysis = auto_analysis
         self.title(f"Hakimi Blackjack Lab V{__version__} 手动记录工作台（本地离线）")
         self.geometry("720x500")
         self.minsize(660, 460)
@@ -1069,6 +1070,18 @@ class BlackjackLabApp(tk.Tk):
             self.refresh_all()
         except Exception as e:
             self.fail(e)
+
+    def change_player_count(self, delta):
+        selected = [name for name, var in self.var_participants.items() if var.get()]
+        if delta > 0:
+            target = next((name for name in self.var_participants if name not in selected), None)
+            if target:
+                self.var_participants[target].set(True)
+        elif len(selected) > 1:
+            target = next(name for name in reversed(selected) if name != self.var_my_seat.get())
+            self.var_participants[target].set(False)
+        self.set_status('参与座位已调整；点击“新开一轮”时生效，本轮已保存记录不变。')
+        self.compact_panel.render()
 
     @tracked_operation
     def act_card(self, rank: str) -> None:

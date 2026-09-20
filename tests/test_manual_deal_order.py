@@ -289,7 +289,7 @@ class TestManualDealOrder(TestUIWorkflow):
         filled = dict(self.app.ctrl.entry_plan.filled_slots)
         self.app.on_close()
         self.app = None
-        self.app = BlackjackLabApp(db)
+        self.app = BlackjackLabApp(db, auto_analysis=False)
         self.app.update()
         self.assertEqual(self.app.ctrl.session_id, session)
         self.assertEqual(self.app.ctrl.entry_plan.filled_slots, filled)

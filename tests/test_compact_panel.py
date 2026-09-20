@@ -233,7 +233,7 @@ class TestCompactPanel(unittest.TestCase):
         ledger = app.ctrl.ledger.to_list()
         from blackjack_lab.ui.app import BlackjackLabApp
         self.close()
-        self.app = app = BlackjackLabApp(self.db)
+        self.app = app = BlackjackLabApp(self.db, auto_analysis=False)
         app.update()
         self.assertEqual(app.ctrl.ledger.to_list(), ledger)
         self.assertIn('本轮已结算', app.var_entry_prompt.get())

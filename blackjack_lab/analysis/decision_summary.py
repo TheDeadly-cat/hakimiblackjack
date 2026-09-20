@@ -87,6 +87,11 @@ def summarize_result(result, historical=False):
     identity = input_identity(result['input'])
     prefix = "历史 · " if historical else ""
     notes = ("历史时点结果，不代表当前输入",) if historical else ()
+    from .seat_scenario import note_for
+    if result['input'].get('information_json'):
+        scenario_note = note_for(result['input'])
+        if scenario_note:
+            notes += (scenario_note,)
     if result['status'] != AVAILABLE:
         return DecisionSummary(prefix + STATUS_ZH.get(result['status'], '需核对'), identity,
                                result.get('reason', '结果未完成'), historical=historical, notes=notes)

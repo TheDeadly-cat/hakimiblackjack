@@ -6,6 +6,7 @@ from tkinter import ttk
 from ..analysis.decision_summary import DecisionSummary, summarize_result, hand_text, input_identity
 from ..core.table import DEALER, ACTION_DOUBLE, ACTION_SPLIT, ACTION_STAND, ACTION_SURRENDER
 from ..ledger.events import FACE_HIDDEN
+from ..analysis.seat_scenario import NOTE
 
 PALETTE = dict(background='#F3F6F8', surface='#FFFFFF', ink='#173A45', accent='#187365',
                caution='#935213', error='#AD3030', muted='#52636B')
@@ -26,7 +27,16 @@ class CompactPanel(tk.Frame):
         self.notes = tk.StringVar()
         self.recording_hint = tk.StringVar()
         self.heading = tk.StringVar()
-        self._label(self, variable=self.heading, font=('Microsoft YaHei UI', 11, 'bold')).grid(row=0, column=0, sticky='w')
+        top = tk.Frame(self, bg=PALETTE['background'])
+        top.grid(row=0, column=0, sticky='ew')
+        top.columnconfigure(0, weight=1)
+        self._label(top, variable=self.heading, font=('Microsoft YaHei UI', 10, 'bold')).grid(row=0, column=0, sticky='w')
+        self.remove_player = ttk.Button(top, text='− 玩家', width=7, command=lambda: app.change_player_count(-1))
+        self.remove_player.grid(row=0, column=1, padx=2)
+        self.player_count = tk.StringVar()
+        self._label(top, variable=self.player_count, font=('Microsoft YaHei UI', 9)).grid(row=0, column=2)
+        self.add_player = ttk.Button(top, text='+ 玩家', width=7, command=lambda: app.change_player_count(1))
+        self.add_player.grid(row=0, column=3, padx=2)
         self.identity_label = self._label(self, variable=self.identity, font=('Microsoft YaHei UI', 12, 'bold'), wrap=655)
         self.identity_label.grid(row=1, column=0, sticky='ew', pady=(6, 6))
         selectors = ttk.Frame(self)
@@ -66,6 +76,21 @@ class CompactPanel(tk.Frame):
             ev = self._label(row, 'EV —', font=('Consolas', 10), surface=True)
             ev.grid(row=1, column=2, sticky='e')
             self.rows.append((row, rank, action, extra, profit, ev))
+        self.seat_table_frame = ttk.Frame(self)
+        self.seat_table_frame.grid(row=4, column=0, rowspan=2, sticky='nsew', pady=3)
+        ttk.Style(self).configure('SeatOverview.Treeview', rowheight=20)
+        columns = ('seat', 'cards', 'best', 'second', 'ev', 'state')
+        self.seat_table = ttk.Treeview(self.seat_table_frame, columns=columns, show='headings',
+                                       height=7, selectmode='browse', style='SeatOverview.Treeview')
+        for column, heading, width in zip(columns,
+                ('玩家', '牌面', 'EV第1·净盈利', 'EV第2·净盈利', '第1 EV', '状态'),
+                (50, 85, 120, 120, 85, 70)):
+            self.seat_table.heading(column, text=heading)
+            self.seat_table.column(column, width=width, minwidth=40)
+        self.seat_table.pack(fill=tk.BOTH, expand=True)
+        self._syncing_seat_table = False
+        self.seat_table.bind('<<TreeviewSelect>>', self.select_seat)
+        self.seat_table_frame.grid_remove()
         self.message_label = self._label(self, variable=self.message, wrap=650)
         self.message_label.grid(row=6, column=0, sticky='ew', pady=(7, 2))
         self._label(self, variable=self.notes, wrap=650, font=('Microsoft YaHei UI', 9)).grid(row=7, column=0, sticky='ew')
@@ -124,6 +149,48 @@ class CompactPanel(tk.Frame):
         (self.drawer.grid if self.recording_open else self.drawer.grid_remove)()
         self.record_button.configure(text='收起录牌' if self.recording_open else '录牌／纠错')
         self.app.geometry('720x760' if self.recording_open else '720x500')
+
+    def select_seat(self, _event=None):
+        if self._syncing_seat_table:
+            return
+        selected = self.seat_table.selection()
+        if selected and selected[0] != self.app.var_analysis_target.get():
+            self.app.var_analysis_target.set(selected[0])
+            self.app.var_analysis_hand.set('（按顺序行动手）')
+            self.app.refresh_all()
+
+    def render_seats(self):
+        self._syncing_seat_table = True
+        try:
+            rows = self.panel.overview.rows
+            for iid in self.seat_table.get_children():
+                if iid not in rows:
+                    self.seat_table.delete(iid)
+            for seat, row in rows.items():
+                result = row['result']
+                summary = summarize_result(result) if result else None
+                choices = summary.choices if summary else ()
+                def choice_text(index):
+                    if len(choices) <= index:
+                        return '—'
+                    item = choices[index]
+                    return f'{item.label} {item.profit:.2%}'
+                state = summary.state if summary else row['state']
+                if row['state'] == '保存待重试':
+                    state = row['state']
+                if seat == self.app.var_analysis_target.get() and self.panel.request_id and not self.panel.last_result:
+                    state = '计算中'
+                values = (seat, row['cards'], choice_text(0), choice_text(1),
+                          f'{choices[0].ev:+.4f}' if choices else '—', state)
+                if self.seat_table.exists(seat):
+                    self.seat_table.item(seat, values=values)
+                else:
+                    self.seat_table.insert('', 'end', iid=seat, values=values)
+            seat = self.app.var_analysis_target.get()
+            if self.seat_table.exists(seat) and self.seat_table.selection() != (seat,):
+                self.seat_table.selection_set(seat)
+        finally:
+            self._syncing_seat_table = False
 
     def live_identity(self):
         seg = self.app._current_seg()
@@ -189,17 +256,29 @@ class CompactPanel(tk.Frame):
         self.state.set(model.state)
         self.message.set(model.message)
         self.notes.set(' '.join(model.notes))
+        multi = len(self.panel.overview.rows) > 1 and not model.historical
+        if multi:
+            self.notes.set(NOTE)
+            self.message.set(f'{self.app.var_analysis_target.get()}：' +
+                             (model.message or '点“展开详情”查看全部动作。'))
         inactive = self.app.recording_inactive_message()
         seg = self.app._current_seg()
         decks = seg.rules.n_decks if seg else self.app.var_decks.get()
         target = self.app.var_target.get()
         hand = f'／第{self.app._hand_ordinal(target)}手' if target != DEALER else ''
         self.heading.set(f'{decks}副牌 · ' + (inactive.split('；')[0] if inactive else f'当前发牌给：{target}{hand}'))
+        count = sum(var.get() for var in self.app.var_participants.values())
+        self.player_count.set(f'下一轮 {count} 人')
+        self.add_player.state(['disabled'] if count >= 7 else ['!disabled'])
+        self.remove_player.state(['disabled'] if count <= 1 else ['!disabled'])
         warning = model.partial or not model.choices
         self.status_label.configure(fg=PALETTE['caution' if warning else 'accent'])
-        (self.empty_result.grid_remove if model.choices else self.empty_result.grid)()
+        (self.empty_result.grid_remove if model.choices or multi else self.empty_result.grid)()
+        (self.seat_table_frame.grid if multi else self.seat_table_frame.grid_remove)()
+        if multi:
+            self.render_seats()
         for i, (row, rank, action, extra, profit, ev) in enumerate(self.rows):
-            if i >= len(model.choices):
+            if multi or i >= len(model.choices):
                 row.grid_remove()
                 rank.configure(text='')
                 action.configure(text='—')

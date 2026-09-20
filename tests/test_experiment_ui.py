@@ -19,7 +19,7 @@ class TestExperimentUI(unittest.TestCase):
             context = patch("blackjack_lab.ui.app.messagebox." + name, side_effect=effect)
             context.start()
             self.addCleanup(context.stop)
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.addCleanup(self.close)
         self.app.update()
 

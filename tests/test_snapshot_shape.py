@@ -155,7 +155,7 @@ class TestSnapshotHistoryUI(unittest.TestCase):
         error = patch("blackjack_lab.ui.app.messagebox.showerror", side_effect=lambda *args, **kw: self.errors.append(args))
         error.start()
         self.addCleanup(error.stop)
-        self.app = BlackjackLabApp(Path(self.tmp.name) / "n1-ui.db")
+        self.app = BlackjackLabApp(Path(self.tmp.name) / "n1-ui.db", auto_analysis=False)
         self.addCleanup(self.app.on_close)
         ctrl = self.app.ctrl
         ctrl.new_shoe(research_rules(6))

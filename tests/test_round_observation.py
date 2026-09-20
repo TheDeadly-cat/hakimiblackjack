@@ -199,7 +199,7 @@ class TestObservationWindows(unittest.TestCase):
         self.assertTrue(self.app.analysis_panel.compute_button.instate(["disabled"]))
         self.assertIn("此前第1轮", self.app.analysis_panel.status.get())
         self.close()
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.app.update()
         self.assertEqual(self.app.ctrl.session_id, ledger.session_id)
         self.assertTrue(self.app.analysis_panel.compute_button.instate(["disabled"]))
