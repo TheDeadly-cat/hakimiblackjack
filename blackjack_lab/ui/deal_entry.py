@@ -10,13 +10,13 @@ table. If that file is missing after recovery, the next player is not guessed.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from typing import Iterable, Optional
 
 from ..core.cards import TEN_BUCKET, is_ten_value
 from ..core.table import DEALER, player_seat_name
 
-PLAN_SCHEMA = "hakimi-round-entry-plan-v1"
+PLAN_SCHEMA = "hakimi-round-entry-plan-v2"
 PLAN_ID = "players_up_players_hole_v1"
 
 FACE_SHOWN = "shown"
@@ -94,16 +94,16 @@ def dealer_up_requires_peek(rules, up_rank: Optional[str]) -> bool:
             and (up_rank == "A" or is_ten_value(up_rank)))
 
 
-def next_open_hand(table) -> Optional[tuple[str, Optional[str], int]]:
+def next_open_hand(table, participants=None) -> Optional[tuple[str, Optional[str], int]]:
     """First unfinished player hand in this round's participation order."""
     if table is None:
         return None
-    for seat_name in table.participants:
+    for seat_name in participants or table.participants:
         seat = table.players.get(seat_name)
         if seat is None or not seat.hands:
             return (seat_name, None, 1)
         for index, hand in enumerate(seat.hands, start=1):
-            if not hand.is_closed:
+            if not (table.split_hand_closed(hand) if hand.from_split else hand.is_closed):
                 return (seat_name, hand.hand_id, index)
     return None
 
@@ -164,6 +164,11 @@ class RoundEntryPlan:
     unresolved_slots: list = field(default_factory=list)
     mode: str = MODE_UNALIGNED
     paused: bool = False
+    input_paused: bool = False
+    input_pause_reason: str = ""
+    ledger_seq: int = 0
+    ledger_digest: str = ""
+    observed_card_ids: list = field(default_factory=list)
     last_saved: Optional[LastSaved] = None
     continuation_seat: Optional[str] = None
     continuation_hand_id: Optional[str] = None
@@ -171,7 +176,7 @@ class RoundEntryPlan:
     dealer_up_rank: Optional[str] = None
     schema: str = PLAN_SCHEMA
     plan_id: str = PLAN_ID
-    version: int = 1
+    version: int = 2
     pause_reason: str = ""
 
     @classmethod
@@ -194,7 +199,8 @@ class RoundEntryPlan:
                   my_seat: str = "玩家1") -> "RoundEntryPlan":
         return cls(session_id=session_id, shoe_id=shoe_id, round_id=round_id,
                    participating_seats=(), my_seat=my_seat, mode=MODE_UNALIGNED,
-                   paused=True, pause_reason="缺少发牌计划文件，不能猜测下一张该给谁")
+                   paused=True, input_paused=True,
+                   pause_reason="发牌计划未核对，不能猜测下一张该给谁")
 
     def slot(self, slot_id: Optional[str] = None) -> Optional[EntrySlot]:
         target = slot_id or self.cursor_slot_id
@@ -230,8 +236,12 @@ class RoundEntryPlan:
         if slot is None:
             raise ValueError("未知发牌槽位，拒绝入账后推进")
         if slot.slot_id in self.filled_slots:
+            if self.filled_slots[slot.slot_id] == event_id:
+                return slot
             raise ValueError("该槽位已保存，不能重复提交")
         self.filled_slots[slot.slot_id] = event_id
+        if event_id not in self.observed_card_ids:
+            self.observed_card_ids.append(event_id)
         if slot.slot_id in self.unresolved_slots:
             self.unresolved_slots.remove(slot.slot_id)
         if slot.role == ROLE_DEALER_UP:
@@ -279,6 +289,12 @@ class RoundEntryPlan:
         if unresolved_slot_id and unresolved_slot_id not in self.filled_slots:
             if unresolved_slot_id not in self.unresolved_slots:
                 self.unresolved_slots.append(unresolved_slot_id)
+
+    def toggle_input_pause(self) -> None:
+        if self.mode == MODE_UNALIGNED:
+            raise ValueError("请先核对已保存记录，再选择人工录入；Space不能解除恢复核对")
+        self.input_paused = not self.input_paused
+        self.input_pause_reason = "录入已暂停；Space恢复原阶段、原手" if self.input_paused else ""
 
     def resume_at(self, slot_id: str) -> None:
         slot = self.slot(slot_id)
@@ -359,6 +375,8 @@ class RoundEntryPlan:
 
     def record_continuation_card(self, seat: str, event_id: str, rank: str,
                                  hand_ordinal: int = 1) -> None:
+        if event_id not in self.observed_card_ids:
+            self.observed_card_ids.append(event_id)
         self.last_saved = LastSaved(seat, hand_ordinal, rank, event_id,
                                     hand_ordinal=hand_ordinal, kind="shown")
         if self.mode == MODE_CONTINUATION:
@@ -375,6 +393,10 @@ class RoundEntryPlan:
 
     def reconcile(self, live_event_ids: Iterable[str]) -> None:
         live = set(live_event_ids)
+        if live - set(self.observed_card_ids):
+            self.mode = MODE_UNALIGNED
+            self.paused = self.input_paused = True
+            self.pause_reason = "账本存在计划未处理的牌；请核对已保存记录，不要重复录入"
         for slot_id, event_id in list(self.filled_slots.items()):
             if event_id not in live:
                 del self.filled_slots[slot_id]
@@ -388,6 +410,8 @@ class RoundEntryPlan:
         return self.initial_complete() and not self.unresolved_slots
 
     def phase_title(self) -> str:
+        if self.input_paused:
+            return "录入已暂停"
         if self.mode == MODE_UNALIGNED:
             return "发牌计划未对齐"
         if self.mode == MODE_PEEK_WAIT:
@@ -446,7 +470,8 @@ class RoundEntryPlan:
             f"{self.phase_title()} · {self.progress_text()}",
             "",
             self.last_saved_text(),
-            self.next_card_text(),
+            ("下一张给：" + recording_target + "（人工录入，请核对）"
+             if self.mode in (MODE_MANUAL, MODE_UNALIGNED) else self.next_card_text()),
             "",
             f"录入目标：{recording_target}",
             f"分析对象：{mine}",
@@ -456,6 +481,8 @@ class RoundEntryPlan:
             lines.append("未录槽位：" + "、".join(names))
         if self.pause_reason:
             lines.append(self.pause_reason)
+        if self.input_pause_reason:
+            lines.append(self.input_pause_reason)
         if self.mode == MODE_UNALIGNED:
             lines.append("请确认参与座位与本人座位后重新对齐，不能根据已有张数猜测归属。")
         return "\n".join(lines)
@@ -469,10 +496,46 @@ class RoundEntryPlan:
 
     @classmethod
     def from_dict(cls, data: dict) -> "RoundEntryPlan":
+        if not isinstance(data, dict):
+            raise ValueError("发牌计划必须是JSON对象")
+        if (data.get("schema") != PLAN_SCHEMA or type(data.get("version")) is not int
+                or data["version"] != 2 or data.get("plan_id") != PLAN_ID):
+            raise ValueError("旧版或未知发牌计划；需核对账本后人工继续")
+        if set(data) != {item.name for item in fields(cls)}:
+            raise ValueError("发牌计划字段缺失或含未知字段")
         payload = dict(data)
         payload["participating_seats"] = tuple(payload.get("participating_seats") or ())
         payload["slots"] = tuple(EntrySlot.from_dict(item) for item in payload.get("slots") or ())
         payload["last_saved"] = LastSaved.from_dict(payload.get("last_saved"))
         payload["filled_slots"] = dict(payload.get("filled_slots") or {})
         payload["unresolved_slots"] = list(payload.get("unresolved_slots") or [])
-        return cls(**payload)
+        plan = cls(**payload)
+        if plan.mode not in (MODE_INITIAL, MODE_MANUAL, MODE_CONTINUATION,
+                             MODE_PEEK_WAIT, MODE_DEALER, MODE_UNALIGNED):
+            raise ValueError("未知录入阶段")
+        if (type(plan.paused) is not bool or type(plan.input_paused) is not bool
+                or type(plan.ledger_seq) is not int or plan.ledger_seq < 0
+                or not isinstance(plan.ledger_digest, str)
+                or len(plan.ledger_digest) != 64
+                or any(c not in "0123456789abcdef" for c in plan.ledger_digest)):
+            raise ValueError("发牌计划缺少有效事件前缀")
+        if plan.participating_seats:
+            if participating_in_order(plan.participating_seats, plan.deal_direction) != plan.participating_seats:
+                raise ValueError("发牌参与顺序无效")
+            if plan.slots != build_initial_slots(plan.participating_seats):
+                raise ValueError("发牌槽与冻结参与顺序不符")
+            if plan.my_seat not in plan.participating_seats:
+                raise ValueError("本人座位不在参与列表")
+        elif plan.slots or plan.mode not in (MODE_UNALIGNED, MODE_MANUAL):
+            raise ValueError("发牌计划缺少参与座位")
+        valid_ids = {s.slot_id for s in plan.slots}
+        if (set(plan.filled_slots) - valid_ids or set(plan.unresolved_slots) - valid_ids
+                or plan.cursor_slot_id is not None and plan.cursor_slot_id not in valid_ids
+                or len(set(plan.filled_slots.values())) != len(plan.filled_slots)
+                or not isinstance(plan.observed_card_ids, list)
+                or any(not isinstance(e, str) for e in plan.observed_card_ids)
+                or not set(plan.filled_slots.values()) <= set(plan.observed_card_ids)):
+            raise ValueError("发牌事件与槽位身份无效")
+        if plan.deal_direction not in ("forward", "reverse"):
+            raise ValueError("未知发牌方向")
+        return plan

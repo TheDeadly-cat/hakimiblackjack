@@ -9,7 +9,6 @@ ignoring an identical rank inside 100ms.
 from __future__ import annotations
 
 from dataclasses import dataclass
-import uuid
 
 from ..core.cards import TEN_BUCKET
 
@@ -58,10 +57,6 @@ class KeyCommand:
     kind: str
     rank: str | None = None
     seat_number: int | None = None  # 0 = dealer, 1–7 = player
-    request_id: str = ""
-
-    def with_request(self, request_id: str) -> "KeyCommand":
-        return KeyCommand(self.kind, self.rank, self.seat_number, request_id)
 
 
 def _norm(keysym: str) -> str:
@@ -131,24 +126,40 @@ class ManualKeyBinder:
         self.handler = handler
         self.is_recording_surface = is_recording_surface
         self.guard = RepeatGuard()
-        self._press = root.bind("<KeyPress>", self.on_press, add="+")
-        self._release = root.bind("<KeyRelease>", self.on_release, add="+")
+        self.tag = f"ManualRecording-{id(self)}"
+        self._tag_commands = []
+        for sequence, callback in (("<KeyPress>", self.on_press), ("<KeyRelease>", self.on_release)):
+            self._tag_commands.append((sequence, root.bind_class(self.tag, sequence, callback)))
+        self._map = root.bind("<Map>", self._on_map, add="+")
         self._focus = root.bind("<FocusOut>", self.on_focus_out, add="+")
+        self._install(root)
+
+    def _install(self, widget):
+        if widget.winfo_toplevel() != self.root:
+            return
+        tags = widget.bindtags()
+        if self.tag not in tags:
+            widget.bindtags((self.tag, *tags))
+        for child in widget.winfo_children():
+            self._install(child)
+
+    def _on_map(self, event):
+        self._install(event.widget)
 
     def on_press(self, event):
         if not self.is_recording_surface(event):
             return None
-        if not self.guard.accept_press(event.keysym):
-            return "break"
         command = resolve(event.keysym, getattr(event, "state", 0))
         if command is None:
-            return "break" if _norm(event.keysym) in NEXT_KEYSYMS | PAUSE_KEYSYMS else None
-        self.handler(command.with_request(uuid.uuid4().hex))
+            return None
+        if not self.guard.accept_press(event.keysym):
+            return "break"
+        self.handler(command)
         return "break"
 
     def on_release(self, event):
         self.guard.release(event.keysym)
-        if self.is_recording_surface(event) and _norm(event.keysym) in NEXT_KEYSYMS | {"tab", "iso_left_tab"}:
+        if self.is_recording_surface(event) and resolve(event.keysym, getattr(event, "state", 0)):
             return "break"
         return None
 
@@ -156,9 +167,15 @@ class ManualKeyBinder:
         self.guard.clear()
 
     def close(self):
-        if self._press:
-            self.root.unbind("<KeyPress>", self._press)
-        if self._release:
-            self.root.unbind("<KeyRelease>", self._release)
+        def remove(widget):
+            widget.bindtags(tuple(tag for tag in widget.bindtags() if tag != self.tag))
+            for child in widget.winfo_children():
+                remove(child)
+        remove(self.root)
+        for sequence, command in self._tag_commands:
+            self.root.unbind_class(self.tag, sequence)
+            self.root.deletecommand(command)
+        if self._map:
+            self.root.unbind("<Map>", self._map)
         if self._focus:
             self.root.unbind("<FocusOut>", self._focus)
