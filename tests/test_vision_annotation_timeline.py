@@ -197,3 +197,35 @@ class AnnotationTimelineContracts(unittest.TestCase):
             review_original_frames.review_ui(session, path)
         self.assertTrue(any("原视频帧 未知" in text for text in shown))
         self.assertEqual(json.loads(path.read_text(encoding="utf-8")), annotations)
+
+    def test_ui_resumes_at_first_incomplete_frame(self):
+        import tkinter as tk
+        _, session, _, path, annotations = self.converted()
+        self.assertGreaterEqual(len(annotations["frames"]), 2)
+        annotations["frames"][0]["complete"] = True
+        path.write_text(json.dumps(annotations), encoding="utf-8")
+        shown = []
+        def drive(root):
+            root.withdraw()
+            for widget in self.widgets(root):
+                if isinstance(widget, tk.ttk.Label) and widget.cget("textvariable"):
+                    shown.append(str(root.getvar(widget.cget("textvariable"))))
+            root.destroy()
+        with patch.object(tk.Tk, "mainloop", drive):
+            review_original_frames.review_ui(session, path)
+        self.assertTrue(any(text.startswith("2/") for text in shown))
+
+    def test_final_holdout_init_marks_every_frame_holdout(self):
+        _, session, _, path, _ = self.converted()
+        path.unlink()
+        body = review_original_frames.initialize(
+            session, path, step=1, role="final_holdout")
+        self.assertEqual(body["role"], "final_holdout")
+        self.assertTrue(body["frames"])
+        self.assertTrue(all(row["split"] == "holdout" for row in body["frames"]))
+
+    def test_initialize_rejects_unknown_role(self):
+        _, session, _, path, _ = self.converted()
+        path.unlink()
+        with self.assertRaises(ValueError):
+            review_original_frames.initialize(session, path, step=1, role="training")

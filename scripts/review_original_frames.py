@@ -16,14 +16,21 @@ from blackjack_lab.vision.frame_annotations import (
 from blackjack_lab.vision.glyph_dataset import detect_round_ids, assign_splits, LABEL_RANKS
 
 
-def initialize(session, output, *, step=60):
+def initialize(session, output, *, step=60, role="development"):
     out = Path(output)
     if out.exists() or step <= 0:
         raise ValueError("请选择新输出文件和正数步长")
+    if role not in ("development", "validation", "final_holdout"):
+        raise ValueError("role 只接受 development / validation / final_holdout")
     root = Path(session)
     m = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
     rounds = detect_round_ids(m["frames"])
-    splits = assign_splits(rounds) if len(set(rounds)) >= 3 else {r: "train" for r in rounds}
+    if role == "final_holdout":
+        splits = {round_id: "holdout" for round_id in set(rounds)}
+    elif len(set(rounds)) >= 3:
+        splits = assign_splits(rounds)
+    else:
+        splits = {round_id: "train" for round_id in set(rounds)}
     records = []
     for i in range(0, len(m["frames"]), step):
         f = m["frames"][i]
@@ -37,7 +44,7 @@ def initialize(session, output, *, step=60):
                           source_rgb_sha256=f.get("source_rgb_sha256"))
         records.append(record)
     data = {"schema": ANNOTATION_SCHEMA, "session": m["session"],
-            "source_sha256": material_identity(root, m), "role": "development",
+            "source_sha256": material_identity(root, m), "role": role,
             "source_complete": not (m.get("valid") is False or m.get("decode_errors") or m.get("truncated")),
             "coordinate_space": "material_roi",
             "source_roi": m.get("roi"),
@@ -61,7 +68,8 @@ def review_ui(session, annotation_file):
         raise ValueError("标注清单没有原帧")
     root = tk.Tk()
     root.title("原帧核对与漏检补框 · 原素材只读")
-    index, state = [0], {}
+    start = next((i for i, frame in enumerate(data["frames"]) if not frame.get("complete")), 0)
+    index, state = [start], {}
     bar = ttk.Frame(root); bar.pack(fill="x")
     reviewer = tk.StringVar(); rank = tk.StringVar(value="Q")
     physical = tk.StringVar(); reason = tk.StringVar(value="检测器漏候选")
@@ -194,12 +202,18 @@ def review_ui(session, annotation_file):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    init = sub.add_parser("init"); init.add_argument("session"); init.add_argument("annotations"); init.add_argument("--step", type=int, default=60)
+    init = sub.add_parser("init")
+    init.add_argument("session")
+    init.add_argument("annotations")
+    init.add_argument("--step", type=int, default=60)
+    init.add_argument("--role", choices=("development", "validation", "final_holdout"),
+                      default="development")
     ui = sub.add_parser("ui"); ui.add_argument("session"); ui.add_argument("annotations")
     queue = sub.add_parser("queue"); queue.add_argument("session"); queue.add_argument("annotations"); queue.add_argument("output")
     args = parser.parse_args(argv)
     if args.command == "init":
-        print(f"初始化 {len(initialize(args.session,args.annotations,step=args.step)['frames'])} 帧")
+        body = initialize(args.session, args.annotations, step=args.step, role=args.role)
+        print(f"初始化 {len(body['frames'])} 帧 role={body['role']}")
     elif args.command == "ui":
         review_ui(args.session, args.annotations)
     else:
