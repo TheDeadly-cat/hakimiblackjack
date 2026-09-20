@@ -5,6 +5,7 @@ from tkinter import ttk, messagebox
 
 from ..analysis.contracts import RESULT_SCHEMA, STATUS_ZH, ACTION_ZH, AVAILABLE, STALE, InputUnavailable
 from ..analysis.service import AnalysisService
+from ..core.table import player_seat_name
 from ..storage.analysis_snapshots import is_minimal_result
 from ..analysis.split_contracts import SPLIT_RESULT_SCHEMA
 
@@ -78,7 +79,7 @@ class AnalysisPanel(ttk.Frame):
         self.persistence = tk.StringVar(value="结果会独立保存，原始事件不变")
         self.auto = tk.BooleanVar(value=False)
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(3, weight=1)
+        self.rowconfigure(4, weight=1)
         toolbar = ttk.Frame(self)
         toolbar.grid(row=0, column=0, sticky="ew", pady=2)
         self.compute_button = ttk.Button(toolbar, text="计算当前手牌", command=self.calculate_current)
@@ -87,22 +88,34 @@ class AnalysisPanel(ttk.Frame):
         self.cancel_button.pack(side=tk.LEFT, padx=3)
         self.auto_button = ttk.Checkbutton(toolbar, text="自动", variable=self.auto)
         self.auto_button.pack(side=tk.LEFT)
-        ttk.Label(self, textvariable=self.status, wraplength=300).grid(row=1, column=0, sticky="w", padx=3)
-        ttk.Label(self, textvariable=self.persistence, wraplength=300, foreground="#555").grid(row=2, column=0, sticky="w", padx=3)
+        identity = ttk.Frame(self)
+        identity.grid(row=1, column=0, sticky="ew", padx=3)
+        ttk.Label(identity, text="分析对象").pack(side=tk.LEFT)
+        self.cmb_analysis_target = ttk.Combobox(
+            identity, textvariable=self.app.var_analysis_target, state="readonly", width=8,
+            values=[player_seat_name(i) for i in range(1, 8)])
+        self.cmb_analysis_target.pack(side=tk.LEFT, padx=3)
+        ttk.Label(identity, text="手牌").pack(side=tk.LEFT)
+        self.cmb_analysis_hand = ttk.Combobox(
+            identity, textvariable=self.app.var_analysis_hand, state="readonly", width=18,
+            values=["（按顺序行动手）", "（最新一手）"])
+        self.cmb_analysis_hand.pack(side=tk.LEFT, padx=3)
+        ttk.Label(self, textvariable=self.status, wraplength=300).grid(row=2, column=0, sticky="w", padx=3)
+        ttk.Label(self, textvariable=self.persistence, wraplength=300, foreground="#555").grid(row=3, column=0, sticky="w", padx=3)
         body = ttk.Frame(self)
-        body.grid(row=3, column=0, sticky="nsew")
+        body.grid(row=4, column=0, sticky="nsew")
         self.text = tk.Text(body, wrap=tk.WORD, state=tk.DISABLED, width=38, height=15, font=("Microsoft YaHei UI", 9))
         scroll = ttk.Scrollbar(body, command=self.text.yview)
         self.text.configure(yscrollcommand=scroll.set)
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.text.pack(fill=tk.BOTH, expand=True)
         footer = ttk.Frame(self)
-        footer.grid(row=4, column=0, sticky="ew", pady=2)
+        footer.grid(row=5, column=0, sticky="ew", pady=2)
         ttk.Button(footer, text="历史分析 / 复算", command=self.show_history).pack(side=tk.LEFT)
         ttk.Button(footer, text="重试保存", command=self.retry_save).pack(side=tk.LEFT, padx=3)
         self.app.ctrl.add_context_listener(self.context_changed)
         self._target_traces = [(var, var.trace_add("write", self.context_changed))
-                               for var in (self.app.var_target, self.app.var_hand)]
+                               for var in (self.app.var_analysis_target, self.app.var_analysis_hand)]
         self._auto_trace = self.auto.trace_add("write", self._auto_changed)
         self._poll_id = self.after(50, self._poll)
 
@@ -113,7 +126,7 @@ class AnalysisPanel(ttk.Frame):
         self.text.configure(state=tk.DISABLED)
 
     def _live_key(self):
-        return (self.app.ctrl.context_token, self.app.var_target.get(), self.app.var_hand.get())
+        return (self.app.ctrl.context_token, self.app.var_analysis_target.get(), self.app.var_analysis_hand.get())
 
     def _cancel_auto(self):
         if self._auto_id:
@@ -155,9 +168,9 @@ class AnalysisPanel(ttk.Frame):
             return
         self.context_changed()
         self.context_key = key
-        hand_id = self.app._selected_hand_id(segment) if segment else None
+        hand_id = self.app._analysis_hand_id(segment) if segment else None
         try:
-            self.app.ctrl.analysis_input(self.app.var_target.get(), hand_id)
+            self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id)
         except InputUnavailable as error:
             if not self.recomputed_from:
                 self.status.set(f"{STATUS_ZH[error.status]}：{error.reason}")
@@ -173,8 +186,8 @@ class AnalysisPanel(ttk.Frame):
         self._cancel_auto()
         try:
             segment = self.app._current_seg()
-            hand_id = self.app._selected_hand_id(segment) if segment else None
-            snapshot = self.app.ctrl.analysis_input(self.app.var_target.get(), hand_id)
+            hand_id = self.app._analysis_hand_id(segment) if segment else None
+            snapshot = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id)
             self.start(snapshot)
         except Exception as error:
             self.recomputed_from = None
@@ -186,8 +199,8 @@ class AnalysisPanel(ttk.Frame):
         self._cancel_auto()
         if not recomputed_from:
             segment = self.app._current_seg()
-            hand_id = self.app._selected_hand_id(segment) if segment else None
-            current = self.app.ctrl.analysis_input(self.app.var_target.get(), hand_id)
+            hand_id = self.app._analysis_hand_id(segment) if segment else None
+            current = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id)
             if current.input_digest != snapshot.input_digest:
                 raise InputUnavailable("TARGET_CHANGED", "输入已改变，请按当前手牌重新计算")
         self.context_key = self._live_key()

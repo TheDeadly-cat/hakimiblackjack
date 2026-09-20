@@ -9,8 +9,13 @@ from .contracts import AnalysisInput, canonical, digest, research_rules
 
 SPLIT_PROFILE = "research-s17-us-peek-two-sequential-v1"
 DAS_PROFILE = "research-s17-us-peek-two-sequential-das-v1"
+SAME_VALUE_SPLIT_PROFILE = "research-s17-us-peek-two-sequential-same-value-v1"
+SAME_VALUE_DAS_PROFILE = "research-s17-us-peek-two-sequential-das-same-value-v1"
+ALL_SPLIT_PROFILES = (SPLIT_PROFILE, DAS_PROFILE, SAME_VALUE_SPLIT_PROFILE, SAME_VALUE_DAS_PROFILE)
 SPLIT_INPUT_SCHEMA = "hakimi-split-analysis-input-v1"
 SPLIT_RESULT_SCHEMA = "hakimi-analysis-result-v2"
+SAME_VALUE_SCOPE = "S17/3:2/US-peek/zero-burn/single-player/two-sequential/same-value/no-DAS/no-resplit"
+SAME_VALUE_DAS_SCOPE = "S17/3:2/US-peek/zero-burn/single-player/two-sequential/same-value/DAS-non-ace/no-resplit"
 SPLIT_ENGINE = "v0.2b1-finite-two-hand-1"
 DAS_ENGINE = "v0.2b2-finite-two-hand-das-2"
 DAS_ENGINE_LEGACY = "v0.2b2-finite-two-hand-das-1"
@@ -43,10 +48,35 @@ def das_research_rules(n_decks=6, surrender="late"):
     return rules
 
 
+def same_value_split_research_rules(n_decks=6, surrender="late"):
+    rules = split_research_rules(n_decks, surrender)
+    rules.profile_id = SAME_VALUE_SPLIT_PROFILE
+    rules.split_match = "same_value"
+    rules.game_name = "单玩家两手顺序分牌同点值研究"
+    rules.remark = "同点值配对（含T/T）；首手完成后才给第二手补第二张；无再分/无DAS/分A一张"
+    return rules
+
+
+def same_value_das_research_rules(n_decks=6, surrender="late"):
+    rules = das_research_rules(n_decks, surrender)
+    rules.profile_id = SAME_VALUE_DAS_PROFILE
+    rules.split_match = "same_value"
+    rules.game_name = "单玩家两手顺序分牌同点值DAS研究"
+    rules.remark = "同点值配对（含T/T）；首手完成后才给第二手补第二张；无再分/非A允许DAS/分A一张"
+    return rules
+
+
 def supported_split_rules(rules):
     return (rules.profile_id == SPLIT_PROFILE and rules.version == 1
             and rules.max_split_hands == 2 and rules.split_deal_order == SPLIT_ORDER
             and rules.split_match == "same_rank" and rules.double_after_split is False
+            and rules.resplit_aces is False and rules.split_ace_hit_once is True)
+
+
+def supported_same_value_split_rules(rules):
+    return (rules.profile_id == SAME_VALUE_SPLIT_PROFILE and rules.version == 1
+            and rules.max_split_hands == 2 and rules.split_deal_order == SPLIT_ORDER
+            and rules.split_match == "same_value" and rules.double_after_split is False
             and rules.resplit_aces is False and rules.split_ace_hit_once is True)
 
 
@@ -64,6 +94,34 @@ def supported_das_rules(rules):
             and rules.max_split_hands == 2 and rules.split_deal_order == SPLIT_ORDER
             and rules.split_match == "same_rank" and rules.double_after_split is True
             and rules.resplit_aces is False and rules.split_ace_hit_once is True)
+
+
+def supported_same_value_das_rules(rules):
+    return (rules.profile_id == SAME_VALUE_DAS_PROFILE and rules.version == 1
+            and rules.max_split_hands == 2 and rules.split_deal_order == SPLIT_ORDER
+            and rules.split_match == "same_value" and rules.double_after_split is True
+            and rules.resplit_aces is False and rules.split_ace_hit_once is True)
+
+
+def declared_two_hand_template(rules):
+    return (supported_split_rules(rules) or supported_das_rules(rules)
+            or supported_same_value_split_rules(rules) or supported_same_value_das_rules(rules))
+
+
+def split_pair_legal(ranks, split_match):
+    if len(ranks) != 2 or any(rank not in VALUES for rank in ranks):
+        return False
+    if split_match == "same_value":
+        return VALUES[ranks[0]] == VALUES[ranks[1]]
+    return ranks[0] == ranks[1] and ranks[0] != "T"
+
+
+def origin_pair_legal(left, right, split_match):
+    if not left or not right or left[0] not in VALUES or right[0] not in VALUES:
+        return False
+    if split_match == "same_value":
+        return VALUES[left[0]] == VALUES[right[0]]
+    return left == right and left != ("T",)
 
 
 def _hand_can_das(hand):
@@ -197,15 +255,23 @@ class SplitAnalysisInput:
         if type(self.dealer_up) is not int or not 1 <= self.dealer_up <= 10:
             raise ValueError("庄家明牌点值无效")
         rules = RuleProfile.from_json(self.rules_json)
-        is_das = supported_das_rules(rules)
-        if self.schema != SPLIT_INPUT_SCHEMA or not (supported_split_rules(rules) or is_das):
+        is_das = supported_das_rules(rules) or supported_same_value_das_rules(rules)
+        if self.schema != SPLIT_INPUT_SCHEMA or not declared_two_hand_template(rules):
             raise ValueError("不是已声明的两手顺序研究模板；禁止把旧四手规则截成两手")
         if is_das:
             if (not known_das_identity(self.engine_version, self.strategy_version)
                     or "DAS-non-ace" not in self.support_scope):
                 raise ValueError("DAS模板必须使用已声明的DAS引擎、策略与支持范围")
+            if supported_same_value_das_rules(rules) and "same-value" not in self.support_scope:
+                raise ValueError("同点值DAS模板必须声明 same-value 支持范围")
+            if supported_das_rules(rules) and "same-value" in self.support_scope:
+                raise ValueError("旧same_rank DAS快照不得改写为 same-value")
         elif self.engine_version != SPLIT_ENGINE or self.strategy_version != SPLIT_STRATEGY:
             raise ValueError("无DAS模板必须使用b1引擎与策略")
+        if supported_same_value_split_rules(rules) and "same-value" not in self.support_scope:
+            raise ValueError("同点值模板必须声明 same-value 支持范围")
+        if supported_split_rules(rules) and "same-value" in self.support_scope:
+            raise ValueError("旧same_rank快照不得改写为 same-value")
         if (any(type(v) is not tuple for v in (self.hands, self.pending_hand_ids, self.counts, self.legal_actions, self.uncertain_actions))
                 or len(self.hands) not in (1, 2) or any(type(h) is not SplitHand for h in self.hands)):
             raise ValueError("分牌输入必须包含不可变的一手或两手")
@@ -228,17 +294,16 @@ class SplitAnalysisInput:
             if self.hands[0].from_split or self.hands[0].closed or self.hands[0].forced_draw or self.hands[0].bet_units != 1:
                 raise ValueError("分牌前输入不是可决策的原手")
             ranks = self.hands[0].ranks
-            if 'split' in self.legal_actions and (len(ranks)!=2 or ranks[0]!=ranks[1] or ranks[0]=='T'):
-                raise ValueError("分牌需要已确认的同原始牌面，十点汇总桶不能替代牌面配对")
+            if 'split' in self.legal_actions and not split_pair_legal(ranks, rules.split_match):
+                raise ValueError("分牌需要已确认的配对条件；same_rank 不得用十点汇总桶或不同牌面替代")
             basis.validate()
         else:
             from dataclasses import replace
             replace(basis, legal_actions=(), uncertain_actions=()).validate()
             if (not all(h.from_split for h in self.hands) or self.hands[0].parent_id is not None
                     or self.hands[1].parent_id != self.hands[0].hand_id
-                    or self.hands[0].origin_ranks != self.hands[1].origin_ranks
-                    or self.hands[0].origin_ranks == ("T",)):
-                raise ValueError("两手父子关系或同牌面条件不一致")
+                    or not origin_pair_legal(self.hands[0].origin_ranks, self.hands[1].origin_ranks, rules.split_match)):
+                raise ValueError("两手父子关系或配对条件不一致")
             if self.active_index == 0 and len(self.hands[1].ranks) != 1:
                 raise ValueError("不得包含第二手尚未轮到的未来牌")
             active = self.hands[self.active_index] if self.active_index < 2 else None

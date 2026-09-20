@@ -26,7 +26,7 @@ from ..core.rules import (
 )
 from ..core.shoe import ConsistencyError
 from ..core.table import (
-    ACTION_DOUBLE, ACTION_SPLIT, ACTION_STAND, ACTION_SURRENDER, DEALER,
+    ACTION_DOUBLE, ACTION_HIT, ACTION_SPLIT, ACTION_STAND, ACTION_SURRENDER, DEALER,
     TableError, player_seat_name,
 )
 from ..ledger.events import (
@@ -38,8 +38,20 @@ from ..storage.export import export_csv, export_json
 from ..storage.database import LocalStore
 from .controller import SessionController
 from .analysis_panel import AnalysisPanel
+from .deal_entry import (
+    MODE_CONTINUATION, MODE_DEALER, MODE_INITIAL, MODE_MANUAL, MODE_PEEK_WAIT, MODE_UNALIGNED,
+    dealer_up_requires_peek, next_open_hand,
+)
+from .manual_keymap import (
+    KIND_DOUBLE, KIND_HIT, KIND_HOLE, KIND_JUMP, KIND_NEXT, KIND_PAUSE, KIND_PREV,
+    KIND_RANK, KIND_SPLIT, KIND_STAND, KIND_UNDO, ManualKeyBinder, TEXT_WIDGETS,
+)
 from ..analysis.contracts import research_rules
-from ..analysis.split_contracts import DAS_PROFILE, SPLIT_PROFILE, das_research_rules, split_research_rules
+from ..analysis.split_contracts import (
+    ALL_SPLIT_PROFILES, DAS_PROFILE, SAME_VALUE_DAS_PROFILE, SAME_VALUE_SPLIT_PROFILE,
+    SPLIT_PROFILE, das_research_rules, same_value_das_research_rules,
+    same_value_split_research_rules, split_research_rules,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DB = PROJECT_ROOT / "data" / "blackjack_lab.db"
@@ -105,6 +117,11 @@ class BlackjackLabApp(tk.Tk):
         self.var_surrender = tk.StringVar(value="不支持")
         self.var_confirm = tk.StringVar(value=CONFIRM_UNKNOWN)
         self.var_target = tk.StringVar(value=player_seat_name(1))
+        self.var_analysis_target = tk.StringVar(value=player_seat_name(1))
+        self.var_analysis_hand = tk.StringVar(value="（最新一手）")
+        self.var_my_seat = tk.StringVar(value=player_seat_name(1))
+        self.var_deal_direction = tk.StringVar(value="forward")
+        self.var_entry_prompt = tk.StringVar(value="尚未冻结本轮发牌计划。确认参与座位和本人座位后开新一轮。")
         self.var_hand = tk.StringVar(value="（最新一手）")
         self.var_mode = tk.StringVar(value="新发牌")
         self.var_suit = tk.StringVar(value="未知")
@@ -112,11 +129,17 @@ class BlackjackLabApp(tk.Tk):
         self.rule_details = {}
         self.var_participants = {name: tk.BooleanVar(value=name == "玩家1") for name in SEAT_NAMES[1:]}
         self._hand_ids = {}
+        self._analysis_hand_ids = {}
+        self._syncing_target = False
+        self._key_binder = None
+        self._pending_slot_id = None
+        self._preferred_recording_hand_id = None
 
         self._build_top()
         self._build_body()
         self._build_bottom()
         self._bind_keys()
+        self._restore_plan_identity()
         self.refresh_all()
         self.experiment_window = None
 
@@ -188,6 +211,8 @@ class BlackjackLabApp(tk.Tk):
         template_menu.add_command(label="V0.2a 原单手分析模板（四手录牌规则）", command=self.act_research_template)
         template_menu.add_command(label="V0.2b1 两手顺序分牌模板", command=lambda: self.act_research_template(split=True))
         template_menu.add_command(label="V0.2b2 两手顺序分牌DAS模板", command=lambda: self.act_research_template(das=True))
+        template_menu.add_command(label="两手顺序分牌·同点值", command=lambda: self.act_research_template(split=True, same_value=True))
+        template_menu.add_command(label="两手顺序分牌DAS·同点值", command=lambda: self.act_research_template(das=True, same_value=True))
         template_button.configure(menu=template_menu)
         template_button.grid(row=0, column=4, padx=6)
         ttk.Button(bar, text="对照实验", command=self.act_experiments).grid(row=0, column=5, padx=6)
@@ -209,19 +234,30 @@ class BlackjackLabApp(tk.Tk):
         for i, name in enumerate(SEAT_NAMES):
             ttk.Radiobutton(seat_box, text=name, value=name,
                             variable=self.var_target,
-                            command=self.refresh_all).grid(row=i // 4, column=i % 4, sticky="w", padx=2)
-        participants = ttk.LabelFrame(left, text="下一轮参与座位（空座不勾选）")
+                            command=self._on_recording_seat_clicked).grid(row=i // 4, column=i % 4, sticky="w", padx=2)
+        participants = ttk.LabelFrame(left, text="下一轮参与座位（空座不勾选，编号不变）")
         participants.pack(fill=tk.X, padx=4, pady=3)
         for i, name in enumerate(SEAT_NAMES[1:]):
             ttk.Checkbutton(participants, text=name, variable=self.var_participants[name]).grid(
                 row=i // 4, column=i % 4, sticky="w")
+        mine = ttk.Frame(participants)
+        mine.grid(row=2, column=0, columnspan=4, sticky="w", padx=2, pady=2)
+        ttk.Label(mine, text="我的座位").pack(side=tk.LEFT)
+        ttk.Combobox(mine, textvariable=self.var_my_seat, values=SEAT_NAMES[1:],
+                     state="readonly", width=8).pack(side=tk.LEFT, padx=4)
+        ttk.Radiobutton(mine, text="1→7", value="forward",
+                        variable=self.var_deal_direction).pack(side=tk.LEFT)
+        ttk.Radiobutton(mine, text="7→1", value="reverse",
+                        variable=self.var_deal_direction).pack(side=tk.LEFT)
+        self.var_my_seat.trace_add("write", lambda *_: self.var_analysis_target.set(self.var_my_seat.get()))
 
         hand_box = ttk.LabelFrame(left, text="目标手牌（分牌后选择）")
         hand_box.pack(fill=tk.X, padx=4, pady=3)
         self.cmb_hand = ttk.Combobox(hand_box, textvariable=self.var_hand,
                                      values=["（最新一手）"], state="readonly")
         self.cmb_hand.pack(fill=tk.X, padx=4, pady=2)
-        self.cmb_hand.bind("<<ComboboxSelected>>", lambda e: self.refresh_actions())
+        ttk.Button(hand_box, text="核对后人工继续", command=self.act_manual_alignment).pack(fill=tk.X, padx=4)
+        self.cmb_hand.bind("<<ComboboxSelected>>", lambda e: self._on_recording_hand_clicked())
 
         mode_box = ttk.Frame(left)
         mode_box.pack(fill=tk.X, padx=4)
@@ -254,12 +290,14 @@ class BlackjackLabApp(tk.Tk):
                    command=self.act_hidden_card
                    ).grid(row=4, column=0, columnspan=5, sticky="we", padx=2, pady=2)
 
-        ttk.Label(left, text="快捷键：0=10｜T未细分｜Ctrl+Z撤销",
-                  foreground="#555").pack(anchor="w", padx=6, pady=3)
-
         # ---------- 中部：牌桌 ----------
         mid = ttk.LabelFrame(body, text="中部：牌桌（庄家 + 7 座位）")
         mid.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=4, pady=2)
+        self.entry_prompt_label = ttk.Label(mid, textvariable=self.var_entry_prompt,
+                                            justify=tk.LEFT, foreground="#1a3c6e", wraplength=500)
+        self.entry_prompt_label.pack(anchor="w", padx=6, pady=4)
+        ttk.Label(mid, text="0=十点T  1=A  2–9=点值  .=暗牌已发  Enter只换目标  -停牌",
+                  foreground="#555", wraplength=500).pack(anchor="w", padx=6, pady=3)
         self.dealer_view = ttk.LabelFrame(mid, text="庄家")
         self.dealer_view.pack(fill=tk.X, padx=6, pady=4)
         self.lbl_dealer = ttk.Label(self.dealer_view, text="（无）", justify=tk.LEFT)
@@ -375,43 +413,336 @@ class BlackjackLabApp(tk.Tk):
                   foreground="#1a3c6e", wraplength=1120).pack(anchor="w", padx=6, pady=2)
 
     def _bind_keys(self) -> None:
-        keymap = {"a": "A", "2": "2", "3": "3", "4": "4", "5": "5",
-                  "6": "6", "7": "7", "8": "8", "9": "9", "0": "10",
-                  "j": "J", "q": "Q", "k": "K", "t": TEN_BUCKET}
-        for k, rank in keymap.items():
-            self.bind(f"<Key-{k}>", lambda e, r=rank: self._shortcut(e, lambda: self.act_card(r)))
-        self.bind("<Key-x>", lambda e: self._shortcut(e, self.act_hidden_card))
-        self.bind("<Key-g>", lambda e: self._shortcut(e, lambda: self.act_action(ACTION_STAND)))
-        self.bind("<Key-b>", lambda e: self._shortcut(e, lambda: self.act_action(ACTION_DOUBLE)))
-        self.bind("<Key-v>", lambda e: self._shortcut(e, lambda: self.act_action(ACTION_SPLIT)))
-        self.bind("<Control-z>", lambda e: self._shortcut(e, self.act_undo))
+        self._key_binder = ManualKeyBinder(self, self._on_manual_command,
+                                           is_recording_surface=self._is_recording_surface)
+
+    def _is_recording_surface(self, event) -> bool:
+        widget = getattr(event, "widget", None)
+        if widget is None:
+            return False
+        try:
+            if widget.winfo_toplevel() != self:
+                return False
+            if self.grab_current() not in (None, self):
+                return False
+            if widget.winfo_class() in TEXT_WIDGETS:
+                return False
+        except tk.TclError:
+            return False
+        return True
+
+    def _on_recording_seat_clicked(self) -> None:
+        if not self._syncing_target:
+            plan = self.ctrl.entry_plan
+            if plan and plan.mode == MODE_INITIAL and not plan.paused:
+                current = plan.slot()
+                plan.pause_manual("直接选择座位，自动轮转已暂停",
+                                  current.slot_id if current and current.slot_id not in plan.filled_slots else None)
+                self.ctrl.save_entry_plan()
+        self.refresh_all()
+        self._on_recording_hand_clicked()
+
+    def _on_recording_hand_clicked(self) -> None:
+        plan = self.ctrl.entry_plan
+        seg = self._current_seg()
+        if plan and seg and plan.mode in (MODE_CONTINUATION, MODE_MANUAL):
+            plan.continuation_seat = self.var_target.get()
+            plan.continuation_hand_id = self._selected_hand_id(seg)
+            plan.continuation_hand_ordinal = self._hand_ordinal(self.var_target.get())
+            try:
+                self.ctrl.save_entry_plan()
+            except Exception as error:
+                self.ctrl._pause_entry_recovery(f"录入位置未能保存，请核对：{error}")
+                self.fail(error)
+        self.refresh_actions()
+        self.refresh_entry_prompt()
+
+    def _set_recording_target(self, seat: str, hand_label: str | None = None) -> None:
+        self._syncing_target = True
+        try:
+            self.var_target.set(seat)
+            if hand_label:
+                self.var_hand.set(hand_label)
+        finally:
+            self._syncing_target = False
+
+    def _on_manual_command(self, command) -> None:
+        dispatch = {
+            KIND_RANK: lambda: self._key_rank(command.rank),
+            KIND_HOLE: self._key_hole,
+            KIND_NEXT: lambda: self._key_navigate(1),
+            KIND_PREV: lambda: self._key_navigate(-1),
+            KIND_JUMP: lambda: self._key_jump(command.seat_number),
+            KIND_HIT: lambda: self.act_action(ACTION_HIT),
+            KIND_STAND: self._key_stand,
+            KIND_DOUBLE: lambda: self.act_action(ACTION_DOUBLE),
+            KIND_SPLIT: lambda: self.act_action(ACTION_SPLIT),
+            KIND_PAUSE: self._key_pause,
+            KIND_UNDO: self.act_undo,
+        }
+        action = dispatch.get(command.kind)
+        if action:
+            action()
 
     def _shortcut(self, event, action):
-        if event.widget.winfo_toplevel() != self or event.widget.winfo_class() in ("Entry", "TEntry", "TCombobox", "Text", "Spinbox", "TSpinbox"):
+        if not self._is_recording_surface(event):
             return
         action()
         return "break"
+
+    def _restore_plan_identity(self) -> None:
+        plan = self.ctrl.entry_plan
+        if plan is None:
+            return
+        if plan.participating_seats:
+            for name, var in self.var_participants.items():
+                var.set(name in plan.participating_seats)
+        if plan.my_seat:
+            self.var_my_seat.set(plan.my_seat)
+            self.var_analysis_target.set(plan.my_seat)
+        if plan.deal_direction:
+            self.var_deal_direction.set(plan.deal_direction)
+        self._sync_from_plan()
+
+    def _sync_from_plan(self) -> None:
+        plan = self.ctrl.entry_plan
+        if plan is None:
+            return
+        if plan.mode == MODE_INITIAL:
+            slot = plan.slot()
+            if slot:
+                self._set_recording_target(slot.seat)
+        elif plan.mode == MODE_PEEK_WAIT:
+            self._set_recording_target(DEALER)
+        elif plan.continuation_seat:
+            self._set_recording_target(plan.continuation_seat)
+            if plan.continuation_hand_id:
+                self._preferred_recording_hand_id = plan.continuation_hand_id
+
+    def _requires_peek(self, up_rank):
+        seg = self._current_seg()
+        return dealer_up_requires_peek(seg.rules if seg else None, up_rank)
+
+    def _note_shown(self, seat, event, rank, slot_id=None) -> None:
+        # The controller has already synchronized and persisted the plan before
+        # publishing the event. These methods only select the visible focus.
+        plan = self.ctrl.entry_plan
+        if plan and (slot_id or plan.mode in (MODE_CONTINUATION, MODE_DEALER)):
+            self._sync_from_plan()
+
+    def _note_hidden(self, seat, event, slot_id=None) -> None:
+        self._sync_from_plan()
+
+    def _hand_ordinal(self, seat: str) -> int:
+        seg = self._current_seg()
+        if seg is None:
+            return 1
+        hand_id = self._selected_hand_id(seg)
+        seat_state = seg.table.seat(seat) if (seat == DEALER or seat in seg.table.players) else None
+        if not seat_state:
+            return 1
+        for index, hand in enumerate(seat_state.hands, start=1):
+            if hand.hand_id == hand_id:
+                return index
+        return max(len(seat_state.hands), 1)
+
+    @tracked_operation
+    def _key_rank(self, rank: str) -> None:
+        try:
+            self._ensure_recording_enabled(key=True)
+            plan = self.ctrl.entry_plan
+            slot_id = None
+            if self.var_mode.get() != "揭示" and plan and plan.mode in (MODE_INITIAL, MODE_MANUAL):
+                slot = plan.slot()
+                if slot and slot.expected_face != "shown":
+                    raise TableError("当前槽位是庄家暗牌，不能用点值键代替暗牌确认")
+                if slot and slot.expected_face == "shown" and slot.slot_id not in plan.filled_slots:
+                    if not plan.paused:
+                        slot = plan.accept_shown_on_cursor()
+                        slot_id = slot.slot_id
+                        self._set_recording_target(slot.seat)
+                    elif slot.seat == self.var_target.get():
+                        slot_id = slot.slot_id
+            self._pending_slot_id = slot_id
+            self.act_card(rank)
+        except Exception as error:
+            self.fail(error)
+        finally:
+            self._pending_slot_id = None
+
+    @tracked_operation
+    def _key_hole(self) -> None:
+        try:
+            self._ensure_recording_enabled(key=True)
+            plan = self.ctrl.entry_plan
+            if plan is None:
+                raise TableError("尚未冻结本轮发牌计划")
+            slot = plan.accept_hole_on_cursor()
+            self._set_recording_target(slot.seat)
+            self._pending_slot_id = slot.slot_id
+            self.act_hidden_card()
+        except Exception as error:
+            self.fail(error)
+        finally:
+            self._pending_slot_id = None
+
+    @tracked_operation
+    def _key_navigate(self, step: int) -> None:
+        try:
+            plan = self.ctrl.entry_plan
+            if plan is None:
+                raise TableError("尚未冻结本轮发牌计划")
+            if plan.mode in (MODE_CONTINUATION, MODE_DEALER):
+                self._move_recording_hand(step)
+            else:
+                slot = plan.navigate(step)
+                if slot:
+                    self._set_recording_target(slot.seat)
+                    plan.continuation_seat = slot.seat
+                    plan.continuation_hand_id = None
+                self.ctrl.save_entry_plan()
+            self.refresh_all()
+        except Exception as error:
+            self.fail(error)
+
+    def _move_recording_hand(self, step: int) -> None:
+        seg = self._current_seg()
+        plan = self.ctrl.entry_plan
+        if seg is None or plan is None:
+            return
+        targets = [(name, hand.hand_id, index)
+                   for name in (*plan.participating_seats, DEALER)
+                   for index, hand in enumerate(seg.table.seat(name).hands, 1)]
+        current = (self.var_target.get(), self._selected_hand_id(seg))
+        index = next((i for i, target in enumerate(targets) if target[:2] == current), 0)
+        if targets:
+            seat, hand_id, ordinal = targets[min(max(index + step, 0), len(targets) - 1)]
+            plan.mode = MODE_CONTINUATION
+            plan.continuation_seat = seat
+            plan.continuation_hand_id = hand_id
+            plan.continuation_hand_ordinal = ordinal
+            self._set_recording_target(seat)
+            self._preferred_recording_hand_id = hand_id
+            self.ctrl.save_entry_plan()
+
+    @tracked_operation
+    def _key_jump(self, number: int) -> None:
+        try:
+            seat = DEALER if number == 0 else player_seat_name(number)
+            plan = self.ctrl.entry_plan
+            if plan:
+                plan.jump_seat(seat)
+                self.ctrl.save_entry_plan()
+            self._set_recording_target(seat)
+            self.refresh_all()
+            self._on_recording_hand_clicked()
+        except Exception as error:
+            self.fail(error)
+
+    @tracked_operation
+    def _key_pause(self) -> None:
+        try:
+            plan = self.ctrl.entry_plan
+            if plan is None:
+                return
+            plan.toggle_input_pause()
+            self.ctrl.save_entry_plan()
+            self.refresh_all()
+        except Exception as error:
+            self.fail(error)
+
+    @tracked_operation
+    def _key_stand(self) -> None:
+        self.act_action(ACTION_STAND)
+        self._sync_from_plan()
+        self.refresh_all()
+
+    def _ensure_recording_enabled(self, *, key=False, action=False) -> None:
+        plan = self.ctrl.entry_plan
+        if plan and (plan.input_paused or key and plan.mode == MODE_UNALIGNED):
+            raise TableError("录入已暂停；请恢复录入或先核对已保存记录，不要重复录牌")
+        if plan and plan.mode == MODE_PEEK_WAIT and self.var_mode.get() != "揭示":
+            raise TableError("等待实际庄家检查结果，不能继续录入玩家牌")
+        if (plan and plan.mode == MODE_CONTINUATION and plan.initial_complete()
+                and (action or self.var_mode.get() != "揭示")):
+            seg = self._current_seg()
+            acting = next_open_hand(seg.table, plan.participating_seats)
+            selected = (self.var_target.get(), self._selected_hand_id(seg))
+            if acting and selected != acting[:2]:
+                raise TableError(f"当前实际行动位置：{acting[0]}／第{acting[2]}手；导航不会提前行动")
+
+    @tracked_operation
+    def act_manual_alignment(self) -> None:
+        plan = self.ctrl.entry_plan
+        if plan is None:
+            return
+        if not messagebox.askyesno("核对后人工继续", "请先核对牌桌和下方已保存事件。已保存的牌不要重录。\n"
+                                  "确认后仅按你选择的座位、手牌人工录入，直到下一轮重建自动队列。", parent=self):
+            return
+        try:
+            plan.mode = MODE_MANUAL
+            plan.slots = ()
+            plan.participating_seats = ()
+            plan.cursor_slot_id = None
+            plan.filled_slots = {}
+            plan.unresolved_slots = []
+            plan.paused = True
+            plan.input_paused = False
+            plan.input_pause_reason = ""
+            plan.pause_reason = "已确认人工录入；自动队列将在下一轮重新建立"
+            plan.observed_card_ids = self.ctrl.live_card_event_ids()
+            self.ctrl.entry_warning = ""
+            self.ctrl.save_entry_plan()
+            self.refresh_all()
+        except Exception as error:
+            self.fail(error)
+
+    def _analysis_hand_id(self, seg):
+        seat_name = self.var_analysis_target.get()
+        if seg is None or (seat_name != DEALER and seat_name not in seg.table.players):
+            return None
+        seat = seg.table.seat(seat_name)
+        if self.var_analysis_hand.get() == "（按顺序行动手）":
+            return next((h.hand_id for h in seat.hands if not seg.table.split_hand_closed(h)),
+                        seat.hands[-1].hand_id if seat.hands else None)
+        if self.var_analysis_hand.get() in ("", "（最新一手）"):
+            return seat.hands[-1].hand_id if seat.hands else None
+        return self._analysis_hand_ids.get(self.var_analysis_hand.get())
+
 
     # ============================================================
     # 动作
     # ============================================================
     @tracked_operation
-    def act_research_template(self, split=False, das=False):
-        if das:
+    def act_research_template(self, split=False, das=False, same_value=False):
+        if das and same_value:
+            rules = same_value_das_research_rules(self.var_decks.get())
+            das_choice = "允许"
+            match = "same_value 同点值"
+            scope = "同点值配对（含T/T）；两手顺序分牌，非A允许DAS。"
+        elif split and same_value:
+            rules = same_value_split_research_rules(self.var_decks.get())
+            das_choice = "禁止"
+            match = "same_value 同点值"
+            scope = "同点值配对（含T/T）；两手顺序分牌，无DAS。"
+        elif das:
             rules = das_research_rules(self.var_decks.get())
             das_choice = "允许"
+            match = "same_rank 同牌面"
             scope = "两手顺序分牌，首手完成后才给第二手补牌；非A允许DAS/无再分/分A一张。"
         elif split:
             rules = split_research_rules(self.var_decks.get())
             das_choice = "禁止"
+            match = "same_rank 同牌面"
             scope = "两手顺序分牌，首手完成后才给第二手补牌；无DAS/无再分/分A一张。"
         else:
             rules = research_rules(self.var_decks.get())
             das_choice = "禁止"
+            match = "same_rank 同牌面"
             scope = "原单手分析，保留四手录牌规则。"
         self.var_s17.set("S17")
         self.var_bjp.set("3:2")
-        self.var_split_match.set("same_rank 同牌面")
+        self.var_split_match.set(match)
         self.var_das.set(das_choice)
         self.var_surrender.set("late")
         self.var_confirm.set(CONFIRM_VERIFIED)
@@ -621,6 +952,7 @@ class BlackjackLabApp(tk.Tk):
         if path:
             try:
                 self.ctrl.import_file(path)
+                self._restore_plan_identity()
                 self.refresh_all()
                 self.set_status("已校验并导入会话；原有其他会话仍保留")
             except Exception as exc:
@@ -634,6 +966,7 @@ class BlackjackLabApp(tk.Tk):
         if choice:
             try:
                 self.ctrl.load_session(sessions[choice - 1]["session_id"])
+                self._restore_plan_identity()
                 self.refresh_all()
                 self.set_status("已恢复选中会话，后续录入将追加到该会话")
             except Exception as exc:
@@ -702,8 +1035,15 @@ class BlackjackLabApp(tk.Tk):
         try:
             seg = self._current_seg()
             players = [name for name, var in self.var_participants.items() if var.get() and seg and name in seg.table.players]
-            self.ctrl.start_round(players)
-            self.set_status("新一轮开始（牌靴不重置，继续沿用上一靴剩余牌）")
+            self.ctrl.start_round(players, my_seat=self.var_my_seat.get(),
+                                  deal_direction=self.var_deal_direction.get())
+            plan = self.ctrl.entry_plan
+            if plan and plan.mode == MODE_INITIAL:
+                first = plan.slot()
+                if first:
+                    self._set_recording_target(first.seat)
+            self.var_analysis_target.set(self.var_my_seat.get())
+            self.set_status("新一轮开始；初始发牌按玩家第一张→庄家明牌→玩家第二张→庄家暗牌")
             self.refresh_all()
         except Exception as e:
             self.fail(e)
@@ -711,6 +1051,7 @@ class BlackjackLabApp(tk.Tk):
     @tracked_operation
     def act_card(self, rank: str) -> None:
         try:
+            self._ensure_recording_enabled()
             seg = self._current_seg()
             if seg is None:
                 raise LedgerError("请先新建牌靴")
@@ -722,9 +1063,11 @@ class BlackjackLabApp(tk.Tk):
                 self.ctrl.reveal(target.event_id, rank, self._suit())
                 self.set_status(f"暗牌揭示为 {rank}（未重复扣牌，只做揭示转换）")
             else:
-                self.ctrl.deal_shown(self.var_target.get(), rank,
+                saved_seat = self.var_target.get()
+                event = self.ctrl.deal_shown(saved_seat, rank,
                                      hand_id=hand_id, suit=self._suit())
-                self.set_status(f"录入 {self.var_target.get()} <- {rank}")
+                self._note_shown(saved_seat, event, rank, self._pending_slot_id)
+                self.set_status(f"录入 {saved_seat} <- {rank}")
             self.refresh_all()
         except Exception as e:
             self.fail(e)
@@ -732,11 +1075,13 @@ class BlackjackLabApp(tk.Tk):
     @tracked_operation
     def act_hidden_card(self) -> None:
         try:
+            self._ensure_recording_enabled()
             seg = self._current_seg()
             if seg is None:
                 raise LedgerError("请先新建牌靴")
-            self.ctrl.deal_hidden(self.var_target.get(),
+            event = self.ctrl.deal_hidden(self.var_target.get(),
                                   self._selected_hand_id(seg))
+            self._note_hidden(self.var_target.get(), event, self._pending_slot_id)
             self.set_status("已录入一张暗牌（牌面未知，物理已离靴，待揭示）")
             self.refresh_all()
         except Exception as e:
@@ -745,6 +1090,7 @@ class BlackjackLabApp(tk.Tk):
     @tracked_operation
     def act_unknown_card(self) -> None:
         try:
+            self._ensure_recording_enabled()
             seg = self._current_seg()
             if seg is None:
                 raise LedgerError("请先新建牌靴")
@@ -758,6 +1104,7 @@ class BlackjackLabApp(tk.Tk):
     @tracked_operation
     def act_action(self, action: str) -> None:
         try:
+            self._ensure_recording_enabled(action=True)
             seg = self._current_seg()
             if seg is None:
                 raise LedgerError("请先新建牌靴与轮次")
@@ -768,6 +1115,7 @@ class BlackjackLabApp(tk.Tk):
             note = f"动作：{action}"
             if action == ACTION_SPLIT:
                 note += f"，新手牌 {ev.payload.get('new_hand_id', '')}"
+            self._sync_from_plan()
             self.set_status(note)
             self.refresh_all()
         except Exception as e:
@@ -777,6 +1125,7 @@ class BlackjackLabApp(tk.Tk):
     def act_peek_negative(self) -> None:
         try:
             self.ctrl.peek_negative()
+            self._sync_from_plan()
             self.set_status("已记录：庄家检查底牌，确认不是 Blackjack")
             self.refresh_all()
         except Exception as e:
@@ -812,6 +1161,7 @@ class BlackjackLabApp(tk.Tk):
     def act_undo(self) -> None:
         try:
             self.ctrl.undo_last()
+            self._sync_from_plan()
             self.set_status("已追加撤销事件（原始记录保留，重放后该事件失效）")
             self.refresh_all()
         except Exception as e:
@@ -879,6 +1229,20 @@ class BlackjackLabApp(tk.Tk):
         self.refresh_composition(seg, replay)
         self.refresh_timeline()
         self.refresh_topinfo(seg, replay)
+        self.refresh_entry_prompt()
+        warning = getattr(self.ctrl, "entry_warning", "")
+        if warning:
+            self.set_status(warning)
+
+    def refresh_entry_prompt(self) -> None:
+        plan = self.ctrl.entry_plan
+        if plan is None:
+            self.var_entry_prompt.set("尚未冻结本轮发牌计划。确认参与座位和本人座位后开新一轮。")
+            return
+        recording = self.var_target.get()
+        if plan.mode == MODE_CONTINUATION:
+            recording += f"／第{self._hand_ordinal(self.var_target.get())}手"
+        self.var_entry_prompt.set(plan.prompt(recording, self.var_analysis_target.get()))
 
     def refresh_topinfo(self, seg, replay) -> None:
         shoe_no = len(replay.segments)
@@ -892,7 +1256,9 @@ class BlackjackLabApp(tk.Tk):
             f"阶段 {'牌靴已结束' if seg.closed else seg.table.phase}｜记录：{self._record_status(seg)}｜"
             f"守恒：{'正常' if ok else '异常'}｜"
             f"规则确认：{seg.rules.confirm_status}｜分析：" + (
-                "两手DAS模型" if seg.rules.profile_id == DAS_PROFILE
+                "两手同点值DAS" if seg.rules.profile_id == SAME_VALUE_DAS_PROFILE
+                else "两手同点值分牌" if seg.rules.profile_id == SAME_VALUE_SPLIT_PROFILE
+                else "两手DAS模型" if seg.rules.profile_id == DAS_PROFILE
                 else "两手顺序模型" if seg.rules.profile_id == SPLIT_PROFILE
                 else "原单手模型"))
 
@@ -902,10 +1268,14 @@ class BlackjackLabApp(tk.Tk):
         values = ["（按顺序行动手）", "（最新一手）"]
         special = self.var_hand.get() if self.var_hand.get() in values else "（最新一手）"
         profile_id = seg.rules.profile_id if seg else None
-        if profile_id in (SPLIT_PROFILE, DAS_PROFILE) and getattr(self, "_hand_profile_id", None) != profile_id:
+        if profile_id in ALL_SPLIT_PROFILES and getattr(self, "_hand_profile_id", None) != profile_id:
             special = "（按顺序行动手）"
+            self.var_analysis_hand.set(special)
         self._hand_profile_id = profile_id
         selected_id = self._hand_ids.get(self.var_hand.get())
+        if self._preferred_recording_hand_id:
+            selected_id = self._preferred_recording_hand_id
+            self._preferred_recording_hand_id = None
         self._hand_ids = {}
         if seg and (self.var_target.get() == DEALER or self.var_target.get() in seg.table.players):
             seat = seg.table.seat(self.var_target.get())
@@ -915,6 +1285,25 @@ class BlackjackLabApp(tk.Tk):
                 self._hand_ids[label] = h.hand_id
         self.cmb_hand.configure(values=values)
         self.var_hand.set(next((label for label, hid in self._hand_ids.items() if hid == selected_id), special))
+        self._refresh_analysis_hands(seg, special)
+
+    def _refresh_analysis_hands(self, seg, special: str) -> None:
+        analysis_values = ["（按顺序行动手）", "（最新一手）"]
+        self._analysis_hand_ids = {}
+        analysis_seat = self.var_analysis_target.get()
+        if seg and (analysis_seat == DEALER or analysis_seat in seg.table.players):
+            seat = seg.table.seat(analysis_seat)
+            for h in seat.hands:
+                label = f"{h.hand_id}｜{h.display()}"
+                analysis_values.append(label)
+                self._analysis_hand_ids[label] = h.hand_id
+        panel = getattr(self, "analysis_panel", None)
+        cmb = getattr(panel, "cmb_analysis_hand", None) if panel else None
+        if cmb is not None:
+            current = self.var_analysis_hand.get()
+            cmb.configure(values=analysis_values)
+            if current not in analysis_values:
+                self.var_analysis_hand.set(special if special in analysis_values else "（最新一手）")
 
     def refresh_table(self, seg) -> None:
         if seg is None:
@@ -1040,14 +1429,19 @@ class BlackjackLabApp(tk.Tk):
             raise TableError("此手有多张未知牌，请先在时间线选中要揭示的发牌事件")
         return candidates[0] if candidates else None
 
-    @staticmethod
-    def _record_status(seg):
+    def _record_status(self, seg):
+        plan = self.ctrl.entry_plan
+        if (plan and plan.slots and plan.round_id == getattr(seg, "round_id", None)
+                and (not plan.initial_complete() or plan.unresolved_slots)):
+            return f"初始槽未齐 {len(plan.filled_slots)}/{len(plan.slots)}，不能宣称记录完整"
         status = seg.shoe.integrity_state()
         if status == "可分析":
             return "记录无已知缺口（分析资格另核对）"
         return status
 
     def on_close(self):
+        if self._key_binder is not None:
+            self._key_binder.close()
         self.analysis_panel.close()
         if self.experiment_window is not None and self.experiment_window.winfo_exists():
             self.experiment_window.destroy()
@@ -1058,7 +1452,8 @@ class BlackjackLabApp(tk.Tk):
     # 杂项
     # ============================================================
     def set_status(self, msg: str) -> None:
-        self.var_status.set(msg)
+        warnings = [getattr(self.ctrl, name, "") for name in ("entry_warning", "context_warning")]
+        self.var_status.set("\n".join([msg, *filter(None, warnings)]))
 
     def fail(self, e: Exception) -> None:
         committed = self.ctrl.commit_revision > self._operation_start_revision
