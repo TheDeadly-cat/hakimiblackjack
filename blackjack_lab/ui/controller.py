@@ -11,6 +11,7 @@ from ..storage.export import import_json, import_csv
 from ..storage.analysis_snapshots import AnalysisSnapshots
 from ..analysis.information import build_input
 from ..storage.safe_files import atomic_write
+from .deal_entry import RoundEntryPlan
 import json
 
 
@@ -26,6 +27,7 @@ class SessionController:
         self.session_name = "手动录牌会话"
         self.ledger = EventLedger(self.session_id)
         self.ledger.start_session().source = recording_source
+        self.entry_plan = None
         try:
             self.store.save_ledger(self.ledger)
         except Exception:
@@ -41,6 +43,7 @@ class SessionController:
         obj._context_listeners = []
         obj.recording_source = SOURCE_MANUAL
         obj.analysis_store = AnalysisSnapshots(str(Path(db_path).resolve()) + ".analysis")
+        obj.entry_plan = None
         try:
             obj.load_session(session_id)
         except Exception:
@@ -55,6 +58,7 @@ class SessionController:
         self.ledger = candidate
         self.session_id = session_id
         self.session_name = next((s["name"] for s in self.store.list_sessions() if s["session_id"] == session_id), "恢复会话")
+        self._load_entry_plan()
         self._publish_context_change()
 
     @property
@@ -93,8 +97,21 @@ class SessionController:
     def new_shoe(self, rules: RuleProfile):
         return self._apply("create_shoe", rules)
 
-    def start_round(self, participants=None):
-        return self._apply("start_round", participants)
+    def start_round(self, participants=None, *, my_seat=None, deal_direction="forward"):
+        event = self._apply("start_round", participants)
+        seg = self.state().current
+        seat = my_seat or (list(participants)[0] if participants else "玩家1")
+        try:
+            self.entry_plan = RoundEntryPlan.freeze(
+                session_id=self.session_id, shoe_id=seg.shoe_id, round_id=seg.round_id,
+                selected_seats=seg.table.participants, my_seat=seat,
+                deal_direction=deal_direction)
+            self.save_entry_plan()
+        except Exception:
+            self.entry_plan = RoundEntryPlan.unaligned(
+                session_id=self.session_id, shoe_id=seg.shoe_id, round_id=seg.round_id, my_seat=seat)
+            raise
+        return event
 
     def end_round(self):
         event = self._apply("end_round", settle=True, observation_status="complete")
@@ -136,7 +153,14 @@ class SessionController:
         return self._apply("gap", reason)
 
     def undo_last(self, reason=""):
-        return self._apply("undo_last", reason)
+        event = self._apply("undo_last", reason)
+        if self.entry_plan:
+            target = event.payload.get("target_event_id")
+            if target:
+                self.entry_plan.undo_event(target)
+            self.entry_plan.reconcile(self.live_card_event_ids())
+            self.save_entry_plan()
+        return event
 
     def correct(self, event_id, payload_fix, reason):
         if not reason.strip():
@@ -176,6 +200,51 @@ class SessionController:
 
     def shoe_count(self):
         return len(self.state().segments)
+
+    def _entry_plan_dir(self):
+        root = Path(self.store.db_path).resolve()
+        return root.with_name(root.name + ".deal_plans")
+
+    def _current_round_id(self):
+        if self.entry_plan and self.entry_plan.round_id:
+            return self.entry_plan.round_id
+        seg = self.state().current
+        return getattr(seg, "round_id", None) if seg else None
+
+    def _entry_plan_path(self, round_id=None):
+        rid = round_id or self._current_round_id() or "unaligned"
+        return self._entry_plan_dir() / f"{self.session_id}.{rid}.json"
+
+    def live_card_event_ids(self):
+        from ..ledger.events import CARD_DEALT
+        voided = self.ledger._voided_ids()
+        return [ev.event_id for ev in self.ledger.events
+                if ev.etype == CARD_DEALT and ev.event_id not in voided]
+
+    def save_entry_plan(self):
+        if self.entry_plan is None:
+            return
+        payload = json.dumps(self.entry_plan.to_dict(), ensure_ascii=False, indent=2, sort_keys=True)
+        atomic_write(self._entry_plan_path(self.entry_plan.round_id or "unaligned"),
+                     payload.encode("utf-8"))
+
+    def _load_entry_plan(self):
+        seg = self.state().current
+        shoe_id = getattr(seg, "shoe_id", "") if seg else ""
+        round_id = getattr(seg, "round_id", "") if seg else ""
+        path = self._entry_plan_path(round_id or None)
+        if not path.exists():
+            self.entry_plan = RoundEntryPlan.unaligned(
+                session_id=self.session_id, shoe_id=shoe_id, round_id=round_id)
+            return
+        data = json.loads(path.read_text(encoding="utf-8"))
+        plan = RoundEntryPlan.from_dict(data)
+        if plan.session_id != self.session_id or (round_id and plan.round_id != round_id):
+            self.entry_plan = RoundEntryPlan.unaligned(
+                session_id=self.session_id, shoe_id=shoe_id, round_id=round_id)
+            return
+        plan.reconcile(self.live_card_event_ids())
+        self.entry_plan = plan
 
     def close(self):
         self.store.close()

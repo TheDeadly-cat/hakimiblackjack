@@ -163,14 +163,20 @@ class TestAnalysisLifecycleReview(unittest.TestCase):
     def test_target_and_session_changes_invalidate_without_redraw(self):
         self.start(cards=("5", "6"), up="2")
         panel = self.app.analysis_panel
-        for change in (lambda: self.app.var_target.set("玩家2"),
-                       lambda: self.app.ctrl.load_session(self.app.ctrl.session_id)):
-            self.app.var_target.set("玩家1")
-            panel.calculate_current()
-            self.wait_result()
-            change()
-            self.assertIsNone(panel.last_result)
-            self.assertNotIn("EV单位", panel.text.get("1.0", "end"))
+        self.app.var_target.set("玩家1")
+        panel.calculate_current()
+        self.wait_result()
+        self.app.var_target.set("玩家2")
+        self.assertIsNotNone(panel.last_result)
+        self.app.var_analysis_target.set("玩家2")
+        self.assertIsNone(panel.last_result)
+        self.assertNotIn("EV单位", panel.text.get("1.0", "end"))
+        self.app.var_analysis_target.set("玩家1")
+        panel.calculate_current()
+        self.wait_result()
+        self.app.ctrl.load_session(self.app.ctrl.session_id)
+        self.assertIsNone(panel.last_result)
+        self.assertNotIn("EV单位", panel.text.get("1.0", "end"))
 
     def test_import_invalidates_current_request_without_redraw(self):
         from blackjack_lab.storage.export import export_json

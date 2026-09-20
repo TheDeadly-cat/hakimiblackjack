@@ -34,11 +34,12 @@ class TestSplitLegality(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("相同牌面", reason)
 
-    def test_same_value_allows_10_Q(self):
+    def test_same_value_allows_ten_bucket_pair(self):
+        from blackjack_lab.core.cards import TEN_BUCKET
         t = TableState(rules(split_match="same_value"))
         t.start_round([player_seat_name(1)])
-        t.add_card(player_seat_name(1), "10")
-        t.add_card(player_seat_name(1), "Q")
+        t.add_card(player_seat_name(1), TEN_BUCKET)
+        t.add_card(player_seat_name(1), TEN_BUCKET)
         ok, _ = t._pair_split_eligible(t.players[player_seat_name(1)].hands[0])
         self.assertTrue(ok)
 

@@ -37,6 +37,17 @@ class TestSplitContracts(unittest.TestCase):
             with self.subTest(field=field):
                 self.assertFalse(supported_split_rules(rules))
 
+    def test_same_value_template_is_a_new_identity(self):
+        from blackjack_lab.analysis.split_contracts import (
+            same_value_split_research_rules, supported_same_value_split_rules, SAME_VALUE_SPLIT_PROFILE)
+        old=split_research_rules()
+        new=same_value_split_research_rules()
+        self.assertNotEqual(old.profile_id,new.profile_id)
+        self.assertEqual(new.profile_id,SAME_VALUE_SPLIT_PROFILE)
+        self.assertTrue(supported_same_value_split_rules(new))
+        self.assertFalse(supported_split_rules(new))
+        self.assertFalse(supported_same_value_split_rules(old))
+
     def test_original_card_identity_and_units_are_immutable(self):
         hand=SplitHand('one',None,('8',),('card-one',),('8',),('card-one',),True,False,False,True)
         hand.validate()

@@ -7,13 +7,14 @@ from ..core.table import DEALER
 from .contracts import ACTION_ZH, InputUnavailable, INAPPLICABLE, UNSUPPORTED, canonical, digest
 from .split_contracts import (
     SplitAnalysisInput, SplitHand, VALUES, supported_split_rules, supported_das_rules,
-    DAS_ENGINE, DAS_STRATEGY, _hand_can_das)
+    supported_same_value_split_rules, supported_same_value_das_rules,
+    DAS_ENGINE, DAS_STRATEGY, SAME_VALUE_SCOPE, SAME_VALUE_DAS_SCOPE, _hand_can_das)
 
 
 def build_split_input(session_id, current, seat, selected_id, seq, prefix):
     rules, shoe, table = current.rules, current.shoe, current.table
-    das = supported_das_rules(rules)
-    if not supported_split_rules(rules) and not das:
+    das = supported_das_rules(rules) or supported_same_value_das_rules(rules)
+    if not (supported_split_rules(rules) or supported_same_value_split_rules(rules) or das):
         raise InputUnavailable("SPLIT_RULE_UNSUPPORTED", "两手分析需要明确的顺序、无再分、无DAS或已声明DAS、分A一张研究模板", UNSUPPORTED)
     hands = table.players[seat].hands
     if not hands or len(hands) > 2:
@@ -79,9 +80,14 @@ def build_split_input(session_id, current, seat, selected_id, seq, prefix):
         "split_order_violations": list(table.split_order_violations),
         "action_states": {a: asdict(state) for a, state in states.items()}}
     extra = {}
-    if das:
+    if supported_same_value_das_rules(rules):
+        extra = dict(engine_version=DAS_ENGINE, strategy_version=DAS_STRATEGY,
+                     support_scope=SAME_VALUE_DAS_SCOPE)
+    elif das:
         extra = dict(engine_version=DAS_ENGINE, strategy_version=DAS_STRATEGY,
                      support_scope="S17/3:2/US-peek/zero-burn/single-player/two-sequential/DAS-non-ace/no-resplit")
+    elif supported_same_value_split_rules(rules):
+        extra = dict(support_scope=SAME_VALUE_SCOPE)
     snapshot = SplitAnalysisInput(session_id, current.shoe_id, current.round_id, seq, digest(prefix),
         seat, selected_id, rules.n_decks, canonical(json.loads(rules.to_json())), canonical(info),
         counts, shoe.physical_remaining(), tuple(items), active, pending, up, peek, legal, uncertain,
