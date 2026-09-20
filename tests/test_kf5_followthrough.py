@@ -159,6 +159,15 @@ class TestPR14Followup(unittest.TestCase):
         self.assertEqual(self.app.var_target.get(), '玩家1')
         self.assertEqual(self.app.ctrl.entry_plan.mode, 'player_continuation')
         self.assertEqual(self.app.ctrl.state().current.table.players['玩家1'].hands[0].ranks, ['T', '6'])
+        self.assertIsNone(self.app.ctrl.entry_plan.last_saved)
+        self.assertIn('刚刚记入：—', self.app.var_entry_prompt.get())
+        from blackjack_lab.ui.app import BlackjackLabApp
+        before = self.app.ctrl.ledger.to_list()
+        self.close_app()
+        self.app = BlackjackLabApp(self.db)
+        self.app.update()
+        self.assertEqual(self.app.ctrl.ledger.to_list(), before)
+        self.assertIn('刚刚记入：—', self.app.var_entry_prompt.get())
         self.press('9')
         self.assert_dealer_projection()
 

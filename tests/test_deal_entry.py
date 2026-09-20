@@ -127,6 +127,23 @@ class TestDealEntryPlan(unittest.TestCase):
         self.assertIn("分析对象：我／玩家3", text)
         self.assertIn("初始发牌 · 第一遍", text)
 
+    def test_reconcile_clears_voided_last_card_from_saved_plan(self):
+        plan = RoundEntryPlan.freeze(
+            session_id="s", shoe_id="shoe", round_id="r",
+            selected_seats=["玩家1"], my_seat="玩家1")
+        plan.enter_continuation("玩家1", "h1", 1)
+        plan.record_continuation_card("玩家1", "live", "6")
+        plan.reconcile(["live"])
+        self.assertEqual(plan.last_saved.event_id, "live")
+        plan.record_continuation_card("玩家1", "voided", "8")
+        plan.enter_dealer_phase()
+        plan.ledger_seq = 1
+        plan.ledger_digest = "0" * 64  # Synthetic prefix for plan serialization only.
+        recovered = RoundEntryPlan.from_dict(plan.to_dict())
+        recovered.reconcile(["live"])
+        self.assertIsNone(recovered.last_saved)
+        self.assertNotIn("8，已保存", recovered.last_saved_text())
+
 
 class TestEntryPlanPersistence(unittest.TestCase):
     def setUp(self):

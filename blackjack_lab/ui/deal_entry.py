@@ -393,6 +393,11 @@ class RoundEntryPlan:
 
     def reconcile(self, live_event_ids: Iterable[str]) -> None:
         live = set(live_event_ids)
+        # A voided card must not remain advertised as the latest saved card,
+        # including when loading a plan written before this check existed.
+        if (self.last_saved and self.last_saved.kind in ("shown", "hidden")
+                and self.last_saved.event_id not in live):
+            self.last_saved = None
         if live - set(self.observed_card_ids):
             self.mode = MODE_UNALIGNED
             self.paused = self.input_paused = True
