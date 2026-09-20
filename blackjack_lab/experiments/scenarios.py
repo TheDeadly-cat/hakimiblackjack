@@ -4,6 +4,8 @@ from pathlib import Path
 
 from ..analysis.contracts import InputUnavailable, research_rules
 from ..analysis.information import build_input
+from ..analysis.predeal_contracts import require_declared_surrender
+from ..analysis.research_windows import parse_surrender_token
 from ..analysis.split_contracts import das_research_rules, split_research_rules
 from ..core.cards import UNKNOWN
 from ..ledger.ledger import EventLedger
@@ -15,14 +17,27 @@ from .contracts import (
 )
 
 
-def template_rules(template, n_decks):
+def template_rules(template, n_decks, surrender):
+    surrender = require_declared_surrender(surrender, what="对照实验模板")
     if template == "single":
-        return research_rules(n_decks)
+        return research_rules(n_decks, surrender=surrender)
     if template == "split":
-        return split_research_rules(n_decks)
+        return split_research_rules(n_decks, surrender=surrender)
     if template == "das":
-        return das_research_rules(n_decks)
+        return das_research_rules(n_decks, surrender=surrender)
     raise ExperimentError("ILLEGAL_TEMPLATE", f"模板必须是 {TEMPLATES} 之一")
+
+
+def _synthetic_surrender(data):
+    if "surrender" not in data:
+        raise ExperimentError("SURRENDER_REQUIRED", "合成对照必须显式给出投降规则，不能默认晚投降")
+    value = data.get("surrender")
+    if value is None:
+        return None
+    try:
+        return parse_surrender_token(value)
+    except ValueError as error:
+        raise ExperimentError("SURRENDER_REQUIRED", str(error)) from error
 
 
 def config_from_mapping(data, experiment_id):
@@ -43,6 +58,7 @@ def config_from_mapping(data, experiment_id):
         through_seq = parse_strict_int(through_seq, "事件序号")
     else:
         through_seq = None
+    surrender = _synthetic_surrender(data) if kind == KIND_SYNTHETIC else None
     return ExperimentConfig(
         experiment_id=experiment_id,
         kind=kind,
@@ -59,6 +75,7 @@ def config_from_mapping(data, experiment_id):
         note=data.get("note") or "",
         removal_kind=removal,
         not_a_round_simulation=True,
+        surrender=surrender,
     )
 
 
@@ -76,7 +93,7 @@ def _live_ledger(n_decks, config):
         raise ExperimentError("ILLEGAL_RANK", "合成场景不能用未知牌面代替组成")
     ledger = EventLedger(f"{config.experiment_id}-{n_decks}d")
     ledger.start_session("合成对照实验；固定已知组成，不是真实轮次模拟")
-    ledger.create_shoe(template_rules(config.template, n_decks))
+    ledger.create_shoe(template_rules(config.template, n_decks, config.surrender))
     ledger.start_round([config.seat])
     ledger.deal("庄家", config.dealer_up, source="合成实验")
     ledger.deal("庄家", hidden=True, source="合成实验")

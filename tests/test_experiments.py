@@ -15,8 +15,37 @@ from tests.test_analysis_integration import example
 
 class TestExperiments(unittest.TestCase):
     def run_config(self, data, folder):
+        data = dict(data)
+        if data.get("kind") == KIND_SYNTHETIC:
+            data.setdefault("surrender", "none")
         config = config_from_mapping(data, uuid.uuid4().hex)
         return ExperimentRunner().run(config, Path(folder) / "out")
+
+    def test_synthetic_requires_declared_surrender(self):
+        with self.assertRaises(ExperimentError) as error:
+            config_from_mapping({
+                "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
+                "player_ranks": ("10", "6"), "dealer_up": "10",
+            }, "missing-surrender")
+        self.assertEqual(error.exception.code, "SURRENDER_REQUIRED")
+
+    def test_no_surrender_synthetic_does_not_offer_surrender(self):
+        none = config_from_mapping({
+            "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
+            "player_ranks": ("10", "6"), "dealer_up": "10",
+            "surrender": "none",
+        }, "none-surrender")
+        late = config_from_mapping({
+            "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
+            "player_ranks": ("10", "6"), "dealer_up": "10",
+            "surrender": "late",
+        }, "late-surrender")
+        none_snap, _ledger = snapshot_for_deck(none, 6)
+        late_snap, _ledger = snapshot_for_deck(late, 6)
+        self.assertIsNone(none.surrender)
+        self.assertEqual("late", late.surrender)
+        self.assertNotIn("surrender", none_snap.legal_actions)
+        self.assertIn("surrender", late_snap.legal_actions)
 
     def test_synthetic_6_7_8_enter_calculation_and_keep_full_actions(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -133,6 +162,7 @@ class TestExperiments(unittest.TestCase):
         config = config_from_mapping({
             "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
             "player_ranks": ("10", "6"), "dealer_up": "10",
+            "surrender": "none",
         }, "removal-only")
         snapshot, _ledger = snapshot_for_deck(config, 6)
         with self.assertRaises(ExperimentError) as error:
@@ -147,6 +177,7 @@ class TestExperiments(unittest.TestCase):
             "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
             "player_ranks": ("10", "6"), "dealer_up": "9",
             "peek_negative": "false",
+            "surrender": "none",
         }, "peek-false")
         self.assertIs(config.peek_negative, False)
 
@@ -165,12 +196,14 @@ class TestExperiments(unittest.TestCase):
                 "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
                 "player_ranks": ("10", "6"), "dealer_up": "10",
                 "extra_removed": ("A",) * 25,
+                "surrender": "none",
             }, "first-run"), out)
             first_id = first["record"]["config"]["experiment_id"]
             with self.assertRaises(ExperimentError) as error:
                 ExperimentRunner().run(config_from_mapping({
                     "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "single",
                     "player_ranks": ("9", "7"), "dealer_up": "5",
+                    "surrender": "none",
                 }, "second-run"), out)
             self.assertEqual(error.exception.code, "OUTPUT_EXISTS")
             saved = json.loads((out / "experiment.json").read_text(encoding="utf-8"))
@@ -191,6 +224,7 @@ class TestExperiments(unittest.TestCase):
             config = config_from_mapping({
                 "kind": KIND_SYNTHETIC, "n_decks": (6, 7, 8), "template": "single",
                 "player_ranks": ("10", "6"), "dealer_up": "10",
+                "surrender": "none",
             }, uuid.uuid4().hex)
             saved = runner.run(config, Path(folder) / "out")
             items = saved["record"]["items"]
@@ -231,6 +265,7 @@ class TestExperiments(unittest.TestCase):
             config = config_from_mapping({
                 "kind": KIND_SYNTHETIC, "n_decks": (6,), "template": "das",
                 "player_ranks": ("8", "8"), "dealer_up": "6",
+                "surrender": "none",
             }, uuid.uuid4().hex)
             saved = ExperimentRunner().run(config, Path(folder) / "out", budget_seconds=0.0001)
             item = saved["record"]["items"][0]
@@ -249,6 +284,8 @@ class TestExperiments(unittest.TestCase):
             self.assertTrue(all(item["status"] == "available" for item in record["items"]))
             self.assertTrue((out / "experiment.csv").is_file())
             self.assertTrue(record["config"]["not_a_round_simulation"])
+            self.assertIsNone(record["config"]["surrender"])
+            self.assertTrue(all("surrender" not in item["legal_actions"] for item in record["items"]))
 
             ledger = example(cards=("10", "6"), up="10")
             prefix_seq = ledger.events[-1].seq
@@ -288,6 +325,7 @@ class TestExperiments(unittest.TestCase):
             self.assertEqual(record["config"]["n_decks"], [6])
             self.assertEqual(record["config"]["player_ranks"], ["9", "7"])
             self.assertEqual(record["config"]["dealer_up"], "5")
+            self.assertIsNone(record["config"]["surrender"])
             override = Path(folder) / "from-flag"
             code = main(["--mode", "synthetic", "--config", str(config_path),
                          "--player", "8,8", "--output", str(override)])

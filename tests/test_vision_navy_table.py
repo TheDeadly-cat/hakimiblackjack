@@ -2,6 +2,7 @@
 """旁观深色桌：裁切、座位、检牌；不依赖真实平台原片入库。"""
 import tempfile
 import unittest
+from blackjack_lab.vision.deps import cv2_available
 from pathlib import Path
 
 from blackjack_lab.vision.contracts import navy_layout
@@ -46,6 +47,7 @@ class TestNavyLayout(unittest.TestCase):
             self.assertEqual(infer_layout(loaded).style_id, "navy-live-felt-v1")
 
 
+@unittest.skipUnless(cv2_available(), "optional vision dependencies unavailable")
 class TestNavyDetect(unittest.TestCase):
     def test_cards_go_to_dealer_and_player_seats(self):
         layout = navy_layout()

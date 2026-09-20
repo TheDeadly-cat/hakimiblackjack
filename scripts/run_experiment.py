@@ -36,6 +36,7 @@ def main(argv=None):
     parser.add_argument("--db", type=Path)
     parser.add_argument("--session")
     parser.add_argument("--through-seq")
+    parser.add_argument("--surrender", choices=("none", "late"), default=None)
     parser.add_argument("--config", type=Path, help="JSON 配置；只有显式命令行选项才覆盖其中的字段")
     args = parser.parse_args(argv)
     data = {}
@@ -55,6 +56,7 @@ def main(argv=None):
         data["session_id"] = args.session
     if args.through_seq is not None:
         data["through_seq"] = args.through_seq
+    _apply_flag(data, "surrender", args.surrender, "none" if synthetic else None)
     config = config_from_mapping(data, uuid.uuid4().hex)
     saved = ExperimentRunner().run(config, args.output)
     print(json.dumps({"json": str(saved["json"]), "csv": str(saved["csv"]),

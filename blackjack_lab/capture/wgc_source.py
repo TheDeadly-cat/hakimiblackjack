@@ -27,7 +27,7 @@ TIMESPAN_TICK_NS = 100
 INSTALL_HINT = (
     "未安装实时捕获依赖（windows-capture）。"
     "录像回放、本地图识牌与手动录牌不受影响。"
-    "若要实时捕获：pip install -r requirements-vision.txt"
+    "若要实时捕获：pip install -r requirements-capture.txt"
 )
 
 
@@ -214,8 +214,9 @@ class WgcLiveSource:
 
 
 def open_window_source(hwnd: int, **kwargs) -> WgcLiveSource:
+    from .overlay_exclusion import refuse_overlay_source
     from .window_list import describe_window
-    info = describe_window(int(hwnd))
+    info = refuse_overlay_source(describe_window(int(hwnd)))
     spec = SourceSpec(
         kind=SOURCE_WINDOW,
         window_hwnd=int(hwnd),

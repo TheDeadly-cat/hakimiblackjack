@@ -61,6 +61,17 @@ class TestRoundObservation(unittest.TestCase):
         next_round(ledger)
         self.assertEqual(build_input(ledger, "玩家1").player, (10, 6))
 
+    def test_settled_round_is_not_a_current_hand(self):
+        ledger = first_round(complete=True)
+        ledger.end_round(settle=True, observation_status="complete")
+        with self.assertRaises(InputUnavailable) as ended:
+            build_input(ledger, "玩家1")
+        self.assertEqual("ROUND_INACTIVE", ended.exception.code)
+        ledger.start_round(["玩家1"])
+        with self.assertRaises(InputUnavailable) as nxt:
+            build_input(ledger, "玩家1")
+        self.assertEqual("PLAYER_INCOMPLETE", nxt.exception.code)
+
     def test_legacy_missing_field_remains_unknown_and_original_rows_unchanged(self):
         for settle in (False, True):
             ledger = first_round(complete=True)

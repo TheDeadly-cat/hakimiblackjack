@@ -1,3 +1,173 @@
+# M0a–M3 软件 + M4 未勾选验收包 + M5 冻结清单（已按要求推送，不是发布）
+
+日期：2026-09-15。基准提交仍是 `3bcd627814aaa3792d4edc24e2ad737cfbbe727d`。本段不是发布声明，也不是研究版或桌面观察版完成。用户已要求推送到 GitHub；不合入 `main`。
+
+## M0a：规则透传与统计语义
+
+人工剩余 `[10,10,9,9,8,7]`：独立 oracle 720 排列，无投降 EV=`0`，晚投降 EV=`5/36`。完整 `build_predeal_input → calculate` 与之一致，无投降分布不含 `-0.5`。合成剩余必须显式给出规则，缺规则不再套用晚投降研究模板；`solve_predeal_counts` / `evaluate_predeal` / `evaluate_interval` 缺投降字段拒绝，不能默认混入 `-0.5`。保存/加载快照必须带投降规则与对应动作集；去掉投降字段不能再当合法结果（缺字段不能用 `.get` 当成无投降）。区间诊断包络与 3/6 轮发牌前评估必须显式传入投降规则；缺字段摘要不能按研究模板补成晚投降。
+
+分析面板合成剩余：未锁定牌靴时跟会话投降选项（默认「不支持」→ EV=`0`），不能因 `current_rules()` 为空而静默套用晚投降研究模板。已锁定牌靴跟牌靴快照，不跟事后改的下拉框。当前手摘要也写入实际投降规则；无投降结果不得出现「晚投降」。`parse_surrender_token(None)` 拒绝，不再把缺字段写成 late。
+
+`zero_window` 只在完整已声明评估且无正 EV 时为真。全六副重洗全部 unsupported 现为「评估不完整」，不再记成已证明无窗口。混淆矩阵：真值不可评不定误报/共同阴性；真值正且观察缺失记 `missed_unavailable`。`evaluation_scope` 同时给出大纲字段：`evaluated_count`、`unassessable_count`、`no_positive_detected`；不完整时 `verified_no_positive_over_declared_domain` 为 null，不能写成已证实无窗口。混淆矩阵另计 `missed_due_to_abstention`（同 `missed_unavailable`）与 `classified_false_negative`。
+
+整靴窗口 / 独立牌靴 / 策略耗牌对照 / 3/6 轮 / 合成录牌误差 / 未使用留出：Python 入口缺投降字段拒绝，不能默认晚投降。`None` 仍是无投降。六张牌 STAT-02 真值正例必须显式 `surrender="late"`，否则 EV=`0` 不能当正窗口。结果摘要写入 `surrender`。研究扫描 CLI `--surrender none|late` 为必填；省略旗帜不能静默补成晚投降。对照实验 CLI 合成缺省 `none`，不是研究扫描那条路径。冻结π共同区间 / 所列 maxmin / 可行组成区间 / `exact_common_policy_ev` 同样缺字段拒绝，不能把省略写成无投降。合成对照实验必须在映射里给出投降规则；缺字段 `SURRENDER_REQUIRED`。CLI 合成缺省 `none`（对齐主窗口「不支持」），配置文件已有 `late` 不被覆盖。对照实验窗口合成启动跟会话规则，无投降时合法动作不含投降；历史回放仍只用账本当时牌靴规则。
+
+## M0b：观察当前性与发牌前异步身份
+
+来源新鲜度与知识身份分开：帧时钟不改 `knowledge_identity`。`live_table_applicable()` 仅在 live 来源且知识干净时为真；手动为「截至人工确认记录」，回放为「录像回放 · 不适用于当前真实牌桌」，合成组成为「合成研究」。`display_policy()` 写明各状态能否计算/展示 as-of、能否贴 live 标签、能否 timely 声称；撤回/跳过不能自动对账；未定区域单独挡实时标签。发牌前组成 A→B / 非法 / 清空会撤销旧请求的当前资格，数字可保留但不再标当前。计算中出现新疑似牌后，即使队列被清空也不能把旧结果写回「当前」。发布记录写入请求当时的 `knowledge_revision`；历史复算不套当前观察身份，也不把 `live_applicable` 设成真。发牌前历史复算期间改当前合成组成，仍只显示「历史分析」，`timely_live_claim` 为假。当前手结果带 `ledger-prefix` 来源、账本前缀与时点，求解器 `timely` 仍为假。
+
+## M1：小牌靴参考与输入严格性
+
+`counts_from_values` / `build_predeal_input` / 留出剩余组成先拒绝 bool/float/NaN/inf，不再 `int()` 截断。`[10,10,10,10]` 终局 20 对 20 为和局 EV=`0`，不再报「后续抽牌不足」。`[1,10,10,10]` 独立排列 EV=`1/4`。结算后或「已结束未结算」桌上留牌都不能把发牌前入口误判成「本轮已发」；当前手仍是 `ROUND_INACTIVE`。观察完整时六副剩余仍是 `PREDEAL_SHOE_TOO_LARGE`；观察不完整记漏录/缺口，不是已发。未揭示牌仍使组成未知；**十点未细分 T** 对明示不分牌的点值入口只计入十点桶，不再无条件 `COMPOSITION_UNKNOWN`，也不能冒充 10/J/Q/K 身份或同牌级分牌组成。区间为 `diagnostic_candidate_envelope`，另有同一冻结π的 `common_frozen_policy_envelope`；调用方列出候选即使全部算成也不能把 `coverage_complete` 写成真。可行组成由起源知识枚举；枚举截断或有组成算不成则覆盖仍不完整。二者 `robust_signal_allowed=False`，分别优化的组成最优不是共同可执行π。同一可见信息集上可以选出相反最优动作（例如 16 vs 9，十点剩余停牌、五点剩余加倍），该诊断不能当稳健下界。可见信息第一动作 maxmin 只选一个动作：16 vs 9 停牌最坏 `-1`，不能执行加倍在五点剩余上的 `+2`；这是当前手条件优势，不是发牌前开局优势。默认补牌后续仍按各组成最优；也可显式冻结为停牌或玩具硬规则（12 vs 9 五点剩余上组成最优补牌 EV=`-0.2`，补后停牌 EV=`-1`，玩具硬 EV=`-0.6`）。冻结续玩在同一可见信息下动作相同，但仍不是全部信息可行π的搜索，`verified_robust_positive_lower_bound` 仍为假。`PreDealInput.from_dict` 缺投降字段拒绝，dataclass 缺省不再是晚投降。所列冻结π的 `maxmin` 不是组成最优包络：六张牌晚投降诊断上界 `5/36`，停牌/玩具硬 maxmin 为 `0`。交互精确入口仍 ≤16 张。独立 oracle 无生产导入；当前手 `5,5` vs 9 剩余三张十点加倍 EV=`+2`；软 17 vs 2 剩余三张十点补十是硬 17 不是 27。对照实验缺会话规则时拒绝，不再默默补晚投降。
+
+## M2：完整牌靴固定策略离线 MC
+
+`fixed_policy_mc.py` 现有冻结合法未分牌 S17（硬/软/加倍/允许时晚投降；不分牌、不买保险），以及原来的冻结停牌与玩具硬规则。都不是组成最优，也不是已核验赌场基本策略表。精确未分牌最优策略 ID 仍被拒绝。Python 入口缺投降字段拒绝。固定组成（同一副牌洗牌，含整靴 `remaining=None` 或 `remaining=整靴张数`）与剩余张数先验（每次重抽不同组成）分开标记；后者不能作正式窗口声称。回执分开 `rules_digest` / `policy_digest` / `algorithm_digest`，并写出组成向量、规则快照、净收益分布与 p(win/push/lose)。失败或未跑样本使总体 `ev` 为空，成功子样本均值只作诊断。`z` 与预算在抽样前校验。取消延迟是察觉 `cancelled()` 之后的墙钟。固定组成且预注册样本完成时，Wald 下界>0 可标统计正、上界≤0 可标统计非正；这不是精确最优、不是 timely、不是桌面已证。合成 MC 仍 `timely=False`、`not_a_reliable_window_claim=True`。交互 5 秒 / 16 张门槛未改。CLI 增加 `legal-unsplit`，不再因为统计符号声称而退出。
+
+## M3：整靴口径
+
+缺省扫描仍是精确发牌前：六副剩余>16 为 unsupported，不能把 312 张硬穷举。可选用冻结策略 MC 评估切牌前检查点；`evaluation_method`、`evaluation_policy_id`、`path_policy_id`、`input_scope`、`cut_policy`、`sample_plan` 分开写入。不把切牌改到尾靴或精确 16 张上限；整靴缺省切牌剩余仍是 52。MC 与精确最优不合并成一条曲线：一次研究只用一种评估方法。重洗负对照对同一组成/规则/策略重新评估，不只保留实现净收益。独立牌靴汇总的 `zero_window_rate` 只在有完整评估的牌靴上计算；全部评不完时为 null。3/6 轮快照是实际耗牌剩余，不是固定减 65/130；也可选用同一套 MC 检查点，缺省仍精确。`path_policy_id` 与 `evaluation_policy_id` 分开；玩具硬规则不得叫已核验基本策略。合成 `evaluate_predeal` 一律 `source_mode=synthetic-composition`、`timely=False`、`not_a_reliable_window_claim=True`。漏牌、重复、错认按公开发牌事件重建下一轮剩余，并与完美公开事件对照计分。延迟是已确认前缀。`run_shoe_windows.py` 增加 `--evaluation-method exact-small|fixed-policy-mc`。研究脚本 `--surrender none|late` 仍为必填。
+
+漏牌修复：分牌后缀可重放，同靴跨轮后缀可重放；历史前缀仍看不到后来插入的牌。重放事件带 `repair_original_event_id` 指向原事件。发生时间只记在负载，`observed_at` 是确认时间，不能把早期发生时间当成当时已确认。内存应用失败不留半截撤销；进程从 SQLite 恢复后仍能分开当时前缀与修复后当前。已保存分析快照不因修复改 EV 或当成当时抓住窗口。跨新靴与纠错后缀继续拒绝，未删保护检查。
+
+## M4：证据层与未勾选验收包已接线，真实材料仍未验收
+
+`analysis/evidence.py`：missing / declared / evidence-linked / reviewed；软件不能写 `accepted=true`。全屏 `accepted()` 恒为 False。操作者对照匹配的 operator/video/pair 字符串只记 `declared_pair_ids`，`paired` 仍为 False。真实桌档案 `missing_archive` 显式 `accepted=False`。
+
+勾选与本地文件存在不能把 F11 写成 `accepted=true`（`fullscreen_acceptance.accepted()` 恒为 False；文件齐备最多 `evidence-linked`）。软件保存的全屏清单会清掉单项 `passed=true`，并写入文件 SHA 身份链；摘要不符仍是 `declared`。像素探针即使声称浏览器采集也不能把该项写成通过。手工把某项 `passed=true` 写进 JSON 再绑定文件时，软件会清掉勾选并始终列出五项 `human_blockers`。`bind_item_artifact` / `python scripts/bind_acceptance_artifact.py` 可把本机文件挂到某一项并哈希，该项 `passed` 仍为 false。具名核验走 `record_named_review` / `python scripts/record_acceptance_review.py --attested-by <姓名>`：已链接文件可升到 `reviewed`，仍不得 `accepted=true`，五项 `human_blockers` 仍在。把文件放进 `.local-evidence/m4-inbox/<item_id>/` 后跑 `python scripts/ingest_m4_inbox.py` 只会哈希绑定，不能勾选；本机证据目录不入库。操作者对照导出改为追加：第二次保存同一文件不会覆盖第一段；`python scripts/append_operator_trial.py` 同样追加。全屏清单与对照导出保存后会复制到对应收件箱（若已有未勾选包则尝试绑定），`accepted` 仍为 false。`python scripts/extract_review_frames.py --video <本地录像> --output-dir <目录>` 可抽待审帧并哈希源片与 PNG；`--bind-pack` / `--pack-output` 可把待审帧挂到未勾选验收包。`attach_review_frames` 可按 SHA 挂到未勾选的授权原片项。`accepted` / `independent_video` / `unused_*` / `human_run` 恒为 false，不能挂到未使用声明项，不改写原片，不能代替授权原片或未使用声明。
+
+2026-09-15 Shawn：NVIDIA Desktop **9 月**录屏被他说明为开靴到红牌停手、之后工作人员洗牌更新牌盒的完整对局。软件可对那些本机路径做 SHA 绑定与具名核验记录，**不得** `accepted=true`，也不得入库。`Desktop 2026.09.12 - 12.58.11.02.mp4` 已用于 navy-live 开发，不能登记为未使用留出。口头「Stake / Evolution / 接近美式 21 点」不能代替目标桌规则页或可核对截图。操作者对照他选择尚无配对导出。F11 仍缺。五项 `human_blockers` 仍在。
+
+操作者对照：`trial` / `trial_from_usage` 保留 `operator_id` / `video_id` / `pair_id`；`conclude` / `write_export` 写出 `identity_chain`。现有导出对话框可选填这三项，空则仍只记录条件。匹配字符串只记 `declared_pair_ids`，`paired` / `accepted` / `auto_prompt_default` 仍为 False。真实桌档案导出始终 `accepted=false`、`evidence_level=declared`；手工把 JSON 改成 `accepted=true` 后再加载仍会盖回未通过。界面顶栏把已载入档案标成「声明未验收」。`scripts/report_unattested_materials.py` 扫描操作者/全屏/桌档案/验收包时也不认手改 `accepted=true`。
+
+发牌前精确入口与合成 `evaluate_predeal`、固定策略 MC 均写入 4.4 身份：`window_kind`、`source_mode`、`strategy_id`、`ledger_prefix_digest`、`information_cutoff`、`result_ready_at`、`decision_deadline`、`timely`、`window_state`。计算状态与窗口状态分开：`positive_supported` / `nonpositive_supported` / `indeterminate` / `unavailable`。MC 在固定组成且预注册样本完成、Wald 区间给出符号时可以 `window_claim_allowed=True`，但这是统计正/统计非正，不是精确最优，也不是 timely 或桌面已证；合成组成仍 `timely=False` 且 `not_a_reliable_window_claim=True`。剩余张数先验不能作正式窗口声称。当前手结果标 `current_hand`，开局 `window_state=unavailable`，不能改称开局优势，也不能进入零窗口/混淆矩阵的正开局计数。快照拒绝把合成结果改成当时抓住，也拒绝把当前手 `window_state` 改成正开局。求解器本身不把结果标成 timely live；UI 信封 `timely_live_claim` 只有当时 live 且知识/输入未变才可为 true。历史复算、手动 as-of、迟到结果、软件省略该字段都是 false。发牌前按钮可替换进行中的当前手请求；发布结果必须是发牌前 schema，显示「合成研究」，不贴「当前 ·」。
+
+## M5：尚未冻结
+
+`freeze_status()` 在软件侧永远 `ready=False`，并拒绝 `m4_pack.accepted=true` 或脏树冒充已授权提交。产品仍为 `0.2.0b1`，SQLite schema 2，交互精确入口仍 ≤16 张 / 5 秒。冻结清单：
+
+- 单一候选 SHA（推送后以该分支 GitHub HEAD 为准；仍不是已授权发布冻结）
+- 干净运行目录与绑定到该 SHA 的完整 unittest 计数
+- PR #13 正文按本工作树更新（草稿，目标仍是 `vision/v0.3c-live`，不是 `main`）
+- M4 五项由人验收通过（软件不得代勾）
+- 用户明确授权发布冻结；不合入 `main`
+
+## 本机验证（工作树）
+
+```
+python tests/independent_six_card_oracle.py
+python tests/independent_small_shoe.py
+python -m compileall -q blackjack_lab tests scripts
+python -m unittest discover -s tests -q
+```
+
+完整 discover **1080** 通过、**8** 跳过。不要沿用 808/809、910/941、946、952、956、958、961、972、975、978、983、986、988、990、994、995、997、1001、1002、1003、1006、1008、1009、1011、1014、1016、1017、1019、1020、1023、1028、1031、1038、1043、1044、1045、1047、1048、1053 或上一轮 1055。本机计数不能换签为精确提交 CI，需等推送后的 GitHub Actions。
+
+---
+
+
+
+日期：2026-09-15。基准提交仍是 `3bcd627814aaa3792d4edc24e2ad737cfbbe727d`。本段不是发布声明，也不是 M0b–M5 完成。
+
+## 本单范围
+
+只做审查包 M0a：F01 无投降必须传到发牌前求解器；F02 不可评估不得记成非正或零窗口。未扩 16 张上限、未做观察当前性/异步身份、未做完整牌靴离线评估、未改 SplitEngine / SQLite schema / 私有材料。
+
+## 原来失败、现在通过的算例
+
+人工剩余 `[10,10,9,9,8,7]`（六张牌，不是六副牌）。独立 `tests/independent_six_card_oracle.py` 枚举 720 个物理排列，无生产导入：无投降 EV=`0`；晚投降 EV=`5/36`。
+
+完整 `build_predeal_input → calculate` 与该 oracle、以及 `tests/predeal_reference.py` 一致。无投降结果不含 `-0.5` 质量，摘要写「无投降」而不是「晚投降」。
+
+原 `test_full_six_deck_reshuffle_never_publishes_opening_ev` 曾要求全 unsupported 时 `zero_window=True`。该期待已作废：全未支持现在是「评估不完整，不能判断是否无窗口」，`zero_window` 仅在完整已声明评估且无正 EV 时为真。
+
+## 改了哪些文件，为什么
+
+- `predeal_contracts.py` / `predeal.py` / `research_windows.py`：投降规则进入输入、动作集、`solve_predeal_counts`、结果与摘要。
+- `shoe_windows.py`：耗牌与评估共用同一投降动作集；零窗口改用 `evaluation_scope`。
+- `observation_error.py` / `unused_holdout.py`：共用 `confusion_matrix`。真值不可评不定误报/共同阴性；真值正且观察缺失记 `missed_unavailable`，不是 FN。
+- `ui/analysis_panel.py` / `ui/controller.py`：合成组成与复算走会话/快照规则，不再默认晚投降覆盖无投降。
+- `core/rules.py` 能力矩阵：写明未支持不能记成零窗口。
+- 测试：独立 oracle、成对六张牌、窗口统计语义。
+
+## 本机验证（工作树，不是新提交 CI）
+
+```
+python tests/independent_six_card_oracle.py
+python -m blackjack_lab.main --check
+python -m compileall -q blackjack_lab tests scripts
+python -m unittest discover -s tests -q
+```
+
+结果：oracle 无投降 `0` / 晚投降 `5/36`；自检通过；**910** 项通过，**8** 跳过，约 221.5s。不要沿用旧 PR 文案里的 808/809。尚未 push，GitHub Actions 不会对新工作树出号。
+
+跳过的 8 项是原有 optional/环境跳过，不是为了本单删除失败记录。未跑私有录像、F11、真人操作者或 `verify_review_handoff.py` 以外的发布打包。
+
+## 仍未完成（按大纲下一单）
+
+- **M0b**：来源新鲜度 vs 知识变化；草稿撤回不等于对账完成；录像回放不得标成当前真实牌桌；发牌前输入 A→B 后旧异步结果不得重新发布。
+- **M1**：小牌靴参考边界；`int()` 提前截断；`[10,10,10,10]` 终局过度拒绝。
+- **M2–M5**：完整牌靴固定策略离线评估、整靴/误差口径、真实材料验收、冻结发布。
+
+产品显示仍为 `0.2.0b1`。PR #13 仍为草稿，目标 `vision/v0.3c-live`，不是 `main`。未经要求不提交。
+
+---
+
+
+
+目标仍是审计任务单第 6 节的限定场景研究版 + 真实桌面版门槛，不是把当前手牌 EV 改称开局优势。T10 数学核心与 SQLite schema 2 未改。本段不是发布声明。
+
+软件已接线、仍不能写成已验收的部分：
+- 当前手 / 发牌前窗口分开；观察新鲜度进入分析；剩余≤16 的发牌前精确入口。
+- 整靴合成扫描、独立牌靴集合、合成录牌误差（含延迟错过/误报漏报）、前三/六轮消耗对照（其他座位不是独立样本，也不是多玩家 EV）。
+- 未知组成区间（公布 min/max，禁止平均牌靴）；策略耗牌对照（不共享实现路径）。
+- 漏牌回溯修复（实验性）；真实桌档案可载入/导出，研究模板拒绝。
+- 全屏验收清单、环境探测与浮层像素探针可保存；空证据、合成色块、未配对真人试验不能改自动提示默认，也不能把 F11 写成通过。
+- 未使用留出包缺声明或缺 `video_id` 即拒绝；`source_kind=unused_video` 加具名 `video_id` 只记 `declared_unused_video`，软件仍写 `independent_video=False` / `accepted=False`。哈希只证明字节身份。窗口清单拒绝本工具浮层标题。
+
+仍缺证据、不得宣称完成：真实目标桌档案（R3）、配对真人操作者试验（R4）、用户 Windows 浏览器 F11/源帧验收（R5）、已声明未使用的独立录像逐轮剩余（R7）、PR #13 发布冻结（R8）。`.local-evidence` 开发录像角色未确认，不能当作独立留出。
+
+---
+
+# 连续回放验收入口与新录像准备（2026-09-12 后续）
+
+本次继续从已推送、CI成功的 `d2f9bd8` 推进。前一目标轮有源码/数据/CI实际进展；本轮找到候选新录像并补齐顺序回放验收入口，也属于实际进展。独立会话身份及人工真值仍未确认，目标未完成。
+
+新增只读 `VideoReader → pipeline → FrameTracker → 人审采样帧对照` 入口；不让GT进入模型/跟踪，不写账本，不从GT局号生成操作员轮界。可评身份碎片/合并/切换、首次错认和逐输出错误；完整轮事件/账本事件仍未测。原帧标注增加源帧号、RGB/ROI摘要和可核对局号，录屏在转换中变化时拒绝声称完整。
+
+本机历史录屏目录发现三段晚间文件：只将20:03开发候选转换成540张ROI帧、804个未标注裁片和27张原帧复核清单；20:21和20:42仍未查看画面/抽样/训练，后者为拟定最终保留候选。三个来源均做完整SHA冻结，用途和是否从未被别的流程使用还待用户确认。第一段120帧真实只读回放接线成功，ROI像素匹配；未人审，所以正式metrics=null。
+
+新增17项timeline与6项annotation/转换回归均通过，含真正小合成录像走共享入口；新精确提交CI与最终测试另记本机 `.local-evidence/new-recordings-20260912-preparation/continuation-delivery.json`。不把前次613结果直接换签到本轮。
+
+新素材和所有源摘要/画面/标签留在 `.local-evidence/new-recordings-20260912*`，原片未修改、未上传。原目标继续等待材料角色确认、人工标签/物理牌/归属/完整事件真值及独立真实效果比较；不可仅因CI或回放能执行而标完成。
+
+---
+
+# V0.3e 核心识牌整改接手记录（2026-09-12）
+
+分支 `codex/v0.3e-recognition-review`，基线 `fbff7b296532daa2eceea0c4d7893c0b0e37598f`。本轮软件整改已完成，独立真实录像与人工真值验收未完成。用户此前已授权更新 GitHub；只推修复分支，不合并 main，不发布运行包。源码、真实材料和验收证据分别保存。
+
+本轮修复：跨会话和内容防泄漏；增强/复制来源独立投票及真实拒识 margin；Q/A 透视宽高过滤与 10 白牌边缘/宽度遗漏；原帧人工框选和不可读/漏检/重复候选评测；多会话训练、旧报告拒覆盖；显式模型接入图片/回放/捕获共同入口；模型、ROI、来源切换与失败帧撤回；显式新轮绑定解决同位置新牌被旧 committed 身份吞掉。保留数学、DAS、Tk、SQLite 和真实用户库。
+
+标签重要发现：原唯一 A 与两条 10 并非真实相应点数。原标签未改，本地建议更正 3 条，新增 Q4/A2/10各2个原帧建议样本（共8，均 assistant_proposed）。新开发模型共204条训练标签，A2、10=2、Q4；其余标签仍无已人审证据，不得把类别数量当独立牌或可信真值数量。
+
+固定旧196训练/63开发裁片：原模型本机37正确+9错认+1junk误收，全输出precision78.7%、正确覆盖37/57；v3内容并票模型24正确+1错认+0junk误收，precision96%、覆盖24/57。更正建议模型在同旧开发集也是24/1/0。覆盖下降，且旧留出无Q和已验证人工真值，所以不宣称全面变准。原帧建议标注评测 valid=false，正式指标为null，不能用诊断计数作为验收成绩。
+
+工程证据：原分支完整532测试，1失败、2跳过；失败是旧模板归一化不一致将合成A排为Q，已修复。修复树首次完整611测试通过、2跳过；随后原帧真值完整性再增2回归，最后聚焦dataset17+frame13共30通过。提交6a3ece2完整613项通过、2跳过（95.800s）；对应首次CI 34696841762因YAML冒号解析失败，0 job启动，已改块状命令并通过解析，重试保留独立记录。可选依赖与无依赖环境分别验证；最终数字及精确提交CI另附本机delivery-status.json，不把前次结果换签到后续提交。临时SQLite验证连续40帧双8只扣2、显式新轮同位置再扣2。v3实际WGC只捕获自建Tk窗口，34帧到达/9帧分类/18角标候选/0接受/不入账，窗口关闭；这是接入证据，不是视频准确率。
+
+本机证据（工作树 `.local-evidence/`）：
+- `baseline-20260912/materials-freeze.json` 与 `original-holdout-replay.json`：冻结3374文件和原模型实跑；复核原文件0变化。
+- `v3-fixed196/`、`v3-corrected-proposals/`：分开的模型、参数、训练分组和开发报告。
+- `q-investigation/`、`ten-investigation/`：原帧位置、漏提取分析、建议补框和标签更正；全是本机材料。
+- `controlled-model-capture-v3-final/`：真实WGC加载最终v3开发模型，不接触现有浏览器。
+- `full-suite-remediation-first.txt`、`final-metrics-focus.txt`：首次完整与最后局部修复日志。
+
+继续工作必须获得：新的独立会话本地路径；既有标签及原帧全部目标的人审复核；跨帧物理牌ID、归属和轮次真值。独立视频应在参数冻结前划为最终测试，不能从反复使用的63裁片中取代。软件修复、CI和源码推送均不能替代这些条件。
+
+操作见 `docs/vision/V0.3e-审查整改验收.md` 与 `docs/vision/V0.3e-指定模型与CLI.md`。旧材料/标签/模型/用户库不入Git，旧交接正文原样保留在下方。
+
+---
+
 # 项目接手状态
 
 更新时间：2026-09-12（V0.3e 标注 + 训练 + 按局留出评测）

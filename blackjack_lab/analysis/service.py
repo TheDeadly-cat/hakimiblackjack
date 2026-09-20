@@ -7,12 +7,28 @@ import uuid
 from .actions import solve_counts
 from .contracts import (AnalysisInput, ENGINE_VERSION, STRATEGY_VERSION, RESULT_SCHEMA,
                         AVAILABLE, INAPPLICABLE, UNSUPPORTED, PENDING, TIMEOUT, CANCELLED, STALE, FAILED, ACTION_ZH)
+from .research_windows import WINDOW_CURRENT_HAND, window_state
+from .predeal_contracts import PREDEAL_INPUT_SCHEMA, PREDEAL_RESULT_SCHEMA, PreDealInput
+from .offline_mc_contracts import (
+    OFFLINE_MC_INPUT_SCHEMA, OFFLINE_MC_MAX_BUDGET_SECONDS, OFFLINE_MC_RESULT_SCHEMA,
+    OfflineMcInput,
+)
 from .probability import CalculationStopped, InsufficientCards
 from .split_contracts import SplitAnalysisInput, SPLIT_INPUT_SCHEMA, SPLIT_RESULT_SCHEMA
 
 
+def _result_schema(snapshot):
+    if isinstance(snapshot, SplitAnalysisInput):
+        return SPLIT_RESULT_SCHEMA
+    if isinstance(snapshot, OfflineMcInput):
+        return OFFLINE_MC_RESULT_SCHEMA
+    if isinstance(snapshot, PreDealInput):
+        return PREDEAL_RESULT_SCHEMA
+    return RESULT_SCHEMA
+
+
 def base_result(snapshot, request_id):
-    return {"schema": SPLIT_RESULT_SCHEMA if isinstance(snapshot, SplitAnalysisInput) else RESULT_SCHEMA, "request_id": request_id,
+    result = {"schema": _result_schema(snapshot), "request_id": request_id,
             "input": snapshot.to_dict(), "input_digest": snapshot.input_digest,
             "rules_digest": snapshot.rules_digest, "engine_version": snapshot.engine_version,
             "strategy_version": snapshot.strategy_version, "created_at": time(),
@@ -20,6 +36,22 @@ def base_result(snapshot, request_id):
             "actions": {}, "probabilities": None, "highest_ev_action": None,
             "partial_comparison": False, "elapsed_seconds": 0.0,
             "ev_unit": "相对原始1单位初始注的最终净收益（返还本金不是盈利）"}
+    if getattr(snapshot, "window", None):
+        result["window"] = snapshot.window
+        result["window_kind"] = snapshot.window
+    elif not isinstance(snapshot, (SplitAnalysisInput, PreDealInput, OfflineMcInput)):
+        result["window"] = WINDOW_CURRENT_HAND
+        result["window_kind"] = WINDOW_CURRENT_HAND
+        result["source_mode"] = "ledger-prefix"
+        result["strategy_id"] = snapshot.strategy_version
+        result["ledger_prefix_digest"] = snapshot.prefix_digest
+        result["information_cutoff"] = snapshot.through_seq
+        result["knowledge_revision"] = None
+        result["decision_deadline"] = None
+        result["result_ready_at"] = None
+        result["timely"] = False
+    result["window_state"] = window_state(result)
+    return result
 
 
 def calculate(snapshot, request_id=None, budget_seconds=5.0):
@@ -27,6 +59,12 @@ def calculate(snapshot, request_id=None, budget_seconds=5.0):
     if isinstance(snapshot, SplitAnalysisInput):
         from .split_service import calculate_split
         return calculate_split(snapshot, request_id, budget_seconds)
+    if isinstance(snapshot, OfflineMcInput):
+        from .offline_mc import calculate_offline_mc
+        return calculate_offline_mc(snapshot, request_id, budget_seconds)
+    if isinstance(snapshot, PreDealInput):
+        from .predeal import calculate_predeal
+        return calculate_predeal(snapshot, request_id, budget_seconds)
     result = base_result(snapshot, request_id)
     start = perf_counter()
     try:
@@ -44,13 +82,18 @@ def calculate(snapshot, request_id=None, budget_seconds=5.0):
             elif action not in snapshot.legal_actions:
                 item = {"status": INAPPLICABLE, "reason_code": "NOT_LEGAL", "reason": "当前状态无此合法动作"}
             elif action not in numbers["actions"]:
-                item = {"status": UNSUPPORTED, "reason_code": "ACTION_NOT_IMPLEMENTED", "reason": "本版尚未计算此合法动作"}
+                if action in ("hit", "double") and not numbers.get("next_draw_defined", True):
+                    item = {"status": INAPPLICABLE, "reason_code": "NO_UNDEALT_CARD",
+                            "reason": "除暗牌外没有可补的牌，终局只能停牌"}
+                else:
+                    item = {"status": UNSUPPORTED, "reason_code": "ACTION_NOT_IMPLEMENTED", "reason": "本版尚未计算此合法动作"}
             else:
                 value = numbers["actions"][action]
                 _validate_distribution(value["net_distribution"])
                 item = {"status": AVAILABLE, "reason_code": "CALCULATED", "reason": "已计算", **value}
             result["actions"][action] = {"label": label, **item}
-        _validate_distribution(numbers["next_draw"])
+        if numbers.get("next_draw_defined", True):
+            _validate_distribution(numbers["next_draw"])
         _validate_distribution(numbers["dealer_distribution"])
         if not 0 <= numbers["hit_bust"] <= 1.0000000001:
             raise ArithmeticError("补牌爆牌概率越界")
@@ -67,9 +110,14 @@ def calculate(snapshot, request_id=None, budget_seconds=5.0):
                                      "dealer_terminal_if_stand_now": numbers["dealer_distribution"]},
                       method=numbers["method"], approximation=numbers["approximation"],
                       numerical_tolerance=1e-10, nodes=numbers["nodes"])
-        draw_status = AVAILABLE if any(a in snapshot.legal_actions for a in ("hit", "double")) else INAPPLICABLE
+        draw_status = (
+            INAPPLICABLE if not numbers.get("next_draw_defined", True)
+            else AVAILABLE if any(a in snapshot.legal_actions for a in ("hit", "double"))
+            else INAPPLICABLE
+        )
         result["probability_status"] = {"next_target_draw": draw_status, "hit_bust": draw_status,
                                         "dealer_terminal_if_stand_now": AVAILABLE}
+        result["result_ready_at"] = time()
     except CalculationStopped as error:
         result.update(status=TIMEOUT, reason_code=str(error), reason="预算到期，当前请求未完成；未使用旧结果")
     except InsufficientCards as error:
@@ -79,6 +127,7 @@ def calculate(snapshot, request_id=None, budget_seconds=5.0):
     if result["status"] != AVAILABLE:
         result.update(actions={}, probabilities=None, highest_ev_action=None)
     result["elapsed_seconds"] = perf_counter() - start
+    result["window_state"] = window_state(result)
     return result
 
 
@@ -87,10 +136,20 @@ def _validate_distribution(values):
         raise ArithmeticError("计算结果分布不合法，禁止发布")
 
 
+def _input_type(data):
+    schema = data.get("schema")
+    if schema == SPLIT_INPUT_SCHEMA:
+        return SplitAnalysisInput
+    if schema == OFFLINE_MC_INPUT_SCHEMA:
+        return OfflineMcInput
+    if schema == PREDEAL_INPUT_SCHEMA:
+        return PreDealInput
+    return AnalysisInput
+
+
 def _worker(connection, data, request_id, budget):
     try:
-        input_type = SplitAnalysisInput if data.get("schema") == SPLIT_INPUT_SCHEMA else AnalysisInput
-        result = calculate(input_type.from_dict(data), request_id, budget)
+        result = calculate(_input_type(data).from_dict(data), request_id, budget)
         import socket
         result["worker_network_guard_active"] = bool(getattr(socket, "_hakimi_offline_guard", False))
         result["worker_peak_working_set_bytes"] = _peak_memory()
@@ -126,8 +185,9 @@ class AnalysisService:
 
     def start(self, snapshot, budget_seconds=5.0):
         snapshot.validate()
-        if not math.isfinite(budget_seconds) or not 0 < budget_seconds <= 5:
-            raise ValueError("计算预算必须大于0且不超过5秒")
+        cap = OFFLINE_MC_MAX_BUDGET_SECONDS if isinstance(snapshot, OfflineMcInput) else 5.0
+        if not math.isfinite(budget_seconds) or not 0 < budget_seconds <= cap:
+            raise ValueError(f"计算预算必须大于0且不超过{cap:g}秒")
         self.cancel(STALE)
         request_id = uuid.uuid4().hex
         receive, send = mp.get_context("spawn").Pipe(duplex=False)
@@ -162,6 +222,7 @@ class AnalysisService:
             result = base_result(job["snapshot"], job["id"])
             result.update(status=TIMEOUT, reason_code="WALL_TIME_BUDGET", reason=f"{job['budget']:g}秒内未完成请求（含进程启动）；可继续录入或重试",
                           elapsed_seconds=perf_counter() - job["start"])
+            result["window_state"] = window_state(result)
             self.result = result
             self._release()
             return result
@@ -171,12 +232,14 @@ class AnalysisService:
             except EOFError:
                 result = base_result(job["snapshot"], job["id"])
                 result.update(status=FAILED, reason_code="WORKER_EXITED", reason="计算进程未返回结果")
+                result["window_state"] = window_state(result)
             accepted = self.accept_result(result)
             self._release()
             return result if accepted else None
         if not job["process"].is_alive():
             result = base_result(job["snapshot"], job["id"])
             result.update(status=FAILED, reason_code="WORKER_EXITED", reason="计算进程已退出，当前请求没有结果")
+            result["window_state"] = window_state(result)
             self.result = result
             self._release()
             return result
@@ -197,6 +260,7 @@ class AnalysisService:
         if self.active:
             result = base_result(self.active["snapshot"], self.active["id"])
             result.update(status=status, reason_code=status.upper(), reason="输入已变化，旧结果过期" if status == STALE else "用户取消计算")
+            result["window_state"] = window_state(result)
             self.result = result
         self._release()
 

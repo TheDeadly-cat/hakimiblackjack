@@ -1,13 +1,16 @@
 """Chinese display adapter for the total objective; no computation in widgets."""
 from ..analysis.contracts import AVAILABLE, STATUS_ZH
+from ..analysis.research_windows import format_outcome_line, result_heading
 from ..analysis.split_contracts import DAS_ENGINE_LEGACY, is_das_engine
 from ..analysis.split_service import SPLIT_ACTION_ZH
+from ..observation.currency import REASON_ZH
 
 
-def format_split_result(result, historical=False):
+def format_split_result(result, historical=False, live_applicable=True, applicability_reason=None,
+                        applicability_kind=None):
     info = result['input']
     das = is_das_engine(result.get('engine_version'))
-    prefix = '历史分析 · ' if historical else '当前 · '
+    prefix = result_heading(historical, live_applicable, applicability_kind)
     lines = [f"{prefix}{info['seat']} · {info['n_decks']}副 · 庄家 {info['dealer_up']}",
              '两手顺序分牌DAS' if das else '两手顺序分牌']
     details = [f"选中手：{info['hand_id']}", f"当前行动手：{info['active_hand_id'] or '两手均已完成'}"]
@@ -17,6 +20,9 @@ def format_split_result(result, historical=False):
         details.append(f"第{i}手 · {' '.join(hand['ranks'])} · {state} · 注额{stake}")
     if historical:
         lines.append('原时点结果，不代表当前输入')
+    elif not live_applicable:
+        detail = REASON_ZH.get(applicability_reason, applicability_reason or '观察状态已变化')
+        lines.append('账本未变；数字对应已确认前缀，不适用于眼前牌桌：' + detail)
     if result.get('engine_version') == DAS_ENGINE_LEGACY:
         lines.append('旧算法历史结果：部分普通补牌等待场景存在已知问题，数值保留供审计，不代表重新认证；请按原事件前缀另存复算。')
     if result['status'] != AVAILABLE:
@@ -51,6 +57,7 @@ def format_split_result(result, historical=False):
         if 'hand_evs' in item:
             distributions.append('各手边际 EV：' + ' / '.join(f"{v:+.6f}" for v in item['hand_evs']))
         distributions.append('  '.join(f"{float(v):+g}:{p:.2%}" for v,p in item['net_distribution'].items()))
+        distributions.append(format_outcome_line(item['net_distribution']))
     lines.extend(['',*details,'','合计净收益分布：',*distributions])
     if highest in ('deal','complete'):
         lines.append('当前为确定流程，数值包含其后所有适用的补/停决策。')

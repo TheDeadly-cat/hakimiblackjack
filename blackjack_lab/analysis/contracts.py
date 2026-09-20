@@ -131,4 +131,4 @@ def research_rules(n_decks=6, surrender="late"):
         double_after_split=False, double_on_totals=None, split_match="same_rank",
         max_split_hands=4, resplit_aces=False, split_ace_hit_once=True,
         surrender=surrender, n_seats=7, burn_cards_known=True, initial_burn_count=0, start_from_new_shoe=True,
-        remark="零烧牌研究模板；V0.2a不计算分牌、多玩家及下一轮开局优势")
+        remark="零烧牌研究模板；当前手牌分析不含开局优势；发牌前入口另用剩余≤16张组成")

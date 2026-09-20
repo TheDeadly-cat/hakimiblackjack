@@ -26,12 +26,16 @@ from .deps import ImageRejected, load_cv2, load_numpy
 
 # 角标字形的形状范围（实测：高中位 19px，全屏 2560x1440）
 MIN_H, MAX_H = 14, 52
-MIN_W, MAX_W = 7, 46
+MIN_W, MAX_W = 7, 52
 MIN_AREA = 70
 MAX_FILL = 0.92
 # 叠牌之间的阴影缝也会变成牌体内部的深色块，而且又扁又长。
-# 点数字形即使随牌倾斜 40°，外接框也不会比这更扁。
-MAX_ASPECT = 1.5
+# 真实俯视透视会压扁角标。原帧 card-00179 的 Q 为 1.91--2.29；
+# 旧 1.5 会在标注前丢掉整类。放宽只产生候选，花色/阴影仍由拒识与人工核对处理。
+MAX_ASPECT = 2.6
+EXTRACTION_VERSION = "navy-components-border-3"
+LEGACY_MAX_W = 46
+CARD_BORDER_CLOSE = 3
 # 绒面印刷字是孤立小白块；牌体要大得多。只填够大的白块，
 # 印刷字的负空间就不会被误当成字形。
 CARD_BODY_MIN_AREA = 2500
@@ -107,45 +111,85 @@ def _ink_kind(np, crop, component) -> str:
     return "felt"
 
 
-def card_body_mask(bgr):
-    """白色牌面，并把字形挖出的洞补上，得到完整牌体。"""
+def card_body_mask(bgr, *, close_border: bool = True):
+    """白色牌面及牌体；仅在轮廓副本闭合 1--2px 边缘缺口，不改墨迹白掩膜。"""
     cv2, np = load_cv2(), load_numpy()
     hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
     white = ((hsv[:, :, 2] >= 150) & (hsv[:, :, 1] <= 80)).astype(np.uint8) * 255
     white = cv2.morphologyEx(
         white, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)))
     filled = np.zeros_like(white)
-    contours, _ = cv2.findContours(white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # 角标碰到牌缘时，RETR_EXTERNAL 会把它当外部背景而非内部洞，整字消失。
+    # 00349 顶部 10 的此机制由 3x3 闭运算恢复；保持 white 原样以保留字符孔洞。
+    outline = (cv2.morphologyEx(white, cv2.MORPH_CLOSE,
+                              cv2.getStructuringElement(cv2.MORPH_RECT,
+                                                        (CARD_BORDER_CLOSE, CARD_BORDER_CLOSE)))
+               if close_border else white)
+    contours, _ = cv2.findContours(outline, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     kept = [c for c in contours if cv2.contourArea(c) >= CARD_BODY_MIN_AREA]
     cv2.drawContours(filled, kept, -1, 255, thickness=cv2.FILLED)
     return white, filled
 
 
-def extract_glyphs(bgr) -> List[Glyph]:
-    """抽出牌体内部的深色连通块。不认点数，只给候选。"""
+def _glyph_components(bgr, *, close_border: bool = True):
     cv2, np = load_cv2(), load_numpy()
-    white, filled = card_body_mask(bgr)
+    white, filled = card_body_mask(bgr, close_border=close_border)
     holes = cv2.bitwise_and(filled, cv2.bitwise_not(white))
     holes = cv2.morphologyEx(
         holes, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2)))
 
     count, labels, stats, _ = cv2.connectedComponentsWithStats(holes, connectivity=8)
-    glyphs: List[Glyph] = []
     for index in range(1, count):
         x, y, w, h, area = stats[index]
+        reasons = []
         if not (MIN_H <= h <= MAX_H and MIN_W <= w <= MAX_W):
-            continue
+            reasons.append("size")
         if area < MIN_AREA or area / float(w * h) > MAX_FILL:
-            continue
+            reasons.append("area_or_fill")
         if w / float(h) > MAX_ASPECT:
-            continue
+            reasons.append("aspect")
         component = (labels[y:y + h, x:x + w] == index).astype(np.uint8)
         kind = _ink_kind(np, bgr[y:y + h, x:x + w], component)
         if kind == "felt":
-            continue
-        glyphs.append(Glyph(bbox=(int(x), int(y), int(w), int(h)),
-                            mask=component * 255, ink=kind, area=int(area)))
-    return glyphs
+            reasons.append("ink")
+        yield Glyph(bbox=(int(x), int(y), int(w), int(h)),
+                    mask=component * 255, ink=kind, area=int(area)), reasons
+
+
+def extract_glyphs(bgr) -> List[Glyph]:
+    """抽出牌体内部的深色连通块。不认点数，只给候选。"""
+    return [glyph for glyph, reasons in _glyph_components(bgr) if not reasons]
+
+
+def extraction_diagnostics(bgr) -> List[dict]:
+    """同时记录被过滤的连通块；没有连通块的漏检仍需原帧人工框选。"""
+    _, old_body = card_body_mask(bgr, close_border=False)
+    rows = []
+    for g, reasons in _glyph_components(bgr):
+        x, y, w, h = g.bbox
+        pixels = old_body[y:y+h, x:x+w][g.mask > 0]
+        coverage = float((pixels > 0).mean()) if pixels.size else 0.0
+        rows.append({"bbox": list(g.bbox), "area": g.area, "ink": g.ink,
+                     "aspect": g.width / g.height, "accepted": not reasons,
+                     "reasons": reasons, "legacy_aspect_rejected": g.width / g.height > 1.5,
+                     "legacy_width_rejected": g.width > LEGACY_MAX_W,
+                     "legacy_body_coverage": coverage,
+                     "extraction_version": EXTRACTION_VERSION})
+    return rows
+
+
+def manual_glyph(bgr, bbox: Sequence[int]) -> Glyph:
+    """从原帧人工框中提取墨迹，绕过连通块尺寸/牌体门槛，不推断标签或方向。"""
+    cv2, np = load_cv2(), load_numpy()
+    if len(bbox) != 4 or any(isinstance(v, bool) or int(v) != v for v in bbox):
+        raise ImageRejected("人工框必须为四个整数 x,y,w,h")
+    x, y, w, h = map(int, bbox)
+    if min(x, y) < 0 or min(w, h) <= 0 or x + w > bgr.shape[1] or y + h > bgr.shape[0]:
+        raise ImageRejected("人工框超出原帧")
+    crop = bgr[y:y+h, x:x+w]
+    hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+    mask = ((hsv[:, :, 2] < 150) | (hsv[:, :, 1] > 80)).astype(np.uint8) * 255
+    return Glyph((x, y, w, h), mask, _ink_kind(np, crop, mask), int((mask > 0).sum()))
 
 
 # ---------------- 模板 ----------------

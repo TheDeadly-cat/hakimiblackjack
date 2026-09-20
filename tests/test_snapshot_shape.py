@@ -51,6 +51,46 @@ class TestSnapshotShapes(unittest.TestCase):
         self.assertEqual(path.read_bytes(), raw)
         self.assertEqual(self.original_path.read_bytes(), self.original)
 
+    def test_save_does_not_invent_a_timely_live_claim(self):
+        self.assertFalse(self.saved["timely_live_claim"])
+        self.assertEqual("current_hand", self.saved["result"]["window"])
+        self.assertEqual("current_hand", self.saved["result"]["window_kind"])
+        self.assertNotEqual("pre_deal", self.saved["result"]["window"])
+        self.assertFalse(self.saved["result"]["timely"])
+        self.assertEqual("ledger-prefix", self.saved["result"]["source_mode"])
+        self.assertEqual(self.saved["result"]["input"]["prefix_digest"],
+                         self.saved["result"]["ledger_prefix_digest"])
+        self.assertEqual(self.saved["result"]["input"]["through_seq"],
+                         self.saved["result"]["information_cutoff"])
+        self.assertIsNotNone(self.saved["result"]["result_ready_at"])
+        self.assertEqual("unavailable", self.saved["result"]["window_state"])
+
+    def test_current_hand_cannot_forge_an_opening_window_state(self):
+        body = self.envelope()
+        body["result"]["window_state"] = "positive_supported"
+        self.check_bad(body, "window_state")
+
+    def test_historical_recompute_cannot_claim_timely_live(self):
+        historical = self.store.save(
+            self.saved["result"], self.saved["snapshot_id"], timely_live_claim=True)
+        self.assertFalse(historical["timely_live_claim"])
+        live = self.store.save(self.saved["result"], timely_live_claim=True)
+        self.assertFalse(live["timely_live_claim"])
+
+    def test_timely_live_claim_requires_a_comparable_deadline(self):
+        result = copy.deepcopy(self.saved["result"])
+        ready = float(result["result_ready_at"])
+        result["decision_deadline"] = ready + 1
+        result["clock_domain"] = "utc"
+        late = copy.deepcopy(result)
+        late["result_ready_at"] = ready + 5
+        caught = self.store.save(result, timely_live_claim=True)
+        missed = self.store.save(late, timely_live_claim=True)
+        unknown = self.store.save(self.saved["result"], timely_live_claim=True)
+        self.assertTrue(caught["timely_live_claim"])
+        self.assertFalse(missed["timely_live_claim"])
+        self.assertFalse(unknown["timely_live_claim"])
+
     def test_scalar_array_and_null_roots_have_controlled_errors(self):
         for data in (None, [], "history", 12, 1.5, True):
             with self.subTest(root=data):
