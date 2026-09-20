@@ -202,6 +202,7 @@ class TestManualDealOrder(TestUIWorkflow):
         self.assertEqual(table.dealer.hands[0].ranks, ["6"])
 
     def test_same_value_keypad_split_stays_on_first_hand(self):
+        self.app.var_decks.set(6)  # Keep the historical six-deck split fixture explicit.
         self.app.act_research_template(split=True, same_value=True)
         self.app.act_new_shoe()
         self.app.act_new_round()
