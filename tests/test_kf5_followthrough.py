@@ -187,6 +187,7 @@ class TestPR14Followup(unittest.TestCase):
 
 
     def test_recording_prompt_is_fully_visible_at_default_and_minimum_size(self):
+        self.app.show_workbench()  # The detailed recording table is now explicitly opened.
         self.app.act_research_template()
         self.app.act_new_shoe()
         self.app.var_participants['玩家3'].set(True)

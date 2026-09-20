@@ -38,6 +38,7 @@ def main():
     with tempfile.TemporaryDirectory() as temporary, patch(
             "blackjack_lab.ui.app.messagebox.showerror", side_effect=lambda *a, **kw: errors.append(a)):
         app = BlackjackLabApp(Path(temporary) / "das.db", recording_source=SOURCE_SIMULATOR)
+        app.show_workbench()  # Keep the full-table capture scope explicit.
         try:
             app.var_decks.set(6)
             app.act_research_template(das=True)

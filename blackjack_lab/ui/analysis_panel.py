@@ -8,14 +8,24 @@ from ..analysis.service import AnalysisService
 from ..core.table import player_seat_name
 from ..storage.analysis_snapshots import is_minimal_result
 from ..analysis.split_contracts import SPLIT_RESULT_SCHEMA
+from ..analysis.decision_summary import summarize_result, format_summary_details
 
 DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA}
 
 
 def format_result(result, historical=False):
+    summary_text = format_summary_details(summarize_result(result, historical))
     if result['schema'] == SPLIT_RESULT_SCHEMA:
         from .split_display import format_split_result
-        return format_split_result(result, historical)
+        heading, _, body = format_split_result(result, historical).partition('\n')
+        joint_lines = []
+        for action, item in result.get('actions', {}).items():
+            joint = item.get('joint_distribution')
+            if item.get('status') == AVAILABLE and joint:
+                joint_lines.append(item.get('label', action) + ' · 两手联合净收益分布（第1手,第2手）：')
+                cells = [f'{pair}: {probability:.4%}' for pair, probability in joint.items()]
+                joint_lines.extend(' / '.join(cells[i:i + 3]) for i in range(0, len(cells), 3))
+        return heading + '\n' + summary_text + body + ('\n\n' + '\n'.join(joint_lines) if joint_lines else '')
     info = result["input"]
     lines = [("历史分析 · " if historical else "当前 · ") +
              f"{info['seat']} · {' '.join(info['player_ranks'])} · 庄家 {info['dealer_up']} · {info['n_decks']}副"]
@@ -30,6 +40,11 @@ def format_result(result, historical=False):
     for action, item in result["actions"].items():
         value = f"  EV {item['ev']:+.6f}" if item["status"] == AVAILABLE else ""
         lines.append(f"{ACTION_ZH[action]}：{STATUS_ZH[item['status']]}{value}")
+        if item['status'] == AVAILABLE:
+            if action in ('double', 'split'):
+                lines.append('  立刻追加1单位')
+            lines.append('  净收益分布：' + ' / '.join(f'{float(net):+g}:{probability:.4%}'
+                         for net, probability in item['net_distribution'].items()))
     if result["partial_comparison"]:
         lines.append("部分动作比较；缺少分牌EV或合法性待核对，不给唯一推荐。")
     elif result.get("highest_ev_action"):
@@ -57,7 +72,7 @@ def format_result(result, historical=False):
                   f"耗时 {result['elapsed_seconds']:.3f}s · 事件前缀 #{info['through_seq']}",
                   f"引擎：{result['engine_version']}", f"策略：{result['strategy_version']}",
                   f"输入摘要：{result['input_digest'][:16]}", f"规则摘要：{result['rules_digest'][:16]}"])
-    return "\n".join(lines)
+    return lines[0] + '\n' + summary_text + "\n".join(lines[1:])
 
 
 class AnalysisPanel(ttk.Frame):
@@ -75,6 +90,10 @@ class AnalysisPanel(ttk.Frame):
         self._auto_id = None
         self._auto_suppressed_key = None
         self._closed = False
+        self._views = []
+        self.current_input = None
+        self.unavailable_code = None
+        self.request_snapshot = None
         self.status = tk.StringVar(value="先选择研究模板并录入当前手牌")
         self.persistence = tk.StringVar(value="结果会独立保存，原始事件不变")
         self.auto = tk.BooleanVar(value=False)
@@ -113,17 +132,27 @@ class AnalysisPanel(ttk.Frame):
         footer.grid(row=5, column=0, sticky="ew", pady=2)
         ttk.Button(footer, text="历史分析 / 复算", command=self.show_history).pack(side=tk.LEFT)
         ttk.Button(footer, text="重试保存", command=self.retry_save).pack(side=tk.LEFT, padx=3)
+        self._view_traces = [(v, v.trace_add('write', self._notify_views))
+                             for v in (self.status, self.persistence)]
         self.app.ctrl.add_context_listener(self.context_changed)
         self._target_traces = [(var, var.trace_add("write", self.context_changed))
                                for var in (self.app.var_analysis_target, self.app.var_analysis_hand)]
         self._auto_trace = self.auto.trace_add("write", self._auto_changed)
         self._poll_id = self.after(50, self._poll)
 
+    def add_view(self, callback):
+        self._views.append(callback)
+
+    def _notify_views(self, *_args):
+        for callback in self._views:
+            callback()
+
     def _set_text(self, text):
         self.text.configure(state=tk.NORMAL)
         self.text.delete("1.0", tk.END)
         self.text.insert("1.0", text)
         self.text.configure(state=tk.DISABLED)
+        self._notify_views()
 
     def _live_key(self):
         return (self.app.ctrl.context_token, self.app.var_analysis_target.get(), self.app.var_analysis_hand.get())
@@ -134,6 +163,7 @@ class AnalysisPanel(ttk.Frame):
             self._auto_id = None
 
     def _invalidate_current(self):
+        self.request_snapshot = None
         self.request_key = self.request_digest = self.request_id = None
         self.last_result = self.saved = None
         self.service.cancel(STALE)
@@ -145,10 +175,13 @@ class AnalysisPanel(ttk.Frame):
         """Synchronous post-commit / target notification, before any general redraw."""
         if self._closed or self._live_key() == self.context_key:
             return
+        self.current_input = None
+        self.unavailable_code = None
         self._cancel_auto()
         if not self.recomputed_from and (self.request_key is not None or self.last_result):
             self._invalidate_current()
         self.context_key = None  # Gate/button refresh may run later; invalidation has already happened.
+        self._notify_views()
 
     def _auto_changed(self, *_args):
         self._cancel_auto()
@@ -170,8 +203,11 @@ class AnalysisPanel(ttk.Frame):
         self.context_key = key
         hand_id = self.app._analysis_hand_id(segment) if segment else None
         try:
-            self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id)
+            self.current_input = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id)
+            self.unavailable_code = None
         except InputUnavailable as error:
+            self.current_input = None
+            self.unavailable_code = error.code
             if not self.recomputed_from:
                 self.status.set(f"{STATUS_ZH[error.status]}：{error.reason}")
             self.compute_button.state(["disabled"])
@@ -181,6 +217,7 @@ class AnalysisPanel(ttk.Frame):
                 self.status.set("可计算：当前单手，正常底牌仍未揭示")
             if self.auto.get() and not self.recomputed_from and key != self._auto_suppressed_key:
                 self._auto_id = self.after(250, self._run_auto)
+        self._notify_views()
 
     def calculate_current(self):
         self._cancel_auto()
@@ -206,6 +243,7 @@ class AnalysisPanel(ttk.Frame):
         self.context_key = self._live_key()
         self.request_key = self.context_key
         self.request_digest = snapshot.input_digest
+        self.request_snapshot = snapshot
         self.recomputed_from = recomputed_from
         self.saved = None
         self.last_result = None
@@ -257,6 +295,7 @@ class AnalysisPanel(ttk.Frame):
             self.persistence.set("计算已完成，但快照未保存：" + str(error) + "；可重试保存，牌面记录未受影响")
 
     def cancel(self):
+        self.request_snapshot = None
         self._cancel_auto()
         self._auto_suppressed_key = self._live_key()
         self.service.cancel()
@@ -266,6 +305,11 @@ class AnalysisPanel(ttk.Frame):
         self.status.set("已取消：可继续录入或重新计算")
         self.persistence.set("本次未保存新判断；历史快照仍保留")
         self._set_text("")
+
+    def return_to_current(self):
+        self.cancel()
+        self.context_key = None
+        self.on_context(self.app._current_seg())
 
     def show_history(self):
         entries, damaged = self.app.ctrl.analysis_store.list()
@@ -328,6 +372,9 @@ class AnalysisPanel(ttk.Frame):
 
     def close(self):
         self._closed = True
+        self._views.clear()
+        for variable, trace in self._view_traces:
+            variable.trace_remove('write', trace)
         self.app.ctrl.remove_context_listener(self.context_changed)
         for var, trace_id in self._target_traces:
             var.trace_remove("write", trace_id)

@@ -38,6 +38,7 @@ from ..storage.export import export_csv, export_json
 from ..storage.database import LocalStore
 from .controller import SessionController
 from .analysis_panel import AnalysisPanel
+from .compact_panel import CompactPanel
 from .deal_entry import (
     MODE_CONTINUATION, MODE_DEALER, MODE_INITIAL, MODE_MANUAL, MODE_PEEK_WAIT, MODE_UNALIGNED,
     dealer_up_requires_peek, next_open_hand,
@@ -98,8 +99,8 @@ class BlackjackLabApp(tk.Tk):
         super().__init__()
         self.recording_source = recording_source
         self.title(f"Hakimi Blackjack Lab V{__version__} 手动记录工作台（本地离线）")
-        self.geometry("1360x900")
-        self.minsize(1180, 800)
+        self.geometry("720x500")
+        self.minsize(660, 460)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
         ttk.Style(self).configure("Card.TButton", font=("Consolas", 12), padding=2)
@@ -135,9 +136,14 @@ class BlackjackLabApp(tk.Tk):
         self._pending_slot_id = None
         self._preferred_recording_hand_id = None
 
+        self.workbench = ttk.Frame(self)
+        self.workbench.columnconfigure(0, weight=1)
+        self.workbench.rowconfigure(1, weight=1)
         self._build_top()
         self._build_body()
         self._build_bottom()
+        self.compact_panel = CompactPanel(self, self)
+        self.show_compact()
         self._bind_keys()
         self._restore_plan_identity()
         self.refresh_all()
@@ -165,8 +171,9 @@ class BlackjackLabApp(tk.Tk):
         self.ctrl = SessionController(db_path, recording_source=self.recording_source)
 
     def _build_top(self) -> None:
-        bar = ttk.LabelFrame(self, text="下一牌靴设置（当前锁定快照见状态行）")
+        bar = ttk.LabelFrame(self.workbench, text="下一牌靴设置（当前锁定快照见状态行）")
         bar.grid(row=0, column=0, sticky="ew", padx=6, pady=4)
+        ttk.Button(bar, text="返回小面板", command=self.show_compact).grid(row=0, column=6, padx=8)
 
         ttk.Label(bar, text=f"V0.2b1 手动录牌 · {self.recording_source}").grid(
             row=0, column=0, sticky="w", padx=4, pady=2)
@@ -222,7 +229,7 @@ class BlackjackLabApp(tk.Tk):
                   ).grid(row=2, column=0, columnspan=6, sticky="w", padx=4)
 
     def _build_body(self) -> None:
-        body = ttk.Frame(self)
+        body = ttk.Frame(self.workbench)
         body.grid(row=1, column=0, sticky="nsew", padx=4)
 
         # ---------- 左侧：录牌 ----------
@@ -373,7 +380,7 @@ class BlackjackLabApp(tk.Tk):
         self.txt_comp.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2, pady=2)
 
     def _build_bottom(self) -> None:
-        bottom = ttk.LabelFrame(self, text="底部：轮次操作 / 事件时间线 / 纠错")
+        bottom = ttk.LabelFrame(self.workbench, text="底部：轮次操作 / 事件时间线 / 纠错")
         bottom.grid(row=2, column=0, sticky="ew", padx=6, pady=4)
 
         btns = ttk.Frame(bottom)
@@ -411,6 +418,21 @@ class BlackjackLabApp(tk.Tk):
 
         ttk.Label(bottom, textvariable=self.var_status,
                   foreground="#1a3c6e", wraplength=1120).pack(anchor="w", padx=6, pady=2)
+
+    def show_compact(self):
+        self.workbench.grid_remove()
+        self.compact_panel.grid(row=1, column=0, sticky="nsew")
+        self.minsize(660, 460)
+        self.geometry('720x760' if self.compact_panel.recording_open else '720x500')
+        self.title('Hakimi Blackjack Lab · 当前手牌')
+        self.compact_panel.render()
+
+    def show_workbench(self):
+        self.compact_panel.grid_remove()
+        self.workbench.grid(row=1, column=0, sticky="nsew")
+        self.minsize(1180, 800)
+        self.geometry('1360x900')
+        self.title('Hakimi Blackjack Lab · 研究工作台')
 
     def _bind_keys(self) -> None:
         self._key_binder = ManualKeyBinder(self, self._on_manual_command,
@@ -1233,6 +1255,8 @@ class BlackjackLabApp(tk.Tk):
         warning = getattr(self.ctrl, "entry_warning", "")
         if warning:
             self.set_status(warning)
+        if hasattr(self, 'compact_panel'):
+            self.compact_panel.render()
 
     def refresh_entry_prompt(self) -> None:
         plan = self.ctrl.entry_plan
