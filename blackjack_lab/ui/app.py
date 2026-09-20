@@ -290,14 +290,14 @@ class BlackjackLabApp(tk.Tk):
                    command=self.act_hidden_card
                    ).grid(row=4, column=0, columnspan=5, sticky="we", padx=2, pady=2)
 
-        ttk.Label(left, textvariable=self.var_entry_prompt, justify=tk.LEFT,
-                  foreground="#1a3c6e", wraplength=280).pack(anchor="w", padx=6, pady=4)
-        ttk.Label(left, text="0=十点T  1=A  2–9=点值  .=暗牌已发  Enter只换目标  -停牌",
-                  foreground="#555", wraplength=280).pack(anchor="w", padx=6, pady=3)
-
         # ---------- 中部：牌桌 ----------
         mid = ttk.LabelFrame(body, text="中部：牌桌（庄家 + 7 座位）")
         mid.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=4, pady=2)
+        self.entry_prompt_label = ttk.Label(mid, textvariable=self.var_entry_prompt,
+                                            justify=tk.LEFT, foreground="#1a3c6e", wraplength=500)
+        self.entry_prompt_label.pack(anchor="w", padx=6, pady=4)
+        ttk.Label(mid, text="0=十点T  1=A  2–9=点值  .=暗牌已发  Enter只换目标  -停牌",
+                  foreground="#555", wraplength=500).pack(anchor="w", padx=6, pady=3)
         self.dealer_view = ttk.LabelFrame(mid, text="庄家")
         self.dealer_view.pack(fill=tk.X, padx=6, pady=4)
         self.lbl_dealer = ttk.Label(self.dealer_view, text="（无）", justify=tk.LEFT)
@@ -527,7 +527,7 @@ class BlackjackLabApp(tk.Tk):
         # The controller has already synchronized and persisted the plan before
         # publishing the event. These methods only select the visible focus.
         plan = self.ctrl.entry_plan
-        if plan and (slot_id or plan.mode == MODE_CONTINUATION):
+        if plan and (slot_id or plan.mode in (MODE_CONTINUATION, MODE_DEALER)):
             self._sync_from_plan()
 
     def _note_hidden(self, seat, event, slot_id=None) -> None:
@@ -1063,10 +1063,11 @@ class BlackjackLabApp(tk.Tk):
                 self.ctrl.reveal(target.event_id, rank, self._suit())
                 self.set_status(f"暗牌揭示为 {rank}（未重复扣牌，只做揭示转换）")
             else:
-                event = self.ctrl.deal_shown(self.var_target.get(), rank,
+                saved_seat = self.var_target.get()
+                event = self.ctrl.deal_shown(saved_seat, rank,
                                      hand_id=hand_id, suit=self._suit())
-                self._note_shown(self.var_target.get(), event, rank, self._pending_slot_id)
-                self.set_status(f"录入 {self.var_target.get()} <- {rank}")
+                self._note_shown(saved_seat, event, rank, self._pending_slot_id)
+                self.set_status(f"录入 {saved_seat} <- {rank}")
             self.refresh_all()
         except Exception as e:
             self.fail(e)
