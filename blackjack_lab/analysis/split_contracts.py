@@ -245,10 +245,12 @@ class SplitAnalysisInput:
 
     def single_input(self):
         h = self.hands[0]
+        from .seat_scenario import MODEL
+        scope = {'support_scope': self.support_scope} if MODEL in self.support_scope else {}
         return AnalysisInput(self.session_id, self.shoe_id, self.round_id, self.through_seq,
             self.prefix_digest, self.seat, h.hand_id, self.n_decks, self.rules_json, self.information_json,
             self.counts, self.physical_remaining, h.values, h.ranks, self.dealer_up, self.peek_negative,
-            self.legal_actions, self.uncertain_actions)
+            self.legal_actions, self.uncertain_actions, **scope)
 
     def validate(self):
         from ..core.rules import RuleProfile

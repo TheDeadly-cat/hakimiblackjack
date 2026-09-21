@@ -33,6 +33,7 @@ def main():
     with tempfile.TemporaryDirectory() as temporary,patch('blackjack_lab.ui.app.messagebox.showerror',side_effect=lambda *a,**kw:errors.append(a)):
         for scenario,pair,decks in [('split-eight','8',7),('split-aces','A',6)]:
             app=BlackjackLabApp(Path(temporary)/(scenario+'.db'),recording_source=SOURCE_SIMULATOR)
+            app.show_workbench()
             try:
                 app.var_decks.set(decks)
                 app.act_research_template(split=True);app.act_new_shoe();app.act_new_round()

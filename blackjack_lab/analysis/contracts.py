@@ -97,6 +97,8 @@ class AnalysisInput:
         if tuple(values.get(r) for r in self.player_ranks) != self.player:
             raise ValueError("原始牌面与点值不一致")
         info = json.loads(self.information_json)
+        from .seat_scenario import validate_scenario
+        validate_scenario(info, self.seat, self.support_scope)
         if (info.get("gap") is not False or info.get("pending_candidates") != 0
                 or info.get("burn_unknown") != 0 or info.get("unrevealed_out") != 1):
             raise ValueError("未满足分析所需的可见信息条件")

@@ -27,6 +27,7 @@ def main():
     with tempfile.TemporaryDirectory() as temp, patch("blackjack_lab.ui.app.messagebox.showerror", side_effect=lambda title, text, **kw: errors.append(text)):
         for scenario, cards, up in (("current", ("10", "6"), "10"), ("partial", ("8", "8"), "6")):
             app = BlackjackLabApp(Path(temp) / (scenario + ".db"), recording_source=SOURCE_SIMULATOR)
+            app.show_workbench()  # This legacy check covers the expanded recording workbench.
             try:
                 app.var_decks.set(7)
                 app.act_research_template()

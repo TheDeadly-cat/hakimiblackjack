@@ -345,6 +345,7 @@ class TestReliabilityBoundaries(unittest.TestCase):
         self.assertEqual(self.recover().entry_plan.continuation_seat, '玩家3')
 
     def test_three_player_round_reveal_next_round_and_recover(self):
+        self.app.var_decks.set(6)  # This historical scenario asserts a 312-card shoe.
         self.app.act_research_template()
         self.app.act_new_shoe()
         for name, var in self.app.var_participants.items():
@@ -402,7 +403,7 @@ class TestReliabilityBoundaries(unittest.TestCase):
         path = self.app.ctrl._entry_plan_path()
         path.write_text('[]', encoding='utf-8')
         self.close_app()
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.app.update()
         self.assertEqual(path.read_text(encoding='utf-8'), '[]')
         before = self.app.ctrl.ledger.to_list()
@@ -427,7 +428,7 @@ class TestReliabilityBoundaries(unittest.TestCase):
         second = self.app._selected_hand_id(self.app._current_seg())
         before = self.app.ctrl.ledger.to_list()
         self.close_app()
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.app.update()
         self.assertEqual(self.app._selected_hand_id(self.app._current_seg()), second)
         self.assertIn('下一张给：玩家1／第2手', self.app.var_entry_prompt.get())

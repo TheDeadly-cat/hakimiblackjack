@@ -22,6 +22,7 @@ class TestPR14Followup(unittest.TestCase):
         self.app.update()
 
     def test_real_eight_key_sequence_asserts_each_durable_step(self):
+        self.app.var_decks.set(6)  # Preserve the original 312-card acceptance scenario.
         self.app.act_research_template()
         self.app.act_new_shoe()
         for name, variable in self.app.var_participants.items():
@@ -136,7 +137,7 @@ class TestPR14Followup(unittest.TestCase):
         self.assertIn('录入 玩家1 <- A', self.app.var_status.get())
         before = self.app.ctrl.ledger.to_list()
         self.close_app()
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.app.update()
         self.assert_dealer_projection()
         self.assertEqual(self.app.ctrl.ledger.to_list(), before)
@@ -164,7 +165,7 @@ class TestPR14Followup(unittest.TestCase):
         from blackjack_lab.ui.app import BlackjackLabApp
         before = self.app.ctrl.ledger.to_list()
         self.close_app()
-        self.app = BlackjackLabApp(self.db)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
         self.app.update()
         self.assertEqual(self.app.ctrl.ledger.to_list(), before)
         self.assertIn('刚刚记入：—', self.app.var_entry_prompt.get())
@@ -187,6 +188,7 @@ class TestPR14Followup(unittest.TestCase):
 
 
     def test_recording_prompt_is_fully_visible_at_default_and_minimum_size(self):
+        self.app.show_workbench()  # The detailed recording table is now explicitly opened.
         self.app.act_research_template()
         self.app.act_new_shoe()
         self.app.var_participants['玩家3'].set(True)

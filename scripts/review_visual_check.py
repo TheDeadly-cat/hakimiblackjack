@@ -48,6 +48,7 @@ def main():
 
     with tempfile.TemporaryDirectory() as tmp, patch("blackjack_lab.ui.app.messagebox.showerror", side_effect=lambda title, text, **kw: errors.append(text)):
         app = BlackjackLabApp(Path(tmp)/"cross-round.db", recording_source=SOURCE_SIMULATOR)
+        app.show_workbench()
         try:
             app.update()
             setup(app)
@@ -74,6 +75,7 @@ def main():
         finally:
             app.on_close()
         app = BlackjackLabApp(Path(tmp)/"lifecycle.db", recording_source=SOURCE_SIMULATOR)
+        app.show_workbench()
         try:
             app.update()
             setup(app)
