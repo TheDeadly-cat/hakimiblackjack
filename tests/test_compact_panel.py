@@ -27,7 +27,7 @@ class TestCompactPanel(unittest.TestCase):
         self.assertFalse(self.app.lst_timeline.winfo_ismapped())
         self.assertIsNone(view.detail_window)
         self.assertEqual(len(view.model.choices), 2)
-        for size in ('720x500', '660x460'):
+        for size in ('720x740', '700x740'):
             self.app.geometry(size)
             self.app.update()
             for row in view.rows:

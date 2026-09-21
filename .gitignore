@@ -30,3 +30,6 @@ venv/
 
 # Source-addressed local numerical accelerator build cache.
 .local-native/
+
+# Local display preferences (never share as game rules).
+*.ui-preferences.json

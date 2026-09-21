@@ -1,3 +1,9 @@
+# 当前接手：FLOW-1～FLOW-3 日常流程精简（2026-09-22）
+
+在 PR #15 的 0c1dda7 上依次叠加三份草稿：阶段操作与原子结算开轮、近期可见牌纠错和准确撤销、稳定录牌区与窗口偏好。独立工作目录 flow-daily-panel；原 compact-decision-panel 和历史资料保留。数学、规则、精度和多人条件口径不变，不合并 main。详见 [FLOW-1](docs/FLOW-1-round-transition.md)、[FLOW-2](docs/FLOW-2-recent-correction.md)、[FLOW-3](docs/FLOW-3-stable-layout.md)。精确提交和 Windows CI 以相应 PR 为准；原生验收只使用新的模拟数据。
+
+---
+
 # 当前接手：UI-1～UI-3 简洁决策面板（2026-09-21）
 
 2026-09-22增量：明确启用的庄家简便录入，最后初始明牌与未知底牌同事务追加，庄家点数自动先揭示再补牌；不伪造非BJ检查。v3计划保留启用依据，合法v2恢复默认关闭，异常仍暂停。见[完整约定与逐项验收](docs/UI-simple-hole-entry-20260922.md)。
