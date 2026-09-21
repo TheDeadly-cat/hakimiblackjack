@@ -299,6 +299,10 @@ class CompactPanel(tk.Frame):
         return DecisionSummary(state, identity, text)
 
     def render(self):
+        with self.app._view_frame():
+            self._render()
+
+    def _render(self):
         panel = self.panel
         self.model = summarize_result(panel.last_result, bool(panel.recomputed_from)) if panel.last_result else self.pending_summary()
         if not self.model.historical:
@@ -412,7 +416,7 @@ class CompactPanel(tk.Frame):
         self.editor.grid_remove()
 
     def render_recent(self):
-        recent = recent_visible(self.app.ctrl)
+        recent = recent_visible(self.app.ctrl, self.app._current_seg())
         self.recent_text.set(recent.label if recent else '最近录入：—')
         self.edit_button.state(['!disabled'] if recent else ['disabled'])
         label = undo_label(self.app.ctrl)
@@ -423,7 +427,7 @@ class CompactPanel(tk.Frame):
             self.save_correction.state(['disabled'])
 
     def open_correction(self):
-        recent = recent_visible(self.app.ctrl)
+        recent = recent_visible(self.app.ctrl, self.app._current_seg())
         if recent is None:
             return
         self.edit_event_id, self.edit_context = recent.event_id, self.app.ctrl.context_token
@@ -457,7 +461,7 @@ class CompactPanel(tk.Frame):
                 self.save_correction.state(['disabled'])
 
     def render_flow(self):
-        flow = self.flow = current_flow(self.app.ctrl)
+        flow = self.flow = current_flow(self.app.ctrl, self.app._current_seg())
         self.flow_message.set(flow.message if flow.stage != 'player' else
                               self.app.var_legal.get().replace('\n', '；') or flow.message)
         commands = {'review': self.app.show_workbench, 'start': self.app.act_new_round,

@@ -21,8 +21,8 @@ class RecentCard:
         return f'最近录入：{self.seat} · 第{self.hand}手 · {role} · {self.rank}'
 
 
-def recent_visible(ctrl):
-    seg = ctrl.state().current
+def recent_visible(ctrl, seg=None):
+    seg = seg or ctrl.state().current
     if seg is None or seg.closed:
         return None
     voided = ctrl.ledger._voided_ids()

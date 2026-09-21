@@ -419,9 +419,10 @@ class SessionController:
     def live_card_event_ids(self):
         from ..ledger.events import CARD_DEALT
         voided = self.ledger._voided_ids()
+        round_id = self._current_round_id()
         return [ev.event_id for ev in self.ledger.events
                 if ev.etype == CARD_DEALT and ev.event_id not in voided
-                and ev.round_id == self._current_round_id()]
+                and ev.round_id == round_id]
 
     def _pause_entry_recovery(self, reason):
         seg = self.state().current

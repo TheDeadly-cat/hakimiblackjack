@@ -14,6 +14,7 @@ from __future__ import annotations
 import tkinter as tk
 import json
 from functools import wraps
+from contextlib import contextmanager
 from dataclasses import asdict
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from pathlib import Path
@@ -1027,8 +1028,27 @@ class BlackjackLabApp(tk.Tk):
             except Exception as exc:
                 self.fail(exc)
 
+    @contextmanager
+    def _view_frame(self):
+        # Only read-only painting shares this snapshot. Ledger writes and
+        # analysis inputs still replay independently through the controller.
+        previous = getattr(self, '_view_snapshot', None)
+        self._view_snapshot = previous or (self.ctrl.context_token, self.ctrl.state())
+        try:
+            yield
+        finally:
+            self._view_snapshot = previous
+
+    def _view_state(self):
+        snapshot = getattr(self, '_view_snapshot', None)
+        if snapshot is None:
+            return self.ctrl.state()
+        if snapshot[0] != self.ctrl.context_token:
+            snapshot = self._view_snapshot = (self.ctrl.context_token, self.ctrl.state())
+        return snapshot[1]
+
     def _current_seg(self):
-        return self.ctrl.state().current
+        return self._view_state().current
 
     def _selected_hand_id(self, seg) -> Optional[str]:
         seat_name = self.var_target.get()
@@ -1314,7 +1334,11 @@ class BlackjackLabApp(tk.Tk):
     # 刷新
     # ============================================================
     def refresh_all(self) -> None:
-        replay = self.ctrl.state()
+        with self._view_frame():
+            self._refresh_all()
+
+    def _refresh_all(self) -> None:
+        replay = self._view_state()
         seg = replay.current
         self.refresh_hands(seg)
         self.refresh_table(seg)
