@@ -8,6 +8,7 @@ from ..core.table import DEALER, ACTION_DOUBLE, ACTION_SPLIT, ACTION_STAND, ACTI
 from ..ledger.events import FACE_HIDDEN
 from ..analysis.seat_scenario import NOTE
 from .daily_flow import current_flow
+from .recent_entry import recent_visible, undo_label
 
 PALETTE = dict(background='#F3F6F8', surface='#FFFFFF', ink='#173A45', accent='#187365',
                caution='#935213', error='#AD3030', muted='#52636B')
@@ -20,6 +21,7 @@ class CompactPanel(tk.Frame):
         self.detail_window = None
         self.detail_text = None
         self.recording_open = False
+        self.editor_open = False
         self.model = None
         self.columnconfigure(0, weight=1)
         self.identity = tk.StringVar()
@@ -117,8 +119,9 @@ class CompactPanel(tk.Frame):
         self.only_settle.grid(row=1, column=1, sticky='e')
         self.settlement_link = ttk.Button(self.flow_area, command=self.show_settlement)
         self.settlement_link.grid(row=1, column=0, sticky='w')
+        self._build_recent()
         self.drawer = ttk.Frame(self)
-        self.drawer.grid(row=11, column=0, sticky='ew', pady=(8, 0))
+        self.drawer.grid(row=12, column=0, sticky='ew', pady=(8, 0))
         self._build_recording()
         self.drawer.grid_remove()
         self.panel.add_view(self.render)
@@ -158,7 +161,7 @@ class CompactPanel(tk.Frame):
             button = ttk.Button(actions, text=label, command=lambda a=action: app.act_action(a), width=9)
             button.pack(side=tk.LEFT, padx=2)
             self.action_buttons.append(button)
-        ttk.Button(actions, text='撤销最后一笔', command=app.act_undo).pack(side=tk.RIGHT)
+        # Exact undo target is always visible next to the recent card.
         control = ttk.Frame(self.drawer)
         control.pack(fill=tk.X, pady=3)
         for label, command in [('已检查，确认非BJ', app.act_peek_negative), ('记录／修正／设置', app.show_workbench)]:
@@ -337,6 +340,7 @@ class CompactPanel(tk.Frame):
             self.hole_button.pack(side=tk.LEFT, padx=3)
         self.peek_button.pack_forget()  # The fixed phase action owns this command.
         self.render_flow()
+        self.render_recent()
         self.recording_hint.set(inactive or
                                (('录入已暂停 · ' if plan and plan.input_paused else '录入 ') + self.app.var_target.get()
                                 + '  ·  Ctrl+1–7 切玩家  Ctrl+0 庄家  Tab 下一位  Shift+Tab 上一位'))
@@ -347,6 +351,83 @@ class CompactPanel(tk.Frame):
             self.detail_text.delete('1.0', tk.END)
             self.detail_text.insert('1.0', panel.text.get('1.0', 'end-1c'))
             self.detail_text.configure(state=tk.DISABLED)
+
+    def _build_recent(self):
+        self.recent_area = ttk.Frame(self)
+        self.recent_area.grid(row=11, column=0, sticky='ew', pady=3)
+        self.recent_area.columnconfigure(0, weight=1)
+        self.recent_text = tk.StringVar(value='最近录入：—')
+        ttk.Label(self.recent_area, textvariable=self.recent_text).grid(row=0, column=0, sticky='w')
+        self.edit_button = ttk.Button(self.recent_area, text='改牌', width=6, command=self.open_correction)
+        self.edit_button.grid(row=0, column=1, padx=3)
+        self.undo_button = ttk.Button(self.recent_area, command=self.app.act_undo)
+        self.undo_button.grid(row=0, column=2)
+        self.editor = ttk.Frame(self.recent_area)
+        self.editor.grid(row=1, column=0, columnspan=3, sticky='ew', pady=4)
+        self.edit_rank = tk.StringVar()
+        self.edit_reason = tk.StringVar(value='误按牌面')
+        self.edit_note = tk.StringVar()
+        self.edit_error = tk.StringVar()
+        self.edit_target = tk.StringVar()
+        ttk.Label(self.editor, textvariable=self.edit_target).grid(row=0, column=0, columnspan=4, sticky='w')
+        ttk.Label(self.editor, text='正确牌面').grid(row=1, column=0)
+        self.rank_select = ttk.Combobox(self.editor, textvariable=self.edit_rank, state='readonly', width=5,
+                                       values=('A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'T'))
+        self.rank_select.grid(row=1, column=1, padx=4)
+        ttk.Combobox(self.editor, textvariable=self.edit_reason, width=12, state='readonly',
+                     values=('误按牌面', '重新核对牌面')).grid(row=1, column=2, padx=4)
+        ttk.Entry(self.editor, textvariable=self.edit_note, width=20).grid(row=1, column=3)
+        ttk.Label(self.editor, text='补充说明可留空；保存后追加纠错，原记录保留。').grid(row=2, column=0, columnspan=4, sticky='w')
+        self.save_correction = ttk.Button(self.editor, text='保存改牌', command=self.apply_correction)
+        self.save_correction.grid(row=3, column=1)
+        ttk.Button(self.editor, text='取消', command=self.close_correction).grid(row=3, column=2)
+        ttk.Label(self.editor, textvariable=self.edit_error, wraplength=640, foreground=PALETTE['error']).grid(row=4, column=0, columnspan=4, sticky='w')
+        self.editor.grid_remove()
+
+    def render_recent(self):
+        recent = recent_visible(self.app.ctrl)
+        self.recent_text.set(recent.label if recent else '最近录入：—')
+        self.edit_button.state(['!disabled'] if recent else ['disabled'])
+        label = undo_label(self.app.ctrl)
+        self.undo_button.configure(text=label)
+        self.undo_button.state(['disabled'] if label == '无可撤销记录' else ['!disabled'])
+        if self.editor_open and self.edit_context != self.app.ctrl.context_token:
+            self.edit_error.set('记录已变化；请取消后重新选择最近牌。')
+            self.save_correction.state(['disabled'])
+
+    def open_correction(self):
+        recent = recent_visible(self.app.ctrl)
+        if recent is None:
+            return
+        self.edit_event_id, self.edit_context = recent.event_id, self.app.ctrl.context_token
+        self.edit_target.set('正在修改：' + recent.label.removeprefix('最近录入：'))
+        self.edit_rank.set(recent.rank)
+        self.edit_note.set('')
+        self.edit_error.set('')
+        self.save_correction.state(['!disabled'])
+        self.editor_open = True
+        self.editor.grid()
+        self.rank_select.focus_set()
+
+    def close_correction(self):
+        self.editor_open = False
+        self.editor.grid_remove()
+        self.app.focus_set()
+
+    def apply_correction(self):
+        before = self.app.ctrl.commit_revision
+        try:
+            reason = self.edit_reason.get() + (('：' + self.edit_note.get().strip()) if self.edit_note.get().strip() else '')
+            self.app.ctrl.correct_recent_visible(self.edit_event_id, self.edit_rank.get(), reason, self.edit_context)
+            self.close_correction()
+            self.app._sync_from_plan()
+            self.app.refresh_all()
+            self.app.set_status('已追加纠错并更新计算；原始事件及历史判断保留。')
+        except Exception as error:
+            saved = self.app.ctrl.commit_revision > before
+            self.edit_error.set(('改牌已保存，请刷新，勿重复提交：' if saved else '未保存：') + str(error))
+            if saved:
+                self.save_correction.state(['disabled'])
 
     def render_flow(self):
         flow = self.flow = current_flow(self.app.ctrl)

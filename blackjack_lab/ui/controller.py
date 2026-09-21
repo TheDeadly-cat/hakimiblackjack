@@ -202,6 +202,45 @@ class SessionController:
         seg = self.state().current
         return event, [r for r in seg.settlements if r["round"] == seg.table.round_no]
 
+    def correct_recent_visible(self, event_id, rank, reason, expected_context):
+        from .recent_entry import recent_visible
+        if expected_context != self.context_token:
+            raise TableError('记录已变化，请关闭改牌区后重新选择最近牌')
+        recent = recent_visible(self)
+        if recent is None or recent.event_id != event_id:
+            raise TableError('最近可见牌已变化，请重新选择')
+        if not reason.strip():
+            raise ValueError('请填写纠错原因')
+        plan, seg = self.entry_plan, self.state().current
+        trusted = bool(plan and plan.mode not in (MODE_UNALIGNED, MODE_MANUAL)
+                       and not plan.paused and not plan.unresolved_slots
+                       and (plan.session_id, plan.shoe_id, plan.round_id) == (self.session_id, seg.shoe_id, seg.round_id)
+                       and plan.ledger_digest == digest(self.ledger.to_list())
+                       and set(plan.observed_card_ids) == set(self.live_card_event_ids()))
+        saved_plan = copy.deepcopy(plan) if trusted else None
+        def updated(event):
+            if saved_plan is None:
+                self._sync_entry_event(event)
+                return
+            self.entry_plan = saved_plan
+            current = self.state().current
+            dealer = current.table.dealer.hands
+            if dealer and dealer[0].cards:
+                saved_plan.dealer_up_rank = dealer[0].cards[0].rank
+            if saved_plan.last_saved and saved_plan.last_saved.event_id == event_id:
+                saved_plan.last_saved.rank = rank
+            if saved_plan.initial_complete():
+                if (dealer_up_requires_peek(current.rules, saved_plan.dealer_up_rank)
+                        and not current.table.dealer_hole_checked_negative and not current.table._dealer_revealed()):
+                    saved_plan.mode = MODE_PEEK_WAIT
+                    saved_plan.continuation_seat = DEALER
+                    saved_plan.pause_reason = '等待实际庄家检查结果；未写入确认非BJ'
+                else:
+                    self._advance_entry_hand()
+        # The existing append/replay path validates shoe, splits, terminal
+        # actions, peek facts and every later event before saving a correction.
+        return self._apply('correct', event_id, {'rank': rank}, reason, _entry_update=updated)
+
     def end_round_unsettled(self, reason, observation_status="unknown"):
         if not reason.strip():
             raise ValueError("未结算结束必须记录原因")
@@ -459,6 +498,19 @@ class SessionController:
                     self._advance_entry_hand()
         elif event.etype == UNDO:
             target = payload.get("target_event_id")
+            if self.ledger._find(target).etype == CORRECTION and plan.mode != MODE_UNALIGNED:
+                dealer = seg.table.dealer.hands
+                plan.dealer_up_rank = dealer[0].cards[0].rank if dealer and dealer[0].cards else None
+                if plan.last_saved:
+                    for seat in [seg.table.dealer, *seg.table.players.values()]:
+                        for hand in seat.hands:
+                            for card in hand.cards:
+                                if card.event_id == plan.last_saved.event_id:
+                                    plan.last_saved.rank = card.rank
+                if plan.initial_complete() and plan.mode == MODE_PEEK_WAIT and (
+                        not dealer_up_requires_peek(seg.rules, plan.dealer_up_rank)
+                        or seg.table.dealer_hole_checked_negative or seg.table._dealer_revealed()):
+                    self._advance_entry_hand()
             reopened = plan.undo_event(target)
             plan.observed_card_ids = self.live_card_event_ids()
             plan.reconcile(plan.observed_card_ids)
