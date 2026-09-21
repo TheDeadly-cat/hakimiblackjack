@@ -130,6 +130,7 @@ class ManualKeyBinder:
         self.handler = handler
         self.is_recording_surface = is_recording_surface
         self.guard = RepeatGuard()
+        self._focus_check = None
         self.tag = f"ManualRecording-{id(self)}"
         self._tag_commands = []
         for sequence, callback in (("<KeyPress>", self.on_press), ("<KeyRelease>", self.on_release)):
@@ -168,9 +169,22 @@ class ManualKeyBinder:
         return None
 
     def on_focus_out(self, _event):
-        self.guard.clear()
+        # A child losing focus is not the keyboard leaving this recording
+        # window. Clearing a held key here lets its repeat become a new card.
+        if self._focus_check is not None:
+            self.root.after_cancel(self._focus_check)
+        self._focus_check = self.root.after_idle(self._check_recording_focus)
+
+    def _check_recording_focus(self):
+        self._focus_check = None
+        focus = self.root.focus_get()
+        if focus is None or focus.winfo_toplevel() != self.root:
+            self.guard.clear()
 
     def close(self):
+        if self._focus_check is not None:
+            self.root.after_cancel(self._focus_check)
+            self._focus_check = None
         def remove(widget):
             widget.bindtags(tuple(tag for tag in widget.bindtags() if tag != self.tag))
             for child in widget.winfo_children():
