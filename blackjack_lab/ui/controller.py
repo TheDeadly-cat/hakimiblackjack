@@ -498,6 +498,19 @@ class SessionController:
                     self._advance_entry_hand()
         elif event.etype == UNDO:
             target = payload.get("target_event_id")
+            if self.ledger._find(target).etype == CORRECTION and plan.mode != MODE_UNALIGNED:
+                dealer = seg.table.dealer.hands
+                plan.dealer_up_rank = dealer[0].cards[0].rank if dealer and dealer[0].cards else None
+                if plan.last_saved:
+                    for seat in [seg.table.dealer, *seg.table.players.values()]:
+                        for hand in seat.hands:
+                            for card in hand.cards:
+                                if card.event_id == plan.last_saved.event_id:
+                                    plan.last_saved.rank = card.rank
+                if plan.initial_complete() and plan.mode == MODE_PEEK_WAIT and (
+                        not dealer_up_requires_peek(seg.rules, plan.dealer_up_rank)
+                        or seg.table.dealer_hole_checked_negative or seg.table._dealer_revealed()):
+                    self._advance_entry_hand()
             reopened = plan.undo_event(target)
             plan.observed_card_ids = self.live_card_event_ids()
             plan.reconcile(plan.observed_card_ids)

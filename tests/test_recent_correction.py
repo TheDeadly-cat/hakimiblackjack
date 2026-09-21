@@ -72,6 +72,17 @@ class TestRecentCorrection(unittest.TestCase):
         self.assertEqual(self.app.ctrl.entry_plan.mode, MODE_PEEK_WAIT)
         self.assertFalse(self.app.ctrl.state().current.table.dealer_hole_checked_negative)
 
+    def test_undo_upcard_correction_restores_original_peek_gate(self):
+        self.prepare()
+        self.app._key_rank('T')
+        self.app._key_rank('6')
+        self.change('A')
+        self.app.act_undo()
+        self.assertEqual(self.app.ctrl.entry_plan.dealer_up_rank, '6')
+        self.app._key_rank('6')
+        self.assertNotEqual(self.app.ctrl.entry_plan.mode, MODE_PEEK_WAIT)
+        self.assertFalse(self.app.ctrl.state().current.table.dealer_hole_checked_negative)
+
     def test_split_conflict_is_rejected_without_altering_later_events(self):
         app = self.app
         app.var_simple_hole.set(True)
