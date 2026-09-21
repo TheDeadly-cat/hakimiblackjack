@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from tests import test_simple_hole_entry as fixture
 from blackjack_lab.ui.app import BlackjackLabApp
+from blackjack_lab.ui.window_layout import work_area
 
 
 class TestWindowLayout(unittest.TestCase):
@@ -19,25 +20,29 @@ class TestWindowLayout(unittest.TestCase):
 
     def test_user_sizes_restore_across_drawer_workbench_and_restart(self):
         app, view = self.app, self.app.compact_panel
-        app.geometry('780x690')
-        self.assertEqual(self.size(), (780, 690))
+        left, top, right, bottom = work_area(app)
+        # Exercise user preferences within the real desktop. Screen clamping
+        # has a separate deliberately undersized-monitor test below.
+        compact = (min(780, right - left - 160), min(610, bottom - top - 160))
+        expanded = (min(820, right - left - 120), min(670, bottom - top - 120))
+        app.geometry(f'{compact[0]}x{compact[1]}')
+        self.assertEqual(self.size(), compact)
         view.toggle_recording()
-        app.geometry('820x770')
-        self.assertEqual(self.size(), (820, 770))
+        app.geometry(f'{expanded[0]}x{expanded[1]}')
+        self.assertEqual(self.size(), expanded)
         view.toggle_recording()
-        self.assertEqual(self.size(), (780, 690))
+        self.assertEqual(self.size(), compact)
         view.toggle_recording()
-        self.assertEqual(self.size(), (820, 770))
+        self.assertEqual(self.size(), expanded)
         app.show_workbench()
-        app.geometry('1200x850')
         self.size()
         app.show_compact()
-        self.assertEqual(self.size(), (820, 770))
+        self.assertEqual(self.size(), expanded)
         view.toggle_recording()
         view.toggle_cards()
         self.close()
         self.app = BlackjackLabApp(self.db, auto_analysis=False)
-        self.assertEqual(self.size(), (780, 690))
+        self.assertEqual(self.size(), compact)
         self.assertFalse(self.app.window_layout.cards_visible)
         self.assertEqual(set(json.loads(Path(str(self.db) + '.ui-preferences.json').read_text(encoding='utf-8'))),
                          {'schema', 'sizes', 'cards_visible'})
