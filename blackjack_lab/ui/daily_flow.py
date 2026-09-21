@@ -14,8 +14,8 @@ class FlowState:
     round_id: str = ''
 
 
-def current_flow(ctrl):
-    seg, plan = ctrl.state().current, ctrl.entry_plan
+def current_flow(ctrl, seg=None):
+    seg, plan = seg or ctrl.state().current, ctrl.entry_plan
     if seg is None or seg.closed:
         return FlowState('setup', '确认本桌设置，或在工作台恢复记录。', '开始／恢复记录', 'review')
     if seg.table.phase not in (PHASE_DEALING, PHASE_IN_PROGRESS):
