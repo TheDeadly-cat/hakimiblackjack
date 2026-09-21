@@ -100,7 +100,7 @@ class BlackjackLabApp(tk.Tk):
         self.recording_source = recording_source
         self.auto_analysis = auto_analysis
         self.title(f"Hakimi Blackjack Lab V{__version__} 手动记录工作台（本地离线）")
-        self.geometry("720x500")
+        self.geometry("720x620")
         self.minsize(660, 460)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
@@ -425,7 +425,7 @@ class BlackjackLabApp(tk.Tk):
         self.workbench.grid_remove()
         self.compact_panel.grid(row=1, column=0, sticky="nsew")
         self.minsize(660, 460)
-        self.geometry('720x760' if self.compact_panel.recording_open else '720x500')
+        self.geometry('720x850' if self.compact_panel.recording_open else '720x620')
         self.title('Hakimi Blackjack Lab · 当前手牌')
         self.compact_panel.render()
 
@@ -1190,6 +1190,24 @@ class BlackjackLabApp(tk.Tk):
             self.refresh_all()
         except Exception as e:
             self.fail(e)
+
+    def _next_round_options(self):
+        return dict(participants=[name for name, var in self.var_participants.items() if var.get()],
+                    my_seat=self.var_my_seat.get(), deal_direction=self.var_deal_direction.get(),
+                    simple_hole=self.var_simple_hole.get())
+
+    @tracked_operation
+    def act_complete_and_next(self, expected_round_id):
+        try:
+            self.ctrl.complete_and_next_round(expected_round_id, **self._next_round_options())
+            if self.var_simple_hole.get():
+                self.var_mode.set('新发牌')
+            self._sync_from_plan()
+            self.var_analysis_target.set(self.var_my_seat.get())
+            self.set_status('上轮已结算；已开始下一轮，继续同一牌靴。')
+            self.refresh_all()
+        except Exception as error:
+            self.fail(error)
 
     @tracked_operation
     def act_end_round(self) -> None:

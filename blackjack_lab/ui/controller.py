@@ -124,30 +124,78 @@ class SessionController:
     def new_shoe(self, rules: RuleProfile):
         return self._apply("create_shoe", rules)
 
-    def start_round(self, participants=None, *, my_seat=None, deal_direction="forward", simple_hole=False):
+    def _round_options(self, participants, my_seat, deal_direction, simple_hole):
         seg = self.state().current
+        if seg is None or seg.closed:
+            raise TableError('请先创建或恢复一靴记录')
         if type(simple_hole) is not bool:
             raise ValueError('简便暗牌设置必须明确启用或关闭')
         if simple_hole and not self._simple_rules_confirmed(seg):
             raise TableError('简便暗牌需要已确认的美式底牌、A/十点决策前检查和完整新牌靴；请先核对桌规或使用手动方式')
-        selected = participants if participants is not None else seg.table.players
-        ordered = participating_in_order(selected, deal_direction)
+        if deal_direction not in ('forward', 'reverse'):
+            raise ValueError('未知发牌方向')
+        ordered = participating_in_order(participants if participants is not None else seg.table.players, deal_direction)
+        if not ordered:
+            raise ValueError('至少选择一位参与玩家')
         seat = my_seat or ordered[0]
         if seat not in ordered:
-            raise ValueError("本人座位必须是本轮参与座位之一")
-        if deal_direction not in ("forward", "reverse"):
-            raise ValueError("未知发牌方向")
+            raise ValueError('本人座位必须是本轮参与座位之一')
+        evidence = json.dumps({'recording_contract': SIMPLE_HOLE_CONTRACT,
+            'acknowledgement': '录完初始明牌即确认本轮初始发牌完成，包含已发但未知的庄家底牌'},
+            ensure_ascii=False) if simple_hole else None
         def freeze(_event):
             seg = self.state().current
             self.entry_plan = RoundEntryPlan.freeze(
                 session_id=self.session_id, shoe_id=seg.shoe_id, round_id=seg.round_id,
                 selected_seats=seg.table.participants, my_seat=seat,
                 deal_direction=deal_direction, simple_hole=simple_hole)
-            self.entry_warning = ""
-        evidence = json.dumps({'recording_contract': SIMPLE_HOLE_CONTRACT,
-            'acknowledgement': '录完初始明牌即确认本轮初始发牌完成，包含已发但未知的庄家底牌'},
-            ensure_ascii=False) if simple_hole else None
-        return self._apply("start_round", list(ordered), _entry_update=freeze, _evidence=evidence)
+            self.entry_warning = ''
+        return ordered, evidence, freeze
+
+    def start_round(self, participants=None, *, my_seat=None, deal_direction='forward', simple_hole=False):
+        ordered, evidence, freeze = self._round_options(participants, my_seat, deal_direction, simple_hole)
+        return self._apply('start_round', list(ordered), _entry_update=freeze, _evidence=evidence)
+
+    def round_completion_problem(self, seg=None):
+        """Read-only settlement preflight. No events, plan changes or confirmations."""
+        seg = seg or self.state().current
+        if seg is None or seg.closed or seg.table.phase not in (PHASE_DEALING, PHASE_IN_PROGRESS):
+            return '没有可结算的当前轮'
+        if seg.shoe.gap or seg.shoe.pending_candidates:
+            return '观察缺口或待确认牌尚未核对，请到记录核对入口处理'
+        missing = seg.table.missing_observations()
+        if missing:
+            labels = {'DEALER_INITIAL_MISSING': '庄家初始牌未录齐', 'PLAYER_INITIAL_MISSING': '玩家初始牌未录齐',
+                      'PLAYER_DRAW_PENDING': '玩家尚有待补牌', 'DEALER_DRAW_PENDING': '庄家仍需补牌'}
+            return '；'.join(dict.fromkeys(f"{m['seat']}：{labels[m['code']]}" for m in missing))
+        try:
+            copy.deepcopy(seg.table).settle()
+        except (TableError, ValueError) as error:
+            return str(error)
+        return ''
+
+    def complete_and_next_round(self, expected_round_id, participants=None, *, my_seat=None,
+                                deal_direction='forward', simple_hole=False):
+        seg = self.state().current
+        if seg is None or not expected_round_id or seg.round_id != expected_round_id:
+            raise TableError('当前轮已变化；本次收尾未重复提交，请核对当前轮')
+        problem = self.round_completion_problem(seg)
+        if problem:
+            raise TableError(problem)
+        ordered, evidence, freeze = self._round_options(participants, my_seat, deal_direction, simple_hole)
+        candidate = copy.deepcopy(self.ledger)
+        ended = candidate.end_round(settle=True, observation_status='complete')
+        ended.source = self.recording_source
+        results = [r for r in candidate.replay().current.settlements if r['round'] == seg.table.round_no]
+        started = candidate.start_round(list(ordered))
+        started.source = self.recording_source
+        if evidence:
+            started.evidence = evidence
+        # Both commands are preflighted before the single SQLite transaction.
+        self.store.save_ledger(candidate)
+        self._accept_committed(candidate, [ended, started],
+                               lambda event: freeze(event) if event.etype == ROUND_STARTED else None)
+        return ended, started, results
 
     def end_round(self):
         event = self._apply("end_round", settle=True, observation_status="complete")
