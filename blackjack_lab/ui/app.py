@@ -39,6 +39,7 @@ from ..storage.database import LocalStore
 from .controller import SessionController
 from .analysis_panel import AnalysisPanel
 from .compact_panel import CompactPanel
+from .window_layout import WindowLayout
 from .deal_entry import (
     MODE_CONTINUATION, MODE_DEALER, MODE_INITIAL, MODE_MANUAL, MODE_PEEK_WAIT, MODE_UNALIGNED,
     dealer_up_requires_peek, next_open_hand,
@@ -144,7 +145,17 @@ class BlackjackLabApp(tk.Tk):
         self._build_top()
         self._build_body()
         self._build_bottom()
-        self.compact_panel = CompactPanel(self, self)
+        self.window_layout = WindowLayout(self, db_path)
+        self.compact_viewport = ttk.Frame(self)
+        self.compact_canvas = tk.Canvas(self.compact_viewport, highlightthickness=0, bg='#F3F6F8')
+        self.compact_scroll = ttk.Scrollbar(self.compact_viewport, command=self.compact_canvas.yview)
+        self.compact_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.compact_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.compact_canvas.configure(yscrollcommand=self.compact_scroll.set)
+        self.compact_panel = CompactPanel(self.compact_canvas, self)
+        self.compact_window = self.compact_canvas.create_window((0, 0), window=self.compact_panel, anchor='nw')
+        self.compact_canvas.bind('<Configure>', lambda event: self.compact_canvas.itemconfigure(self.compact_window, width=event.width))
+        self.compact_panel.bind('<Configure>', lambda event: self.compact_canvas.configure(scrollregion=self.compact_canvas.bbox('all')))
         self.show_compact()
         self._bind_keys()
         self._restore_plan_identity()
@@ -423,17 +434,16 @@ class BlackjackLabApp(tk.Tk):
 
     def show_compact(self):
         self.workbench.grid_remove()
-        self.compact_panel.grid(row=1, column=0, sticky="nsew")
-        self.minsize(660, 460)
-        self.geometry('720x850' if self.compact_panel.recording_open else '720x620')
+        self.compact_viewport.grid(row=1, column=0, sticky='nsew')
+        self.window_layout.switch('drawer' if self.compact_panel.recording_open else 'compact')
         self.title('Hakimi Blackjack Lab · 当前手牌')
         self.compact_panel.render()
 
     def show_workbench(self):
-        self.compact_panel.grid_remove()
-        self.workbench.grid(row=1, column=0, sticky="nsew")
-        self.minsize(1180, 800)
-        self.geometry('1360x900')
+        self.compact_panel.close_correction()
+        self.compact_viewport.grid_remove()
+        self.workbench.grid(row=1, column=0, sticky='nsew')
+        self.window_layout.switch('workbench')
         self.title('Hakimi Blackjack Lab · 研究工作台')
 
     def _bind_keys(self) -> None:
@@ -1554,6 +1564,7 @@ class BlackjackLabApp(tk.Tk):
         return status
 
     def on_close(self):
+        self.window_layout.close()
         if self._key_binder is not None:
             self._key_binder.close()
         self.analysis_panel.close()

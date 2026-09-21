@@ -86,16 +86,25 @@ class TestAutoSeatsUI(unittest.TestCase):
         self.app._key_rank('2')
         self.wait_all()
 
-    def test_seven_rows_and_player_controls_fit_compact_minimum(self):
+    def test_seven_rows_fit_default_and_short_window_remains_scrollable(self):
         self.start(players=7)
         app, view = self.app, self.app.compact_panel
-        app.geometry('660x460')
+        app.geometry('720x740')
         app.update()
         self.assertEqual(len(view.seat_table.get_children()), 7)
         for widget in (view.add_player, view.remove_player, view.seat_table, view.details_button):
             self.assertTrue(widget.winfo_ismapped())
             self.assertLessEqual(widget.winfo_rootx() + widget.winfo_width(), app.winfo_rootx() + app.winfo_width())
             self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(), app.winfo_rooty() + app.winfo_height())
+        app.geometry('660x460')
+        app.update()
+        app.compact_canvas.yview_moveto(1)
+        app.update()
+        self.assertLessEqual(view.details_button.winfo_rooty() + view.details_button.winfo_height(),
+                             app.winfo_rooty() + app.winfo_height())
+        app.compact_canvas.yview_moveto(0)
+        app.update()
+        self.assertGreaterEqual(view.add_player.winfo_rooty(), app.winfo_rooty())
 
     def test_background_save_failure_is_visible_without_losing_recorded_cards(self):
         with patch.object(self.app.ctrl.analysis_store, 'save', side_effect=OSError('test disk full')):

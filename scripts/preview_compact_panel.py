@@ -17,7 +17,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--scenario', choices=('empty', 'single', 'partial', 'split', 'das', 'forced', 'complete'), default='single')
-    parser.add_argument('--size', default='720x500')
+    parser.add_argument('--size', help='Optional explicit size; otherwise use the application display preference')
     parser.add_argument('--label', help='Distinct window label when another practice is still open')
     parser.add_argument('--players', type=int, choices=range(1, 8), default=1)
     parser.add_argument('--simple-hole', action='store_true', help='Use the explicitly acknowledged synthetic US initial-deal contract')
@@ -57,7 +57,8 @@ def main():
         if args.scenario == 'complete':
             app._key_rank('T')
     app.title(f'Hakimi · {args.label or "简洁面板验收"} · {args.scenario}（自建临时数据）')
-    app.geometry(args.size)
+    if args.size:
+        app.geometry(args.size)
     starts = []
     original_start = app.analysis_panel.service.start
     def start(*args, **kwargs):

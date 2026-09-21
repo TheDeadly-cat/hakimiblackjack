@@ -40,10 +40,10 @@ class CompactPanel(tk.Frame):
         self._label(top, variable=self.player_count, font=('Microsoft YaHei UI', 9)).grid(row=0, column=2)
         self.add_player = ttk.Button(top, text='+ 玩家', width=7, command=lambda: app.change_player_count(1))
         self.add_player.grid(row=0, column=3, padx=2)
-        self.identity_label = self._label(self, variable=self.identity, font=('Microsoft YaHei UI', 12, 'bold'), wrap=655)
+        self.identity_label = self._label(self, variable=self.identity, font=('Microsoft YaHei UI', 12, 'bold'), wrap=640, height=2)
         self.identity_label.grid(row=1, column=0, sticky='ew', pady=(6, 6))
         selectors = ttk.Frame(self)
-        selectors.grid(row=2, column=0, sticky='ew')
+        selectors.grid(row=5, column=0, sticky='ew')
         ttk.Label(selectors, text='分析').pack(side=tk.LEFT)
         self.seat = ttk.Combobox(selectors, width=7, state='readonly', textvariable=app.var_analysis_target,
                                 values=[f'玩家{i}' for i in range(1, 8)])
@@ -56,17 +56,17 @@ class CompactPanel(tk.Frame):
         ttk.Button(selectors, text='取消', width=6, command=self.panel.cancel).pack(side=tk.LEFT)
         ttk.Checkbutton(selectors, text='自动', variable=self.panel.auto).pack(side=tk.LEFT, padx=4)
         self.status_label = self._label(self, variable=self.state, font=('Microsoft YaHei UI', 11, 'bold'))
-        self.status_label.grid(row=3, column=0, sticky='w', pady=(10, 3))
+        self.status_label.grid(row=6, column=0, sticky='w', pady=(10, 3))
         self.rows = []
         # Keep recording controls stationary when a result is invalidated.
-        self.rowconfigure(4, minsize=92)
-        self.rowconfigure(5, minsize=92)
+        self.rowconfigure(7, minsize=92)
+        self.rowconfigure(8, minsize=92)
         self.empty_result = self._label(self, '暂无当前建议', font=('Microsoft YaHei UI', 16))
-        self.empty_result.grid(row=4, column=0, rowspan=2, sticky='w', padx=15)
+        self.empty_result.grid(row=7, column=0, rowspan=2, sticky='w', padx=15)
         for i in range(2):
             row = tk.Frame(self, bg=PALETTE['surface'], padx=12, pady=8, highlightthickness=1,
                            highlightbackground='#D6E0E3')
-            row.grid(row=4 + i, column=0, sticky='ew', pady=3)
+            row.grid(row=7 + i, column=0, sticky='ew', pady=3)
             row.columnconfigure(1, weight=1)
             rank = self._label(row, '', font=('Microsoft YaHei UI', 10), surface=True, width=12)
             rank.grid(row=0, column=0, rowspan=2, sticky='w')
@@ -80,7 +80,7 @@ class CompactPanel(tk.Frame):
             ev.grid(row=1, column=2, sticky='e')
             self.rows.append((row, rank, action, extra, profit, ev))
         self.seat_table_frame = ttk.Frame(self)
-        self.seat_table_frame.grid(row=4, column=0, rowspan=2, sticky='nsew', pady=3)
+        self.seat_table_frame.grid(row=7, column=0, rowspan=2, sticky='nsew', pady=3)
         ttk.Style(self).configure('SeatOverview.Treeview', rowheight=20)
         columns = ('seat', 'cards', 'best', 'second', 'ev', 'state')
         self.seat_table = ttk.Treeview(self.seat_table_frame, columns=columns, show='headings',
@@ -95,19 +95,21 @@ class CompactPanel(tk.Frame):
         self.seat_table.bind('<<TreeviewSelect>>', self.select_seat)
         self.seat_table_frame.grid_remove()
         self.message_label = self._label(self, variable=self.message, wrap=650)
-        self.message_label.grid(row=6, column=0, sticky='ew', pady=(7, 2))
-        self._label(self, variable=self.notes, wrap=650, font=('Microsoft YaHei UI', 9)).grid(row=7, column=0, sticky='ew')
+        self.message_label.grid(row=9, column=0, sticky='ew', pady=(7, 2))
+        self._label(self, variable=self.notes, wrap=650, font=('Microsoft YaHei UI', 9)).grid(row=10, column=0, sticky='ew')
         links = ttk.Frame(self)
-        links.grid(row=8, column=0, sticky='ew', pady=(10, 4))
-        self.record_button = ttk.Button(links, text='录牌／纠错', command=self.toggle_recording)
+        links.grid(row=11, column=0, sticky='ew', pady=(10, 4))
+        self.record_button = ttk.Button(links, text='录牌设置', command=self.toggle_recording)
         self.record_button.pack(side=tk.LEFT)
+        self.cards_toggle = ttk.Button(links, command=self.toggle_cards)
+        self.cards_toggle.pack(side=tk.LEFT, padx=4)
         self.details_button = ttk.Button(links, text='展开详情', command=self.show_details)
         self.details_button.pack(side=tk.LEFT, padx=5)
         self.current_button = ttk.Button(links, text='返回当前手牌', command=self.panel.return_to_current)
         ttk.Button(links, text='研究工作台', command=app.show_workbench).pack(side=tk.RIGHT)
-        self._label(self, variable=self.recording_hint, wrap=650, font=('Microsoft YaHei UI', 9)).grid(row=9, column=0, sticky='w')
+        self._label(self, variable=self.recording_hint, wrap=650, font=('Microsoft YaHei UI', 9)).grid(row=12, column=0, sticky='w')
         self.flow_area = ttk.Frame(self, height=82)
-        self.flow_area.grid(row=10, column=0, sticky='ew', pady=(5, 0))
+        self.flow_area.grid(row=3, column=0, sticky='ew', pady=(5, 0))
         self.flow_area.grid_propagate(False)
         self.flow_area.columnconfigure(0, weight=1)
         self.flow_message = tk.StringVar()
@@ -121,8 +123,12 @@ class CompactPanel(tk.Frame):
         self.settlement_link.grid(row=1, column=0, sticky='w')
         self._build_recent()
         self.drawer = ttk.Frame(self)
-        self.drawer.grid(row=12, column=0, sticky='ew', pady=(8, 0))
+        self.drawer.grid(row=13, column=0, sticky='ew', pady=(8, 0))
+        self.quick_input = ttk.Frame(self, height=68)
+        self.quick_input.grid(row=2, column=0, sticky='ew')
+        self.quick_input.pack_propagate(False)
         self._build_recording()
+        self.set_cards_visible(self.app.window_layout.cards_visible)
         self.drawer.grid_remove()
         self.panel.add_view(self.render)
         self.render()
@@ -148,13 +154,16 @@ class CompactPanel(tk.Frame):
                                              command=app.change_simple_hole)
         self.simple_toggle.pack(side=tk.LEFT, padx=8)
         ttk.Button(modes, text='暂停／恢复', command=app._key_pause).pack(side=tk.RIGHT)
-        cards = ttk.Frame(self.drawer)
+        cards = self.card_strip = ttk.Frame(self.quick_input)
+        self.card_buttons = []
         cards.pack(fill=tk.X, pady=3)
         for rank in ('A', '2', '3', '4', '5', '6', '7', '8', '9', 'T'):
-            ttk.Button(cards, text=rank, width=4, command=lambda r=rank: app._key_rank(r)).pack(side=tk.LEFT, padx=2)
+            button = ttk.Button(cards, text=rank, width=4, command=lambda r=rank: app._key_rank(r))
+            button.pack(side=tk.LEFT, padx=2)
+            self.card_buttons.append(button)
         self.hole_button = ttk.Button(cards, text='暗牌 .', width=7, command=app._key_hole)
         self.hole_button.pack(side=tk.LEFT, padx=3)
-        actions = ttk.Frame(self.drawer)
+        actions = self.quick_actions = ttk.Frame(self.quick_input)
         actions.pack(fill=tk.X, pady=3)
         self.action_buttons = []
         for label, action in [('停牌 -', ACTION_STAND), ('加倍 *', ACTION_DOUBLE), ('分牌 /', ACTION_SPLIT), ('投降', ACTION_SURRENDER)]:
@@ -174,8 +183,20 @@ class CompactPanel(tk.Frame):
     def toggle_recording(self):
         self.recording_open = not self.recording_open
         (self.drawer.grid if self.recording_open else self.drawer.grid_remove)()
-        self.record_button.configure(text='收起录牌' if self.recording_open else '录牌／纠错')
-        self.app.geometry('720x850' if self.recording_open else '720x620')
+        self.record_button.configure(text='收起设置' if self.recording_open else '录牌设置')
+        self.app.window_layout.switch('drawer' if self.recording_open else 'compact')
+
+    def set_cards_visible(self, visible):
+        self.app.window_layout.cards_visible = visible
+        if visible:
+            self.card_strip.pack(fill=tk.X, pady=3, before=self.quick_actions)
+        else:
+            self.card_strip.pack_forget()
+        self.cards_toggle.configure(text='收起牌面键' if visible else '显示牌面键')
+
+    def toggle_cards(self):
+        self.set_cards_visible(not self.app.window_layout.cards_visible)
+        self.app.window_layout.save()
 
     def select_seat(self, _event=None):
         if self._syncing_seat_table:
@@ -271,6 +292,10 @@ class CompactPanel(tk.Frame):
         if panel.unavailable_code == 'ROUND_INACTIVE' and not panel.request_id:
             text = app.recording_inactive_message() or text
             state = text.split('；')[0]
+        seg = app._current_seg()
+        if (not panel.request_id and seg and not seg.closed and not seg.shoe.gap and not seg.shoe.pending_candidates
+                and app.ctrl.entry_plan and app.ctrl.entry_plan.mode == 'initial_auto'):
+            state, text = '等待初始牌', app.ctrl.entry_plan.next_card_text()
         return DecisionSummary(state, identity, text)
 
     def render(self):
@@ -341,6 +366,8 @@ class CompactPanel(tk.Frame):
         self.peek_button.pack_forget()  # The fixed phase action owns this command.
         self.render_flow()
         self.render_recent()
+        if self.editor_open:
+            self.editor.lift()
         self.recording_hint.set(inactive or
                                (('录入已暂停 · ' if plan and plan.input_paused else '录入 ') + self.app.var_target.get()
                                 + '  ·  Ctrl+1–7 切玩家  Ctrl+0 庄家  Tab 下一位  Shift+Tab 上一位'))
@@ -354,7 +381,7 @@ class CompactPanel(tk.Frame):
 
     def _build_recent(self):
         self.recent_area = ttk.Frame(self)
-        self.recent_area.grid(row=11, column=0, sticky='ew', pady=3)
+        self.recent_area.grid(row=4, column=0, sticky='ew', pady=3)
         self.recent_area.columnconfigure(0, weight=1)
         self.recent_text = tk.StringVar(value='最近录入：—')
         ttk.Label(self.recent_area, textvariable=self.recent_text).grid(row=0, column=0, sticky='w')
@@ -362,8 +389,8 @@ class CompactPanel(tk.Frame):
         self.edit_button.grid(row=0, column=1, padx=3)
         self.undo_button = ttk.Button(self.recent_area, command=self.app.act_undo)
         self.undo_button.grid(row=0, column=2)
-        self.editor = ttk.Frame(self.recent_area)
-        self.editor.grid(row=1, column=0, columnspan=3, sticky='ew', pady=4)
+        self.editor = ttk.Frame(self, padding=10, relief='solid', borderwidth=1)
+        self.editor.grid(row=7, column=0, rowspan=2, sticky='nsew', pady=3)
         self.edit_rank = tk.StringVar()
         self.edit_reason = tk.StringVar(value='误按牌面')
         self.edit_note = tk.StringVar()
