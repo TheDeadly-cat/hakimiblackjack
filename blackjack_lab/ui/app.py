@@ -441,6 +441,9 @@ class BlackjackLabApp(tk.Tk):
                                            is_recording_surface=self._is_recording_surface)
 
     def _is_recording_surface(self, event) -> bool:
+        if (hasattr(self, 'compact_panel') and self.compact_panel.editor_open
+                and str(getattr(event, 'widget', '')).startswith(str(self.compact_panel.editor))):
+            return False  # The correction fields keep their normal editing keys.
         widget = getattr(event, "widget", None)
         if widget is None:
             return False
@@ -491,6 +494,8 @@ class BlackjackLabApp(tk.Tk):
             self._syncing_target = False
 
     def _on_manual_command(self, command) -> None:
+        if hasattr(self, 'compact_panel') and self.compact_panel.editor_open:
+            return  # Consume recording keys outside the editor without invoking buttons.
         dispatch = {
             KIND_RANK: lambda: self._key_rank(command.rank),
             KIND_HOLE: self._key_hole,
