@@ -20,12 +20,18 @@ def main():
     parser.add_argument('--size', default='720x500')
     parser.add_argument('--label', help='Distinct window label when another practice is still open')
     parser.add_argument('--players', type=int, choices=range(1, 8), default=1)
+    parser.add_argument('--simple-hole', action='store_true', help='Use the explicitly acknowledged synthetic US initial-deal contract')
+    parser.add_argument('--before-last-card', action='store_true', help='Leave the final initial visible card for native input')
+    parser.add_argument('--up-rank', choices=('6', 'A', 'T'), default='6')
     args = parser.parse_args()
+    if args.before_last_card and args.scenario != 'single' or args.up_rank != '6' and args.scenario != 'single':
+        parser.error('--before-last-card and a custom --up-rank require the single scenario')
     if args.players != 1 and args.scenario not in ('single', 'empty'):
         parser.error('--players is supported only for single or empty recording previews')
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     app = BlackjackLabApp(output / 'preview.db', recording_source=SOURCE_SIMULATOR)
+    app.var_simple_hole.set(args.simple_hole)
     if args.scenario != 'empty':
         app.var_decks.set(8)
         app.act_research_template(split=args.scenario == 'split', das=args.scenario in ('das', 'forced', 'complete'))
@@ -33,11 +39,14 @@ def main():
         for index, variable in enumerate(app.var_participants.values(), 1):
             variable.set(index <= args.players)
         app.act_new_round()
-        cards = (('T',) * args.players + ('6',) + tuple(str(6 + i % 4) for i in range(args.players))
+        cards = (('T',) * args.players + (args.up_rank,) + tuple(str(6 + i % 4) for i in range(args.players))
                  if args.scenario == 'single' else ('8', '6', '8'))
+        if args.before_last_card:
+            cards = cards[:-1]
         for rank in cards:
             app._key_rank(rank)
-        app._key_hole()
+        if not args.simple_hole and not args.before_last_card:
+            app._key_hole()
         if args.scenario in ('split', 'das', 'forced', 'complete'):
             app.act_action(ACTION_SPLIT)
             app._key_rank('9')
@@ -71,6 +80,9 @@ def main():
                        heading=view.heading.get(), recording_hint=view.recording_hint.get(),
                        auto=panel.auto.get(), seat_rows={seat: dict(cards=row['cards'], state=row['state'],
                            result=row['result']) for seat, row in panel.overview.rows.items()},
+                       entry_plan=app.ctrl.entry_plan.to_dict() if app.ctrl.entry_plan else None,
+                       physical_remaining=app._current_seg().shoe.physical_remaining() if app._current_seg() else None,
+                       unrevealed_out=app._current_seg().shoe.unrevealed_out if app._current_seg() else None,
                        detail_text=panel.text.get('1.0', 'end-1c'),
                        controls=[dict(name=str(w), mapped=bool(w.winfo_ismapped()),
                            x=w.winfo_rootx()-app.winfo_rootx(), y=w.winfo_rooty()-app.winfo_rooty(),

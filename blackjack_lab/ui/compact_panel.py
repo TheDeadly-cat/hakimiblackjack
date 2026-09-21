@@ -121,14 +121,22 @@ class CompactPanel(tk.Frame):
         self.record_prompt.pack(anchor='w')
         modes = ttk.Frame(self.drawer)
         modes.pack(fill=tk.X, pady=3)
+        self.manual_modes = []
         for label, value in [('新发牌', '新发牌'), ('揭示暗牌／未知牌', '揭示')]:
-            ttk.Radiobutton(modes, text=label, value=value, variable=app.var_mode).pack(side=tk.LEFT, padx=3)
+            button = ttk.Radiobutton(modes, text=label, value=value, variable=app.var_mode)
+            button.pack(side=tk.LEFT, padx=3)
+            self.manual_modes.append(button)
+        self.simple_label = ttk.Label(modes, text='按顺序输入可见牌；底牌自动揭示')
+        self.simple_toggle = ttk.Checkbutton(modes, text='下轮简便暗牌', variable=app.var_simple_hole,
+                                             command=app.change_simple_hole)
+        self.simple_toggle.pack(side=tk.LEFT, padx=8)
         ttk.Button(modes, text='暂停／恢复', command=app._key_pause).pack(side=tk.RIGHT)
         cards = ttk.Frame(self.drawer)
         cards.pack(fill=tk.X, pady=3)
         for rank in ('A', '2', '3', '4', '5', '6', '7', '8', '9', 'T'):
             ttk.Button(cards, text=rank, width=4, command=lambda r=rank: app._key_rank(r)).pack(side=tk.LEFT, padx=2)
-        ttk.Button(cards, text='暗牌 .', width=7, command=app._key_hole).pack(side=tk.LEFT, padx=3)
+        self.hole_button = ttk.Button(cards, text='暗牌 .', width=7, command=app._key_hole)
+        self.hole_button.pack(side=tk.LEFT, padx=3)
         actions = ttk.Frame(self.drawer)
         actions.pack(fill=tk.X, pady=3)
         self.action_buttons = []
@@ -140,8 +148,11 @@ class CompactPanel(tk.Frame):
         control = ttk.Frame(self.drawer)
         control.pack(fill=tk.X, pady=3)
         for label, command in [('新开一轮', app.act_new_round), ('结束并结算', app.act_end_round),
-                               ('确认非 BJ', app.act_peek_negative), ('记录／修正／设置', app.show_workbench)]:
-            ttk.Button(control, text=label, command=command).pack(side=tk.LEFT, padx=2)
+                               ('已检查，确认非BJ', app.act_peek_negative), ('记录／修正／设置', app.show_workbench)]:
+            button = ttk.Button(control, text=label, command=command)
+            button.pack(side=tk.LEFT, padx=2)
+            if command == app.act_peek_negative:
+                self.peek_button = button
         ttk.Label(self.drawer, textvariable=app.var_status, wraplength=650).pack(anchor='w', pady=2)
 
     def toggle_recording(self):
@@ -299,6 +310,19 @@ class CompactPanel(tk.Frame):
         else:
             self.current_button.pack_forget()
         plan = self.app.ctrl.entry_plan
+        simple = self.app.ctrl.simple_hole_active() and self.app.var_mode.get() != '揭示'
+        for button in self.manual_modes:
+            if simple:
+                button.pack_forget()
+            elif not button.winfo_manager():
+                button.pack(side=tk.LEFT, padx=3, before=self.simple_toggle)
+        if simple:
+            self.simple_label.pack(side=tk.LEFT, before=self.simple_toggle)
+            self.hole_button.pack_forget()
+        else:
+            self.simple_label.pack_forget()
+            self.hole_button.pack(side=tk.LEFT, padx=3)
+        self.peek_button.state(['!disabled'] if not simple or plan.mode == 'peek_wait' else ['disabled'])
         self.recording_hint.set(inactive or
                                (('录入已暂停 · ' if plan and plan.input_paused else '录入 ') + self.app.var_target.get()
                                 + '  ·  Ctrl+1–7 切玩家  Ctrl+0 庄家  Tab 下一位  Shift+Tab 上一位'))

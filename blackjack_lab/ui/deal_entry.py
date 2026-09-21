@@ -16,8 +16,9 @@ from typing import Iterable, Optional
 from ..core.cards import TEN_BUCKET, is_ten_value
 from ..core.table import DEALER, player_seat_name
 
-PLAN_SCHEMA = "hakimi-round-entry-plan-v2"
+PLAN_SCHEMA = "hakimi-round-entry-plan-v3"
 PLAN_ID = "players_up_players_hole_v1"
+SIMPLE_HOLE_CONTRACT = "confirmed-us-initial-hole-v1"
 
 FACE_SHOWN = "shown"
 FACE_HIDDEN = "hidden"
@@ -176,13 +177,14 @@ class RoundEntryPlan:
     dealer_up_rank: Optional[str] = None
     schema: str = PLAN_SCHEMA
     plan_id: str = PLAN_ID
-    version: int = 2
+    version: int = 3
     pause_reason: str = ""
+    simple_hole: bool = False
 
     @classmethod
     def freeze(cls, *, session_id: str, shoe_id: str, round_id: str,
                selected_seats: Iterable[str], my_seat: str,
-               deal_direction: str = "forward") -> "RoundEntryPlan":
+               deal_direction: str = "forward", simple_hole: bool = False) -> "RoundEntryPlan":
         participants = participating_in_order(selected_seats, deal_direction)
         if my_seat not in participants:
             raise ValueError("本人座位必须是本轮参与座位之一")
@@ -192,6 +194,7 @@ class RoundEntryPlan:
             participating_seats=participants, my_seat=my_seat,
             deal_direction=deal_direction, slots=slots,
             cursor_slot_id=slots[0].slot_id, mode=MODE_INITIAL, paused=False,
+            simple_hole=simple_hole,
         )
 
     @classmethod
@@ -503,8 +506,13 @@ class RoundEntryPlan:
     def from_dict(cls, data: dict) -> "RoundEntryPlan":
         if not isinstance(data, dict):
             raise ValueError("发牌计划必须是JSON对象")
+        if (data.get('schema') == 'hakimi-round-entry-plan-v2'
+                and type(data.get('version')) is int and data['version'] == 2):
+            if set(data) != {item.name for item in fields(cls)} - {'simple_hole'}:
+                raise ValueError('旧计划字段不完整，不能推测简便录入设置')
+            data = {**data, 'schema': PLAN_SCHEMA, 'version': 3, 'simple_hole': False}
         if (data.get("schema") != PLAN_SCHEMA or type(data.get("version")) is not int
-                or data["version"] != 2 or data.get("plan_id") != PLAN_ID):
+                or data["version"] != 3 or data.get("plan_id") != PLAN_ID):
             raise ValueError("旧版或未知发牌计划；需核对账本后人工继续")
         if set(data) != {item.name for item in fields(cls)}:
             raise ValueError("发牌计划字段缺失或含未知字段")
@@ -518,7 +526,7 @@ class RoundEntryPlan:
         if plan.mode not in (MODE_INITIAL, MODE_MANUAL, MODE_CONTINUATION,
                              MODE_PEEK_WAIT, MODE_DEALER, MODE_UNALIGNED):
             raise ValueError("未知录入阶段")
-        if (type(plan.paused) is not bool or type(plan.input_paused) is not bool
+        if (type(plan.paused) is not bool or type(plan.input_paused) is not bool or type(plan.simple_hole) is not bool
                 or type(plan.ledger_seq) is not int or plan.ledger_seq < 0
                 or not isinstance(plan.ledger_digest, str)
                 or len(plan.ledger_digest) != 64

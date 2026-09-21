@@ -126,6 +126,7 @@ class BlackjackLabApp(tk.Tk):
         self.var_entry_prompt = tk.StringVar(value="尚未冻结本轮发牌计划。确认参与座位和本人座位后开新一轮。")
         self.var_hand = tk.StringVar(value="（最新一手）")
         self.var_mode = tk.StringVar(value="新发牌")
+        self.var_simple_hole = tk.BooleanVar(value=False)
         self.var_suit = tk.StringVar(value="未知")
         self.var_status = tk.StringVar(value="就绪：请先选择牌副数并新建牌靴")
         self.rule_details = {}
@@ -517,6 +518,7 @@ class BlackjackLabApp(tk.Tk):
         plan = self.ctrl.entry_plan
         if plan is None:
             return
+        self.var_simple_hole.set(plan.simple_hole)
         if plan.participating_seats:
             for name, var in self.var_participants.items():
                 var.set(name in plan.participating_seats)
@@ -550,7 +552,8 @@ class BlackjackLabApp(tk.Tk):
         # The controller has already synchronized and persisted the plan before
         # publishing the event. These methods only select the visible focus.
         plan = self.ctrl.entry_plan
-        if plan and (slot_id or plan.mode in (MODE_CONTINUATION, MODE_DEALER)):
+        if plan and (slot_id or plan.mode in (MODE_CONTINUATION, MODE_DEALER)
+                     or plan.simple_hole and plan.mode in (MODE_INITIAL, MODE_PEEK_WAIT)):
             self._sync_from_plan()
 
     def _note_hidden(self, seat, event, slot_id=None) -> None:
@@ -572,7 +575,7 @@ class BlackjackLabApp(tk.Tk):
     @tracked_operation
     def _key_rank(self, rank: str) -> None:
         try:
-            self._ensure_recording_enabled(key=True)
+            self._ensure_recording_enabled(key=True, card=True)
             plan = self.ctrl.entry_plan
             slot_id = None
             if self.var_mode.get() != "揭示" and plan and plan.mode in (MODE_INITIAL, MODE_MANUAL):
@@ -680,11 +683,14 @@ class BlackjackLabApp(tk.Tk):
         self._sync_from_plan()
         self.refresh_all()
 
-    def _ensure_recording_enabled(self, *, key=False, action=False) -> None:
+    def _ensure_recording_enabled(self, *, key=False, action=False, card=False) -> None:
         plan = self.ctrl.entry_plan
         if plan and (plan.input_paused or key and plan.mode == MODE_UNALIGNED):
             raise TableError("录入已暂停；请恢复录入或先核对已保存记录，不要重复录牌")
-        if plan and plan.mode == MODE_PEEK_WAIT and self.var_mode.get() != "揭示":
+        automatic_reveal = (card and self.var_mode.get() != '揭示'
+                            and self.ctrl.simple_hole_active() and self.var_target.get() == DEALER
+                            and self.ctrl.simple_dealer_route(self.var_target.get(), self._selected_hand_id(self._current_seg())))
+        if plan and plan.mode == MODE_PEEK_WAIT and self.var_mode.get() != "揭示" and not automatic_reveal:
             raise TableError("等待实际庄家检查结果，不能继续录入玩家牌")
         if (plan and plan.mode == MODE_CONTINUATION and plan.initial_complete()
                 and (action or self.var_mode.get() != "揭示")):
@@ -704,6 +710,7 @@ class BlackjackLabApp(tk.Tk):
             return
         try:
             plan.mode = MODE_MANUAL
+            plan.simple_hole = False
             plan.slots = ()
             plan.participating_seats = ()
             plan.cursor_slot_id = None
@@ -1059,7 +1066,9 @@ class BlackjackLabApp(tk.Tk):
             seg = self._current_seg()
             players = [name for name, var in self.var_participants.items() if var.get() and seg and name in seg.table.players]
             self.ctrl.start_round(players, my_seat=self.var_my_seat.get(),
-                                  deal_direction=self.var_deal_direction.get())
+                                  deal_direction=self.var_deal_direction.get(), simple_hole=self.var_simple_hole.get())
+            if self.var_simple_hole.get():
+                self.var_mode.set('新发牌')
             plan = self.ctrl.entry_plan
             if plan and plan.mode == MODE_INITIAL:
                 first = plan.slot()
@@ -1083,26 +1092,42 @@ class BlackjackLabApp(tk.Tk):
         self.set_status('参与座位已调整；点击“新开一轮”时生效，本轮已保存记录不变。')
         self.compact_panel.render()
 
+    def change_simple_hole(self):
+        if self.var_simple_hole.get() and not messagebox.askyesno('启用简便暗牌录入',
+                '从下一轮开始，按已确认的固定美式发牌流程录牌。\n\n'
+                '录完初始明牌，代表你确认初始发牌已完成，包含那张背面朝上的庄家底牌。'
+                '程序会登记未知底牌；开牌时直接输入点数。\n\n'
+                '中途加入、漏录或顺序不明时请改用人工核对。非BJ检查仍需按实际情况单独确认。\n\n'
+                '确认采用这一录入约定？', parent=self):
+            self.var_simple_hole.set(False)
+        self.set_status('简便暗牌设置将在下一轮生效；本轮已保存记录不变。')
+        self.compact_panel.render()
+
     @tracked_operation
     def act_card(self, rank: str) -> None:
         try:
-            self._ensure_recording_enabled()
+            self._ensure_recording_enabled(card=True)
             seg = self._current_seg()
             if seg is None:
                 raise LedgerError("请先新建牌靴")
             hand_id = self._selected_hand_id(seg)
-            if self.var_mode.get() == "揭示":
-                target = self._find_hidden_deal_event(seg, hand_id)
+            automatic_target = (self.ctrl.simple_dealer_route(self.var_target.get(), hand_id)
+                                if self.var_mode.get() != '揭示' else None)
+            if self.var_mode.get() == "揭示" or automatic_target:
+                target = self.ctrl.ledger._find(automatic_target) if automatic_target else self._find_hidden_deal_event(seg, hand_id)
                 if target is None:
                     raise TableError("该手牌没有待揭示的暗牌/未知牌")
                 self.ctrl.reveal(target.event_id, rank, self._suit())
+                if automatic_target:
+                    self._sync_from_plan()
                 self.set_status(f"暗牌揭示为 {rank}（未重复扣牌，只做揭示转换）")
             else:
                 saved_seat = self.var_target.get()
                 event = self.ctrl.deal_shown(saved_seat, rank,
-                                     hand_id=hand_id, suit=self._suit())
+                                     hand_id=hand_id, suit=self._suit(), initial_slot_id=self._pending_slot_id)
                 self._note_shown(saved_seat, event, rank, self._pending_slot_id)
-                self.set_status(f"录入 {saved_seat} <- {rank}")
+                self.set_status(f"录入 {saved_seat} <- {rank}" +
+                                ('；已按确认流程登记未知底牌' if self.ctrl.ledger.events[-1].seq > event.seq else ''))
             self.refresh_all()
         except Exception as e:
             self.fail(e)
@@ -1296,7 +1321,19 @@ class BlackjackLabApp(tk.Tk):
         recording = self.var_target.get()
         if plan.mode == MODE_CONTINUATION:
             recording += f"／第{self._hand_ordinal(self.var_target.get())}手"
-        self.var_entry_prompt.set(plan.prompt(recording, self.var_analysis_target.get()))
+        prompt = plan.prompt(recording, self.var_analysis_target.get())
+        if self.var_mode.get() != '揭示' and self.ctrl.simple_hole_active() and self.var_target.get() == DEALER:
+            try:
+                target = self.ctrl.simple_dealer_route(DEALER, self._selected_hand_id(self._current_seg()))
+                if target:
+                    lines = prompt.splitlines()
+                    lines[0] = '庄家开牌：请输入底牌点数'
+                    lines[3] = ('未确认非BJ；可输入实际揭示底牌，或按实际检查结果确认非BJ'
+                                if plan.mode == MODE_PEEK_WAIT else '先揭示原底牌；之后输入的牌才是新补牌')
+                    prompt = '\n'.join(lines)
+            except TableError as error:
+                prompt = '需要人工核对：' + str(error) + '\n' + prompt
+        self.var_entry_prompt.set(prompt)
 
     def refresh_topinfo(self, seg, replay) -> None:
         shoe_no = len(replay.segments)
