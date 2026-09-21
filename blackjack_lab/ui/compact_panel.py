@@ -7,6 +7,7 @@ from ..analysis.decision_summary import DecisionSummary, summarize_result, hand_
 from ..core.table import DEALER, ACTION_DOUBLE, ACTION_SPLIT, ACTION_STAND, ACTION_SURRENDER
 from ..ledger.events import FACE_HIDDEN
 from ..analysis.seat_scenario import NOTE
+from .daily_flow import current_flow
 
 PALETTE = dict(background='#F3F6F8', surface='#FFFFFF', ink='#173A45', accent='#187365',
                caution='#935213', error='#AD3030', muted='#52636B')
@@ -103,8 +104,21 @@ class CompactPanel(tk.Frame):
         self.current_button = ttk.Button(links, text='返回当前手牌', command=self.panel.return_to_current)
         ttk.Button(links, text='研究工作台', command=app.show_workbench).pack(side=tk.RIGHT)
         self._label(self, variable=self.recording_hint, wrap=650, font=('Microsoft YaHei UI', 9)).grid(row=9, column=0, sticky='w')
+        self.flow_area = ttk.Frame(self, height=82)
+        self.flow_area.grid(row=10, column=0, sticky='ew', pady=(5, 0))
+        self.flow_area.grid_propagate(False)
+        self.flow_area.columnconfigure(0, weight=1)
+        self.flow_message = tk.StringVar()
+        self.flow_label = ttk.Label(self.flow_area, textvariable=self.flow_message, wraplength=405)
+        self.flow_label.grid(row=0, column=0, sticky='nw')
+        self.flow_primary = ttk.Button(self.flow_area)
+        self.flow_primary.grid(row=0, column=1, sticky='ne')
+        self.only_settle = ttk.Button(self.flow_area, text='只结算', command=app.act_end_round)
+        self.only_settle.grid(row=1, column=1, sticky='e')
+        self.settlement_link = ttk.Button(self.flow_area, command=self.show_settlement)
+        self.settlement_link.grid(row=1, column=0, sticky='w')
         self.drawer = ttk.Frame(self)
-        self.drawer.grid(row=10, column=0, sticky='ew', pady=(8, 0))
+        self.drawer.grid(row=11, column=0, sticky='ew', pady=(8, 0))
         self._build_recording()
         self.drawer.grid_remove()
         self.panel.add_view(self.render)
@@ -147,8 +161,7 @@ class CompactPanel(tk.Frame):
         ttk.Button(actions, text='撤销最后一笔', command=app.act_undo).pack(side=tk.RIGHT)
         control = ttk.Frame(self.drawer)
         control.pack(fill=tk.X, pady=3)
-        for label, command in [('新开一轮', app.act_new_round), ('结束并结算', app.act_end_round),
-                               ('已检查，确认非BJ', app.act_peek_negative), ('记录／修正／设置', app.show_workbench)]:
+        for label, command in [('已检查，确认非BJ', app.act_peek_negative), ('记录／修正／设置', app.show_workbench)]:
             button = ttk.Button(control, text=label, command=command)
             button.pack(side=tk.LEFT, padx=2)
             if command == app.act_peek_negative:
@@ -159,7 +172,7 @@ class CompactPanel(tk.Frame):
         self.recording_open = not self.recording_open
         (self.drawer.grid if self.recording_open else self.drawer.grid_remove)()
         self.record_button.configure(text='收起录牌' if self.recording_open else '录牌／纠错')
-        self.app.geometry('720x760' if self.recording_open else '720x500')
+        self.app.geometry('720x850' if self.recording_open else '720x620')
 
     def select_seat(self, _event=None):
         if self._syncing_seat_table:
@@ -322,7 +335,8 @@ class CompactPanel(tk.Frame):
         else:
             self.simple_label.pack_forget()
             self.hole_button.pack(side=tk.LEFT, padx=3)
-        self.peek_button.state(['!disabled'] if not simple or plan.mode == 'peek_wait' else ['disabled'])
+        self.peek_button.pack_forget()  # The fixed phase action owns this command.
+        self.render_flow()
         self.recording_hint.set(inactive or
                                (('录入已暂停 · ' if plan and plan.input_paused else '录入 ') + self.app.var_target.get()
                                 + '  ·  Ctrl+1–7 切玩家  Ctrl+0 庄家  Tab 下一位  Shift+Tab 上一位'))
@@ -333,6 +347,44 @@ class CompactPanel(tk.Frame):
             self.detail_text.delete('1.0', tk.END)
             self.detail_text.insert('1.0', panel.text.get('1.0', 'end-1c'))
             self.detail_text.configure(state=tk.DISABLED)
+
+    def render_flow(self):
+        flow = self.flow = current_flow(self.app.ctrl)
+        self.flow_message.set(flow.message if flow.stage != 'player' else
+                              self.app.var_legal.get().replace('\n', '；') or flow.message)
+        commands = {'review': self.app.show_workbench, 'start': self.app.act_new_round,
+                    'resume': self.app._key_pause, 'peek': self.app.act_peek_negative,
+                    'next': lambda rid=flow.round_id: self.app.act_complete_and_next(rid)}
+        if flow.command:
+            self.flow_primary.configure(text=flow.label, command=commands[flow.command])
+            self.flow_primary.grid()
+        else:
+            self.flow_primary.grid_remove()
+        (self.only_settle.grid if flow.stage == 'ready' else self.only_settle.grid_remove)()
+        for button in self.action_buttons:
+            if flow.stage == 'player':
+                if not button.winfo_manager():
+                    button.pack(side=tk.LEFT, padx=2)
+            else:
+                button.pack_forget()
+        seg = self.app._current_seg()
+        results = seg.settlements if seg else []
+        self.last_settlement = [r for r in results if r['round'] == results[-1]['round']] if results else []
+        if self.last_settlement:
+            total = sum(r['net_units'] for r in self.last_settlement)
+            self.settlement_link.configure(text=f"第{self.last_settlement[0]['round']}轮已结算 · 合计 {total:+g} 单位 · 查看")
+            self.settlement_link.grid()
+        else:
+            self.settlement_link.grid_remove()
+
+    def show_settlement(self):
+        if not self.last_settlement:
+            return
+        win = tk.Toplevel(self.app)
+        win.title('已结算记录 · 确定性输赢，非EV')
+        text = '\n'.join(f"{r['seat']} {r['hand_id']}：{r['result']}，{r['net_units']:+g} 单位" for r in self.last_settlement)
+        ttk.Label(win, text=text, padding=16).pack()
+        ttk.Button(win, text='关闭', command=win.destroy).pack(pady=8)
 
     def show_details(self):
         if self.detail_window and self.detail_window.winfo_exists():
