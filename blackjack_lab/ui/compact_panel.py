@@ -42,6 +42,10 @@ class CompactPanel(tk.Frame):
         self._label(top, variable=self.player_count, font=('Microsoft YaHei UI', 9)).grid(row=0, column=2)
         self.add_player = ttk.Button(top, text='+ 玩家', width=7, command=lambda: app.change_player_count(1))
         self.add_player.grid(row=0, column=3, padx=2)
+        self.opening_label = self._label(top, variable=app.var_opening_ev,
+                                        font=('Microsoft YaHei UI', 9, 'bold'), wrap=640, height=2, cursor='hand2')
+        self.opening_label.grid(row=1, column=0, columnspan=4, sticky='w', pady=(4, 0))
+        self.opening_label.bind('<Button-1>', lambda event: app.opening_estimate.show_details())
         self.identity_label = self._label(self, variable=self.identity, font=('Microsoft YaHei UI', 12, 'bold'), wrap=640, height=2)
         self.identity_label.grid(row=1, column=0, sticky='ew', pady=(6, 6))
         selectors = ttk.Frame(self)

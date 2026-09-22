@@ -132,6 +132,7 @@ class BlackjackLabApp(tk.Tk):
         self.var_simple_hole = tk.BooleanVar(value=False)
         self.var_suit = tk.StringVar(value="未知")
         self.var_status = tk.StringVar(value="就绪：请先选择牌副数并新建牌靴")
+        self.var_opening_ev = tk.StringVar(value='下轮EV：尚无可用牌盒')
         self.rule_details = {}
         self._load_common_settings()
         self.var_participants = {name: tk.BooleanVar(value=name == "玩家1") for name in SEAT_NAMES[1:]}
@@ -164,6 +165,8 @@ class BlackjackLabApp(tk.Tk):
         self._restore_plan_identity()
         self.refresh_all()
         self.experiment_window = None
+        from .opening_estimate import OpeningEstimateView
+        self.opening_estimate = OpeningEstimateView(self)
 
     # ============================================================
     # 界面构建
@@ -1407,6 +1410,8 @@ class BlackjackLabApp(tk.Tk):
             self.set_status(warning)
         if hasattr(self, 'compact_panel'):
             self.compact_panel.render()
+        if hasattr(self, 'opening_estimate'):
+            self.opening_estimate.refresh()
 
     def recording_inactive_message(self) -> Optional[str]:
         """Derive the prompt from replay, so undo/recovery cannot retain an ended target."""
@@ -1657,6 +1662,8 @@ class BlackjackLabApp(tk.Tk):
         return status
 
     def on_close(self):
+        if hasattr(self, 'opening_estimate'):
+            self.opening_estimate.close()
         self.window_layout.close()
         if self._key_binder is not None:
             self._key_binder.close()
