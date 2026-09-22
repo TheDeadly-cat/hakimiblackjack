@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from blackjack_lab.ui.app import BlackjackLabApp
+from blackjack_lab.core.rules import RuleProfile
 
 
 class TestUIWorkflow(unittest.TestCase):
@@ -23,6 +24,9 @@ class TestUIWorkflow(unittest.TestCase):
             context.start()
             self.addCleanup(context.stop)
         self.app = BlackjackLabApp(self.db, auto_analysis=False)
+        # These regressions exercise the original unknown-rule/manual workflow.
+        self.app._set_rule_form(RuleProfile(n_decks=8, dealer_soft17='S17'))
+        self.app.var_simple_hole.set(False)
         self.addCleanup(self.close_app)
         self.app.update()
 

@@ -123,5 +123,5 @@ class TestWindowLayout(unittest.TestCase):
         self.size()
         self.app.window_layout.save()
         self.assertEqual(path.read_text(encoding='utf-8'), invalid)
-        self.assertFalse(self.app.var_simple_hole.get())
+        self.assertTrue(self.app.var_simple_hole.get())
         self.assertIsNone(self.app.ctrl.state().current)

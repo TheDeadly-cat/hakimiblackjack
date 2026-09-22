@@ -88,6 +88,8 @@ class HandInstance:
         t, soft = self.total()
         ttxt = "点数未知" if t is None else f"{'软' if soft else ''}{t}"
         tags = []
+        if self.is_bust:
+            tags.append("已爆牌")
         if self.doubled:
             tags.append("已加倍")
         if self.surrendered:
