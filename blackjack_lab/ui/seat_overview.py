@@ -26,8 +26,10 @@ class SeatOverview:
         if seg is None or len(seg.table.participants) < 2:
             return True
         for seat in seg.table.participants:
-            cards = ' / '.join(' '.join(c.rank for c in h.cards) for h in seg.table.players[seat].hands)
-            row = self.rows[seat] = dict(cards=cards or '待发牌', state='待计算', result=None, snapshot=None)
+            hands = seg.table.players[seat].hands
+            cards = ' / '.join(' '.join(c.rank for c in h.cards) + ('（已爆牌）' if h.is_bust else '') for h in hands)
+            row = self.rows[seat] = dict(cards=cards or '待发牌', state='待计算', result=None, snapshot=None,
+                                        busted=bool(hands) and all(h.is_bust for h in hands))
             try:
                 row['snapshot'] = self.app.ctrl.analysis_input(seat, other_players_stand=True)
             except InputUnavailable as error:

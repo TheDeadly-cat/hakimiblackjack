@@ -41,6 +41,7 @@ from .controller import SessionController
 from .analysis_panel import AnalysisPanel
 from .compact_panel import CompactPanel
 from .window_layout import WindowLayout
+from .automatic_flow import dealer_finish_message
 from .deal_entry import (
     MODE_CONTINUATION, MODE_DEALER, MODE_INITIAL, MODE_MANUAL, MODE_PEEK_WAIT, MODE_UNALIGNED,
     dealer_up_requires_peek, next_open_hand,
@@ -114,7 +115,7 @@ class BlackjackLabApp(tk.Tk):
 
         # 变量
         self.var_decks = tk.IntVar(value=8)
-        self.var_s17 = tk.StringVar(value="未知")
+        self.var_s17 = tk.StringVar(value="S17")
         self.var_bjp = tk.StringVar(value="3:2")
         self.var_split_match = tk.StringVar(value="same_rank")
         self.var_das = tk.StringVar(value="未知")
@@ -297,13 +298,15 @@ class BlackjackLabApp(tk.Tk):
 
         card_box = ttk.LabelFrame(left, text="牌面（点击录入；T=10点未细分）")
         card_box.pack(fill=tk.X, padx=4, pady=3)
+        self.workbench_card_buttons = []
         for i, r in enumerate(CARD_BUTTONS):
-            ttk.Button(card_box, text=r, width=3, style="Card.TButton",
-                       command=lambda x=r: self.act_card(x)
-                       ).grid(row=i // 5, column=i % 5, padx=2, pady=2)
-        ttk.Button(card_box, text="T 未细分", width=8,
-                   command=lambda: self.act_card(TEN_BUCKET)
-                   ).grid(row=3, column=0, columnspan=2, sticky="we", padx=2)
+            button = ttk.Button(card_box, text=r, width=3, style="Card.TButton",
+                                command=lambda x=r: self.act_card(x))
+            button.grid(row=i // 5, column=i % 5, padx=2, pady=2)
+            self.workbench_card_buttons.append(button)
+        button = ttk.Button(card_box, text="T 未细分", width=8, command=lambda: self.act_card(TEN_BUCKET))
+        button.grid(row=3, column=0, columnspan=2, sticky="we", padx=2)
+        self.workbench_card_buttons.append(button)
         ttk.Button(card_box, text="未知牌面", width=8,
                    command=self.act_unknown_card
                    ).grid(row=3, column=2, columnspan=3, sticky="we", padx=2)
@@ -1178,6 +1181,10 @@ class BlackjackLabApp(tk.Tk):
     def act_card(self, rank: str) -> None:
         try:
             self._ensure_recording_enabled(card=True)
+            finished = self.dealer_recording_finished()
+            if finished:
+                self.set_status(finished + '；请确认本轮完整后结算，或使用改牌纠正记录。')
+                return
             seg = self._current_seg()
             if seg is None:
                 raise LedgerError("请先新建牌靴")
@@ -1402,6 +1409,12 @@ class BlackjackLabApp(tk.Tk):
             return f"本轮{seg.table.phase}；点击“新开一轮”继续同一牌靴。"
         return None
 
+    def dealer_recording_finished(self):
+        if self.var_target.get() != DEALER or self.var_mode.get() == '揭示':
+            return ''
+        seg = self._current_seg()
+        return dealer_finish_message(seg.table) if seg and not seg.closed else ''
+
     def refresh_entry_prompt(self) -> None:
         inactive = self.recording_inactive_message()
         if inactive:
@@ -1410,6 +1423,10 @@ class BlackjackLabApp(tk.Tk):
         plan = self.ctrl.entry_plan
         if plan is None:
             self.var_entry_prompt.set("尚未冻结本轮发牌计划。确认参与座位和本人座位后开新一轮。")
+            return
+        finished = self.dealer_recording_finished()
+        if finished and not plan.paused and not plan.input_paused:
+            self.var_entry_prompt.set(finished + '；无需再录入庄家牌。\n确认本轮记录完整后结算。')
             return
         recording = self.var_target.get()
         if plan.mode == MODE_CONTINUATION:
@@ -1497,7 +1514,8 @@ class BlackjackLabApp(tk.Tk):
             return
         d = seg.table.dealer
         self.lbl_dealer.configure(
-            text="\n".join(h.display() for h in d.hands) or "（本轮未发牌）")
+            text=('\n'.join(h.display() for h in d.hands) or '（本轮未发牌）')
+                 + ('\n' + dealer_finish_message(seg.table) if dealer_finish_message(seg.table) else ''))
         for name, lbl in self.seat_labels.items():
             seat = seg.table.players.get(name)
             if seat is None:
@@ -1519,6 +1537,9 @@ class BlackjackLabApp(tk.Tk):
             seg = self._current_seg()
         if hasattr(self, "analysis_panel"):
             self.analysis_panel.on_context(seg)
+        stopped = bool(self.dealer_recording_finished())
+        for button in self.workbench_card_buttons:
+            button.state(['disabled'] if stopped else ['!disabled'])
         for button in (self.btn_stand, self.btn_double, self.btn_split, self.btn_surr):
             button.state(["disabled"])
         if seg is None:

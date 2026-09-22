@@ -60,6 +60,8 @@ python -m blackjack_lab.main
 
 两手规则、不可变输入、独立参考和预定性能门槛见 [V0.2b1 数学与性能契约](docs/V0.2b1数学与性能契约.md) 与 [V0.2b2 DAS 契约](docs/V0.2b2-DAS契约.md)。DAS 验收命令见 [V0.2b2 验收与交付](docs/V0.2b2-验收与交付.md)。原单手定义仍见 [V0.2a 数学契约](docs/V0.2a数学契约.md)，完整路线见 [调整版r1](docs/planning/开发大纲调整版-r1-20260910.md)。
 
+庄家新靴默认S17（含软17）：牌面完整且到停牌点后显示“已自动停牌”，停止继续录庄家牌。玩家超过21点会显示“已爆牌”，录入位置自动转到下一位；分牌先转本人的下一手。撤销或改牌会重新判断。详见 [自动停牌与爆牌切换](docs/Automatic-terminal-flow-20260923.md)。
+
 ## 记录、保存与恢复
 
 - 默认数据库 `data/blackjack_lab.db`；分析旁路目录为 `data/blackjack_lab.db.analysis/`。也可使用 `python -m blackjack_lab.main --db "D:\Records\lab.db"` 指定其他文件。

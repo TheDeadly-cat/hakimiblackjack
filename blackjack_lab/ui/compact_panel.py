@@ -4,11 +4,13 @@ from dataclasses import replace
 from tkinter import ttk
 
 from ..analysis.decision_summary import DecisionSummary, summarize_result, hand_text, input_identity
-from ..core.table import DEALER, ACTION_DOUBLE, ACTION_SPLIT, ACTION_STAND, ACTION_SURRENDER
+from ..core.table import (DEALER, ACTION_DOUBLE, ACTION_SPLIT, ACTION_STAND, ACTION_SURRENDER,
+                          PHASE_DEALING, PHASE_IN_PROGRESS)
 from ..ledger.events import FACE_HIDDEN
 from ..analysis.seat_scenario import NOTE
 from .daily_flow import current_flow
 from .recent_entry import recent_visible, undo_label
+from .automatic_flow import dealer_finish_message
 
 PALETTE = dict(background='#F3F6F8', surface='#FFFFFF', ink='#173A45', accent='#187365',
                caution='#935213', error='#AD3030', muted='#52636B')
@@ -228,6 +230,8 @@ class CompactPanel(tk.Frame):
                     state = row['state']
                 if seat == self.app.var_analysis_target.get() and self.panel.request_id and not self.panel.last_result:
                     state = '计算中'
+                if row.get('busted'):
+                    choices, state = (), '已爆牌'
                 values = (seat, row['cards'], choice_text(0), choice_text(1),
                           f'{choices[0].ev:+.4f}' if choices else '—', state)
                 if self.seat_table.exists(seat):
@@ -254,13 +258,16 @@ class CompactPanel(tk.Frame):
             total, soft = dealer[0].total()
             score = '点数待确认' if total is None else f"{'软' if soft else ''}{total}点"
             dealer_text = f"庄家 {' '.join(labels)} · {score}"
+            if dealer_finish_message(seg.table):
+                dealer_text += ' · ' + ('已爆牌' if dealer[0].is_bust else '已自动停牌')
         hands = seg.table.seat(seat).hands if seat in seg.table.players else []
         selected = self.app._analysis_hand_id(seg)
         index = next((i for i, h in enumerate(hands) if h.hand_id == selected), None)
         hand = hands[index] if index is not None else None
         if self.panel.current_input:
             return input_identity(self.panel.current_input.to_dict(), dealer_text)
-        return f'{dealer_text}    |    {seat} · ' + (f'第{index + 1}手  {hand_text(c.rank for c in hand.cards)}' if hand else '尚未录牌')
+        return f'{dealer_text}    |    {seat} · ' + (f'第{index + 1}手  {hand_text(c.rank for c in hand.cards)}'
+                + (' · 已爆牌' if hand.is_bust else '') if hand else '尚未录牌')
 
     def pending_summary(self):
         panel, app = self.panel, self.app
@@ -307,6 +314,13 @@ class CompactPanel(tk.Frame):
         self.model = summarize_result(panel.last_result, bool(panel.recomputed_from)) if panel.last_result else self.pending_summary()
         if not self.model.historical:
             self.model = replace(self.model, identity=self.live_identity())
+            current = self.app._current_seg()
+            seat = self.app.var_analysis_target.get()
+            hands = current.table.players[seat].hands if current and seat in current.table.players else []
+            if (hands and not current.closed and current.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS)
+                    and all(h.is_bust for h in hands)):
+                self.model = replace(self.model, state='已爆牌', choices=(),
+                    message=f'{seat}已爆牌，当前发牌给{self.app.var_target.get()}。')
         model = self.model
         self.identity.set(model.identity)
         self.state.set(model.state)
@@ -374,6 +388,9 @@ class CompactPanel(tk.Frame):
         self.peek_button.pack_forget()  # The fixed phase action owns this command.
         self.render_flow()
         self.render_recent()
+        stopped = bool(self.app.dealer_recording_finished())
+        for button in self.card_buttons:
+            button.state(['disabled'] if stopped else ['!disabled'])
         if self.editor_open:
             self.editor.lift()
         self.recording_hint.set(inactive or
@@ -466,8 +483,8 @@ class CompactPanel(tk.Frame):
 
     def render_flow(self):
         flow = self.flow = current_flow(self.app.ctrl, self.app._current_seg())
-        self.flow_message.set(flow.message if flow.stage != 'player' else
-                              self.app.var_legal.get().replace('\n', '；') or flow.message)
+        message = flow.message if flow.stage != 'player' else self.app.var_legal.get().replace('\n', '；') or flow.message
+        self.flow_message.set(flow.notice + message)
         commands = {'review': self.app.show_workbench, 'start': self.app.act_new_round,
                     'resume': self.app._key_pause, 'peek': self.app.act_peek_negative,
                     'next': lambda rid=flow.round_id: self.app.act_complete_and_next(rid)}
