@@ -144,6 +144,12 @@ class CompactPanel(tk.Frame):
         app = self.app
         self.record_prompt = ttk.Label(self.drawer, textvariable=app.var_entry_prompt, wraplength=650)
         self.record_prompt.pack(anchor='w')
+        preset = ttk.Frame(self.drawer)
+        preset.pack(fill=tk.X, pady=3)
+        self.common_settings_button = ttk.Button(preset, text='一键常用设置', command=app.act_common_settings)
+        self.common_settings_button.pack(side=tk.LEFT)
+        ttk.Label(preset, text='8副 / S17 / 同值分牌 / 晚投降 / 允许加倍 / 简便暗牌',
+                  wraplength=495).pack(side=tk.LEFT, padx=6)
         modes = ttk.Frame(self.drawer)
         modes.pack(fill=tk.X, pady=3)
         self.manual_modes = []
@@ -485,7 +491,7 @@ class CompactPanel(tk.Frame):
         flow = self.flow = current_flow(self.app.ctrl, self.app._current_seg())
         message = flow.message if flow.stage != 'player' else self.app.var_legal.get().replace('\n', '；') or flow.message
         self.flow_message.set(flow.notice + message)
-        commands = {'review': self.app.show_workbench, 'start': self.app.act_new_round,
+        commands = {'review': self.app.show_workbench, 'new_shoe': self.app.act_new_shoe, 'start': self.app.act_new_round,
                     'resume': self.app._key_pause, 'peek': self.app.act_peek_negative,
                     'next': lambda rid=flow.round_id: self.app.act_complete_and_next(rid)}
         if flow.command:

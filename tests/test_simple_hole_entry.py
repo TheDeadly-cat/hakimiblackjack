@@ -358,7 +358,7 @@ class TestSimpleHoleEntry(unittest.TestCase):
         path.write_text(json.dumps(upgraded), encoding='utf-8')
         self.assertEqual(self.recover().entry_plan.mode, MODE_UNALIGNED)
 
-    def test_mode_is_opt_in_and_buttons_hide_only_in_normal_simple_flow(self):
+    def test_manual_mode_can_confirm_simple_mode_and_only_hide_buttons_in_normal_flow(self):
         self.assertFalse(self.app.var_simple_hole.get())
         self.app.var_simple_hole.set(True)
         with patch('blackjack_lab.ui.app.messagebox.askyesno', return_value=False):

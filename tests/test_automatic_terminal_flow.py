@@ -3,7 +3,7 @@ from dataclasses import replace
 
 from tests import test_simple_hole_entry as fixture
 from blackjack_lab.core.table import ACTION_SPLIT, TableError, TableState
-from blackjack_lab.core.rules import CONFIRM_UNKNOWN
+from blackjack_lab.core.rules import CONFIRM_VERIFIED
 from blackjack_lab.analysis.contracts import research_rules
 from blackjack_lab.ui.app import BlackjackLabApp
 from blackjack_lab.ui.automatic_flow import dealer_finish_message
@@ -28,9 +28,9 @@ class TestAutomaticTerminalFlow(unittest.TestCase):
         self.assertEqual(app.var_target.get(), '庄家')
         self.assertEqual(self.errors, [])
 
-    def test_default_rule_selection_is_s17_without_confirming_all_other_rules(self):
+    def test_default_rule_selection_uses_the_user_requested_s17_preset(self):
         self.assertEqual(self.app.var_s17.get(), 'S17')
-        self.assertEqual(self.app.var_confirm.get(), CONFIRM_UNKNOWN)
+        self.assertEqual(self.app.var_confirm.get(), CONFIRM_VERIFIED)
 
     def test_player_bust_marks_rows_and_moves_to_next_player_then_dealer(self):
         self.initial(players=3)

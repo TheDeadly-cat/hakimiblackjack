@@ -133,6 +133,7 @@ class BlackjackLabApp(tk.Tk):
         self.var_suit = tk.StringVar(value="未知")
         self.var_status = tk.StringVar(value="就绪：请先选择牌副数并新建牌靴")
         self.rule_details = {}
+        self._load_common_settings()
         self.var_participants = {name: tk.BooleanVar(value=name == "玩家1") for name in SEAT_NAMES[1:]}
         self._hand_ids = {}
         self._analysis_hand_ids = {}
@@ -230,6 +231,8 @@ class BlackjackLabApp(tk.Tk):
                    command=self.act_rule_details).grid(row=0, column=3, padx=6)
         template_button = ttk.Menubutton(bar, text="研究模板（新靴用）")
         template_menu = tk.Menu(template_button, tearoff=False)
+        template_menu.add_command(label="一键常用设置（含简便暗牌）", command=self.act_common_settings)
+        template_menu.add_separator()
         template_menu.add_command(label="V0.2a 原单手分析模板（四手录牌规则）", command=self.act_research_template)
         template_menu.add_command(label="V0.2b1 两手顺序分牌模板", command=lambda: self.act_research_template(split=True))
         template_menu.add_command(label="V0.2b2 两手顺序分牌DAS模板", command=lambda: self.act_research_template(das=True))
@@ -762,41 +765,50 @@ class BlackjackLabApp(tk.Tk):
     # ============================================================
     # 动作
     # ============================================================
+    def _set_rule_form(self, rules):
+        self.var_decks.set(rules.n_decks)
+        self.var_s17.set(rules.dealer_soft17 or '未知')
+        self.var_bjp.set(':'.join(map(str, rules.blackjack_payout)) if rules.blackjack_payout else '未知')
+        self.var_split_match.set('same_value 同点值' if rules.split_match == 'same_value' else 'same_rank 同牌面')
+        self.var_das.set({True: '允许', False: '禁止', None: '未知'}[rules.double_after_split])
+        self.var_surrender.set(rules.surrender or '不支持')
+        self.var_confirm.set(rules.confirm_status)
+        excluded = {'n_decks', 'dealer_soft17', 'blackjack_payout', 'split_match', 'double_after_split', 'surrender', 'confirm_status'}
+        self.rule_details = {k: v for k, v in asdict(rules).items() if k not in excluded}
+
+    def _load_common_settings(self):
+        # A user-selected local preset, never a fallback for imported unknown rules.
+        rules = same_value_das_research_rules(8)
+        rules.vendor = '本机常用设置'
+        rules.rule_source = '用户指定S17/同值分牌/晚投降/允许加倍；其余沿用本机研究模板'
+        self._set_rule_form(rules)
+        self.var_simple_hole.set(True)
+        self.var_status.set('常用设置已就绪：8副 / S17 / 同值分牌 / 晚投降 / 允许加倍（含非A分后加倍）/ 简便暗牌。')
+
+    @tracked_operation
+    def act_common_settings(self):
+        self._load_common_settings()
+        self.set_status(self.var_status.get() + '\n新牌盒使用这套桌规；简便暗牌从下一轮生效，当前已录牌局保持原设置。')
+        self.compact_panel.render()
+
     @tracked_operation
     def act_research_template(self, split=False, das=False, same_value=False):
         if das and same_value:
             rules = same_value_das_research_rules(self.var_decks.get())
-            das_choice = "允许"
-            match = "same_value 同点值"
             scope = "同点值配对（含T/T）；两手顺序分牌，非A允许DAS。"
         elif split and same_value:
             rules = same_value_split_research_rules(self.var_decks.get())
-            das_choice = "禁止"
-            match = "same_value 同点值"
             scope = "同点值配对（含T/T）；两手顺序分牌，无DAS。"
         elif das:
             rules = das_research_rules(self.var_decks.get())
-            das_choice = "允许"
-            match = "same_rank 同牌面"
             scope = "两手顺序分牌，首手完成后才给第二手补牌；非A允许DAS/无再分/分A一张。"
         elif split:
             rules = split_research_rules(self.var_decks.get())
-            das_choice = "禁止"
-            match = "same_rank 同牌面"
             scope = "两手顺序分牌，首手完成后才给第二手补牌；无DAS/无再分/分A一张。"
         else:
             rules = research_rules(self.var_decks.get())
-            das_choice = "禁止"
-            match = "same_rank 同牌面"
             scope = "原单手分析，保留四手录牌规则。"
-        self.var_s17.set("S17")
-        self.var_bjp.set("3:2")
-        self.var_split_match.set(match)
-        self.var_das.set(das_choice)
-        self.var_surrender.set("late")
-        self.var_confirm.set(CONFIRM_VERIFIED)
-        excluded = {"n_decks", "dealer_soft17", "blackjack_payout", "split_match", "double_after_split", "surrender", "confirm_status"}
-        self.rule_details = {k: v for k, v in asdict(rules).items() if k not in excluded}
+        self._set_rule_form(rules)
         self.set_status("已载入自建研究模板（非平台桌规）：" + scope + "请新建牌靴使用；当前规则快照不变。")
 
     def act_experiments(self):

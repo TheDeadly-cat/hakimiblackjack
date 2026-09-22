@@ -19,7 +19,7 @@ class FlowState:
 def current_flow(ctrl, seg=None):
     seg, plan = seg or ctrl.state().current, ctrl.entry_plan
     if seg is None or seg.closed:
-        return FlowState('setup', '确认本桌设置，或在工作台恢复记录。', '开始／恢复记录', 'review')
+        return FlowState('setup', '按设置新建牌盒，再开始本轮；可在录牌设置中一键恢复常用设置。', '新建牌盒', 'new_shoe')
     if seg.table.phase not in (PHASE_DEALING, PHASE_IN_PROGRESS):
         return FlowState('start', '开始下一轮会继续使用当前牌靴；换靴请到设置单独确认。', '开始本轮', 'start')
     if seg.shoe.gap or seg.shoe.pending_candidates:
