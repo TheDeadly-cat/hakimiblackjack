@@ -305,7 +305,9 @@ class AnalysisPanel(ttk.Frame):
         except Exception as error:
             self.persistence.set("计算已完成，但快照未保存：" + str(error) + "；可重试保存，牌面记录未受影响")
 
-    def cancel(self):
+    def cancel(self, cancel_opening=True):
+        if cancel_opening and hasattr(self.app, 'opening_estimate'):
+            self.app.opening_estimate.cancel()
         self.request_snapshot = None
         self._cancel_auto()
         self._auto_suppressed_key = self._live_key()
@@ -319,7 +321,7 @@ class AnalysisPanel(ttk.Frame):
         self._set_text("")
 
     def return_to_current(self):
-        self.cancel()
+        self.cancel(cancel_opening=False)
         self._auto_suppressed_key = None
         self.context_key = None
         self.on_context(self.app._current_seg())

@@ -1,4 +1,4 @@
-// Exact shared-shoe solver. Managed acceleration; no sampling or probability truncation.
+// Exact hand solver, plus a separately identified pre-deal Monte Carlo mode.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -603,8 +603,184 @@ class SplitEngine {
     static int Main() {
         var serializer=new JavaScriptSerializer();SplitEngine engine=null;
         try {var input=(Dictionary<string,object>)serializer.DeserializeObject(Console.In.ReadToEnd());
+            if(input.ContainsKey("kind")) {
+                if((string)input["kind"]!="opening-monte-carlo-v1") throw new ArgumentException("UNKNOWN_KIND");
+                Console.WriteLine(serializer.Serialize(new OpeningEstimate(input).Run()));return 0;
+            }
             engine=new SplitEngine(Convert.ToInt32(input["dealer_up"]),(bool)input["peek_negative"],(bool)input["split_aces"],Convert.ToDouble(input["budget_seconds"]));
             Console.WriteLine(serializer.Serialize(engine.Solve(input)));return 0;
         } catch(Exception error){Console.WriteLine(serializer.Serialize(new Dictionary<string,object>{{"status","failed"},{"error",error.Message},{"nodes",engine==null?0:engine.nodes},{"elapsed_seconds",engine==null?0:engine.watch.Elapsed.TotalSeconds}}));return 1;}
+    }
+}
+
+// A fixed, composition-dependent policy is constructed before sampling. Its
+// action values use replacement draws; evaluation below uses actual finite,
+// without-replacement draws, including all other seats and the same dealer.
+// This estimates that declared policy, not finite-shoe optimal play.
+class OpeningEstimate {
+    const int Stand=0, Hit=1, Double=2, Surrender=3, Split=4;
+    readonly int[] original=new int[10], counts=new int[10];
+    readonly double[] p=new double[10];
+    readonly D7[] dealers=new D7[11];
+    readonly D7[,] dealerMemo=new D7[32,2];
+    readonly bool[,] dealerSeen=new bool[32,2];
+    readonly double[,,] best=new double[11,32,2], hit=new double[11,32,2], dbl=new double[11,32,2];
+    readonly bool[,,] bestSeen=new bool[11,32,2];
+    readonly int[,,] firstChoice=new int[11,11,11];
+    readonly Random random;
+    readonly int samples, seed, seats, focal, size;
+    readonly bool das, surrender;
+    readonly double budget;
+    readonly Stopwatch watch=Stopwatch.StartNew();
+    int left;
+    struct Hand {
+        public int Hard, Stake; public bool Ace;
+        public int Score { get { return OpeningEstimate.Score(Hard,Ace); } }
+        public void Add(int value) { Hard+=value; Ace|=value==1; }
+    }
+    static int Score(int hard,bool ace) { return ace&&hard<=11?hard+10:hard; }
+    static int StrictInt(object value) { if(!(value is int))throw new ArgumentException("INTEGER_REQUIRED");return (int)value; }
+    static bool StrictBool(object value) { if(!(value is bool))throw new ArgumentException("BOOLEAN_REQUIRED");return (bool)value; }
+    public OpeningEstimate(Dictionary<string,object> input) {
+        var values=(object[])input["counts"];
+        if(values.Length!=10)throw new ArgumentException("COUNT_LENGTH");
+        int sum=0;
+        for(int i=0;i<10;i++) {
+            original[i]=StrictInt(values[i]);
+            if(original[i]<0||original[i]>(i==9?128:32))throw new ArgumentException("COUNT_RANGE");
+            sum+=original[i];
+        }
+        size=sum; samples=StrictInt(input["samples"]);seed=StrictInt(input["seed"]);
+        seats=StrictInt(input["seats"]);focal=StrictInt(input["focal"]);
+        das=StrictBool(input["das"]);surrender=StrictBool(input["surrender"]);
+        budget=Convert.ToDouble(input["budget_seconds"]);
+        if(samples<2||samples>4000000||seed<0||seats<1||seats>7||focal<0||focal>=seats
+           ||double.IsNaN(budget)||double.IsInfinity(budget)||budget<=0||budget>30)
+            throw new ArgumentException("OPENING_INPUT");
+        if(size<2*seats+2)throw new InvalidOperationException("INSUFFICIENT_CARDS");
+        for(int i=0;i<10;i++)p[i]=(double)original[i]/size;
+        random=new Random(seed);
+        for(int up=1;up<=10;up++) {
+            double mass=1-(up==1?p[9]:up==10?p[0]:0);
+            if(mass<=0) { var certain=new D7();certain.B=1;dealers[up]=certain; }
+            else {
+                D7 result=new D7();
+                for(int v=1;v<=10;v++) {
+                    if((up==1&&v==10)||(up==10&&v==1))continue;
+                    if(p[v-1]>0)result.Add(Dealer(up+v,up==1||v==1),p[v-1]/mass);
+                }
+                dealers[up]=result;
+            }
+            for(int a=1;a<=10;a++)for(int b=1;b<=10;b++)firstChoice[up,a,b]=Initial(up,a,b);
+        }
+    }
+    D7 Dealer(int hard,bool ace) {
+        int score=Score(hard,ace);
+        if(score>=17) { D7 end=new D7();end.End(score,1);return end; }
+        int ai=ace?1:0;
+        if(dealerSeen[hard,ai])return dealerMemo[hard,ai];
+        D7 result=new D7();
+        for(int v=1;v<=10;v++)if(p[v-1]>0)result.Add(Dealer(hard+v,ace||v==1),p[v-1]);
+        dealerSeen[hard,ai]=true;dealerMemo[hard,ai]=result;return result;
+    }
+    double Best(int up,int hard,bool ace) {
+        int score=Score(hard,ace);
+        if(score>=21)return dealers[up].Value(score);
+        int ai=ace?1:0;
+        if(bestSeen[up,hard,ai])return best[up,hard,ai];
+        double h=0,d=0;
+        for(int v=1;v<=10;v++)if(p[v-1]>0) {
+            h+=p[v-1]*Best(up,hard+v,ace||v==1);
+            d+=2*p[v-1]*dealers[up].Value(Score(hard+v,ace||v==1));
+        }
+        hit[up,hard,ai]=h;dbl[up,hard,ai]=d;
+        best[up,hard,ai]=Math.Max(dealers[up].Value(score),h);
+        bestSeen[up,hard,ai]=true;return best[up,hard,ai];
+    }
+    double TwoCardValue(int up,int a,int b,bool allowDouble) {
+        int hard=a+b;bool ace=a==1||b==1;int ai=ace?1:0;
+        double value=Best(up,hard,ace);
+        if(allowDouble&&Score(hard,ace)<21)value=Math.Max(value,dbl[up,hard,ai]);
+        return value;
+    }
+    int Choose(int up,int hard,bool ace,bool allowDouble,bool allowSurrender) {
+        int score=Score(hard,ace),ai=ace?1:0;
+        if(score>=21)return Stand;
+        Best(up,hard,ace);
+        double value=dealers[up].Value(score);int action=Stand;
+        if(hit[up,hard,ai]>value+1e-12){value=hit[up,hard,ai];action=Hit;}
+        if(allowDouble&&dbl[up,hard,ai]>value+1e-12){value=dbl[up,hard,ai];action=Double;}
+        if(allowSurrender&&-0.5>value+1e-12)action=Surrender;
+        return action;
+    }
+    int Initial(int up,int a,int b) {
+        int action=Choose(up,a+b,a==1||b==1,true,surrender);
+        if(a!=b||Score(a+b,a==1||b==1)>=21)return action;
+        double value=TwoCardValue(up,a,b,true);
+        if(surrender)value=Math.Max(value,-0.5);
+        double split=0;
+        for(int v=1;v<=10;v++)if(p[v-1]>0)
+            split+=2*p[v-1]*(a==1?dealers[up].Value(Score(a+v,true)):TwoCardValue(up,a,v,das));
+        return split>value+1e-12?Split:action;
+    }
+    int Draw() {
+        if(left<=0)throw new InvalidOperationException("INSUFFICIENT_CARDS");
+        int ticket=random.Next(left);
+        for(int i=0;i<10;i++) {
+            if(ticket<counts[i]){counts[i]--;left--;return i+1;}
+            ticket-=counts[i];
+        }
+        throw new InvalidOperationException("DRAW_INCONSISTENT");
+    }
+    Hand Play(int up,int a,int b,bool splitHand,int initialAction) {
+        Hand h=new Hand { Hard=a+b,Ace=a==1||b==1,Stake=1 };
+        if(splitHand&&a==1)return h; // Split aces get exactly one new card.
+        int action=splitHand?Choose(up,h.Hard,h.Ace,das,false):initialAction;
+        if(action==Double){h.Stake=2;h.Add(Draw());return h;}
+        while(action==Hit&&h.Score<21) {
+            h.Add(Draw());
+            action=Choose(up,h.Hard,h.Ace,false,false);
+        }
+        return h;
+    }
+    double Pay(Hand hand,int dealerScore) {
+        if(hand.Score>21)return -hand.Stake;
+        return dealerScore>21||hand.Score>dealerScore?hand.Stake:hand.Score<dealerScore?-hand.Stake:0;
+    }
+    double Round(int[] one,int[] two) {
+        Array.Copy(original,counts,10);left=size;
+        for(int s=0;s<seats;s++)one[s]=Draw();
+        int up=Draw();
+        for(int s=0;s<seats;s++)two[s]=Draw();
+        int hole=Draw();
+        bool natural=(one[focal]==1&&two[focal]==10)||(one[focal]==10&&two[focal]==1);
+        if((up==1&&hole==10)||(up==10&&hole==1))return natural?0:-1;
+        if(natural)return 1.5;
+        Hand first=new Hand(),second=new Hand();bool splitFocal=false;
+        for(int s=0;s<seats;s++) {
+            int a=one[s],b=two[s];
+            if((a==1&&b==10)||(a==10&&b==1))continue;
+            int action=firstChoice[up,a,b];
+            if(action==Surrender){if(s==focal)return -0.5;continue;}
+            Hand h1,h2=new Hand();bool split=action==Split;
+            if(split){h1=Play(up,a,Draw(),true,Stand);h2=Play(up,b,Draw(),true,Stand);}
+            else h1=Play(up,a,b,false,action);
+            if(s==focal){first=h1;second=h2;splitFocal=split;}
+        }
+        if(first.Score>21&&(!splitFocal||second.Score>21))return -first.Stake-(splitFocal?second.Stake:0);
+        int hard=up+hole;bool ace=up==1||hole==1;
+        while(Score(hard,ace)<17){int v=Draw();hard+=v;ace|=v==1;}
+        return Pay(first,Score(hard,ace))+(splitFocal?Pay(second,Score(hard,ace)):0);
+    }
+    public object Run() {
+        long[] histogram=new long[17];int[] one=new int[seats],two=new int[seats];
+        for(int i=0;i<samples;i++) {
+            if((i&1023)==0&&watch.Elapsed.TotalSeconds>budget)throw new TimeoutException("TIMEOUT");
+            double net=Round(one,two);int index=(int)Math.Round(net*2)+8;
+            if(index<0||index>=17||Math.Abs(net*2-Math.Round(net*2))>1e-12)throw new InvalidOperationException("NET_RANGE");
+            histogram[index]++;
+        }
+        return new Dictionary<string,object>{{"kind","opening-monte-carlo-v1"},{"status","available"},
+            {"samples",samples},{"seed",seed},{"histogram",histogram},{"elapsed_seconds",watch.Elapsed.TotalSeconds}};
     }
 }
