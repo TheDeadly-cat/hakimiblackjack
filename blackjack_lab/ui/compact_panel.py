@@ -324,7 +324,11 @@ class CompactPanel(tk.Frame):
         hand = f'／第{self.app._hand_ordinal(target)}手' if target != DEALER else ''
         self.heading.set(f'{decks}副牌 · ' + (inactive.split('；')[0] if inactive else f'当前发牌给：{target}{hand}'))
         count = sum(var.get() for var in self.app.var_participants.values())
-        self.player_count.set(f'下一轮 {count} 人')
+        from .round_players import first_pass_open
+        current_players = first_pass_open(self.app.ctrl, seg)
+        if current_players:
+            count = len(seg.table.participants)
+        self.player_count.set(f'{"本轮" if current_players else "下一轮"} {count} 人')
         self.add_player.state(['disabled'] if count >= 7 else ['!disabled'])
         self.remove_player.state(['disabled'] if count <= 1 else ['!disabled'])
         warning = model.partial or not model.choices

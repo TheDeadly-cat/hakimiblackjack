@@ -1115,17 +1115,53 @@ class BlackjackLabApp(tk.Tk):
         except Exception as e:
             self.fail(e)
 
+    @tracked_operation
     def change_player_count(self, delta):
-        selected = [name for name, var in self.var_participants.items() if var.get()]
-        if delta > 0:
-            target = next((name for name in self.var_participants if name not in selected), None)
-            if target:
-                self.var_participants[target].set(True)
-        elif len(selected) > 1:
-            target = next(name for name in reversed(selected) if name != self.var_my_seat.get())
-            self.var_participants[target].set(False)
-        self.set_status('参与座位已调整；点击“新开一轮”时生效，本轮已保存记录不变。')
-        self.compact_panel.render()
+        from .round_players import first_pass_open, preview_players, apply_players
+        seg = self._current_seg()
+        current = first_pass_open(self.ctrl, seg)
+        selected = list(seg.table.participants) if current else [name for name, var in self.var_participants.items() if var.get()]
+        selected = [name for name in self.var_participants if name in selected]
+        if delta > 0 and len(selected) < 7:
+            selected.append(next(name for name in self.var_participants if name not in selected))
+        elif delta < 0 and len(selected) > 1:
+            target = selected[-1] if current else next(name for name in reversed(selected) if name != self.var_my_seat.get())
+            selected.remove(target)
+        else:
+            return
+        try:
+            if current:
+                preview = preview_players(self.ctrl, selected)
+                changed_my_seat = preview.my_seat != self.ctrl.entry_plan.my_seat
+                if preview.moved or preview.add_hole or changed_my_seat:
+                    changes = [f'第{i}张 {rank}：{before} → {after}' for i, rank, before, after in preview.moved]
+                    if changed_my_seat:
+                        changes.append(f'原本人座位已移除，本人分析座位改为{preview.my_seat}。')
+                    if preview.add_hole:
+                        changes.append('初始可见牌已录齐：按简便暗牌约定登记一张未知底牌。')
+                    if not messagebox.askyesno('调整本轮人数',
+                            f'本轮改为 {len(selected)} 人，按已录入顺序继续发牌。\n\n' + '\n'.join(changes)
+                            + '\n\n确认这些牌的归属？取消则保持原记录。', parent=self):
+                        return
+                apply_players(self.ctrl, preview)
+                for name, var in self.var_participants.items():
+                    var.set(name in selected)
+                self._preferred_recording_hand_id = None
+                self.var_hand.set('（最新一手）')
+                self.var_analysis_hand.set('（按顺序行动手）')
+                self._restore_plan_identity()
+                self.set_status(f'本轮已改为 {len(selected)} 人；' +
+                    ('发牌位置需核对，请勿重复录入。' if self.ctrl.entry_plan.paused else '已录牌按原顺序保留，继续输入下一张。'))
+                self.refresh_all()
+            else:
+                for name, var in self.var_participants.items():
+                    var.set(name in selected)
+                if self.var_my_seat.get() not in selected:
+                    self.var_my_seat.set(selected[0])
+                self.set_status('下一轮人数已调整；本轮已超过第一遍发牌，已保存记录保持原归属。')
+                self.compact_panel.render()
+        except Exception as error:
+            self.fail(error)
 
     def change_simple_hole(self):
         if self.var_simple_hole.get() and not messagebox.askyesno('启用简便暗牌录入',
