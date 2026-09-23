@@ -9,7 +9,8 @@ from .contracts import ACTION_ZH, InputUnavailable, INAPPLICABLE, UNSUPPORTED, c
 from .split_contracts import (
     SplitAnalysisInput, SplitHand, VALUES, supported_split_rules, supported_das_rules,
     supported_same_value_split_rules, supported_same_value_das_rules,
-    DAS_ENGINE, DAS_STRATEGY, SAME_VALUE_SCOPE, SAME_VALUE_DAS_SCOPE, _hand_can_das)
+    DAS_ENGINE, DAS_STRATEGY, SAME_VALUE_SCOPE, SAME_VALUE_DAS_SCOPE, _hand_can_das,
+    supported_both_initial_rules, pending_hands, BOTH_INITIAL_ENGINE, BOTH_INITIAL_STRATEGY)
 
 
 def build_split_input(session_id, current, seat, selected_id, seq, prefix):
@@ -24,7 +25,7 @@ def build_split_input(session_id, current, seat, selected_id, seq, prefix):
     if selected_id not in [h.hand_id for h in hands]:
         raise InputUnavailable("TARGET_CHANGED", "选中手牌不属于此事件前缀")
     if table.split_order_violations:
-        raise InputUnavailable("SPLIT_DEAL_ORDER", "已保留录入：第二手在首手结束前收到牌或采取动作，不能套用顺序分牌分析", UNSUPPORTED)
+        raise InputUnavailable("SPLIT_DEAL_ORDER", "已保留录入：实际分牌发牌或行动顺序与锁定桌规不符", UNSUPPORTED)
     if any(h.hidden_cards or not h.cards or h.surrendered for h in hands):
         raise InputUnavailable("SPLIT_HAND_INFORMATION", "分牌手存在未知牌或首发未支持的投入/动作状态")
     if not das and any(h.doubled or h.bet_units != 1 for h in hands):
@@ -55,7 +56,7 @@ def build_split_input(session_id, current, seat, selected_id, seq, prefix):
             tuple(c.event_id for c in h.cards), tuple(c.rank for c in h.cards[:origin_length]),
             tuple(c.event_id for c in h.cards[:origin_length]), h.from_split, h.is_split_ace,
             closed, len(h.cards) == 1 or h.awaiting_hit, units))
-    pending = tuple(h.hand_id for h in items if not h.closed)
+    pending = pending_hands(items, supported_both_initial_rules(rules))
     active = pending[0] if pending else None
     states = table.action_states(seat, active) if active else {}
     uncertain = ()
@@ -91,6 +92,9 @@ def build_split_input(session_id, current, seat, selected_id, seq, prefix):
         extra = dict(support_scope=SAME_VALUE_SCOPE)
     if rules.check_bj_when == 'before_player_actions_A':
         extra['support_scope'] = extra['support_scope'].replace('US-peek/', 'US-ace-peek/ten-no-peek/all-bets-lost/')
+    if supported_both_initial_rules(rules):
+        extra.update(engine_version=BOTH_INITIAL_ENGINE, strategy_version=BOTH_INITIAL_STRATEGY,
+                     support_scope=extra['support_scope'].replace('two-sequential', 'both-second-cards-first'))
     snapshot = SplitAnalysisInput(session_id, current.shoe_id, current.round_id, seq, digest(prefix),
         seat, selected_id, rules.n_decks, canonical(json.loads(rules.to_json())), canonical(info),
         counts, shoe.physical_remaining(), tuple(items), active, pending, up, peek, legal, uncertain,

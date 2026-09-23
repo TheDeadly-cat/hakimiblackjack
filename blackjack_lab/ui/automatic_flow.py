@@ -29,8 +29,9 @@ def bust_transition_message(ctrl, segment):
             or (event.etype == CORRECTION and event.payload['target_event_id'] == saved.event_id)):
         return ''
     for index, hand in enumerate(segment.table.seat(saved.seat).hands, 1):
-        if hand.is_bust and any(c.event_id == saved.event_id for c in hand.cards):
+        if (hand.is_bust or hand.total()[0] == 21) and any(c.event_id == saved.event_id for c in hand.cards):
             target = next_open_hand(segment.table, plan.participating_seats)
             following = f'{target[0]}／第{target[2]}手' if target else DEALER
-            return f'{saved.seat}／第{index}手 {hand.total()[0]}点，已爆牌；已自动转到{following}。'
+            ending = '已爆牌' if hand.is_bust else '已达21点'
+            return f'{saved.seat}／第{index}手 {hand.total()[0]}点，{ending}；已自动转到{following}。'
     return ''

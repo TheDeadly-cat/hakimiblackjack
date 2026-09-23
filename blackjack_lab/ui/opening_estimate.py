@@ -146,9 +146,13 @@ class OpeningEstimateView:
                  '只有整个95%区间高于0才标“正EV估算”；跨过0时显示“正负待定”。',
                  '正在发牌、未揭暗牌、未知烧牌、观察缺口或不支持的桌规不会显示旧数值。']
         if self.snapshot:
+            import json
+            rules = json.loads(self.snapshot.rules_json)
+            order = '两手先各补一张，再顺序行动' if rules['split_deal_order'] == 'both_second_cards_first' else '第一手完成后再补第二手'
+            peek = 'A检查、十点不检查BJ' if rules['check_bj_when'] == 'before_player_actions_A' else 'A与十点检查BJ'
             lines += ['', f'参与：{len(self.snapshot.participants)}人；本人：{self.snapshot.participants[self.snapshot.focal]}',
                       f'剩余：{sum(self.snapshot.counts)}张；牌面A～9／T：{self.snapshot.counts}',
-                      '桌规：S17、3:2、美式检查、同值两手顺序分牌、无再分、分A一张。']
+                      f'桌规：S17、3:2、{peek}、同值分牌（{order}）、无再分、分A一张。']
         if self.result:
             low, high = self.result['interval']
             lines += [f"样本：{self.result['samples']:,}个独立模拟轮次；每轮从同一剩余组成重新洗牌。",

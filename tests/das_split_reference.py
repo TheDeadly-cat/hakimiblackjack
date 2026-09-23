@@ -96,9 +96,9 @@ def remaining_das_hands(index, hands, stakes, split_aces, allow_das, action):
 
 
 def das_split_reference(cards, hands, up, peek=True, active=0, split_aces=False,
-                        stakes=(1, 1), awaiting=None, allow_das=True):
+                        stakes=(1, 1), awaiting=None, allow_das=True, both_initial=False):
     """Visible-prefix DAS reference. Does not inspect un-dealt second-hand cards."""
-    if active == 0 and len(hands) == 2 and len(hands[1]) > 1:
+    if not both_initial and active == 0 and len(hands) == 2 and len(hands[1]) > 1:
         raise ValueError("不得包含第二手尚未轮到的未来牌")
     excluded = 10 if peek and up == 1 else 1 if peek and up == 10 else None
     possible = tuple(w for w in worlds(tuple(cards)) if w[0] != excluded)
@@ -148,6 +148,9 @@ def das_split_reference(cards, hands, up, peek=True, active=0, split_aces=False,
 
     @lru_cache(None)
     def best(prefix, current, index, current_stakes):
+        if both_initial and any(len(h) == 1 for h in current):
+            recipient = next(i for i, h in enumerate(current) if len(h) == 1)
+            return take(prefix, current, recipient, current_stakes, lambda p, c, s: best(p, c, 0, s))
         if index == 2:
             return terminal(prefix, current, current_stakes)
         hand = current[index]
@@ -175,6 +178,8 @@ def das_split_reference(cards, hands, up, peek=True, active=0, split_aces=False,
 
     def package(name, dist, action):
         later = remaining_das_hands(active, hands, stakes, split_aces, allow_das, action)
+        if both_initial and any(len(h) == 1 for h in hands) and allow_das and not split_aces:
+            later = sum(s == 1 and (len(h) == 1 or can_das(False, h, False)) for h, s in zip(hands, stakes))
         money = investment_view(stakes, action, later)
         joint = {pair: dist[JOINT_NETS.index(pair)] for pair in JOINT_NETS if dist[JOINT_NETS.index(pair)]}
         if not joint:
@@ -188,6 +193,8 @@ def das_split_reference(cards, hands, up, peek=True, active=0, split_aces=False,
             **money,
         }
 
+    if both_initial and any(len(h) == 1 for h in hands):
+        return {'deal': package('deal', best((), hands, 0, stakes), 'deal')}
     if awaiting == "double":
         if stakes[active] != 2:
             raise ValueError("加倍待牌时该手注额必须已为2")

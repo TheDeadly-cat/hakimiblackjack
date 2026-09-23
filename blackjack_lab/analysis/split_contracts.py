@@ -12,7 +12,8 @@ DAS_PROFILE = "research-s17-us-peek-two-sequential-das-v1"
 SAME_VALUE_SPLIT_PROFILE = "research-s17-us-peek-two-sequential-same-value-v1"
 SAME_VALUE_DAS_PROFILE = "research-s17-us-peek-two-sequential-das-same-value-v1"
 ACE_PEEK_DAS_PROFILE = "research-s17-us-ace-peek-two-sequential-das-same-value-v1"
-ALL_SPLIT_PROFILES = (SPLIT_PROFILE, DAS_PROFILE, SAME_VALUE_SPLIT_PROFILE, SAME_VALUE_DAS_PROFILE, ACE_PEEK_DAS_PROFILE)
+BOTH_INITIAL_PROFILE = "research-s17-us-ace-peek-two-initial-das-same-value-v1"
+ALL_SPLIT_PROFILES = (SPLIT_PROFILE, DAS_PROFILE, SAME_VALUE_SPLIT_PROFILE, SAME_VALUE_DAS_PROFILE, ACE_PEEK_DAS_PROFILE, BOTH_INITIAL_PROFILE)
 SPLIT_INPUT_SCHEMA = "hakimi-split-analysis-input-v1"
 SPLIT_RESULT_SCHEMA = "hakimi-analysis-result-v2"
 SAME_VALUE_SCOPE = "S17/3:2/US-peek/zero-burn/single-player/two-sequential/same-value/no-DAS/no-resplit"
@@ -23,8 +24,11 @@ DAS_ENGINE_LEGACY = "v0.2b2-finite-two-hand-das-1"
 SPLIT_STRATEGY = "sequential-two-hand-total-net-hit-stand-v1"
 DAS_STRATEGY = "sequential-two-hand-total-net-das-v2"
 DAS_STRATEGY_LEGACY = "sequential-two-hand-total-net-das-v1"
-KNOWN_DAS_ENGINES = (DAS_ENGINE_LEGACY, DAS_ENGINE)
+BOTH_INITIAL_ENGINE = "finite-two-initial-das-1"
+BOTH_INITIAL_STRATEGY = "both-second-cards-visible-total-net-das-v1"
+KNOWN_DAS_ENGINES = (DAS_ENGINE_LEGACY, DAS_ENGINE, BOTH_INITIAL_ENGINE)
 SPLIT_ORDER = "sequential_complete_first"
+BOTH_INITIAL_ORDER = "both_second_cards_first"
 HARD_BUDGET_SECONDS = 5.0
 P95_TARGET_SECONDS = 2.0
 VALUES = {"A": 1, **{str(n): n for n in range(2, 11)}, "J": 10, "Q": 10, "K": 10, "T": 10}
@@ -87,6 +91,7 @@ def is_das_engine(version):
 
 def known_das_identity(engine_version, strategy_version):
     return ((engine_version == DAS_ENGINE and strategy_version == DAS_STRATEGY)
+            or (engine_version == BOTH_INITIAL_ENGINE and strategy_version == BOTH_INITIAL_STRATEGY)
             or (engine_version == DAS_ENGINE_LEGACY and strategy_version == DAS_STRATEGY_LEGACY))
 
 
@@ -98,6 +103,8 @@ def supported_das_rules(rules):
 
 
 def supported_same_value_das_rules(rules):
+    if supported_both_initial_rules(rules):
+        return True
     return (rules.profile_id in (SAME_VALUE_DAS_PROFILE, ACE_PEEK_DAS_PROFILE) and rules.version == 1
             and (rules.profile_id != ACE_PEEK_DAS_PROFILE or rules.check_bj_when == 'before_player_actions_A')
             and rules.max_split_hands == 2 and rules.split_deal_order == SPLIT_ORDER
@@ -112,6 +119,31 @@ def ace_peek_das_research_rules(n_decks=8, surrender='late'):
     rules.game_name = 'S17同值分牌DAS：仅A明牌检查'
     rules.remark += '；十点明牌不检查，保留庄家BJ风险，追加注全输；未排除BJ时不能晚投降'
     return rules
+
+
+def both_initial_das_rules(n_decks=8, surrender='late'):
+    rules = ace_peek_das_research_rules(n_decks, surrender)
+    rules.profile_id = BOTH_INITIAL_PROFILE
+    rules.split_deal_order = BOTH_INITIAL_ORDER
+    rules.game_name = 'S17同值DAS：两手先补齐，随后顺序行动'
+    rules.remark = '分牌后两手各发一张，再按两手已知牌决策；无再分/非A允许DAS/分A一张；十点不检查BJ，追加注全输'
+    return rules
+
+
+def supported_both_initial_rules(rules):
+    return (rules.profile_id == BOTH_INITIAL_PROFILE and rules.version == 1
+            and rules.check_bj_when == 'before_player_actions_A'
+            and rules.max_split_hands == 2 and rules.split_deal_order == BOTH_INITIAL_ORDER
+            and rules.split_match == 'same_value' and rules.double_after_split is True
+            and rules.resplit_aces is False and rules.split_ace_hit_once is True)
+
+
+def pending_hands(hands, both_initial=False):
+    if both_initial and len(hands) == 2:
+        missing = tuple(h.hand_id for h in hands if len(h.ranks) == 1)
+        if missing:
+            return missing + tuple(h.hand_id for h in hands if len(h.ranks) > 1 and not h.closed)
+    return tuple(h.hand_id for h in hands if not h.closed)
 
 
 def declared_two_hand_template(rules):
@@ -268,10 +300,15 @@ class SplitAnalysisInput:
         if type(self.dealer_up) is not int or not 1 <= self.dealer_up <= 10:
             raise ValueError("庄家明牌点值无效")
         rules = RuleProfile.from_json(self.rules_json)
+        both_initial = supported_both_initial_rules(rules)
         is_das = supported_das_rules(rules) or supported_same_value_das_rules(rules)
         if self.schema != SPLIT_INPUT_SCHEMA or not declared_two_hand_template(rules):
             raise ValueError("不是已声明的两手顺序研究模板；禁止把旧四手规则截成两手")
         if is_das:
+            if both_initial != (self.engine_version == BOTH_INITIAL_ENGINE):
+                raise ValueError('两手先补齐的规则必须绑定对应引擎，不得混用旧顺序')
+            if both_initial and 'both-second-cards-first' not in self.support_scope:
+                raise ValueError('两手先补齐的输入缺少顺序范围')
             if (not known_das_identity(self.engine_version, self.strategy_version)
                     or "DAS-non-ace" not in self.support_scope):
                 raise ValueError("DAS模板必须使用已声明的DAS引擎、策略与支持范围")
@@ -294,12 +331,12 @@ class SplitAnalysisInput:
         cards = tuple(e for h in self.hands for e in h.card_event_ids)
         if len(set(ids)) != len(ids) or self.hand_id not in ids or len(set(cards)) != len(cards):
             raise ValueError("目标身份或物理牌归属重复")
-        pending = tuple(h.hand_id for h in self.hands if not h.closed)
+        pending = pending_hands(self.hands, both_initial)
         if self.pending_hand_ids != pending or self.active_hand_id != (pending[0] if pending else None):
             raise ValueError("当前行动手和顺序队列不一致")
         info = json.loads(self.information_json)
         if info.get("split_order_violations") != []:
-            raise ValueError("实际录入顺序不符合首手完成后才发第二手的研究流程")
+            raise ValueError("实际录入顺序不符合本牌靴声明的分牌流程")
         # Reuse the existing finite-shoe/rules/information identity guard without
         # mapping split actions into single-hand calculations.
         basis = self.single_input()
@@ -317,8 +354,14 @@ class SplitAnalysisInput:
                     or self.hands[1].parent_id != self.hands[0].hand_id
                     or not origin_pair_legal(self.hands[0].origin_ranks, self.hands[1].origin_ranks, rules.split_match)):
                 raise ValueError("两手父子关系或配对条件不一致")
-            if self.active_index == 0 and len(self.hands[1].ranks) != 1:
+            if not both_initial and self.active_index == 0 and len(self.hands[1].ranks) != 1:
                 raise ValueError("不得包含第二手尚未轮到的未来牌")
+            if both_initial:
+                one, two = self.hands
+                if (len(one.ranks) == 1 and len(two.ranks) > 1
+                        or len(two.ranks) == 1 and (len(one.ranks) > 2 or one.bet_units != 1)
+                        or not one.closed and (len(two.ranks) > 2 or two.bet_units != 1)):
+                    raise ValueError('两手初始牌或之后的行动顺序不一致')
             active = self.hands[self.active_index] if self.active_index < 2 else None
             if active is None:
                 expected = ("complete",)

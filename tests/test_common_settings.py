@@ -87,11 +87,11 @@ class TestCommonSettings(unittest.TestCase):
         ctrl.analysis_input('玩家1').validate()
         app.act_action(ACTION_SPLIT)
         app._key_rank('2')
+        app._key_rank('8')
         table = ctrl.state().current.table
         self.assertTrue(table.action_states('玩家1', table.players['玩家1'].hands[0].hand_id)[ACTION_DOUBLE].allowed)
         app.act_action(ACTION_DOUBLE)
         app._key_rank('9')
-        app._key_rank('8')
         app._key_stand()
         self.assertEqual(app.var_target.get(), '庄家')
         app._key_rank('A')

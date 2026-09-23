@@ -403,7 +403,7 @@ class SessionController:
         table = current.table
         natural = bool(table.dealer.hands and is_natural_blackjack(table.dealer.hands[0].ranks))
         if (not trusted or not dealer_finish_message(table)
-                or not (table.all_player_hands_closed() or natural)
+                or not (next_open_hand(table, plan.participating_seats) is None or natural)
                 or self.round_completion_problem(current)):
             self.store.save_event(event)
             self._accept_committed(candidate, [event])
@@ -545,6 +545,10 @@ class SessionController:
             prepared = prepare_prefix(self.ledger, events=events)
             self._analysis_prefix_key, self._analysis_prepared = key, prepared
             self._analysis_inputs = {}
+        current = self._analysis_prepared[2]
+        hands = current.table.players[seat].hands if current and seat in current.table.players else []
+        if len(hands) == 1 and not hands[0].from_split and hands[0].total()[0] == 21:
+            raise InputUnavailable('TOTAL_21', '已达21点，已自动跳过玩家行动', INAPPLICABLE)
         target = seat, hand_id
         if target not in self._analysis_inputs:
             self._analysis_inputs[target] = build_prepared_input(
@@ -675,7 +679,8 @@ class SessionController:
                     plan.pause_manual("显式录入与初始槽位不同；请人工核对", slot.slot_id if slot else None)
                 elif plan.mode == MODE_CONTINUATION:
                     plan.continuation_hand_id = hand.hand_id
-                    if hand.is_closed or hand.from_split and seg.table.split_hand_closed(hand):
+                    if (seg.table.split_hand_closed(hand)
+                            or hand.from_split and seg.rules.split_deal_order == 'both_second_cards_first'):
                         self._advance_entry_hand()
         elif event.etype == PLAYER_ACTION:
             if (payload["action"] == ACTION_SPLIT and plan.slots) or plan.mode == MODE_CONTINUATION:
@@ -689,6 +694,8 @@ class SessionController:
                     plan.enter_dealer_phase()
                 else:
                     self._advance_entry_hand()
+        elif event.etype == CARD_REVEALED and plan.mode == MODE_CONTINUATION:
+            self._advance_entry_hand()
         elif event.etype == UNDO:
             target = payload.get("target_event_id")
             if self.ledger._find(target).etype == CORRECTION and plan.mode != MODE_UNALIGNED:

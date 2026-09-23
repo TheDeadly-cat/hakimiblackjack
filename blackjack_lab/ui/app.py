@@ -53,7 +53,7 @@ from .manual_keymap import (
 from ..analysis.contracts import research_rules
 from ..analysis.split_contracts import (
     ALL_SPLIT_PROFILES, DAS_PROFILE, SAME_VALUE_DAS_PROFILE, SAME_VALUE_SPLIT_PROFILE,
-    SPLIT_PROFILE, das_research_rules, same_value_das_research_rules, ace_peek_das_research_rules, ACE_PEEK_DAS_PROFILE,
+    SPLIT_PROFILE, das_research_rules, same_value_das_research_rules, both_initial_das_rules, ACE_PEEK_DAS_PROFILE, BOTH_INITIAL_PROFILE,
     same_value_split_research_rules, split_research_rules,
 )
 
@@ -783,13 +783,13 @@ class BlackjackLabApp(tk.Tk):
 
     def _load_common_settings(self):
         # A user-selected local preset, never a fallback for imported unknown rules.
-        rules = ace_peek_das_research_rules(8)
+        rules = both_initial_das_rules(8)
         rules.vendor = '本机常用设置'
-        rules.rule_source = '用户指定S17/十点不检查BJ/同值分牌/晚投降/允许加倍；其余沿用本机研究模板'
+        rules.rule_source = '用户指定S17/十点不检查BJ/同值分牌先各补一张/晚投降/允许加倍；其余沿用本机研究模板'
         self._set_rule_form(rules)
         self.var_simple_hole.set(True)
         self.var_auto_next.set(True)
-        self.var_status.set('常用设置：8副 / S17自动下一局 / 十点不检查BJ / 同值分牌 / 晚投降 / 允许加倍 / 简便暗牌。')
+        self.var_status.set('常用设置：8副 / S17自动下一局 / 十点不检查BJ / 同值分牌先各补一张 / 晚投降 / 允许加倍 / 简便暗牌。')
 
     @tracked_operation
     def act_common_settings(self):
@@ -1493,6 +1493,7 @@ class BlackjackLabApp(tk.Tk):
             f"阶段 {'牌靴已结束' if seg.closed else seg.table.phase}｜记录：{self._record_status(seg)}｜"
             f"守恒：{'正常' if ok else '异常'}｜"
             f"规则确认：{seg.rules.confirm_status}｜分析：" + (
+                "两手先补齐DAS" if seg.rules.profile_id == BOTH_INITIAL_PROFILE else
                 "两手同点值DAS" if seg.rules.profile_id in (SAME_VALUE_DAS_PROFILE, ACE_PEEK_DAS_PROFILE)
                 else "两手同点值分牌" if seg.rules.profile_id == SAME_VALUE_SPLIT_PROFILE
                 else "两手DAS模型" if seg.rules.profile_id == DAS_PROFILE

@@ -100,8 +100,12 @@ def next_open_hand(table, participants=None) -> Optional[tuple[str, Optional[str
         seat = table.players.get(seat_name)
         if seat is None or not seat.hands:
             return (seat_name, None, 1)
+        if table.rules.split_deal_order == 'both_second_cards_first' and len(seat.hands) > 1:
+            for index, hand in enumerate(seat.hands, start=1):
+                if hand.from_split and len(hand.cards) < 2:
+                    return (seat_name, hand.hand_id, index)
         for index, hand in enumerate(seat.hands, start=1):
-            if not (table.split_hand_closed(hand) if hand.from_split else hand.is_closed):
+            if not table.split_hand_closed(hand):
                 return (seat_name, hand.hand_id, index)
     return None
 
