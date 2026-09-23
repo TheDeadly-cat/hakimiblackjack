@@ -1,0 +1,17 @@
+test_16_continues_17_advances_and_one_backspace_restores_card_and_plan (tests.test_auto_next.TestAutoNext.test_16_continues_17_advances_and_one_backspace_restores_card_and_plan) ... ok
+test_dealer_bust_advances (tests.test_auto_next.TestAutoNext.test_dealer_bust_advances) ... ok
+test_failed_transaction_saves_neither_reveal_settlement_nor_new_round (tests.test_auto_next.TestAutoNext.test_failed_transaction_saves_neither_reveal_settlement_nor_new_round) ... ok
+test_h17_soft17_waits_and_dealer_bust_advances (tests.test_auto_next.TestAutoNext.test_h17_soft17_waits_and_dealer_bust_advances) ... ok
+test_held_rank_does_not_spill_into_next_round (tests.test_auto_next.TestAutoNext.test_held_rank_does_not_spill_into_next_round) ... ok
+test_initial_deal_prepares_no_hand_analysis_or_workers (tests.test_auto_next.TestAutoNext.test_initial_deal_prepares_no_hand_analysis_or_workers) ... ok
+test_new_round_card_undo_then_automatic_transition_undo (tests.test_auto_next.TestAutoNext.test_new_round_card_undo_then_automatic_transition_undo) ... ok
+test_pause_survives_group_undo_and_blocks_further_card (tests.test_auto_next.TestAutoNext.test_pause_survives_group_undo_and_blocks_further_card) ... ok
+test_read_frame_is_callback_scoped_and_commit_invalidates_it (tests.test_auto_next.TestAutoNext.test_read_frame_is_callback_scoped_and_commit_invalidates_it) ... ok
+test_reveal_advances_without_extra_physical_card_and_recovers_group_undo (tests.test_auto_next.TestAutoNext.test_reveal_advances_without_extra_physical_card_and_recovers_group_undo) ... ok
+test_seven_players_reverse_order_persist_and_sidecar_failure_pauses_undo (tests.test_auto_next.TestAutoNext.test_seven_players_reverse_order_persist_and_sidecar_failure_pauses_undo) ... ok
+test_shared_prefix_revalidates_after_card_undo_and_in_place_damage (tests.test_auto_next.TestAutoNext.test_shared_prefix_revalidates_after_card_undo_and_in_place_damage) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 9.040s
+
+OK

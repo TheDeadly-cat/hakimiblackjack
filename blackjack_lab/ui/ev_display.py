@@ -8,7 +8,7 @@ def ev_sign(value):
 
 def decision_evs(result):
     if not result or result.get('status') != AVAILABLE:
-        return '各动作EV：等待初始牌录齐及当前计算'
+        return '各动作EV：暂无当前可用结果'
     labels = dict(ACTION_ZH, deal='确定发牌', complete='等待庄家')
     parts = []
     for action, item in result.get('actions', {}).items():

@@ -130,6 +130,23 @@ class TestAutoNext(unittest.TestCase):
         self.assertEqual(len(app.ctrl.ledger.events), count + 1)
         app._key_binder.on_release(event)
 
+    def test_pause_survives_group_undo_and_blocks_further_card(self):
+        self.prepare()
+        app = self.app
+        app._key_rank('T')
+        app._key_rank('A')
+        app._key_pause()
+        self.assertTrue(app.ctrl.entry_plan.input_paused)
+        app.act_undo()
+        self.assertEqual(app.ctrl.state().current.table.round_no, 1)
+        self.assertTrue(app.ctrl.entry_plan.input_paused)
+        count = len(app.ctrl.ledger.events)
+        app._key_rank('2')
+        self.assertEqual(len(app.ctrl.ledger.events), count)
+        app._key_pause()
+        app._key_rank('2')
+        self.assertEqual(app.ctrl.state().current.table.round_no, 2)
+
     def test_seven_players_reverse_order_persist_and_sidecar_failure_pauses_undo(self):
         self.app.var_deal_direction.set('reverse')
         self.prepare(players=7)

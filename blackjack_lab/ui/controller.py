@@ -404,6 +404,10 @@ class SessionController:
         group = self._automatic_undo_group()
         if group:
             events, plan = group
+            # Undo changes the recorded round, not the user's explicit input pause.
+            if self.entry_plan and self.entry_plan.input_paused:
+                plan.input_paused = True
+                plan.input_pause_reason = self.entry_plan.input_pause_reason
             candidate = copy.deepcopy(self.ledger)
             undos = [candidate.undo_last(reason or '撤回最后录牌及其自动结算、开轮') for _ in events]
             for event in undos:
