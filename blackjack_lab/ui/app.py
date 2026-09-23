@@ -1106,13 +1106,21 @@ class BlackjackLabApp(tk.Tk):
 
     @tracked_operation
     def act_new_shoe(self) -> None:
-        seg = self._current_seg()
-        if seg and seg.table.phase in ("发牌中", "进行中"):
-            messagebox.showerror("不能新建牌靴", "当前轮尚未结束")
-            return
         try:
-            self.ctrl.new_shoe(self._build_rules())
-            self.set_status("新牌靴已创建并锁定规则快照")
+            rules = self._build_rules()
+            expected = self.ctrl.context_token
+            seg = self._current_seg()
+            if seg and not seg.closed:
+                active = seg.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS)
+                note = (f'当前第{seg.table.round_no}轮将以“未结算”结束，不计算输赢。\n' if active else '')
+                if not messagebox.askyesno('换新牌靴', note +
+                        f'旧牌靴和全部记录保留。按当前设置新建{rules.n_decks}副牌靴？', parent=self):
+                    return
+            self.ctrl.replace_shoe(rules, expected)
+            self.var_mode.set('新发牌')
+            self.var_hand.set('（最新一手）')
+            self._set_recording_target(self.var_my_seat.get())
+            self.set_status('新牌靴已创建，旧记录保留；点击“开始本轮”发牌。Backspace可撤回本次换靴。')
             self.refresh_all()
         except Exception as e:
             self.fail(e)

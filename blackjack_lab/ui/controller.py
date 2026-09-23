@@ -8,7 +8,7 @@ from ..core.rules import RuleProfile, CONFIRM_VERIFIED
 from ..core.cards import is_natural_blackjack
 from ..ledger.events import (CANDIDATE, CONFIRMED, SOURCE_MANUAL, CARD_DEALT,
                              PLAYER_ACTION, PEEK_NEGATIVE, UNDO, CORRECTION, SHOE_CREATED,
-                             CARD_REVEALED, ROUND_STARTED, ROUND_ENDED, FACE_HIDDEN)
+                             CARD_REVEALED, ROUND_STARTED, ROUND_ENDED, SHOE_ENDED, FACE_HIDDEN)
 from ..ledger.ledger import EventLedger, LedgerError
 from ..storage.database import LocalStore
 from ..storage.export import import_json, import_csv
@@ -124,6 +124,39 @@ class SessionController:
 
     def new_shoe(self, rules: RuleProfile):
         return self._apply("create_shoe", rules)
+
+    def replace_shoe(self, rules: RuleProfile, expected_context):
+        """Explicit user switch: preserve the old round, close it without payout, create a fresh shoe."""
+        if expected_context != self.context_token:
+            raise TableError('记录已变化，请重新核对新建牌靴')
+        seg = self.state().current
+        if seg is None or seg.closed:
+            return self.new_shoe(rules)
+        prefix = self.ledger.to_list()
+        prefix_digest = digest(prefix)
+        plan = self.entry_plan
+        saved_plan = (plan.to_dict() if plan and plan.ledger_digest == prefix_digest
+                      and plan.ledger_seq == prefix[-1]['seq'] else None)
+        candidate = copy.deepcopy(self.ledger)
+        events = []
+        if seg.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS):
+            events.append(candidate.end_round(settle=False, observation_status='unknown',
+                                               reason='用户主动换新牌靴；本轮未结算，原记录保留'))
+        events.append(candidate.end_shoe())
+        created = candidate.create_shoe(rules)
+        events.append(created)
+        created.evidence = json.dumps({'manual_shoe_change_v1': dict(
+            event_ids=[event.event_id for event in events], previous_plan=saved_plan,
+            prefix_digest=prefix_digest, prefix_seq=prefix[-1]['seq'])}, ensure_ascii=False)
+        for event in events:
+            event.source = self.recording_source
+        # The new rules and the complete transition are validated before any write.
+        self.store.save_ledger(candidate)
+        def clear_plan(_event):
+            self.entry_plan = None
+            self.entry_warning = ''
+        self._accept_committed(candidate, events, clear_plan)
+        return created
 
     def _round_options(self, participants, my_seat, deal_direction, simple_hole):
         seg = self.state().current
@@ -401,23 +434,59 @@ class SessionController:
         return self._apply("gap", reason)
 
     def undo_last(self, reason=""):
-        group = self._automatic_undo_group()
+        group = self._shoe_undo_group()
+        default_reason = '撤回换靴及自动结束的旧轮' if group else '撤回最后录牌及其自动结算、开轮'
+        group = group or self._automatic_undo_group()
         if group:
             events, plan = group
             # Undo changes the recorded round, not the user's explicit input pause.
-            if self.entry_plan and self.entry_plan.input_paused:
+            if plan and self.entry_plan and self.entry_plan.input_paused:
                 plan.input_paused = True
                 plan.input_pause_reason = self.entry_plan.input_pause_reason
             candidate = copy.deepcopy(self.ledger)
-            undos = [candidate.undo_last(reason or '撤回最后录牌及其自动结算、开轮') for _ in events]
+            undos = [candidate.undo_last(reason or default_reason) for _ in events]
             for event in undos:
                 event.source = self.recording_source
             self.store.save_ledger(candidate)
             self.entry_plan = plan
             self.entry_warning = ''
-            self._accept_committed(candidate, undos, lambda event: None)
+            def restore(_event):
+                current = self.state().current
+                if plan is None and current and current.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS):
+                    self._pause_entry_recovery('已撤回换靴；旧轮录入位置需核对，不能猜测下一张归属')
+            self._accept_committed(candidate, undos, restore)
             return undos[-1]
         return self._apply("undo_last", reason)
+
+    def _shoe_undo_group(self):
+        voided = self.ledger._voided_ids()
+        active = [e for e in self.ledger.events if e.etype != UNDO and e.event_id not in voided]
+        if not active or active[-1].etype != SHOE_CREATED:
+            return None
+        try:
+            receipt = json.loads(active[-1].evidence or '{}')['manual_shoe_change_v1']
+            ids = receipt['event_ids']
+            if not isinstance(ids, list) or len(ids) not in (2, 3):
+                return None
+            events = active[-len(ids):]
+            expected = [ROUND_ENDED, SHOE_ENDED, SHOE_CREATED] if len(ids) == 3 else [SHOE_ENDED, SHOE_CREATED]
+            prefix = [e.to_dict() for e in self.ledger.events if e.seq < events[0].seq]
+            if ([e.event_id for e in events] != ids or [e.etype for e in events] != expected
+                    or any(a.seq + 1 != b.seq for a, b in zip(events, events[1:]))
+                    or not prefix or receipt['prefix_seq'] != prefix[-1]['seq']
+                    or receipt['prefix_digest'] != digest(prefix)
+                    or len(events) == 3 and (events[0].payload.get('settle') is not False
+                        or events[0].payload.get('observation_status') != 'unknown'
+                        or events[0].shoe_id != events[1].shoe_id)):
+                return None
+            saved = receipt['previous_plan']
+            plan = RoundEntryPlan.from_dict(saved) if saved is not None else None
+            if plan and (plan.session_id != self.session_id or plan.shoe_id != events[-2].shoe_id
+                         or plan.ledger_seq != prefix[-1]['seq'] or plan.ledger_digest != digest(prefix)):
+                return None
+            return tuple(reversed(events)), plan
+        except (ValueError, KeyError, TypeError, AttributeError, IndexError):
+            return None
 
     def _automatic_undo_group(self):
         voided = self.ledger._voided_ids()
