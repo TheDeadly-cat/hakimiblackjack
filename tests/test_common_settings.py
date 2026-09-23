@@ -64,13 +64,15 @@ class TestCommonSettings(unittest.TestCase):
         self.assertEqual(ctrl.state().current.shoe.physical_remaining(), 412)
         app._key_stand()
         app._key_rank('A')
-        self.assertEqual(ctrl.ledger.events[-1].etype, 'CARD_REVEALED')
-        self.assertEqual(ctrl.ledger.events[-1].payload['target_event_id'], holes[0].event_id)
-        self.assertIn('软17', app.dealer_recording_finished())
-        before = ctrl.ledger.to_list()
-        app._key_rank('9')
-        self.assertEqual(ctrl.ledger.to_list(), before)
+        self.assertEqual([e.etype for e in ctrl.ledger.events[-3:]], ['CARD_REVEALED', 'ROUND_ENDED', 'ROUND_STARTED'])
+        self.assertEqual(ctrl.ledger.events[-3].payload['target_event_id'], holes[0].event_id)
+        self.assertEqual(ctrl.state().current.table.round_no, 2)
+        self.assertEqual(app.var_target.get(), '玩家1')
         self.assertEqual(ctrl.state().current.shoe.physical_remaining(), 412)
+        app.act_undo()
+        self.assertEqual(ctrl.state().current.table.round_no, 1)
+        self.assertEqual(app.var_target.get(), '庄家')
+        self.assertEqual(ctrl.state().current.shoe.unrevealed_out, 1)
         self.assertEqual(self.errors, [])
 
     def test_different_ten_faces_split_late_surrender_and_double_after_split_are_available(self):
@@ -93,7 +95,7 @@ class TestCommonSettings(unittest.TestCase):
         app._key_stand()
         self.assertEqual(app.var_target.get(), '庄家')
         app._key_rank('A')
-        self.assertIn('自动停牌', app.dealer_recording_finished())
+        self.assertEqual(ctrl.state().current.table.round_no, 2)
         self.assertEqual(self.errors, [])
 
     def test_one_click_restores_preset_without_touching_current_rules_cards_or_plan(self):

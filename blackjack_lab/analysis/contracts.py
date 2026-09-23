@@ -83,7 +83,7 @@ class AnalysisInput:
                 and rules.start_from_new_shoe is True and rules.burn_cards_known is True
                 and rules.initial_burn_count == 0 and rules.shoe_model == "finite_no_replacement"
                 and rules.dealer_soft17 == "S17" and rules.blackjack_payout == (3, 2)
-                and rules.american_hole_card is True and rules.check_bj_when == "before_player_actions_A_T"
+                and rules.american_hole_card is True and rules.check_bj_when in ("before_player_actions_A_T", "before_player_actions_A")
                 and rules.dealer_bj_extra_bet_rule == "all_bets_lost" and rules.double_on_totals is None
                 and rules.surrender in (None, "late")):
             raise ValueError("分析输入包含未知或未支持的规则，不执行S17模板替代计算")
@@ -91,8 +91,11 @@ class AnalysisInput:
                 or type(self.physical_remaining) is not int or self.physical_remaining != sum(self.counts) - 1
                 or any(c > self.n_decks * (16 if i == 9 else 4) for i, c in enumerate(self.counts))):
             raise ValueError("分析输入计数或隐藏牌模型不一致")
-        if type(self.peek_negative) is not bool or self.dealer_up in (1, 10) and not self.peek_negative:
+        from ..core.rules import requires_bj_peek
+        if type(self.peek_negative) is not bool or requires_bj_peek(rules, self.dealer_up) and not self.peek_negative:
             raise ValueError("决策所需的非BJ检查信息缺失")
+        if 'surrender' in self.legal_actions and self.dealer_up in (1, 10) and not self.peek_negative:
+            raise ValueError('晚投降必须排除庄家BJ')
         values = {"A": 1, **{str(n): n for n in range(2, 11)}, "J": 10, "Q": 10, "K": 10, "T": 10}
         if tuple(values.get(r) for r in self.player_ranks) != self.player:
             raise ValueError("原始牌面与点值不一致")

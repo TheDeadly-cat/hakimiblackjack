@@ -340,7 +340,7 @@ class TableState:
             surrender_ok, surrender_reason = False, "仅初始两张牌、未采取动作前可投降"
         elif self.rules.surrender == "late" and (not self.dealer.hands or (
             self._dealer_may_have_bj() and not self.dealer_hole_checked_negative and not self._dealer_revealed())):
-            surrender_ok, surrender_reason = False, "晚投降需等庄家完成 Blackjack 检查"
+            surrender_ok, surrender_reason = False, "晚投降需已排除庄家 Blackjack；此时不可投降"
         result[ACTION_SURRENDER] = state(ACTION_SURRENDER, surrender_ok, surrender_reason, "SURRENDER_RULE")
         return result
 
@@ -354,9 +354,10 @@ class TableState:
         return any(r == "A" or is_ten_value(r) for r in known)
 
     def _needs_decision_peek(self):
-        return (self.rules.american_hole_card is True
-                and self.rules.check_bj_when == "before_player_actions_A_T"
-                and self._dealer_may_have_bj() and not self.dealer_hole_checked_negative
+        from .rules import requires_bj_peek
+        cards = self.dealer.hands[0].cards if self.dealer.hands else []
+        return (any(requires_bj_peek(self.rules, c.rank) for c in cards)
+                and not self.dealer_hole_checked_negative
                 and not self._dealer_revealed())
 
     def _dealer_revealed(self) -> bool:

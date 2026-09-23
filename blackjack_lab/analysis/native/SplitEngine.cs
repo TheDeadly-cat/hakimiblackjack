@@ -604,7 +604,7 @@ class SplitEngine {
         var serializer=new JavaScriptSerializer();SplitEngine engine=null;
         try {var input=(Dictionary<string,object>)serializer.DeserializeObject(Console.In.ReadToEnd());
             if(input.ContainsKey("kind")) {
-                if((string)input["kind"]!="opening-monte-carlo-v1") throw new ArgumentException("UNKNOWN_KIND");
+                if((string)input["kind"]!="opening-monte-carlo-v2") throw new ArgumentException("UNKNOWN_KIND");
                 Console.WriteLine(serializer.Serialize(new OpeningEstimate(input).Run()));return 0;
             }
             engine=new SplitEngine(Convert.ToInt32(input["dealer_up"]),(bool)input["peek_negative"],(bool)input["split_aces"],Convert.ToDouble(input["budget_seconds"]));
@@ -629,7 +629,7 @@ class OpeningEstimate {
     readonly int[,,] firstChoice=new int[11,11,11];
     readonly Random random;
     readonly int samples, seed, seats, focal, size;
-    readonly bool das, surrender;
+    readonly bool das, surrender, peekTen;
     readonly double budget;
     readonly Stopwatch watch=Stopwatch.StartNew();
     int left;
@@ -653,6 +653,7 @@ class OpeningEstimate {
         size=sum; samples=StrictInt(input["samples"]);seed=StrictInt(input["seed"]);
         seats=StrictInt(input["seats"]);focal=StrictInt(input["focal"]);
         das=StrictBool(input["das"]);surrender=StrictBool(input["surrender"]);
+        peekTen=StrictBool(input["peek_ten"]);
         budget=Convert.ToDouble(input["budget_seconds"]);
         if(samples<2||samples>4000000||seed<0||seats<1||seats>7||focal<0||focal>=seats
            ||double.IsNaN(budget)||double.IsInfinity(budget)||budget<=0||budget>30)
@@ -661,12 +662,13 @@ class OpeningEstimate {
         for(int i=0;i<10;i++)p[i]=(double)original[i]/size;
         random=new Random(seed);
         for(int up=1;up<=10;up++) {
-            double mass=1-(up==1?p[9]:up==10?p[0]:0);
+            double mass=1-(up==1?p[9]:up==10&&peekTen?p[0]:0);
             if(mass<=0) { var certain=new D7();certain.B=1;dealers[up]=certain; }
             else {
                 D7 result=new D7();
                 for(int v=1;v<=10;v++) {
-                    if((up==1&&v==10)||(up==10&&v==1))continue;
+                    if((up==1&&v==10)||(up==10&&v==1&&peekTen))continue;
+                    if(up==10&&v==1){result.B+=p[0];continue;}
                     if(p[v-1]>0)result.Add(Dealer(up+v,up==1||v==1),p[v-1]/mass);
                 }
                 dealers[up]=result;
@@ -714,10 +716,11 @@ class OpeningEstimate {
         return action;
     }
     int Initial(int up,int a,int b) {
-        int action=Choose(up,a+b,a==1||b==1,true,surrender);
+        bool late=surrender&&(up!=10||peekTen);
+        int action=Choose(up,a+b,a==1||b==1,true,late);
         if(a!=b||Score(a+b,a==1||b==1)>=21)return action;
         double value=TwoCardValue(up,a,b,true);
-        if(surrender)value=Math.Max(value,-0.5);
+        if(late)value=Math.Max(value,-0.5);
         double split=0;
         for(int v=1;v<=10;v++)if(p[v-1]>0)
             split+=2*p[v-1]*(a==1?dealers[up].Value(Score(a+v,true)):TwoCardValue(up,a,v,das));
@@ -754,8 +757,9 @@ class OpeningEstimate {
         for(int s=0;s<seats;s++)two[s]=Draw();
         int hole=Draw();
         bool natural=(one[focal]==1&&two[focal]==10)||(one[focal]==10&&two[focal]==1);
-        if((up==1&&hole==10)||(up==10&&hole==1))return natural?0:-1;
-        if(natural)return 1.5;
+        bool dealerNatural=(up==1&&hole==10)||(up==10&&hole==1);
+        if(dealerNatural&&(up==1||peekTen))return natural?0:-1;
+        if(natural)return dealerNatural?0:1.5;
         Hand first=new Hand(),second=new Hand();bool splitFocal=false;
         for(int s=0;s<seats;s++) {
             int a=one[s],b=two[s];
@@ -767,7 +771,7 @@ class OpeningEstimate {
             else h1=Play(up,a,b,false,action);
             if(s==focal){first=h1;second=h2;splitFocal=split;}
         }
-        if(first.Score>21&&(!splitFocal||second.Score>21))return -first.Stake-(splitFocal?second.Stake:0);
+        if(dealerNatural||first.Score>21&&(!splitFocal||second.Score>21))return -first.Stake-(splitFocal?second.Stake:0);
         int hard=up+hole;bool ace=up==1||hole==1;
         while(Score(hard,ace)<17){int v=Draw();hard+=v;ace|=v==1;}
         return Pay(first,Score(hard,ace))+(splitFocal?Pay(second,Score(hard,ace)):0);
@@ -780,7 +784,7 @@ class OpeningEstimate {
             if(index<0||index>=17||Math.Abs(net*2-Math.Round(net*2))>1e-12)throw new InvalidOperationException("NET_RANGE");
             histogram[index]++;
         }
-        return new Dictionary<string,object>{{"kind","opening-monte-carlo-v1"},{"status","available"},
+        return new Dictionary<string,object>{{"kind","opening-monte-carlo-v2"},{"status","available"},
             {"samples",samples},{"seed",seed},{"histogram",histogram},{"elapsed_seconds",watch.Elapsed.TotalSeconds}};
     }
 }

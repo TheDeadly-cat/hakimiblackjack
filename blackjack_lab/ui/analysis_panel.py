@@ -11,6 +11,7 @@ from ..analysis.split_contracts import SPLIT_RESULT_SCHEMA
 from ..analysis.decision_summary import summarize_result, format_summary_details
 from ..analysis.seat_scenario import note_for
 from .seat_overview import SeatOverview
+from .ev_display import ev_sign
 
 DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA}
 
@@ -43,7 +44,7 @@ def format_result(result, historical=False):
         lines.append("部分动作比较（分牌缺失或合法性待核对）")
     lines.append("EV单位：原始1单位初始注的最终净收益")
     for action, item in result["actions"].items():
-        value = f"  EV {item['ev']:+.6f}" if item["status"] == AVAILABLE else ""
+        value = f"  {ev_sign(item['ev'])} {item['ev']:+.6f}" if item["status"] == AVAILABLE else ""
         lines.append(f"{ACTION_ZH[action]}：{STATUS_ZH[item['status']]}{value}")
         if item['status'] == AVAILABLE:
             if action in ('double', 'split'):
@@ -71,7 +72,7 @@ def format_result(result, historical=False):
     for i in range(0, len(bins), 3):
         lines.append("  ".join(bins[i:i + 3]))
     lines.extend(["", "S17 · 3:2 · 美式底牌 · 初始零烧牌",
-                  "底牌未揭示；非BJ检查：" + ("已记录" if info["peek_negative"] else "此明牌无需检查"),
+                  "底牌未揭示；非BJ检查：" + ("已记录" if info["peek_negative"] else "此明牌无需检查；保留可能的庄家BJ"),
                   "补牌后按可见新牌在补/停之间继续决策。",
                   "有限不放回枚举，双精度舍入；无采样/概率截断。",
                   f"耗时 {result['elapsed_seconds']:.3f}s · 事件前缀 #{info['through_seq']}",
@@ -150,6 +151,8 @@ class AnalysisPanel(ttk.Frame):
         self._views.append(callback)
 
     def _notify_views(self, *_args):
+        if getattr(self, '_updating_context', False):
+            return
         for callback in self._views:
             callback()
 
@@ -181,13 +184,17 @@ class AnalysisPanel(ttk.Frame):
         """Synchronous post-commit / target notification, before any general redraw."""
         if self._closed or self._live_key() == self.context_key:
             return
-        self.overview.sync()
-        self.current_input = None
-        self.unavailable_code = None
-        self._cancel_auto()
-        if not self.recomputed_from and (self.request_key is not None or self.last_result):
-            self._invalidate_current()
-        self.context_key = None  # Gate/button refresh may run later; invalidation has already happened.
+        self._updating_context = True
+        try:
+            self.current_input = None
+            self.unavailable_code = None
+            self._cancel_auto()
+            if not self.recomputed_from and (self.request_key is not None or self.last_result):
+                self._invalidate_current()
+            self.overview.sync()
+            self.context_key = None  # Invalidation is synchronous; paint this change once.
+        finally:
+            self._updating_context = False
         self._notify_views()
 
     def _auto_changed(self, *_args):
@@ -210,7 +217,7 @@ class AnalysisPanel(ttk.Frame):
         self.context_key = key
         hand_id = self.app._analysis_hand_id(segment) if segment else None
         try:
-            self.current_input = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id, other_players_stand=True)
+            self.current_input = self.app.ctrl.current_decision_input(self.app.var_analysis_target.get(), hand_id)
             self.unavailable_code = None
         except InputUnavailable as error:
             self.current_input = None
@@ -231,7 +238,7 @@ class AnalysisPanel(ttk.Frame):
         try:
             segment = self.app._current_seg()
             hand_id = self.app._analysis_hand_id(segment) if segment else None
-            snapshot = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id, other_players_stand=True)
+            snapshot = self.app.ctrl.current_decision_input(self.app.var_analysis_target.get(), hand_id)
             self.start(snapshot)
         except Exception as error:
             self.recomputed_from = None
@@ -244,7 +251,7 @@ class AnalysisPanel(ttk.Frame):
         if not recomputed_from:
             segment = self.app._current_seg()
             hand_id = self.app._analysis_hand_id(segment) if segment else None
-            current = self.app.ctrl.analysis_input(self.app.var_analysis_target.get(), hand_id, other_players_stand=True)
+            current = self.app.ctrl.current_decision_input(self.app.var_analysis_target.get(), hand_id)
             if current.input_digest != snapshot.input_digest:
                 raise InputUnavailable("TARGET_CHANGED", "输入已改变，请按当前手牌重新计算")
         self.context_key = self._live_key()

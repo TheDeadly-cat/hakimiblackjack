@@ -2,12 +2,13 @@
 from __future__ import annotations
 import copy
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from ..core.rules import RuleProfile, CONFIRM_VERIFIED
 from ..core.cards import is_natural_blackjack
 from ..ledger.events import (CANDIDATE, CONFIRMED, SOURCE_MANUAL, CARD_DEALT,
                              PLAYER_ACTION, PEEK_NEGATIVE, UNDO, CORRECTION, SHOE_CREATED,
-                             CARD_REVEALED, ROUND_STARTED, FACE_HIDDEN)
+                             CARD_REVEALED, ROUND_STARTED, ROUND_ENDED, FACE_HIDDEN)
 from ..ledger.ledger import EventLedger, LedgerError
 from ..storage.database import LocalStore
 from ..storage.export import import_json, import_csv
@@ -131,7 +132,7 @@ class SessionController:
         if type(simple_hole) is not bool:
             raise ValueError('简便暗牌设置必须明确启用或关闭')
         if simple_hole and not self._simple_rules_confirmed(seg):
-            raise TableError('简便暗牌需要已确认的美式底牌、A/十点决策前检查和完整新牌靴；请先核对桌规或使用手动方式')
+            raise TableError('简便暗牌需要已确认的美式底牌、决策前检查规则和完整新牌靴；请先核对桌规或使用手动方式')
         if deal_direction not in ('forward', 'reverse'):
             raise ValueError('未知发牌方向')
         ordered = participating_in_order(participants if participants is not None else seg.table.players, deal_direction)
@@ -250,7 +251,7 @@ class SessionController:
         return self._apply("end_shoe")
 
     def deal_shown(self, seat, rank, hand_id=None, suit=None, track_id=None, confirm_status=CONFIRMED,
-                   *, initial_slot_id=None):
+                   *, initial_slot_id=None, auto_next=None):
         if self._should_add_initial_hole(seat, hand_id, initial_slot_id, confirm_status):
             candidate = copy.deepcopy(self.ledger)
             visible = candidate.deal(seat, rank, hand_id=hand_id, suit=suit, track_id=track_id,
@@ -264,6 +265,9 @@ class SessionController:
             self.store.save_ledger(candidate)
             self._accept_committed(candidate, [visible, hidden])
             return visible
+        if auto_next is not None and seat == DEALER and confirm_status == CONFIRMED:
+            return self._dealer_input('deal', seat, rank, hand_id=hand_id, suit=suit,
+                                      track_id=track_id, auto_next=auto_next)
         return self._apply("deal", seat, rank, hand_id=hand_id, suit=suit,
                            track_id=track_id, confirm_status=confirm_status)
 
@@ -271,7 +275,7 @@ class SessionController:
     def _simple_rules_confirmed(seg):
         return (seg is not None and seg.rules.confirm_status == CONFIRM_VERIFIED
                 and seg.rules.american_hole_card is True and seg.rules.start_from_new_shoe is True
-                and seg.rules.check_bj_when == 'before_player_actions_A_T')
+                and seg.rules.check_bj_when in ('before_player_actions_A_T', 'before_player_actions_A'))
 
     def simple_hole_active(self):
         plan = self.entry_plan
@@ -343,8 +347,46 @@ class SessionController:
         return self._apply("deal", seat, None, unknown=True, hand_id=hand_id,
                            track_id=track_id, confirm_status=CANDIDATE)
 
-    def reveal(self, target_event_id, rank, suit=None):
+    def reveal(self, target_event_id, rank, suit=None, *, auto_next=None):
+        if auto_next is not None and self.ledger._find(target_event_id).payload.get('seat') == DEALER:
+            return self._dealer_input('reveal', target_event_id, rank, suit=suit, auto_next=auto_next)
         return self._apply("reveal", target_event_id, rank, suit=suit)
+
+    def _dealer_input(self, method, *args, auto_next, **kwargs):
+        """One input, one durable transaction, including any automatic round transition."""
+        from .automatic_flow import dealer_finish_message
+        plan = self.entry_plan
+        before = self.state().current
+        trusted = bool(plan and before and plan.mode in (MODE_DEALER, MODE_PEEK_WAIT)
+                       and not plan.paused and not plan.input_paused and not plan.unresolved_slots
+                       and plan.initial_complete()
+                       and (plan.session_id, plan.shoe_id, plan.round_id) ==
+                           (self.session_id, before.shoe_id, before.round_id)
+                       and plan.ledger_digest == digest(self.ledger.to_list()))
+        candidate = copy.deepcopy(self.ledger)
+        event = getattr(candidate, method)(*args, **kwargs)
+        event.source = self.recording_source
+        current = candidate.replay().current
+        table = current.table
+        natural = bool(table.dealer.hands and is_natural_blackjack(table.dealer.hands[0].ranks))
+        if (not trusted or not dealer_finish_message(table)
+                or not (table.all_player_hands_closed() or natural)
+                or self.round_completion_problem(current)):
+            self.store.save_event(event)
+            self._accept_committed(candidate, [event])
+            return event
+        ordered, evidence, freeze = self._round_options(**auto_next)
+        ended = candidate.end_round(settle=True, observation_status='complete')
+        started = candidate.start_round(list(ordered))
+        ended.source = started.source = self.recording_source
+        receipt = json.loads(evidence or '{}')
+        receipt['automatic_next_v1'] = dict(trigger=event.event_id, ended=ended.event_id,
+                                            previous_plan=plan.to_dict())
+        started.evidence = json.dumps(receipt, ensure_ascii=False)
+        self.store.save_ledger(candidate)
+        self._accept_committed(candidate, [event, ended, started],
+                               lambda item: freeze(item) if item.etype == ROUND_STARTED else None)
+        return event
 
     def player_action(self, seat, hand_id, action, extra=None):
         return self._apply("player_action", seat, hand_id, action, extra)
@@ -359,7 +401,44 @@ class SessionController:
         return self._apply("gap", reason)
 
     def undo_last(self, reason=""):
+        group = self._automatic_undo_group()
+        if group:
+            events, plan = group
+            candidate = copy.deepcopy(self.ledger)
+            undos = [candidate.undo_last(reason or '撤回最后录牌及其自动结算、开轮') for _ in events]
+            for event in undos:
+                event.source = self.recording_source
+            self.store.save_ledger(candidate)
+            self.entry_plan = plan
+            self.entry_warning = ''
+            self._accept_committed(candidate, undos, lambda event: None)
+            return undos[-1]
         return self._apply("undo_last", reason)
+
+    def _automatic_undo_group(self):
+        voided = self.ledger._voided_ids()
+        active = [e for e in self.ledger.events if e.etype != UNDO and e.event_id not in voided]
+        if len(active) < 3 or active[-1].etype != ROUND_STARTED:
+            return None
+        trigger, ended, started = active[-3:]
+        try:
+            receipt = json.loads(started.evidence or '{}')['automatic_next_v1']
+            plan = RoundEntryPlan.from_dict(receipt['previous_plan'])
+            prefix = [e.to_dict() for e in self.ledger.events if e.seq < trigger.seq]
+            if (trigger.etype not in (CARD_DEALT, CARD_REVEALED) or trigger.payload.get('seat') != DEALER
+                    or ended.etype != ROUND_ENDED or not ended.payload.get('settle')
+                    or ended.payload.get('observation_status') != 'complete'
+                    or receipt['trigger'] != trigger.event_id or receipt['ended'] != ended.event_id
+                    or (trigger.seq + 1, ended.seq + 1) != (ended.seq, started.seq)
+                    or (plan.session_id, plan.shoe_id, plan.round_id) !=
+                        (self.session_id, trigger.shoe_id, trigger.round_id)
+                    or ended.round_id != trigger.round_id or started.shoe_id != trigger.shoe_id
+                    or not prefix or plan.ledger_seq != prefix[-1]['seq'] or plan.ledger_digest != digest(prefix)
+                    or plan.mode not in (MODE_DEALER, MODE_PEEK_WAIT) or plan.paused or plan.input_paused):
+                return None
+            return (started, ended, trigger), plan
+        except (ValueError, KeyError, TypeError, AttributeError):
+            return None
 
     def correct(self, event_id, payload_fix, reason):
         if not reason.strip():
@@ -380,6 +459,25 @@ class SessionController:
     def analysis_input(self, seat, hand_id=None, through_seq=None, *, other_players_stand=False):
         return build_input(self.ledger, seat, hand_id, through_seq, other_players_stand=other_players_stand)
 
+    def current_decision_input(self, seat, hand_id=None):
+        """Recording UI only; historical prefix analysis remains independently available."""
+        from ..analysis.contracts import InputUnavailable, INAPPLICABLE
+        plan = self.entry_plan
+        if plan and plan.mode == MODE_INITIAL and not plan.initial_complete():
+            raise InputUnavailable('INITIAL_DEAL', '初始牌未录齐，暂停EV计算', INAPPLICABLE)
+        from ..analysis.information import prepare_prefix, build_prepared_input
+        events = self.ledger.to_list()
+        key = self.session_id, digest(events)
+        if getattr(self, '_analysis_prefix_key', None) != key:
+            prepared = prepare_prefix(self.ledger, events=events)
+            self._analysis_prefix_key, self._analysis_prepared = key, prepared
+            self._analysis_inputs = {}
+        target = seat, hand_id
+        if target not in self._analysis_inputs:
+            self._analysis_inputs[target] = build_prepared_input(
+                self.session_id, seat, hand_id, *self._analysis_prepared, other_players_stand=True)
+        return self._analysis_inputs[target]
+
     def recompute_input(self, saved):
         original = saved["result"]["input"]
         ledger = self.store.load_ledger(original["session_id"], original["through_seq"])
@@ -395,7 +493,28 @@ class SessionController:
         return atomic_write(path, json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False).encode("utf-8"))
 
     def state(self):
+        if getattr(self, '_read_depth', 0):
+            key = id(self.ledger), self.context_token
+            if getattr(self, '_read_key', None) != key:
+                self._read_snapshot = self.ledger.replay()
+                self._read_key = key
+            return self._read_snapshot
         return self.ledger.replay()
+
+    @contextmanager
+    def read_frame(self):
+        """Share read-only replay within one UI callback; commits invalidate by identity.
+
+        No snapshot survives a callback, and command validation still uses the
+        ledger's independent replay. Callers must not mutate this view state.
+        """
+        self._read_depth = getattr(self, '_read_depth', 0) + 1
+        try:
+            yield
+        finally:
+            self._read_depth -= 1
+            if not self._read_depth:
+                self._read_key = self._read_snapshot = None
 
     def current_rules(self):
         seg = self.state().current

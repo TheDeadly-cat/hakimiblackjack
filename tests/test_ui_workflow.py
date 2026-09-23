@@ -27,6 +27,7 @@ class TestUIWorkflow(unittest.TestCase):
         # These regressions exercise the original unknown-rule/manual workflow.
         self.app._set_rule_form(RuleProfile(n_decks=8, dealer_soft17='S17'))
         self.app.var_simple_hole.set(False)
+        self.app.var_auto_next.set(False)
         self.addCleanup(self.close_app)
         self.app.update()
 

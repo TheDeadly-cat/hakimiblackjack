@@ -2,6 +2,7 @@
 from ..analysis.contracts import AVAILABLE, STATUS_ZH
 from ..analysis.split_contracts import DAS_ENGINE_LEGACY, is_das_engine
 from ..analysis.split_service import SPLIT_ACTION_ZH
+from .ev_display import ev_sign
 
 
 def format_split_result(result, historical=False):
@@ -43,10 +44,10 @@ def format_split_result(result, historical=False):
             extra = (f"立刻追加{item['additional_investment']}"
                      f" · 此后可能再追加至多{item.get('possible_future_additional', 0)}"
                      f" · 最终投入上界{item.get('max_final_investment', item['total_investment'])}")
-            lines.append(f"{label} EV {item['ev']:+.6f} · {extra}")
+            lines.append(f"{label} {ev_sign(item['ev'])} {item['ev']:+.6f} · {extra}")
             distributions.append(f"{label}（{extra}）：")
         else:
-            lines.append(f"{label} EV {item['ev']:+.6f} · 总投入{item['total_investment']}")
+            lines.append(f"{label} {ev_sign(item['ev'])} {item['ev']:+.6f} · 总投入{item['total_investment']}")
             distributions.append(f"{label}（另追加{item['additional_investment']}）：")
         if 'hand_evs' in item:
             distributions.append('各手边际 EV：' + ' / '.join(f"{v:+.6f}" for v in item['hand_evs']))
@@ -62,6 +63,7 @@ def format_split_result(result, historical=False):
         lines.append(f"当前行动手再抽一张的爆牌概率：{probabilities['hit_bust']:.3%}")
     scope = '无再分 / 非A允许DAS / 分A一张；分A的21为普通21。' if das else '无再分 / 无DAS / 分A一张；分A的21为普通21。'
     lines.extend(['', '首手完成后才给第二手补第二张。', '两手共享剩余牌与同一庄家；无独立卷积。',
+                  '庄家非BJ检查：' + ('已记录' if info['peek_negative'] else '此明牌无需检查；保留可能的庄家BJ'),
                   '净收益已计入本金损失，不再次扣除投入。',
                   scope,
                   '有限不放回枚举，双精度舍入；无采样或概率截断。',

@@ -22,6 +22,7 @@ class TestAnalysisUI(unittest.TestCase):
         self.app = BlackjackLabApp(self.db, auto_analysis=False)
         # Legacy manual-entry scenarios explicitly keep their original recording mode.
         self.app.var_simple_hole.set(False)
+        self.app.var_auto_next.set(False)
         self.addCleanup(self.close)
         self.app.update()
 

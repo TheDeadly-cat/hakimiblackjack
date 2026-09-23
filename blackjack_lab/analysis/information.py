@@ -4,13 +4,19 @@ import json
 
 from ..core.cards import TEN_RANKS, UNKNOWN
 from ..core.table import DEALER, PHASE_DEALING, PHASE_IN_PROGRESS
-from ..core.rules import CONFIRM_VERIFIED
+from ..core.rules import CONFIRM_VERIFIED, requires_bj_peek
 from ..ledger.ledger import EventLedger
 from .contracts import AnalysisInput, InputUnavailable, canonical, digest, ACTION_ZH, UNSUPPORTED, INAPPLICABLE
 
 
 def build_input(ledger, seat, hand_id=None, through_seq=None, *, other_players_stand=False):
-    all_events = ledger.to_list()
+    return build_prepared_input(ledger.session_id, seat, hand_id, *prepare_prefix(ledger, through_seq),
+                                other_players_stand=other_players_stand)
+
+
+def prepare_prefix(ledger, through_seq=None, *, events=None):
+    """Validate once before comparing several seats against exactly the same prefix."""
+    all_events = ledger.to_list() if events is None else events
     seq = all_events[-1]["seq"] if through_seq is None and all_events else through_seq
     if type(seq) is not int or not any(e["seq"] == seq for e in all_events):
         raise InputUnavailable("PREFIX_MISSING", "所选历史时点不存在")
@@ -20,6 +26,10 @@ def build_input(ledger, seat, hand_id=None, through_seq=None, *, other_players_s
         current = validated.replay().current
     except Exception as error:
         raise InputUnavailable("INVALID_EVENTS", f"事件校验失败，不能用于分析：{error}") from error
+    return seq, prefix, current
+
+
+def build_prepared_input(session_id, seat, hand_id, seq, prefix, current, *, other_players_stand=False):
     if current is None or current.closed or current.table.phase not in (PHASE_DEALING, PHASE_IN_PROGRESS):
         raise InputUnavailable("ROUND_INACTIVE", "请选择进行中的手牌；已结束轮次请查看结束前的历史时点", INAPPLICABLE)
     rules, shoe, table = current.rules, current.shoe, current.table
@@ -42,7 +52,7 @@ def build_input(ledger, seat, hand_id=None, through_seq=None, *, other_players_s
     supported = (
         rules.shoe_model == "finite_no_replacement" and rules.dealer_soft17 == "S17"
         and rules.blackjack_payout == (3, 2) and rules.american_hole_card is True
-        and rules.check_bj_when == "before_player_actions_A_T"
+        and rules.check_bj_when in ("before_player_actions_A_T", "before_player_actions_A")
         and rules.dealer_bj_extra_bet_rule == "all_bets_lost"
         and rules.double_on_totals is None and rules.surrender in (None, "late")
     )
@@ -55,7 +65,7 @@ def build_input(ledger, seat, hand_id=None, through_seq=None, *, other_players_s
     from .split_contracts import ALL_SPLIT_PROFILES
     if rules.profile_id in ALL_SPLIT_PROFILES:
         from .split_information import build_split_input
-        return with_scenario(build_split_input(ledger.session_id, current, seat, hand_id, seq, prefix), scenario)
+        return with_scenario(build_split_input(session_id, current, seat, hand_id, seq, prefix), scenario)
     hands = table.players[seat].hands
     if len(hands) != 1 or any(h.from_split for h in hands):
         raise InputUnavailable("SPLIT_HAND_UNSUPPORTED", "分牌后的EV尚未实现；可查看分牌前的部分动作比较", UNSUPPORTED)
@@ -75,7 +85,7 @@ def build_input(ledger, seat, hand_id=None, through_seq=None, *, other_players_s
     values = {"A": 1, **{str(n): n for n in range(2, 11)}, "J": 10, "Q": 10, "K": 10, "T": 10}
     up = values[shown[0].rank]
     peek = table.dealer_hole_checked_negative
-    if up in (1, 10) and not peek:
+    if requires_bj_peek(rules, up) and not peek:
         raise InputUnavailable("PEEK_REQUIRED", "此模板需先记录庄家A/十点明牌的非BJ检查结果；未知底牌本身不会阻止分析")
     states = table.action_states(seat, hand.hand_id)
     legal = tuple(a for a, zh in ACTION_ZH.items() if states[zh].allowed)
@@ -90,7 +100,7 @@ def build_input(ledger, seat, hand_id=None, through_seq=None, *, other_players_s
         "gap": shoe.gap, "pending_candidates": shoe.pending_candidates,
         "dealer_hole": "one_unknown_physical_card", "negative_peek": peek,
         "action_states": {a: asdict(state) for a, state in states.items()}}
-    return with_scenario(AnalysisInput(ledger.session_id, current.shoe_id, current.round_id, seq,
+    return with_scenario(AnalysisInput(session_id, current.shoe_id, current.round_id, seq,
         digest(prefix), seat, hand.hand_id, rules.n_decks, canonical(json.loads(rules.to_json())),
         canonical(information), counts, shoe.physical_remaining(),
         tuple(values[c.rank] for c in hand.cards), tuple(c.rank for c in hand.cards), up, peek, legal, uncertain), scenario)

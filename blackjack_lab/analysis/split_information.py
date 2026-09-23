@@ -4,6 +4,7 @@ import json
 
 from ..core.cards import TEN_RANKS, UNKNOWN
 from ..core.table import DEALER
+from ..core.rules import requires_bj_peek
 from .contracts import ACTION_ZH, InputUnavailable, INAPPLICABLE, UNSUPPORTED, canonical, digest
 from .split_contracts import (
     SplitAnalysisInput, SplitHand, VALUES, supported_split_rules, supported_das_rules,
@@ -40,7 +41,7 @@ def build_split_input(session_id, current, seat, selected_id, seq, prefix):
     if len(dealer) != 2 or len(shown) != 1 or len(holes) != 1 or shoe.unrevealed_out != 1:
         raise InputUnavailable("DEALER_INFORMATION", "需要庄家一张明牌及一张正常未知底牌；可选择揭示前历史时点")
     up, peek = VALUES[shown[0].rank], table.dealer_hole_checked_negative
-    if up in (1, 10) and not peek:
+    if requires_bj_peek(rules, up) and not peek:
         raise InputUnavailable("PEEK_REQUIRED", "请先记录庄家A/十点明牌的非BJ检查")
     items = []
     for h in hands:
@@ -88,6 +89,8 @@ def build_split_input(session_id, current, seat, selected_id, seq, prefix):
                      support_scope="S17/3:2/US-peek/zero-burn/single-player/two-sequential/DAS-non-ace/no-resplit")
     elif supported_same_value_split_rules(rules):
         extra = dict(support_scope=SAME_VALUE_SCOPE)
+    if rules.check_bj_when == 'before_player_actions_A':
+        extra['support_scope'] = extra['support_scope'].replace('US-peek/', 'US-ace-peek/ten-no-peek/all-bets-lost/')
     snapshot = SplitAnalysisInput(session_id, current.shoe_id, current.round_id, seq, digest(prefix),
         seat, selected_id, rules.n_decks, canonical(json.loads(rules.to_json())), canonical(info),
         counts, shoe.physical_remaining(), tuple(items), active, pending, up, peek, legal, uncertain,

@@ -1,4 +1,8 @@
-# 当前接手：FLOW-1～FLOW-3 日常流程精简（2026-09-22）
+# 当前增量：自动下一局与录牌性能（2026-09-23）
+
+基线 PR #22 `11ef4e6`；独立分支 `codex/auto-next-flow-20260923`。新增 S17 庄家终局原子结算开轮及 Backspace 组合撤回；新默认仅 A 明牌检查，十点保留 BJ 风险直接行动；逐动作 EV 正负标识、初始发牌暂停计算，以及共用已验证前缀/单次回调重放减少录牌卡顿。详见[本轮实现和验证](docs/Auto-next-performance-20260923.md)。新规则只用于新牌盒，旧规则、账本和冻结试用副本保留；草稿审查，不合并 main。以下内容为历史交接。
+
+# 历史接手：FLOW-1～FLOW-3 日常流程精简（2026-09-22）
 
 在 PR #15 的 0c1dda7 上依次叠加三份草稿：阶段操作与原子结算开轮、近期可见牌纠错和准确撤销、稳定录牌区与窗口偏好。独立工作目录 flow-daily-panel；原 compact-decision-panel 和历史资料保留。数学、规则、精度和多人条件口径不变，不合并 main。详见 [FLOW-1](docs/FLOW-1-round-transition.md)、[FLOW-2](docs/FLOW-2-recent-correction.md)、[FLOW-3](docs/FLOW-3-stable-layout.md)。精确提交和 Windows CI 以相应 PR 为准；原生验收只使用新的模拟数据。
 

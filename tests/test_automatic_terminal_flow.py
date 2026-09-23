@@ -132,6 +132,7 @@ class TestAutomaticTerminalFlow(unittest.TestCase):
         self.app.update()
         self.assertEqual(self.app.ctrl.ledger.to_list(), before)
         self.assertEqual(self.app.ctrl.state().current.rules.dealer_soft17, 'H17')
+        self.app.var_auto_next.set(False)  # This legacy case inspects the terminal before manual settlement.
         self.assertFalse(self.app.dealer_recording_finished())
         self.app._key_rank('2')
         self.assertIn('19 点，已自动停牌', self.app.dealer_recording_finished())

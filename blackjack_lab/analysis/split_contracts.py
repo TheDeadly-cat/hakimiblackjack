@@ -11,7 +11,8 @@ SPLIT_PROFILE = "research-s17-us-peek-two-sequential-v1"
 DAS_PROFILE = "research-s17-us-peek-two-sequential-das-v1"
 SAME_VALUE_SPLIT_PROFILE = "research-s17-us-peek-two-sequential-same-value-v1"
 SAME_VALUE_DAS_PROFILE = "research-s17-us-peek-two-sequential-das-same-value-v1"
-ALL_SPLIT_PROFILES = (SPLIT_PROFILE, DAS_PROFILE, SAME_VALUE_SPLIT_PROFILE, SAME_VALUE_DAS_PROFILE)
+ACE_PEEK_DAS_PROFILE = "research-s17-us-ace-peek-two-sequential-das-same-value-v1"
+ALL_SPLIT_PROFILES = (SPLIT_PROFILE, DAS_PROFILE, SAME_VALUE_SPLIT_PROFILE, SAME_VALUE_DAS_PROFILE, ACE_PEEK_DAS_PROFILE)
 SPLIT_INPUT_SCHEMA = "hakimi-split-analysis-input-v1"
 SPLIT_RESULT_SCHEMA = "hakimi-analysis-result-v2"
 SAME_VALUE_SCOPE = "S17/3:2/US-peek/zero-burn/single-player/two-sequential/same-value/no-DAS/no-resplit"
@@ -97,10 +98,20 @@ def supported_das_rules(rules):
 
 
 def supported_same_value_das_rules(rules):
-    return (rules.profile_id == SAME_VALUE_DAS_PROFILE and rules.version == 1
+    return (rules.profile_id in (SAME_VALUE_DAS_PROFILE, ACE_PEEK_DAS_PROFILE) and rules.version == 1
+            and (rules.profile_id != ACE_PEEK_DAS_PROFILE or rules.check_bj_when == 'before_player_actions_A')
             and rules.max_split_hands == 2 and rules.split_deal_order == SPLIT_ORDER
             and rules.split_match == "same_value" and rules.double_after_split is True
             and rules.resplit_aces is False and rules.split_ace_hit_once is True)
+
+
+def ace_peek_das_research_rules(n_decks=8, surrender='late'):
+    rules = same_value_das_research_rules(n_decks, surrender)
+    rules.profile_id = ACE_PEEK_DAS_PROFILE
+    rules.check_bj_when = 'before_player_actions_A'
+    rules.game_name = 'S17同值分牌DAS：仅A明牌检查'
+    rules.remark += '；十点明牌不检查，保留庄家BJ风险，追加注全输；未排除BJ时不能晚投降'
+    return rules
 
 
 def declared_two_hand_template(rules):

@@ -53,7 +53,7 @@ from .manual_keymap import (
 from ..analysis.contracts import research_rules
 from ..analysis.split_contracts import (
     ALL_SPLIT_PROFILES, DAS_PROFILE, SAME_VALUE_DAS_PROFILE, SAME_VALUE_SPLIT_PROFILE,
-    SPLIT_PROFILE, das_research_rules, same_value_das_research_rules,
+    SPLIT_PROFILE, das_research_rules, same_value_das_research_rules, ace_peek_das_research_rules, ACE_PEEK_DAS_PROFILE,
     same_value_split_research_rules, split_research_rules,
 )
 
@@ -68,7 +68,8 @@ def tracked_operation(function):
     @wraps(function)
     def invoke(self, *args, **kwargs):
         self._operation_start_revision = self.ctrl.commit_revision
-        return function(self, *args, **kwargs)
+        with self.ctrl.read_frame():
+            return function(self, *args, **kwargs)
     return invoke
 
 
@@ -130,6 +131,7 @@ class BlackjackLabApp(tk.Tk):
         self.var_hand = tk.StringVar(value="（最新一手）")
         self.var_mode = tk.StringVar(value="新发牌")
         self.var_simple_hole = tk.BooleanVar(value=False)
+        self.var_auto_next = tk.BooleanVar(value=True)
         self.var_suit = tk.StringVar(value="未知")
         self.var_status = tk.StringVar(value="就绪：请先选择牌副数并新建牌靴")
         self.var_opening_ev = tk.StringVar(value='下轮EV：尚无可用牌盒')
@@ -781,12 +783,13 @@ class BlackjackLabApp(tk.Tk):
 
     def _load_common_settings(self):
         # A user-selected local preset, never a fallback for imported unknown rules.
-        rules = same_value_das_research_rules(8)
+        rules = ace_peek_das_research_rules(8)
         rules.vendor = '本机常用设置'
-        rules.rule_source = '用户指定S17/同值分牌/晚投降/允许加倍；其余沿用本机研究模板'
+        rules.rule_source = '用户指定S17/十点不检查BJ/同值分牌/晚投降/允许加倍；其余沿用本机研究模板'
         self._set_rule_form(rules)
         self.var_simple_hole.set(True)
-        self.var_status.set('常用设置已就绪：8副 / S17 / 同值分牌 / 晚投降 / 允许加倍（含非A分后加倍）/ 简便暗牌。')
+        self.var_auto_next.set(True)
+        self.var_status.set('常用设置：8副 / S17自动下一局 / 十点不检查BJ / 同值分牌 / 晚投降 / 允许加倍 / 简便暗牌。')
 
     @tracked_operation
     def act_common_settings(self):
@@ -1050,12 +1053,13 @@ class BlackjackLabApp(tk.Tk):
     def _view_frame(self):
         # Only read-only painting shares this snapshot. Ledger writes and
         # analysis inputs still replay independently through the controller.
-        previous = getattr(self, '_view_snapshot', None)
-        self._view_snapshot = previous or (self.ctrl.context_token, self.ctrl.state())
-        try:
-            yield
-        finally:
-            self._view_snapshot = previous
+        with self.ctrl.read_frame():
+            previous = getattr(self, '_view_snapshot', None)
+            self._view_snapshot = previous or (self.ctrl.context_token, self.ctrl.state())
+            try:
+                yield
+            finally:
+                self._view_snapshot = previous
 
     def _view_state(self):
         snapshot = getattr(self, '_view_snapshot', None)
@@ -1210,17 +1214,24 @@ class BlackjackLabApp(tk.Tk):
                 target = self.ctrl.ledger._find(automatic_target) if automatic_target else self._find_hidden_deal_event(seg, hand_id)
                 if target is None:
                     raise TableError("该手牌没有待揭示的暗牌/未知牌")
-                self.ctrl.reveal(target.event_id, rank, self._suit())
+                self.ctrl.reveal(target.event_id, rank, self._suit(),
+                                 auto_next=self._next_round_options() if self.var_auto_next.get() else None)
                 if automatic_target:
                     self._sync_from_plan()
                 self.set_status(f"暗牌揭示为 {rank}（未重复扣牌，只做揭示转换）")
             else:
                 saved_seat = self.var_target.get()
                 event = self.ctrl.deal_shown(saved_seat, rank,
-                                     hand_id=hand_id, suit=self._suit(), initial_slot_id=self._pending_slot_id)
+                                     hand_id=hand_id, suit=self._suit(), initial_slot_id=self._pending_slot_id,
+                                     auto_next=self._next_round_options() if self.var_auto_next.get() else None)
                 self._note_shown(saved_seat, event, rank, self._pending_slot_id)
                 self.set_status(f"录入 {saved_seat} <- {rank}" +
                                 ('；已按确认流程登记未知底牌' if self.ctrl.ledger.events[-1].seq > event.seq else ''))
+            if self._current_seg().round_id != seg.round_id:
+                self.var_mode.set('新发牌')
+                self._sync_from_plan()
+                self.var_analysis_target.set(self.var_my_seat.get())
+                self.set_status('庄家已到终局，上轮自动结算，已进入下一局。Backspace可撤回本次录牌和跳转。')
             self.refresh_all()
         except Exception as e:
             self.fail(e)
@@ -1474,7 +1485,7 @@ class BlackjackLabApp(tk.Tk):
             f"阶段 {'牌靴已结束' if seg.closed else seg.table.phase}｜记录：{self._record_status(seg)}｜"
             f"守恒：{'正常' if ok else '异常'}｜"
             f"规则确认：{seg.rules.confirm_status}｜分析：" + (
-                "两手同点值DAS" if seg.rules.profile_id == SAME_VALUE_DAS_PROFILE
+                "两手同点值DAS" if seg.rules.profile_id in (SAME_VALUE_DAS_PROFILE, ACE_PEEK_DAS_PROFILE)
                 else "两手同点值分牌" if seg.rules.profile_id == SAME_VALUE_SPLIT_PROFILE
                 else "两手DAS模型" if seg.rules.profile_id == DAS_PROFILE
                 else "两手顺序模型" if seg.rules.profile_id == SPLIT_PROFILE
