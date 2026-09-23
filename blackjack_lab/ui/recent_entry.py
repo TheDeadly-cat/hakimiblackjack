@@ -51,6 +51,10 @@ def undo_label(ctrl):
                   if e.etype not in (UNDO, SESSION_STARTED) and e.event_id not in voided), None)
     if event is None:
         return '无可撤销记录'
+    if event.etype == 'SHOE_CREATED' and ctrl._shoe_undo_group():
+        return '撤销换靴'
+    if event.etype == 'ROUND_STARTED' and ctrl._automatic_undo_group():
+        return '撤销录牌及自动下一局'
     if event.etype == CARD_REVEALED:
         return '撤销底牌揭示' if ctrl.ledger._find(event.payload['target_event_id']).payload.get('face_state') == 'hidden' else '撤销未知牌揭示'
     if event.etype == CARD_DEALT:

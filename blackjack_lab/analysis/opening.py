@@ -10,8 +10,8 @@ from ..core.table import PHASE_DEALING, PHASE_IN_PROGRESS
 from ..ledger.ledger import EventLedger
 from .contracts import InputUnavailable, canonical, digest
 
-ENGINE = 'opening-finite-mc-v1'
-STRATEGY = 'composition-replacement-policy-two-hand-v1'
+ENGINE = 'opening-finite-mc-v2'
+STRATEGY = 'composition-replacement-policy-two-hand-v2'
 SCHEMA = 'hakimi-opening-ev-v1'
 SAMPLES = 2_000_000
 NOTE = ('按当前人数及本人座位模拟；其他玩家采用同一固定策略。策略按开局组成推导，'
@@ -72,7 +72,7 @@ def validate_counts(counts, seats, focal):
 
 def validate_rules(rules):
     required = dict(confirm_status=CONFIRM_VERIFIED, shoe_model='finite_no_replacement',
-                    dealer_soft17='S17', american_hole_card=True, check_bj_when='before_player_actions_A_T',
+                    dealer_soft17='S17', american_hole_card=True,
                     dealer_bj_extra_bet_rule='all_bets_lost', double_on_totals=None, split_match='same_value',
                     max_split_hands=2, resplit_aces=False, split_ace_hit_once=True,
                     split_deal_order='sequential_complete_first', start_from_new_shoe=True,
@@ -80,6 +80,7 @@ def validate_rules(rules):
     if (any(key not in rules or type(rules[key]) is not type(value) or rules[key] != value for key, value in required.items())
             or rules.get('blackjack_payout') != [3, 2] or type(rules.get('double_after_split')) is not bool
             or rules.get('surrender') not in (None, 'late')
+            or rules.get('check_bj_when') not in ('before_player_actions_A_T', 'before_player_actions_A')
             or type(rules.get('n_decks')) is not int or rules['n_decks'] not in (6, 7, 8)):
         raise InputUnavailable('OPENING_RULES_UNSUPPORTED', '开局估算暂支持常用S17／同值两手桌规')
 

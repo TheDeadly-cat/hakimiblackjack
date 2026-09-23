@@ -148,7 +148,10 @@ class TestSimpleHoleEntry(unittest.TestCase):
         self.assertEqual(self.app.ctrl.ledger.to_list(), before)
         self.assertTrue(self.app.var_simple_hole.get())
         self.app._key_rank('3')
-        self.assertEqual(self.app.ctrl.ledger.events[-1].etype, 'CARD_DEALT')
+        self.assertEqual([e.etype for e in self.app.ctrl.ledger.events[-3:]],
+                         ['CARD_DEALT', 'ROUND_ENDED', 'ROUND_STARTED'])
+        self.assertEqual(self.app.ctrl.ledger.events[-3].payload['rank'], '3')
+        self.assertEqual(self.app.ctrl.state().current.table.round_no, 2)
         self.assertEqual(sum(e.etype == 'CARD_REVEALED' for e in self.app.ctrl.ledger.events), 1)
         self.assertEqual(self.app.ctrl.state().current.shoe.physical_remaining(), 411)
         self.assertEqual(self.errors, [])

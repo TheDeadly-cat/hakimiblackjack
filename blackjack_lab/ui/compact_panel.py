@@ -11,6 +11,7 @@ from ..analysis.seat_scenario import NOTE
 from .daily_flow import current_flow
 from .recent_entry import recent_visible, undo_label
 from .automatic_flow import dealer_finish_message
+from .ev_display import ev_sign, decision_evs
 
 PALETTE = dict(background='#F3F6F8', surface='#FFFFFF', ink='#173A45', accent='#187365',
                caution='#935213', error='#AD3030', muted='#52636B')
@@ -42,9 +43,11 @@ class CompactPanel(tk.Frame):
         self._label(top, variable=self.player_count, font=('Microsoft YaHei UI', 9)).grid(row=0, column=2)
         self.add_player = ttk.Button(top, text='+ 玩家', width=7, command=lambda: app.change_player_count(1))
         self.add_player.grid(row=0, column=3, padx=2)
+        self.new_shoe_button = ttk.Button(top, text='新建牌靴', width=9, command=app.act_new_shoe)
+        self.new_shoe_button.grid(row=0, column=4, padx=(8, 0))
         self.opening_label = self._label(top, variable=app.var_opening_ev,
                                         font=('Microsoft YaHei UI', 9, 'bold'), wrap=640, height=2, cursor='hand2')
-        self.opening_label.grid(row=1, column=0, columnspan=4, sticky='w', pady=(4, 0))
+        self.opening_label.grid(row=1, column=0, columnspan=5, sticky='w', pady=(4, 0))
         self.opening_label.bind('<Button-1>', lambda event: app.opening_estimate.show_details())
         self.identity_label = self._label(self, variable=self.identity, font=('Microsoft YaHei UI', 12, 'bold'), wrap=640, height=2)
         self.identity_label.grid(row=1, column=0, sticky='ew', pady=(6, 6))
@@ -61,8 +64,13 @@ class CompactPanel(tk.Frame):
         self.compute.pack(side=tk.LEFT, padx=(12, 3))
         ttk.Button(selectors, text='取消', width=6, command=self.panel.cancel).pack(side=tk.LEFT)
         ttk.Checkbutton(selectors, text='自动', variable=self.panel.auto).pack(side=tk.LEFT, padx=4)
-        self.status_label = self._label(self, variable=self.state, font=('Microsoft YaHei UI', 11, 'bold'))
-        self.status_label.grid(row=6, column=0, sticky='w', pady=(10, 3))
+        status_area = tk.Frame(self, bg=PALETTE['background'])
+        status_area.grid(row=6, column=0, sticky='ew', pady=(6, 3))
+        self.status_label = self._label(status_area, variable=self.state, font=('Microsoft YaHei UI', 11, 'bold'))
+        self.status_label.pack(anchor='w')
+        self.decision_evs = tk.StringVar()
+        self._label(status_area, variable=self.decision_evs, wrap=650, height=2,
+                    font=('Microsoft YaHei UI', 9)).pack(anchor='w', fill=tk.X)
         self.rows = []
         # Keep recording controls stationary when a result is invalidated.
         self.rowconfigure(7, minsize=92)
@@ -234,7 +242,7 @@ class CompactPanel(tk.Frame):
                     if len(choices) <= index:
                         return '—'
                     item = choices[index]
-                    return f'{item.label} {item.profit:.2%}'
+                    return f'{item.label}·{ev_sign(item.ev)} {item.profit:.1%}'
                 state = summary.state if summary else row['state']
                 if row['state'] == '保存待重试':
                     state = row['state']
@@ -336,6 +344,7 @@ class CompactPanel(tk.Frame):
         self.state.set(model.state)
         self.message.set(model.message)
         self.notes.set(' '.join(model.notes))
+        self.decision_evs.set(decision_evs(panel.last_result))
         multi = len(self.panel.overview.rows) > 1 and not model.historical
         if multi:
             self.notes.set(NOTE)
@@ -375,7 +384,7 @@ class CompactPanel(tk.Frame):
             action.configure(text=choice.label, fg=PALETTE['accent' if i == 0 else 'ink'])
             extra.configure(text=f'追加 {choice.additional:g} 单位' if choice.additional else '')
             profit.configure(text=f'净盈利 {choice.profit:.2%}')
-            ev.configure(text=f'EV {choice.ev:+.6f}')
+            ev.configure(text=f'{ev_sign(choice.ev)} {choice.ev:+.6f}')
         self.hand.configure(values=panel.cmb_analysis_hand.cget('values'))
         self.compute.state(['disabled'] if panel.compute_button.instate(['disabled']) else ['!disabled'])
         if panel.recomputed_from:

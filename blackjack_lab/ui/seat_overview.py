@@ -31,7 +31,7 @@ class SeatOverview:
             row = self.rows[seat] = dict(cards=cards or '待发牌', state='待计算', result=None, snapshot=None,
                                         busted=bool(hands) and all(h.is_bust for h in hands))
             try:
-                row['snapshot'] = self.app.ctrl.analysis_input(seat, other_players_stand=True)
+                row['snapshot'] = self.app.ctrl.current_decision_input(seat)
             except InputUnavailable as error:
                 row.update(state=STATUS_ZH[error.status], reason=error.reason)
         return True

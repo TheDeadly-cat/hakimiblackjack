@@ -15,10 +15,10 @@ from .service import AnalysisService
 
 
 def estimate_counts(counts, *, seats=1, focal=0, das=True, surrender=True,
-                    samples=SAMPLES, seed=20260923, budget_seconds=18):
+                    peek_ten=True, samples=SAMPLES, seed=20260923, budget_seconds=18):
     validate_counts(counts, seats, focal)
     if (type(samples) is not int or not 2 <= samples <= 4_000_000 or type(seed) is not int or not 0 <= seed <= 0x7fffffff
-            or type(das) is not bool or type(surrender) is not bool or type(budget_seconds) not in (int, float)
+            or type(das) is not bool or type(surrender) is not bool or type(peek_ten) is not bool or type(budget_seconds) not in (int, float)
             or not math.isfinite(budget_seconds) or not 0 < budget_seconds <= 30):
         raise ValueError('无效的开局模拟参数')
     started = perf_counter()
@@ -26,8 +26,8 @@ def estimate_counts(counts, *, seats=1, focal=0, das=True, surrender=True,
     remaining = budget_seconds - (perf_counter() - started)
     if remaining <= 0:
         raise TimeoutError('TIMEOUT')
-    payload = dict(kind='opening-monte-carlo-v1', counts=counts, seats=seats, focal=focal,
-                   das=das, surrender=surrender, samples=samples, seed=seed, budget_seconds=remaining)
+    payload = dict(kind='opening-monte-carlo-v2', counts=counts, seats=seats, focal=focal,
+                   das=das, surrender=surrender, peek_ten=peek_ten, samples=samples, seed=seed, budget_seconds=remaining)
     code, stdout, stderr = _run_owned_process([str(executable)], remaining, json.dumps(payload))
     result = json.loads(stdout)
     if code or result.get('status') != 'available':
@@ -49,6 +49,7 @@ def calculate_opening(snapshot, request_id, samples=SAMPLES, budget_seconds=18):
         rules = json.loads(snapshot.rules_json)
         numbers = estimate_counts(snapshot.counts, seats=len(snapshot.participants), focal=snapshot.focal,
                                   das=rules['double_after_split'], surrender=rules['surrender'] == 'late',
+                                  peek_ten=rules['check_bj_when'] == 'before_player_actions_A_T',
                                   samples=samples, seed=snapshot.seed, budget_seconds=budget_seconds)
         result.update(status='available', **numbers)
     except (TimeoutError, subprocess.TimeoutExpired):

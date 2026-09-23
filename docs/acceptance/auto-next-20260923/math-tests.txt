@@ -1,0 +1,12 @@
+test_ace_still_waits_for_actual_check (tests.test_ace_only_peek.TestAceOnlyPeek.test_ace_still_waits_for_actual_check) ... ok
+test_all_decisions_show_sign_and_unavailable_is_not_zero (tests.test_ace_only_peek.TestAceOnlyPeek.test_all_decisions_show_sign_and_unavailable_is_not_zero) ... ok
+test_legacy_ten_peek_rule_keeps_its_original_requirement (tests.test_ace_only_peek.TestAceOnlyPeek.test_legacy_ten_peek_rule_keeps_its_original_requirement) ... ok
+test_ten_does_not_fabricate_negative_peek_and_preserves_bj_settlement (tests.test_ace_only_peek.TestAceOnlyPeek.test_ten_does_not_fabricate_negative_peek_and_preserves_bj_settlement) ... ok
+test_opening_no_peek_retains_natural_payouts_and_uses_rule_in_input (tests.test_ace_only_peek.TestNoTenPeekMath.test_opening_no_peek_retains_natural_payouts_and_uses_rule_in_input) ... ok
+test_single_actions_match_independent_fraction_oracle_without_peek (tests.test_ace_only_peek.TestNoTenPeekMath.test_single_actions_match_independent_fraction_oracle_without_peek) ... ok
+test_split_das_without_peek_matches_shared_shoe_fraction_oracle (tests.test_ace_only_peek.TestNoTenPeekMath.test_split_das_without_peek_matches_shared_shoe_fraction_oracle) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.977s
+
+OK

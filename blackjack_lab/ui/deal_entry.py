@@ -88,11 +88,8 @@ def rank_label(rank: Optional[str]) -> str:
 
 
 def dealer_up_requires_peek(rules, up_rank: Optional[str]) -> bool:
-    if rules is None or not up_rank:
-        return False
-    return (getattr(rules, "american_hole_card", None) is True
-            and getattr(rules, "check_bj_when", None) == "before_player_actions_A_T"
-            and (up_rank == "A" or is_ten_value(up_rank)))
+    from ..core.rules import requires_bj_peek
+    return requires_bj_peek(rules, up_rank)
 
 
 def next_open_hand(table, participants=None) -> Optional[tuple[str, Optional[str], int]]:

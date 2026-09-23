@@ -36,6 +36,13 @@ class OpeningEstimateView:
                 self.app.var_my_seat.get(), self.app.var_deal_direction.get(), self.app.analysis_panel.auto.get())
 
     def current_input(self):
+        # Cheap UI eligibility guard before validating the full historical prefix.
+        # The builder still performs all checks when an actual estimate is requested.
+        from ..core.table import PHASE_DEALING, PHASE_IN_PROGRESS
+        seg = self.app._current_seg()
+        if seg and seg.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS) and any(
+                h.cards for seat in [seg.table.dealer, *seg.table.players.values()] for h in seat.hands):
+            raise InputUnavailable('ROUND_ACTIVE', '本轮发牌中，结束后计算')
         return build_opening_input(self.app.ctrl.ledger,
                                    tuple(k for k, v in self.app.var_participants.items() if v.get()),
                                    self.app.var_my_seat.get(), self.app.var_deal_direction.get())

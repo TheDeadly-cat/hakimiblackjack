@@ -28,6 +28,18 @@ SHOE_UNKNOWN = "unknown"
 CONFIRM_UNKNOWN = "未确认"
 CONFIRM_VERIFIED = "已确认"
 
+PEEK_A_T = 'before_player_actions_A_T'
+PEEK_A = 'before_player_actions_A'
+
+
+def requires_bj_peek(rules, up):
+    """Required observation, separate from whether a hidden natural is possible."""
+    if rules is None or rules.american_hole_card is not True:
+        return False
+    ace = up in ('A', 1)
+    ten = up in ('T', '10', 'J', 'Q', 'K', 10)
+    return rules.check_bj_when in (PEEK_A, PEEK_A_T) and (ace or ten and rules.check_bj_when == PEEK_A_T)
+
 
 @dataclass
 class RuleProfile:
