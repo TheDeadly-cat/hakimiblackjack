@@ -299,6 +299,9 @@ class TableState:
             return disabled("PEEK_REQUIRED", "等待庄家A/十点明牌的非BJ检查")
         if hand.is_closed:
             return disabled("HAND_CLOSED", "该手牌已结束")
+        if (hand.from_split and self.rules.split_deal_order == 'both_second_cards_first'
+                and any(len(h.cards) < 2 for h in self.seat(seat_name).hands)):
+            return disabled('SPLIT_INITIAL_PENDING', '请先给分出的两手各补一张，再开始行动')
         if len(hand.cards) < 2 or hand.hidden_cards:
             return disabled("PLAYER_INCOMPLETE", "初始两张牌未完整确认")
         if hand.doubled or hand.awaiting_hit:
@@ -378,7 +381,7 @@ class TableState:
             h.hand_id == new_hand_id for s in [self.dealer, *self.players.values()] for h in s.hands
         ):
             raise TableError("分牌后的手牌ID必须唯一")
-        self._observe_split_order(seat_name, hand, action)
+        self._observe_split_order(seat_name, hand, action, is_action=True)
         hand.actions.append(action)
         self.phase = PHASE_IN_PROGRESS
         info: dict = {"action": action}
@@ -420,12 +423,18 @@ class TableState:
         # template closes limited aces in add_card(), using its actual rules.
         return hand.is_closed or hand.total()[0] == 21
 
-    def _observe_split_order(self, seat_name, hand, cause):
+    def _observe_split_order(self, seat_name, hand, cause, is_action=False):
         """Retain accepted recording; derive analysis incompatibility on replay."""
         if seat_name == DEALER or not hand.from_split:
             return
         hands = self.seat(seat_name).hands
         prior = hands[:hands.index(hand)]
+        if self.rules.split_deal_order == 'both_second_cards_first':
+            if not is_action and len(hand.cards) == 2 and all(len(h.cards) >= 2 for h in prior):
+                return  # The second hand's initial extra card is visible before first-hand decisions.
+            if any(len(h.cards) < 2 for h in hands):
+                self.split_order_violations.append({'hand_id': hand.hand_id, 'cause': cause})
+                return
         if any(not self.split_hand_closed(h) for h in prior):
             self.split_order_violations.append({"hand_id": hand.hand_id, "cause": cause})
 

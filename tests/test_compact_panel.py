@@ -162,7 +162,7 @@ class TestCompactPanel(unittest.TestCase):
         self.assertEqual(view.model.state, '等待补牌')
         self.assertFalse(view.model.choices)
         self.app._key_rank('T')
-        self.assertEqual(view.model.state, '等待庄家')
+        self.assertEqual(view.model.state, '已达21点')
         self.assertFalse(view.model.choices)
 
     def test_missing_cards_rules_and_gap_are_explicit(self):

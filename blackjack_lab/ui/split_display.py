@@ -1,6 +1,6 @@
 """Chinese display adapter for the total objective; no computation in widgets."""
 from ..analysis.contracts import AVAILABLE, STATUS_ZH
-from ..analysis.split_contracts import DAS_ENGINE_LEGACY, is_das_engine
+from ..analysis.split_contracts import DAS_ENGINE_LEGACY, is_das_engine, BOTH_INITIAL_ENGINE
 from ..analysis.split_service import SPLIT_ACTION_ZH
 from .ev_display import ev_sign
 
@@ -8,12 +8,16 @@ from .ev_display import ev_sign
 def format_split_result(result, historical=False):
     info = result['input']
     das = is_das_engine(result.get('engine_version'))
+    both_initial = result.get('engine_version') == BOTH_INITIAL_ENGINE
+    filling = both_initial and len(info['hands']) == 2 and any(len(h['ranks']) == 1 for h in info['hands'])
     prefix = '历史分析 · ' if historical else '当前 · '
     lines = [f"{prefix}{info['seat']} · {info['n_decks']}副 · 庄家 {info['dealer_up']}",
              '两手顺序分牌DAS' if das else '两手顺序分牌']
-    details = [f"选中手：{info['hand_id']}", f"当前行动手：{info['active_hand_id'] or '两手均已完成'}"]
+    details = [f"选中手：{info['hand_id']}", f"{'当前补牌手' if filling else '当前行动手'}：{info['active_hand_id'] or '两手均已完成'}"]
     for i,hand in enumerate(info['hands'],1):
         state = '已闭合' if hand['closed'] else '等待确定要发的一张牌' if hand['forced_draw'] else '可决策'
+        if filling and not hand['closed'] and len(hand['ranks']) >= 2:
+            state = '等待另一手补齐'
         stake = hand.get('bet_units', 1)
         details.append(f"第{i}手 · {' '.join(hand['ranks'])} · {state} · 注额{stake}")
     if historical:
@@ -62,7 +66,8 @@ def format_split_result(result, historical=False):
             and result.get('probability_status',{}).get('next_target_draw',AVAILABLE)==AVAILABLE):
         lines.append(f"当前行动手再抽一张的爆牌概率：{probabilities['hit_bust']:.3%}")
     scope = '无再分 / 非A允许DAS / 分A一张；分A的21为普通21。' if das else '无再分 / 无DAS / 分A一张；分A的21为普通21。'
-    lines.extend(['', '首手完成后才给第二手补第二张。', '两手共享剩余牌与同一庄家；无独立卷积。',
+    order = '两手各补一张后，先处理第一手，再处理第二手；决策使用两手已知牌。' if both_initial else '首手完成后才给第二手补第二张。'
+    lines.extend(['', order, '两手共享剩余牌与同一庄家；无独立卷积。',
                   '庄家非BJ检查：' + ('已记录' if info['peek_negative'] else '此明牌无需检查；保留可能的庄家BJ'),
                   '净收益已计入本金损失，不再次扣除投入。',
                   scope,

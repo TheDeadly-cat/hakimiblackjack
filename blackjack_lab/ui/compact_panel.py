@@ -250,6 +250,8 @@ class CompactPanel(tk.Frame):
                     state = '计算中'
                 if row.get('busted'):
                     choices, state = (), '已爆牌'
+                elif row.get('total21'):
+                    choices, state = (), '已达21点'
                 values = (seat, row['cards'], choice_text(0), choice_text(1),
                           f'{choices[0].ev:+.4f}' if choices else '—', state)
                 if self.seat_table.exists(seat):
@@ -339,6 +341,10 @@ class CompactPanel(tk.Frame):
                     and all(h.is_bust for h in hands)):
                 self.model = replace(self.model, state='已爆牌', choices=(),
                     message=f'{seat}已爆牌，当前发牌给{self.app.var_target.get()}。')
+            elif (len(hands) == 1 and hands[0].total()[0] == 21 and not current.closed
+                    and current.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS)):
+                self.model = replace(self.model, state='已达21点', choices=(),
+                    message=f'{seat}已达21点，当前发牌给{self.app.var_target.get()}。')
         model = self.model
         self.identity.set(model.identity)
         self.state.set(model.state)

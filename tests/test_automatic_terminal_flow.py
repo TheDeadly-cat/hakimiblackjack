@@ -86,7 +86,7 @@ class TestAutomaticTerminalFlow(unittest.TestCase):
         hand = app.ctrl.state().current.table.players['玩家1'].hands[0]
         self.assertEqual(hand.total()[0], 21)
         self.assertFalse(hand.is_bust)
-        self.assertEqual(app.var_target.get(), '玩家1')
+        self.assertEqual(app.var_target.get(), '玩家2')
         self.assertNotIn('已爆牌', app.compact_panel.flow_message.get())
         self.assertEqual(self.errors, [])
 

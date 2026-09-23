@@ -29,7 +29,8 @@ class SeatOverview:
             hands = seg.table.players[seat].hands
             cards = ' / '.join(' '.join(c.rank for c in h.cards) + ('（已爆牌）' if h.is_bust else '') for h in hands)
             row = self.rows[seat] = dict(cards=cards or '待发牌', state='待计算', result=None, snapshot=None,
-                                        busted=bool(hands) and all(h.is_bust for h in hands))
+                                        busted=bool(hands) and all(h.is_bust for h in hands),
+                                        total21=len(hands) == 1 and hands[0].total()[0] == 21)
             try:
                 row['snapshot'] = self.app.ctrl.current_decision_input(seat)
             except InputUnavailable as error:

@@ -8,7 +8,7 @@ from .probability import CalculationStopped, InsufficientCards, FiniteModel, LAB
 from .split_actions import solve_split_counts
 from .split_contracts import (
     SPLIT_ENGINE, SPLIT_STRATEGY, DAS_ENGINE, DAS_STRATEGY, _hand_can_das,
-    is_das_engine)
+    is_das_engine, BOTH_INITIAL_ENGINE, BOTH_INITIAL_STRATEGY)
 from .native_backend import solve_presplit_native
 
 SPLIT_ACTION_ZH = {**ACTION_ZH, "deal": "录入已确定要发的一张牌", "complete": "两手完成，等待庄家结算"}
@@ -85,6 +85,8 @@ def _remaining_das_units(snapshot, action):
         return 2
     if snapshot.hands and snapshot.hands[0].split_ace:
         return 0
+    if snapshot.engine_version == BOTH_INITIAL_ENGINE and any(len(h.ranks) == 1 for h in snapshot.hands):
+        return sum(h.bet_units == 1 and (len(h.ranks) == 1 or _hand_can_das(h)) for h in snapshot.hands)
     index = snapshot.active_index
     stakes = tuple(h.bet_units for h in snapshot.hands)
     later = 0
@@ -187,7 +189,11 @@ def calculate_split(snapshot, request_id, budget_seconds):
     try:
         snapshot.validate()
         das = _is_das_snapshot(snapshot)
-        if das:
+        both_initial = snapshot.engine_version == BOTH_INITIAL_ENGINE
+        if both_initial:
+            if snapshot.strategy_version != BOTH_INITIAL_STRATEGY:
+                raise ValueError('两手先补齐的引擎和策略不匹配')
+        elif das:
             if snapshot.engine_version != DAS_ENGINE or snapshot.strategy_version != DAS_STRATEGY:
                 raise ValueError("分牌引擎/策略已升级，请按原事件前缀另建输入复算")
         elif snapshot.engine_version != SPLIT_ENGINE or snapshot.strategy_version != SPLIT_STRATEGY:
@@ -196,7 +202,8 @@ def calculate_split(snapshot, request_id, budget_seconds):
             raise ValueError("计算预算必须大于0且不超过5秒")
         if snapshot.pre_split:
             numbers = solve_presplit_native(snapshot.counts, snapshot.hands[0].values, snapshot.dealer_up,
-                snapshot.peek_negative, snapshot.legal_actions, remaining(), allow_das=das)
+                snapshot.peek_negative, snapshot.legal_actions, remaining(), allow_das=das,
+                both_initial=both_initial)
             _require_backend_actions(snapshot, numbers)
             for action,label in ACTION_ZH.items():
                 if action in numbers['actions']:
@@ -220,7 +227,7 @@ def calculate_split(snapshot, request_id, budget_seconds):
                 split_aces=snapshot.hands[0].split_ace,
                 force_active=force_draw,
                 budget_seconds=remaining(),
-                allow_das=das, stakes=stakes,
+                allow_das=das, stakes=stakes, both_initial=both_initial,
                 force_close=force_draw and das and snapshot.hands[active].bet_units == 2)
             _require_backend_actions(snapshot, numbers)
             result['actions'] = {a: dict(status=AVAILABLE, label=SPLIT_ACTION_ZH[a], reason_code='CALCULATED',
