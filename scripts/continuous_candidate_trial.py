@@ -122,7 +122,9 @@ def main():
         start = perf_counter()
         app.on_close()
         app = BlackjackLabApp(db,recording_source=SOURCE_SIMULATOR)
-        app.withdraw(); app.ctrl.recording_source=SOURCE_SIMULATOR; app.update()
+        app.title('Hakimi · 连续牌靴验收（独立模拟记录）')
+        if args.smoke_rounds:app.withdraw()
+        app.ctrl.recording_source=SOURCE_SIMULATOR; app.update()
         assert app.ctrl.session_id==sid and app.ctrl.ledger.to_list()==events
         assert app.ctrl.entry_plan.to_dict()==plan
         assert app.analysis_panel.auto.get()
@@ -134,7 +136,8 @@ def main():
              patch('blackjack_lab.ui.app.messagebox.showinfo'), \
              patch('blackjack_lab.ui.app.messagebox.askyesno',return_value=True):
             app = BlackjackLabApp(db,recording_source=SOURCE_SIMULATOR)
-            app.withdraw()
+            app.title('Hakimi · 连续牌靴验收（独立模拟记录）')
+            if args.smoke_rounds:app.withdraw()
             for shoe_no, count in enumerate((1,3,7),1):
                 if args.smoke_rounds and shoe_no>1:
                     break
@@ -290,7 +293,8 @@ def main():
                 assert hashlib.sha256((runtime/name).read_bytes()).hexdigest()==expected_hash,name
             report=dict(passed=True,source_commit=build['source_commit'],runtime=str(runtime),
                 kind='Real Tk callbacks and background workers; automated independent synthetic truth, not native-key or human-speed acceptance',
-                smoke=bool(args.smoke_rounds),shoes=shoes,rounds=sum(s['rounds'] for s in shoes),
+                smoke=bool(args.smoke_rounds),window_visibility='withdrawn' if args.smoke_rounds else 'visible',
+                shoes=shoes,rounds=sum(s['rounds'] for s in shoes),
                 cards_drawn=sum(s['drawn'] for s in shoes),events=len(events),commands=len(operations),
                 command_seconds=dict(median=statistics.median(durations),p95=sorted(durations)[math.ceil(.95*len(durations))-1],maximum=max(durations)),
                 resources=metrics.summary(),resource_scope='Own test process tree, including truth-verification overhead; 50ms/operation samples can miss brief peaks',

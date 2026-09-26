@@ -151,6 +151,9 @@ class SessionController:
         created.evidence = json.dumps({'manual_shoe_change_v1': dict(
             event_ids=[event.event_id for event in events], previous_plan=saved_plan,
             prefix_digest=prefix_digest, prefix_seq=prefix[-1]['seq'])}, ensure_ascii=False)
+        # Each ledger append validates via a copied candidate; earlier returned
+        # Event objects can be detached after a subsequent append.
+        events = [candidate._find(event.event_id) for event in events]
         for event in events:
             event.source = self.recording_source
         # The new rules and the complete transition are validated before any write.
@@ -414,7 +417,8 @@ class SessionController:
         ordered, evidence, freeze = self._round_options(**auto_next)
         ended = candidate.end_round(settle=True, observation_status='complete')
         started = candidate.start_round(list(ordered))
-        ended.source = started.source = self.recording_source
+        event, ended, started = [candidate._find(item.event_id) for item in (event, ended, started)]
+        event.source = ended.source = started.source = self.recording_source
         receipt = json.loads(evidence or '{}')
         receipt['automatic_next_v1'] = dict(trigger=event.event_id, ended=ended.event_id,
                                             previous_plan=plan.to_dict())
@@ -448,6 +452,7 @@ class SessionController:
                 plan.input_pause_reason = self.entry_plan.input_pause_reason
             candidate = copy.deepcopy(self.ledger)
             undos = [candidate.undo_last(reason or default_reason) for _ in events]
+            undos = [candidate._find(event.event_id) for event in undos]
             for event in undos:
                 event.source = self.recording_source
             self.store.save_ledger(candidate)
