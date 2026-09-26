@@ -1,0 +1,10 @@
+{
+  "kind": "synthetic-scenario",
+  "n_decks": [8],
+  "template": "das",
+  "player_ranks": ["8", "8"],
+  "dealer_up": "6",
+  "extra_removed": ["K"],
+  "seat": "玩家3",
+  "note": "配置优先级验收；合成当前手牌条件，不是真实牌局或开局估算"
+}
