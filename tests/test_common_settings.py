@@ -48,6 +48,9 @@ class TestCommonSettings(unittest.TestCase):
         self.assertEqual(rules.confirm_status, CONFIRM_VERIFIED)
         self.assertTrue(supported_same_value_das_rules(rules))
         self.assertTrue(self.app.var_simple_hole.get())
+        self.assertIn('仅A检查',self.app.compact_panel.flow_message.get())
+        self.assertIn('十点未排除BJ',self.app.compact_panel.flow_message.get())
+        self.assertIn('两手先补齐',self.app.compact_panel.flow_message.get())
         self.assertIsNone(self.app.ctrl.state().current)
         self.assertFalse(any(e.etype == 'SHOE_CREATED' for e in self.app.ctrl.ledger.events))
 
