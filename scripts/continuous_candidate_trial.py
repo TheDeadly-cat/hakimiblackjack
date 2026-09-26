@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import random
 import statistics
@@ -203,7 +204,7 @@ def main():
                             if score(hand)==21:continue
                             split = hand[0]==hand[1] and hand[0] in ('8','A')
                             if split:
-                                command('split',app._key_split)
+                                command('split',lambda:app.act_action('分牌'))
                                 shadow[seat]=[[hand[0]],[hand[1]]]; stakes[seat]=[1,1]
                                 for index in range(2):
                                     value=deck.pop(0); shadow[seat][index].append(value); rank(value,seat,index+1)
@@ -211,7 +212,7 @@ def main():
                                 if score(hand)>=21 or split and hand[0]=='A':continue
                                 if len(hand)==2 and score(hand) in (10,11):
                                     stakes[seat][index]=2
-                                    command('double',app._key_double)
+                                    command('double',lambda:app.act_action('加倍'))
                                     value=deck.pop(0); hand.append(value); rank(value,seat,index+1)
                                 else:
                                     while score(hand)<12:
@@ -291,7 +292,7 @@ def main():
                 kind='Real Tk callbacks and background workers; automated independent synthetic truth, not native-key or human-speed acceptance',
                 smoke=bool(args.smoke_rounds),shoes=shoes,rounds=sum(s['rounds'] for s in shoes),
                 cards_drawn=sum(s['drawn'] for s in shoes),events=len(events),commands=len(operations),
-                command_seconds=dict(median=statistics.median(durations),p95=sorted(durations)[__import__('math').ceil(.95*len(durations))-1],maximum=max(durations)),
+                command_seconds=dict(median=statistics.median(durations),p95=sorted(durations)[math.ceil(.95*len(durations))-1],maximum=max(durations)),
                 resources=metrics.summary(),resource_scope='Own test process tree, including truth-verification overhead; 50ms/operation samples can miss brief peaks',
                 analyses=analyses,openings=openings,recoveries=recoveries,opening_records_verified=len(entries),
                 opening_history_verification_seconds=history_seconds,errors=errors,
