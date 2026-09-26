@@ -49,6 +49,19 @@ class OpeningInput:
     def to_dict(self):
         return asdict(self)
 
+    @classmethod
+    def from_dict(cls, data):
+        if type(data) is not dict:
+            raise ValueError('开局输入必须为对象')
+        data = dict(data)
+        for key in ('counts', 'participants'):
+            if type(data.get(key)) not in (tuple, list):
+                raise ValueError('开局组成与参与座位必须为数组')
+            data[key] = tuple(data[key])
+        result = cls(**data)
+        result.validate()
+        return result
+
     def validate(self):
         if (not self.session_id or not self.shoe_id or type(self.through_seq) is not int or self.through_seq < 1
                 or not self.prefix_digest or self.engine_version != ENGINE or self.strategy_version != STRATEGY):

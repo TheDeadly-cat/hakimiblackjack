@@ -139,11 +139,13 @@ class TestOpeningMath(unittest.TestCase):
 
 
 def synthetic_result(snapshot, net=1):
+    from time import time
     histogram = [0] * 17; histogram[8 + 2 * net] = SAMPLES
     return dict(schema=SCHEMA, status='available', request_id='synthetic-ui-only', input=snapshot.to_dict(),
                 input_digest=snapshot.input_digest, rules_digest=snapshot.rules_digest, engine_version=ENGINE,
                 strategy_version=STRATEGY, seed=snapshot.seed, samples=SAMPLES, histogram=histogram,
-                native_source_digest=source_digest(), **summarize_histogram(histogram, SAMPLES))
+                native_source_digest=source_digest(), native_binary_digest='0'*64,
+                created_at=time(), elapsed_seconds=0.01, **summarize_histogram(histogram, SAMPLES))
 
 
 class TestOpeningResultGuard(unittest.TestCase):

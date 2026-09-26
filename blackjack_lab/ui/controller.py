@@ -13,6 +13,7 @@ from ..ledger.ledger import EventLedger, LedgerError
 from ..storage.database import LocalStore
 from ..storage.export import import_json, import_csv
 from ..storage.analysis_snapshots import AnalysisSnapshots
+from ..storage.opening_snapshots import OpeningSnapshots
 from ..analysis.information import build_input
 from ..storage.safe_files import atomic_write
 from .deal_entry import (RoundEntryPlan, MODE_INITIAL, MODE_MANUAL, MODE_CONTINUATION,
@@ -31,6 +32,7 @@ class SessionController:
         self._context_listeners = []
         self.recording_source = recording_source
         self.analysis_store = AnalysisSnapshots(str(Path(db_path).resolve()) + ".analysis")
+        self.opening_store = OpeningSnapshots(str(Path(db_path).resolve()) + '.opening')
         self.session_id = uuid.uuid4().hex
         self.session_name = "手动录牌会话"
         self.ledger = EventLedger(self.session_id)
@@ -51,6 +53,7 @@ class SessionController:
         obj._context_listeners = []
         obj.recording_source = SOURCE_MANUAL
         obj.analysis_store = AnalysisSnapshots(str(Path(db_path).resolve()) + ".analysis")
+        obj.opening_store = OpeningSnapshots(str(Path(db_path).resolve()) + '.opening')
         obj.entry_plan = None
         try:
             obj.load_session(session_id)

@@ -26,6 +26,7 @@ venv/
 .DS_Store
 .local-evidence/
 *.analysis/
+*.opening/
 /BUILD_INFO.json
 
 # Source-addressed local numerical accelerator build cache.
