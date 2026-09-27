@@ -225,3 +225,10 @@ class SidebetUITests(unittest.TestCase):
         self.view.details.text.event_generate('<KeyPress>',keysym='8');self.app.update()
         self.assertEqual(len(self.app.ctrl.ledger.events),before)
         self.assertEqual(self.errors,[])
+
+    def test_sidebet_rows_and_controls_fit_new_default_without_moving_original_links(self):
+        self.start();self.forecast();app=self.app
+        app.geometry('720x850');app.update()
+        for child in self.view.frame.winfo_children():
+            self.assertLessEqual(child.winfo_rooty()+child.winfo_height(),app.winfo_rooty()+app.winfo_height())
+        self.assertLess(app.compact_panel.details_button.winfo_rooty(),self.view.frame.winfo_rooty())
