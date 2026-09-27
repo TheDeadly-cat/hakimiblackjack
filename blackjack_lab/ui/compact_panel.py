@@ -12,6 +12,7 @@ from .daily_flow import current_flow
 from .recent_entry import recent_visible, undo_label
 from .automatic_flow import dealer_finish_message
 from .ev_display import ev_sign, decision_evs
+from .rule_summary import rule_summary
 
 PALETTE = dict(background='#F3F6F8', surface='#FFFFFF', ink='#173A45', accent='#187365',
                caution='#935213', error='#AD3030', muted='#52636B')
@@ -509,6 +510,13 @@ class CompactPanel(tk.Frame):
     def render_flow(self):
         flow = self.flow = current_flow(self.app.ctrl, self.app._current_seg())
         message = flow.message if flow.stage != 'player' else self.app.var_legal.get().replace('\n', '；') or flow.message
+        if flow.stage in ('setup', 'start'):
+            try:
+                rules = self.app._build_rules() if flow.stage == 'setup' else self.app._current_seg().rules
+                message = ('按设置新建牌靴，再开始本轮。' if flow.stage == 'setup' else '开始本轮会继续当前牌靴。')
+                message += '\n' + rule_summary(rules)
+            except (ValueError, tk.TclError):
+                message += '\n桌规设置待核对。'
         self.flow_message.set(flow.notice + message)
         commands = {'review': self.app.show_workbench, 'new_shoe': self.app.act_new_shoe, 'start': self.app.act_new_round,
                     'resume': self.app._key_pause, 'peek': self.app.act_peek_negative,

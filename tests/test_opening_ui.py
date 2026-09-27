@@ -13,7 +13,9 @@ class FakeService:
         self.active = self.pending = None
 
     def start(self, snapshot):
-        self.active = {'snapshot': snapshot}
+        import uuid
+        self.active = {'snapshot': snapshot, 'id': uuid.uuid4().hex}
+        return self.active['id']
 
     def poll(self):
         result, self.pending = self.pending, None
@@ -46,6 +48,7 @@ class TestOpeningTitle(unittest.TestCase):
     def publish(self, net):
         self.view.refresh(force=True)
         self.view.service.pending = synthetic_result(self.view.snapshot, net)
+        self.view.service.pending['request_id'] = self.view.attempt['request_id']
         self.tick()
 
     def test_positive_uncertain_and_negative_title_use_per_original_unit(self):

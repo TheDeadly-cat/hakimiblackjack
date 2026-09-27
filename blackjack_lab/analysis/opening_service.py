@@ -63,13 +63,16 @@ def calculate_opening(snapshot, request_id, samples=SAMPLES, budget_seconds=18):
     return result
 
 
-def validate_opening_result(result, snapshot):
+def validate_opening_result(result, snapshot, *, expected_native_source=None):
+    # Historical storage supplies the source bound to that original record;
+    # live publication always uses the current source by default.
+    expected_native_source = expected_native_source or source_digest()
     if (not isinstance(result, dict) or result.get('schema') != SCHEMA or result.get('status') != 'available'
             or result.get('input_digest') != snapshot.input_digest or result.get('rules_digest') != snapshot.rules_digest
             or result.get('engine_version') != ENGINE or result.get('strategy_version') != STRATEGY
             or result.get('seed') != snapshot.seed or result.get('samples') != SAMPLES
             or canonical(result.get('input')) != canonical(snapshot.to_dict())
-            or result.get('native_source_digest') != source_digest()):
+            or result.get('native_source_digest') != expected_native_source):
         raise ValueError('开局结果与当前牌盒身份不符')
     derived = summarize_histogram(result['histogram'], result['samples'])
     for key, expected in derived.items():
@@ -77,6 +80,17 @@ def validate_opening_result(result, snapshot):
         if actual != expected:
             raise ValueError('开局结果数值或误差范围不一致：' + key)
     return result
+
+
+def terminal_opening_result(snapshot, request_id, status, reason, *, reason_code=None, elapsed_seconds=0):
+    if status not in ('cancelled', 'stale', 'timeout', 'failed', 'unsupported'):
+        raise ValueError('开局终止状态无效')
+    return dict(schema=SCHEMA, status=status, request_id=request_id, input=snapshot.to_dict(),
+        input_digest=snapshot.input_digest, rules_digest=snapshot.rules_digest,
+        engine_version=ENGINE, strategy_version=STRATEGY, created_at=time(),
+        seed=snapshot.seed, samples_requested=SAMPLES, note=NOTE,
+        native_source_digest=source_digest(), reason=reason, reason_code=reason_code or status.upper(),
+        elapsed_seconds=elapsed_seconds)
 
 
 def _opening_worker(connection, data, request_id, samples, budget):
@@ -113,3 +127,20 @@ class OpeningService(AnalysisService):
         finally:
             send.close()
         return request_id
+
+    def poll(self):
+        result = super().poll()
+        if result is not None and result.get('status') != 'available':
+            result = terminal_opening_result(OpeningInput.from_dict(result['input']), result['request_id'],
+                result['status'], result.get('reason', '开局计算未完成'),
+                reason_code=result.get('reason_code'), elapsed_seconds=result.get('elapsed_seconds', 0))
+            self.result = result
+        return result
+
+    def cancel(self, status='cancelled'):
+        job = self.active
+        super().cancel(status)
+        if job is not None:
+            self.result = terminal_opening_result(job['snapshot'], job['id'], status,
+                '输入变化，开局请求已失效' if status == 'stale' else '已取消开局计算',
+                elapsed_seconds=perf_counter()-job['start'])
