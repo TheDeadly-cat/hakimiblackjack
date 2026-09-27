@@ -26,7 +26,7 @@ def work_area(root):
 
 
 class WindowLayout:
-    defaults = {'compact': (720, 740), 'drawer': (720, 900), 'workbench': (1360, 900)}
+    defaults = {'compact': (720, 850), 'drawer': (720, 900), 'workbench': (1360, 900)}
 
     def __init__(self, root, db_path):
         self.root = root

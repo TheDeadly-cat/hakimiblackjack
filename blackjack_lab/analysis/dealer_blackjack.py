@@ -12,8 +12,9 @@ ENGINE = 'dealer-natural-information-v1'
 def scalar(counts, up=None, negative=False):
     if len(counts) != 10 or any(type(n) is not int or n < 0 for n in counts):
         raise ValueError('BJ需要10类非负整数组成')
-    if up is not None and up not in range(1, 11):
+    if up is not None and (type(up) is not int or up not in range(1, 11)):
         raise ValueError('庄家明牌点值无效')
+    if type(negative) is not bool:raise ValueError('检查状态必须为布尔值')
     n, a, t = sum(counts), counts[0], counts[-1]
     if up is None:
         if n < 2: raise ValueError('不足两张牌')
@@ -75,7 +76,7 @@ def evaluate_prepared(session_id, seq, prefix, current):
     try: probability = scalar(counts, value)
     except ValueError as error: return unavailable('INSUFFICIENT_CARDS', str(error))
     if value is not None:
-        return publish('conditional', probability, '未排除BJ；底牌池含暗牌及未发牌')
+        return publish('conditional', probability, '未排除BJ；底牌池含暗牌及未发牌' if holes else '未排除BJ；底牌尚未登记')
     active = table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS)
     other_cards = active and any(h.cards for seat in table.players.values() for h in seat.hands)
     return publish('awaiting_upcard' if other_cards else 'predeal', probability,

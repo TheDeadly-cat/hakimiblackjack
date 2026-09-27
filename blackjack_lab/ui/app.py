@@ -170,6 +170,8 @@ class BlackjackLabApp(tk.Tk):
         self.experiment_window = None
         from .opening_estimate import OpeningEstimateView
         self.opening_estimate = OpeningEstimateView(self)
+        from .sidebet_view import SidebetView
+        self.sidebets = SidebetView(self,self.compact_panel.additional_results)
 
     # ============================================================
     # 界面构建
@@ -1434,6 +1436,8 @@ class BlackjackLabApp(tk.Tk):
             self.compact_panel.render()
         if hasattr(self, 'opening_estimate'):
             self.opening_estimate.refresh()
+        if hasattr(self, 'sidebets'):
+            self.sidebets.refresh()
 
     def recording_inactive_message(self) -> Optional[str]:
         """Derive the prompt from replay, so undo/recovery cannot retain an ended target."""
@@ -1685,6 +1689,8 @@ class BlackjackLabApp(tk.Tk):
         return status
 
     def on_close(self):
+        if hasattr(self, 'sidebets'):
+            self.sidebets.close()
         if hasattr(self, 'opening_estimate'):
             self.opening_estimate.close()
         self.window_layout.close()
