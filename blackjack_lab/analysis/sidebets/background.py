@@ -12,6 +12,7 @@ class LatestWorker:
         self.completed=SimpleQueue()
         self.closed=threading.Event()
         self.active=None
+        self.active_channel=None
         self.thread=None
 
     def submit(self,channel,function,request_id=None):
@@ -40,9 +41,10 @@ class LatestWorker:
                 if self.closed.is_set():return
                 channel,(request_id,function)=self.pending.popitem(last=False)
                 self.active=request_id
+                self.active_channel=channel
             try:value=dict(request_id=request_id,channel=channel,result=function())
             except Exception as error:value=dict(request_id=request_id,channel=channel,error=str(error))
-            finally:self.active=None
+            finally:self.active=None;self.active_channel=None
             if not self.closed.is_set():self.completed.put(value)
 
     def poll(self):
@@ -52,7 +54,11 @@ class LatestWorker:
             except Empty:return values
 
     def close(self):
+        """Request cooperative stop; a Tk caller must poll stopped, never join."""
         self.closed.set()
         with self.condition:
             self.pending.clear();self.condition.notify()
-        if self.thread is not None:self.thread.join(timeout=3)
+
+    @property
+    def stopped(self):
+        return self.thread is None or not self.thread.is_alive()

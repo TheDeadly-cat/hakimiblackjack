@@ -112,7 +112,7 @@ class SidebetView:
         return meta
 
     def refresh(self):
-        if self.closed:return
+        if self.closed or getattr(self.app,'_closing',False):return
         key=(self.app.ctrl.context_token,self.app.var_analysis_target.get(),self.profile.rules_digest,self.enabled.get())
         if self.key==key:return
         self.key=key;self.problem=''
@@ -136,6 +136,8 @@ class SidebetView:
 
     def poll(self):
         if self.closed:return
+        if getattr(self.app,'_closing',False):
+            self.poll_id=self.app.after(60,self.poll);return
         for message in self.worker.poll():
             if message['channel']=='retry':continue
             if 'error' in message:

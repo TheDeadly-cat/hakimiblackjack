@@ -60,7 +60,7 @@ class OpeningEstimateView:
             self.update_details()
 
     def context_changed(self, *_):
-        if self._closed or self.live_key() == self.key:
+        if self._closed or getattr(self.app,'_closing',False) or self.live_key() == self.key:
             return
         self.stop_request('stale')
         self.key = self.snapshot = self.result = self.saved = None
@@ -68,16 +68,31 @@ class OpeningEstimateView:
         self.set_text('下轮EV：牌况已变化，等待更新')
 
     def persist(self, result, attempt):
+        record=self.queue_record(result,attempt)
+        return self.write_pending_record(record)
+
+    def queue_record(self,result,attempt):
         record = dict(result=copy.deepcopy(result), event_prefix=copy.deepcopy(attempt['prefix']),
                       sources=attempt['sources'], recomputed_from=attempt.get('recomputed_from'))
         self.pending_saves.append(record)
+        return record
+
+    def write_pending_record(self,record):
+        """No Tk calls; shutdown retries run only while views are suspended."""
         try:
-            saved = self.app.ctrl.opening_store.save(**record)
+            saved = self.app.ctrl.opening_store.save(**{k:v for k,v in record.items() if k!='save_error'})
             self.pending_saves.remove(record)
             return saved
         except Exception as error:
             record['save_error'] = str(error)
             return None
+
+    def queue_exit_cancellation(self,source=None):
+        source=source or self
+        attempt,source.attempt=source.attempt,None
+        if attempt is None:return None
+        return self.queue_record(terminal_opening_result(attempt['snapshot'],attempt['request_id'],
+            'cancelled','关闭时取消尚未完成的计算',elapsed_seconds=perf_counter()-attempt['started']),attempt)
 
     def retry_saves(self):
         for record in list(self.pending_saves):
@@ -106,7 +121,7 @@ class OpeningEstimateView:
             self.persist(result, attempt)
 
     def refresh(self, force=False):
-        if self._closed:
+        if self._closed or getattr(self.app,'_closing',False):
             return
         key = self.live_key()
         if not force and key == self.key:
@@ -155,6 +170,8 @@ class OpeningEstimateView:
     def poll(self):
         if self._closed:
             return
+        if getattr(self.app,'_closing',False):
+            self._poll_id=self.app.after(100,self.poll);return
         try:
             self.refresh()
             was_active = self.service.active is not None

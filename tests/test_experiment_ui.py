@@ -1,3 +1,4 @@
+from scripts.tk_lifecycle import close_app
 """T10-B: the Chinese experiment window can start, cancel, and show a contrast table."""
 import tempfile
 import time
@@ -25,7 +26,7 @@ class TestExperimentUI(unittest.TestCase):
 
     def close(self):
         if self.app:
-            self.app.on_close()
+            close_app(self.app,discard_fixture_results=True)
             self.app = None
 
     def wait_saved(self, window):

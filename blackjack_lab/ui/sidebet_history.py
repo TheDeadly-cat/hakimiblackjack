@@ -37,7 +37,7 @@ class SidebetHistory(tk.Toplevel):
         return self.entries[index[0]] if index and index[0]<len(self.entries) else None
 
     def reload(self,selected_id=None):
-        if self.closed or self.recomputing:return
+        if self.closed or self.recomputing or getattr(self.owner.app,'_closing',False):return
         old=self.selected()
         self.selected_after_load=selected_id or (old['snapshot_id'] if old else None)
         self.expected.pop('verify',None)
@@ -57,7 +57,7 @@ class SidebetHistory(tk.Toplevel):
         self.text.configure(state=tk.NORMAL);self.text.delete('1.0',tk.END);self.text.insert('1.0',text);self.text.configure(state=tk.DISABLED)
 
     def select(self,_event=None):
-        if self.closed or self.recomputing:return
+        if self.closed or self.recomputing or getattr(self.owner.app,'_closing',False):return
         if self.loading:
             saved=self.selected()
             if saved:self.selected_after_load=saved['snapshot_id']
@@ -72,6 +72,7 @@ class SidebetHistory(tk.Toplevel):
         self.expected['verify']=self.worker.submit('history_verify',lambda:dict(kind='verify',snapshot_id=saved['snapshot_id'],input=store.verified_input(saved,db)))
 
     def recompute(self):
+        if self.closed or getattr(self.owner.app,'_closing',False):return
         saved=self.selected()
         if saved is None or self.loading or self.recomputing or self.verified!=saved['snapshot_id']:return
         self.recomputing=True;self.recompute_button.state(['disabled'])
@@ -90,6 +91,7 @@ class SidebetHistory(tk.Toplevel):
         self.expected['recompute']=self.worker.submit('history_recompute',work)
 
     def corrected(self):
+        if self.closed or getattr(self.owner.app,'_closing',False):return
         saved=self.selected()
         if (saved is None or self.loading or self.recomputing or self.verified!=saved['snapshot_id']
                 or saved['result']['input']['purpose'] not in ('forecast','corrected_predeal')):return
@@ -112,6 +114,8 @@ class SidebetHistory(tk.Toplevel):
 
     def poll(self):
         if self.closed:return
+        if getattr(self.owner.app,'_closing',False):
+            self.poll_id=self.after(70,self.poll);return
         for message in self.worker.poll():
             expected_kind=next((kind for kind,rid in self.expected.items() if rid==message['request_id']),None)
             if expected_kind is None:continue
@@ -151,5 +155,20 @@ class SidebetHistory(tk.Toplevel):
         self.poll_id=self.after(70,self.poll)
 
     def close(self):
-        if self.closed:return
-        self.closed=True;self.after_cancel(self.poll_id);self.worker.close();self.entries=[];self.destroy()
+        if self.closed:
+            if self.worker.stopped:
+                self.after_cancel(self.poll_id);self._finish_close()
+            return
+        self.closed=True;self.after_cancel(self.poll_id)
+        if not self.recomputing:self.worker.close()
+        self.status.set('正在结束后台任务；已开始的保存完成后关闭。')
+        self.recompute_button.state(['disabled']);self.corrected_button.state(['disabled'])
+        self._finish_close()
+
+    def _finish_close(self):
+        if self.recomputing and (self.worker.active is not None or self.worker.pending):
+            self.poll_id=self.after(25,self._finish_close);return
+        self.worker.close()
+        if not self.worker.stopped:
+            self.poll_id=self.after(25,self._finish_close);return
+        self.after_cancel(self.poll_id);self.entries=[];self.destroy()

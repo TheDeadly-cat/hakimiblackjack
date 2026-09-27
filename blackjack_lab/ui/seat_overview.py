@@ -69,6 +69,9 @@ class SeatOverview:
                     try:
                         row['saved'] = self.app.ctrl.analysis_store.save(result)
                     except Exception as error:
+                        from copy import deepcopy
+                        self.app.pending_analysis[result['request_id']]=dict(result=deepcopy(result),
+                            recomputed_from=None,store=self.app.ctrl.analysis_store)
                         row.update(state='保存待重试', reason=str(error))
             self.active_seat = None
             changed = True

@@ -17,6 +17,7 @@ from blackjack_lab.core.table import ACTION_HIT
 from blackjack_lab.ledger.events import SOURCE_SIMULATOR
 from blackjack_lab.storage.export import export_json
 from blackjack_lab.ui.app import BlackjackLabApp
+from scripts.tk_lifecycle import close_app
 from scripts.source_identity import source_identity
 from scripts.verify_release import source_manifest
 
@@ -118,7 +119,7 @@ def main():
             done = capture("das-complete")
             assert set(done["actions"]) == {"complete"}
         finally:
-            app.on_close()
+            close_app(app)
     report = dict(schema="hakimi-das-tk-capture-v1", identity=identity, source_manifest=before,
                   source_unchanged=before == source_manifest(), records=records, errors=errors,
                   test_data="Temporary SQLite; SOURCE_SIMULATOR; no user database",

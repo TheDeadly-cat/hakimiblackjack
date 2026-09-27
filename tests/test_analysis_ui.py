@@ -1,3 +1,4 @@
+from scripts.tk_lifecycle import close_app
 import tempfile
 import time
 import os
@@ -28,7 +29,7 @@ class TestAnalysisUI(unittest.TestCase):
 
     def close(self):
         if self.app:
-            self.app.on_close()
+            close_app(self.app,discard_fixture_results=True)
             self.app = None
 
     def start(self, n=6, cards=("10", "6"), up="10"):

@@ -54,6 +54,8 @@ class OpeningHistory(tk.Toplevel):
         self._load_generation = 0
         self._load_cancel = threading.Event()
         self._load_queue = Queue()
+        self._load_threads=[]
+        self._close_thread=None
         self.listing = tk.Listbox(self, height=7, exportselection=False)
         self.listing.pack(fill=tk.X, padx=8, pady=6)
         self.listing.bind('<<ListboxSelect>>', self.select)
@@ -75,7 +77,7 @@ class OpeningHistory(tk.Toplevel):
         return self.entries[indices[0]] if indices else None
 
     def reload(self, selected_id=None):
-        if self._closed:
+        if self._closed or getattr(self.app,'_closing',False):
             return
         old = self.selected()
         selected_id = selected_id or (old['snapshot_id'] if old else None)
@@ -95,6 +97,7 @@ class OpeningHistory(tk.Toplevel):
             if not cancel.is_set():
                 self._load_queue.put((generation, entries, damaged, selected_id))
         self._load_thread = threading.Thread(target=read,daemon=True,name='opening-history-reader')
+        self._load_threads=[thread for thread in self._load_threads if thread.is_alive()]+[self._load_thread]
         self._load_thread.start()
 
     def poll_loading(self):
@@ -159,6 +162,8 @@ class OpeningHistory(tk.Toplevel):
     def poll(self):
         if self._closed:
             return
+        if getattr(self.app,'_closing',False):
+            self.poll_id=self.after(100,self.poll);return
         try:
             self.poll_loading()
             result = self.service.poll()
@@ -194,12 +199,29 @@ class OpeningHistory(tk.Toplevel):
 
     def close(self):
         if self._closed:
+            if not self.winfo_exists():return
+            if ((self._close_thread is None or not self._close_thread.is_alive()) and not any(t.is_alive() for t in self._load_threads)):
+                self.after_cancel(self.poll_id);self._finish_close()
             return
         self._closed = True
         self._load_cancel.set()
         self.after_cancel(self.poll_id)
-        self.cancel()
-        self.service.close()
+        record=self.owner.queue_exit_cancellation(self)
+        self.status.set('正在结束后台任务；保存完成后关闭，失败结果保留在应用中。')
+        self.recompute_button.state(['disabled'])
+        if record is None and self.service.active is None and not any(t.is_alive() for t in self._load_threads):
+            self.entries=[];self.destroy();return
+        def finish_work():
+            self.service.close()
+            if record:self.owner.write_pending_record(record)
+        self._close_thread=threading.Thread(target=finish_work,daemon=True,name='opening-history-close')
+        self._close_thread.start()
+        self._finish_close()
+
+    def _finish_close(self):
+        if self._close_thread.is_alive() or any(thread.is_alive() for thread in self._load_threads):
+            self.poll_id=self.after(25,self._finish_close);return
+        self.after_cancel(self.poll_id)
         self.entries = []
         while True:
             try:
