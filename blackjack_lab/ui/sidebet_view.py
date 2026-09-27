@@ -91,7 +91,7 @@ class SidebetView:
         self.worker.submit('retry',work)
 
     def _request(self,purpose,profile,intent=None):
-        app=self.app;prefix=app.ctrl.ledger.to_list();session=app.ctrl.session_id
+        app=self.app;frozen=app.ctrl.read_prefix();session=frozen.session_id
         seat=app.var_analysis_target.get();request_id=uuid.uuid4().hex
         captured_at=time()
         meta=dict(window=self.current_window,seat=seat,profile=profile.to_dict(),request_id=request_id,
@@ -100,6 +100,7 @@ class SidebetView:
         if intent:
             with self._lock:prediction_id=self.saved_ids.get(intent['request_id'])
         def work():
+            prefix=frozen.to_list()
             ledger=EventLedger.from_list(session,prefix)
             snapshot=build_input(ledger,seat,profile,purpose)
             result=execute(snapshot,request_id)
@@ -150,7 +151,7 @@ class SidebetView:
             meta=value['meta'];seat=meta['seat']
             if meta['window']!=self.current_window:continue
             if message['channel']=='forecast' and self.intents.get(seat,{}).get('request_id')==message['request_id']:
-                if not self.sealed and value['result']['input']['prefix_digest']!=digest(self.app.ctrl.ledger.to_list()):
+                if not self.sealed and value['result']['input']['prefix_digest']!=self.app.ctrl.read_prefix().prefix_digest:
                     self.key=None;continue
                 self.forecasts[seat]=value
             elif message['channel']=='observed' and message['request_id']==self.observed_request:

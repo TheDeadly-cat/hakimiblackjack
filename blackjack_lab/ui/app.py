@@ -107,6 +107,10 @@ class BlackjackLabApp(tk.Tk):
         self._closing=False
         self.exit_flow=None
         self.pending_analysis={}
+        self._workbench_visible=False
+        self._workbench_dirty=True
+        self._timeline_ids=[]
+        self._timeline_text=[]
         self.title(f"Hakimi Blackjack Lab V{__version__} 手动记录工作台（本地离线）")
         self.geometry("720x620")
         self.minsize(660, 460)
@@ -452,6 +456,7 @@ class BlackjackLabApp(tk.Tk):
                   foreground="#1a3c6e", wraplength=1120).pack(anchor="w", padx=6, pady=2)
 
     def show_compact(self):
+        self._workbench_visible=False
         self.workbench.grid_remove()
         self.compact_viewport.grid(row=1, column=0, sticky='nsew')
         self.window_layout.switch('drawer' if self.compact_panel.recording_open else 'compact')
@@ -462,6 +467,10 @@ class BlackjackLabApp(tk.Tk):
         self.compact_panel.close_correction()
         self.compact_viewport.grid_remove()
         self.workbench.grid(row=1, column=0, sticky='nsew')
+        self._workbench_visible=True
+        with self._view_frame():
+            replay=self._view_state()
+            self._refresh_workbench(replay.current,replay)
         self.window_layout.switch('workbench')
         self.title('Hakimi Blackjack Lab · 研究工作台')
 
@@ -943,7 +952,12 @@ class BlackjackLabApp(tk.Tk):
         selection = self.lst_timeline.curselection()
         if not selection:
             raise LedgerError("请先在时间线选中一条事件")
-        return self.ctrl.ledger.events[selection[0]]
+        index=selection[0]
+        if index>=len(self._timeline_ids):raise LedgerError('时间线已变化，请重新选择事件')
+        event_id=self._timeline_ids[index]
+        event=next((e for e in self.ctrl.ledger.events if e.event_id==event_id),None)
+        if event is None:raise LedgerError('选中事件不在当前会话，请刷新时间线')
+        return event
 
     @tracked_operation
     def act_correct(self):
@@ -1428,10 +1442,9 @@ class BlackjackLabApp(tk.Tk):
         replay = self._view_state()
         seg = replay.current
         self.refresh_hands(seg)
-        self.refresh_table(seg)
         self.refresh_actions(seg)
-        self.refresh_composition(seg, replay)
-        self.refresh_timeline()
+        if self._workbench_visible:self._refresh_workbench(seg,replay)
+        else:self._workbench_dirty=True
         self.refresh_topinfo(seg, replay)
         self.refresh_entry_prompt()
         warning = getattr(self.ctrl, "entry_warning", "")
@@ -1443,6 +1456,12 @@ class BlackjackLabApp(tk.Tk):
             self.opening_estimate.refresh()
         if hasattr(self, 'sidebets'):
             self.sidebets.refresh()
+
+    def _refresh_workbench(self,seg,replay):
+        self.refresh_table(seg)
+        self.refresh_composition(seg,replay)
+        self.refresh_timeline()
+        self._workbench_dirty=False
 
     def recording_inactive_message(self) -> Optional[str]:
         """Derive the prompt from replay, so undo/recovery cannot retain an ended target."""
@@ -1648,18 +1667,26 @@ class BlackjackLabApp(tk.Tk):
 
     def refresh_timeline(self) -> None:
         selected = self.lst_timeline.curselection()
-        self.lst_timeline.delete(0, tk.END)
+        selected_id=self._timeline_ids[selected[0]] if selected and selected[0]<len(self._timeline_ids) else None
         voided = self.ctrl.ledger._voided_ids()
+        ids=[];lines=[]
         for ev in self.ctrl.ledger.events:
-            p = {k: v for k, v in ev.payload.items()
-                 if not k.startswith("_") and k not in ("rules_snapshot",)}
             tag = "（已撤销）" if ev.event_id in voided else ""
-            self.lst_timeline.insert(
-                tk.END, f"#{ev.seq:<3} {ev.etype:<16} [{ev.source}/{ev.confirm_status}] {tag}{self._brief(p)}")
-        if selected and selected[0] < self.lst_timeline.size():
-            self.lst_timeline.selection_set(selected[0])
+            ids.append(ev.event_id)
+            lines.append(f"#{ev.seq:<3} {ev.etype:<16} [{ev.source}/{ev.confirm_status}] {tag}{self._brief(ev.payload)}")
+        old_count=len(self._timeline_ids)
+        if ids[:old_count]!=self._timeline_ids:
+            self.lst_timeline.delete(0,tk.END)
+            if lines:self.lst_timeline.insert(tk.END,*lines)
         else:
-            self.lst_timeline.see(tk.END)
+            for index,(old,new) in enumerate(zip(self._timeline_text,lines)):
+                if old!=new:
+                    self.lst_timeline.delete(index);self.lst_timeline.insert(index,new)
+            if lines[old_count:]:self.lst_timeline.insert(tk.END,*lines[old_count:])
+        self._timeline_ids,self._timeline_text=ids,lines
+        self.lst_timeline.selection_clear(0,tk.END)
+        if selected_id in ids:self.lst_timeline.selection_set(ids.index(selected_id))
+        else:self.lst_timeline.see(tk.END)
 
     @staticmethod
     def _brief(p: dict) -> str:
@@ -1676,7 +1703,7 @@ class BlackjackLabApp(tk.Tk):
                       and info["round_id"] == seg.round_id]
         selected = self.lst_timeline.curselection()
         if selected:
-            ev = self.ctrl.ledger.events[selected[0]]
+            ev = self._selected_event()
             if any(e.event_id == ev.event_id for e in candidates):
                 return ev
         if len(candidates) > 1:
