@@ -205,7 +205,7 @@ class AnalysisPanel(ttk.Frame):
 
     def _run_auto(self):
         self._auto_id = None
-        if (self.auto.get() and not self._closed and not self.recomputed_from
+        if (self.auto.get() and not self._closed and not getattr(self.app,'_closing',False) and not self.recomputed_from
                 and self._live_key() != self._auto_suppressed_key):
             self.calculate_current()
 
@@ -234,6 +234,7 @@ class AnalysisPanel(ttk.Frame):
         self._notify_views()
 
     def calculate_current(self):
+        if getattr(self.app,'_closing',False):return
         self._cancel_auto()
         try:
             segment = self.app._current_seg()
@@ -269,6 +270,8 @@ class AnalysisPanel(ttk.Frame):
     def _poll(self):
         if self._closed:
             return
+        if getattr(self.app,'_closing',False):
+            self._poll_id=self.after(50,self._poll);return
         if self._poll_id:
             self.after_cancel(self._poll_id)
         # Defence in depth: compare to the live controller and selection, even if a
@@ -308,8 +311,12 @@ class AnalysisPanel(ttk.Frame):
             return
         try:
             self.saved = self.app.ctrl.analysis_store.save(self.last_result, self.recomputed_from)
+            self.app.pending_analysis.pop(self.last_result['request_id'],None)
             self.persistence.set("已保存分析快照 " + self.saved["snapshot_id"][:10])
         except Exception as error:
+            from copy import deepcopy
+            self.app.pending_analysis[self.last_result['request_id']]=dict(
+                result=deepcopy(self.last_result),recomputed_from=self.recomputed_from,store=self.app.ctrl.analysis_store)
             self.persistence.set("计算已完成，但快照未保存：" + str(error) + "；可重试保存，牌面记录未受影响")
 
     def cancel(self, cancel_opening=True):

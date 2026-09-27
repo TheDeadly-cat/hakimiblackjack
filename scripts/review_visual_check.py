@@ -11,6 +11,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from blackjack_lab.ui.app import BlackjackLabApp, RoundObservationDialog
+from scripts.tk_lifecycle import close_app
 from blackjack_lab.ledger.events import SOURCE_SIMULATOR
 from scripts.source_identity import source_identity
 
@@ -73,7 +74,7 @@ def main():
             checks["cross_round"] = app.ctrl.state().current.round_observations
             assert not errors, errors
         finally:
-            app.on_close()
+            close_app(app)
         app = BlackjackLabApp(Path(tmp)/"lifecycle.db", recording_source=SOURCE_SIMULATOR)
         app.show_workbench()
         try:
@@ -107,7 +108,7 @@ def main():
             checks["cancel_auto"] = {"auto_still_checked": panel.auto.get(), "no_pending_or_active_request": True}
             assert len(errors) == 1 and "synthetic render failure" in errors[0], errors
         finally:
-            app.on_close()
+            close_app(app)
     report = {"source_identity": source_identity(ROOT), "data_source": "self-generated observations via real Tk actions; temporary SQLite", "checks": checks,
               "expected_injected_errors": errors, "passed": True}
     (output/"review-ui-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

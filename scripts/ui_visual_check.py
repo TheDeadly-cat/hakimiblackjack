@@ -13,6 +13,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from blackjack_lab.ui.app import BlackjackLabApp
+from scripts.tk_lifecycle import close_app
 from blackjack_lab.ledger.events import SOURCE_SIMULATOR
 
 
@@ -78,7 +79,7 @@ def main():
                             outside.append(str(widget))
                     sizes.append({"scenario": scenario, "width": width, "height": height, "outside": outside, "hidden_required_controls": hidden})
             finally:
-                app.on_close()
+                close_app(app)
     report = {"source": "synthetic observations marked SOURCE_SIMULATOR; actual engine result and temporary SQLite", "errors": errors,
               "layouts": sizes, "results": results,
               "passed": not errors and not any(s["outside"] or s["hidden_required_controls"] for s in sizes)}

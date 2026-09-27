@@ -33,6 +33,7 @@ def main():
     sys.path.insert(0,str(runtime))
     sys.dont_write_bytecode = True
     from blackjack_lab.ui.app import BlackjackLabApp
+    from scripts.tk_lifecycle import close_app
     from blackjack_lab.ui.controller import SessionController
     from blackjack_lab.ledger.ledger import EventLedger
     from blackjack_lab.ledger.events import SOURCE_SIMULATOR
@@ -120,7 +121,7 @@ def main():
         events, plan = app.ctrl.ledger.to_list(),app.ctrl.entry_plan.to_dict()
         sid = app.ctrl.session_id
         start = perf_counter()
-        app.on_close()
+        close_app(app)
         app = BlackjackLabApp(db,recording_source=SOURCE_SIMULATOR)
         app.title('Hakimi · 连续牌靴验收（独立模拟记录）')
         if args.smoke_rounds:app.withdraw()
@@ -277,7 +278,7 @@ def main():
             assert all(e['source']==SOURCE_SIMULATOR for e in events)
             assert len({e['event_id'] for e in events})==len(events)
             (out/'final-ledger.json').write_text(json.dumps(events,ensure_ascii=False,indent=2),encoding='utf-8')
-            app.on_close();app=None
+            close_app(app);app=None
             recovered=SessionController.recover(db,sid)
             try:
                 assert recovered.ledger.to_list()==events
@@ -309,7 +310,7 @@ def main():
             events=len(app.ctrl.ledger.events) if app else None,operations=len(operations)),ensure_ascii=False,indent=2),encoding='utf-8')
         raise
     finally:
-        if app is not None:app.on_close()
+        if app is not None:close_app(app)
         log.close()
 
 

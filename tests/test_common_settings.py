@@ -1,3 +1,4 @@
+from scripts.tk_lifecycle import close_app
 import copy
 import tempfile
 import unittest
@@ -27,7 +28,7 @@ class TestCommonSettings(unittest.TestCase):
 
     def close(self):
         if self.app:
-            self.app.on_close()
+            close_app(self.app,discard_fixture_results=True)
             self.app = None
 
     def start(self):

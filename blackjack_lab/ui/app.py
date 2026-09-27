@@ -67,6 +67,7 @@ CARD_BUTTONS = ("A", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 def tracked_operation(function):
     @wraps(function)
     def invoke(self, *args, **kwargs):
+        if getattr(self,'_closing',False):return
         self._operation_start_revision = self.ctrl.commit_revision
         with self.ctrl.read_frame():
             return function(self, *args, **kwargs)
@@ -103,6 +104,9 @@ class BlackjackLabApp(tk.Tk):
         super().__init__()
         self.recording_source = recording_source
         self.auto_analysis = auto_analysis
+        self._closing=False
+        self.exit_flow=None
+        self.pending_analysis={}
         self.title(f"Hakimi Blackjack Lab V{__version__} 手动记录工作台（本地离线）")
         self.geometry("720x620")
         self.minsize(660, 460)
@@ -466,6 +470,7 @@ class BlackjackLabApp(tk.Tk):
                                            is_recording_surface=self._is_recording_surface)
 
     def _is_recording_surface(self, event) -> bool:
+        if self._closing:return False
         if (hasattr(self, 'compact_panel') and self.compact_panel.editor_open
                 and str(getattr(event, 'widget', '')).startswith(str(self.compact_panel.editor))):
             return False  # The correction fields keep their normal editing keys.
@@ -1689,6 +1694,13 @@ class BlackjackLabApp(tk.Tk):
         return status
 
     def on_close(self):
+        from .shutdown import ExitFlow
+        if self.exit_flow is not None:
+            self.exit_flow.show();return
+        self.exit_flow=ExitFlow(self)
+        self.exit_flow.start()
+
+    def _finalize_close(self):
         if hasattr(self, 'sidebets'):
             self.sidebets.close()
         if hasattr(self, 'opening_estimate'):

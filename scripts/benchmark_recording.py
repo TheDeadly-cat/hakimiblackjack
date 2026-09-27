@@ -12,6 +12,7 @@ from time import perf_counter
 def run(output, source=None, profile_enabled=True):
     sys.path.insert(0, str(source or Path(__file__).resolve().parents[1]))
     from blackjack_lab.ui.app import BlackjackLabApp
+    from scripts.tk_lifecycle import close_app
     from blackjack_lab.analysis.split_contracts import same_value_das_research_rules
     with tempfile.TemporaryDirectory() as tmp:
         app = BlackjackLabApp(Path(tmp) / 'latency.db', auto_analysis=False)
@@ -61,7 +62,7 @@ def run(output, source=None, profile_enabled=True):
                     pstats.Stats(profile, stream=stream).sort_stats('cumulative').print_stats(35)
             print(json.dumps(result))
         finally:
-            app.on_close()
+            close_app(app)
 
 
 if __name__ == '__main__':

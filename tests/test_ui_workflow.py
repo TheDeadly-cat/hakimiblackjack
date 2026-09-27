@@ -1,3 +1,4 @@
+from scripts.tk_lifecycle import close_app
 """实际 Tk 控件与回调的端到端检查；只使用临时数据库和自建录牌数据。"""
 import tempfile
 import tkinter as tk
@@ -33,7 +34,7 @@ class TestUIWorkflow(unittest.TestCase):
 
     def close_app(self):
         if self.app:
-            self.app.on_close()
+            close_app(self.app,discard_fixture_results=True)
             self.app = None
 
     def start(self, n=6):

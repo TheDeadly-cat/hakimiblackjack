@@ -221,6 +221,9 @@ class TestOpeningHistoryUI(unittest.TestCase):
                 release.set()
                 history._load_thread.join(timeout=2)
             self.assertFalse(history._load_thread.is_alive())
+            deadline=perf_counter()+2
+            while history.winfo_exists() and perf_counter()<deadline:
+                self.app.update();sleep(.01)
             self.assertFalse(history.winfo_exists())
 
     def test_recovery_exposes_history_without_restoring_it_as_current(self):

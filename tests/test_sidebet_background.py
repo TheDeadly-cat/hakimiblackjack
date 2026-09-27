@@ -26,7 +26,8 @@ class SidebetWorkerTests(unittest.TestCase):
         while perf_counter()<end and len(values)<2:
             values.extend(worker.poll());sleep(.01)
         self.assertEqual([r['result'] for r in values],['first',99])
-        worker.close();self.assertFalse(worker.thread.is_alive());self.assertFalse(worker.pending)
+        worker.close();worker.thread.join(1)
+        self.assertFalse(worker.thread.is_alive());self.assertFalse(worker.pending)
 
     def test_invalid_scalar_flags_do_not_become_peek_facts(self):
         with self.assertRaises(ValueError):scalar((1,)*10,True)
@@ -67,6 +68,7 @@ class SidebetBackgroundUITests(unittest.TestCase):
             self.start();self.assertTrue(entered.wait(1))
             timer=threading.Timer(.05,release.set);timer.start()
             self.view.close();timer.join()
+            self.pump(lambda:self.view.worker.stopped)
         self.assertTrue(self.view.closed)
         self.assertFalse(self.view.worker.thread.is_alive())
         self.assertFalse(list(self.view.store.directory.glob('*.json')))

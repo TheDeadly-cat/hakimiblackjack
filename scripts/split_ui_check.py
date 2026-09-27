@@ -14,6 +14,7 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from blackjack_lab.ui.app import BlackjackLabApp
+from scripts.tk_lifecycle import close_app
 from blackjack_lab.ledger.events import SOURCE_SIMULATOR
 from blackjack_lab.storage.export import export_json
 from scripts.source_identity import source_identity
@@ -82,7 +83,7 @@ def main():
                 else:
                     app.act_card('10');capture(scenario+'-ordinary-21')
             finally:
-                app.on_close()
+                close_app(app)
     report=dict(schema='hakimi-split-tk-capture-v1',identity=identity,source_manifest=before,
                 source_unchanged=before==source_manifest(),records=records,errors=errors,
                 test_data='Temporary SQLite; every event marked SOURCE_SIMULATOR; no user database',

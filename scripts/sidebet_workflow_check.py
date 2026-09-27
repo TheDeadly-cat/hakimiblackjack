@@ -18,6 +18,7 @@ def main():
     for name,h in build['package_manifest'].items():assert hashlib.sha256((runtime/name).read_bytes()).hexdigest()==h,name
     sys.path.insert(0,str(runtime));sys.dont_write_bytecode=True
     from blackjack_lab.ui.app import BlackjackLabApp
+    from scripts.tk_lifecycle import close_app
     from blackjack_lab.core.table import ACTION_SPLIT,ACTION_DOUBLE,ACTION_STAND
     from blackjack_lab.ledger.events import SOURCE_SIMULATOR
     from blackjack_lab.ledger.ledger import EventLedger
@@ -137,7 +138,7 @@ def main():
                 draw('T',None,'庄家',hole=True);draw('2',None,'庄家');settle(-1)
                 assert app.sidebets.forecasts['玩家1']['result']['status']=='unavailable'
                 events=app.ctrl.ledger.to_list();plan=app.ctrl.entry_plan.to_dict()
-                app.on_close();app=None
+                close_app(app);app=None
                 app=BlackjackLabApp(db,recording_source=SOURCE_SIMULATOR)
                 app.ctrl.recording_source=SOURCE_SIMULATOR
                 app.title('Hakimi · 边注联合验收（恢复独立模拟记录）')
@@ -147,7 +148,7 @@ def main():
             events=app.ctrl.ledger.to_list()
             assert all(e['source']==SOURCE_SIMULATOR for e in events)
             (out/'ledger.json').write_text(json.dumps(events,ensure_ascii=False,indent=2),encoding='utf-8')
-            store=app.ctrl.sidebet_store;app.on_close();app=None
+            store=app.ctrl.sidebet_store;close_app(app);app=None
             records,damaged=store.list();assert not damaged,damaged
             for saved in records:store.verified_input(saved,db)
             for path,h in saved_originals.items():assert hashlib.sha256(Path(path).read_bytes()).hexdigest()==h
@@ -172,7 +173,7 @@ def main():
         (out/'failure.json').write_text(json.dumps(dict(error=repr(error),errors=errors,cases=rounds,commands=commands),ensure_ascii=False,indent=2),encoding='utf-8')
         raise
     finally:
-        if app is not None:app.on_close()
+        if app is not None:close_app(app)
 
 
 if __name__=='__main__':main()

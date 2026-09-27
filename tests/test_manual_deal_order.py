@@ -1,3 +1,4 @@
+from scripts.tk_lifecycle import close_app
 """K3: keypad deal order, continuation stick, analysis vs recording target."""
 import unittest
 from unittest.mock import patch
@@ -287,7 +288,7 @@ class TestManualDealOrder(TestUIWorkflow):
         session = self.app.ctrl.session_id
         db = self.db
         filled = dict(self.app.ctrl.entry_plan.filled_slots)
-        self.app.on_close()
+        close_app(self.app,discard_fixture_results=True)
         self.app = None
         self.app = BlackjackLabApp(db, auto_analysis=False)
         self.app.update()

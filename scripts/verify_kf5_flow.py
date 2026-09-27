@@ -14,6 +14,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from blackjack_lab.ui.app import BlackjackLabApp
+from scripts.tk_lifecycle import close_app
 from blackjack_lab.ui.controller import SessionController
 from blackjack_lab.ledger.events import SOURCE_SIMULATOR
 from blackjack_lab.core.table import PHASE_SETTLED
@@ -171,7 +172,7 @@ def main():
             visible_deals = [e for e in live if e.etype == 'CARD_DEALT' and e.payload.get('face_state') == 'shown']
             assert len(visible_deals) >= 100
             assert len({e.event_id for e in app.ctrl.ledger.events}) == len(app.ctrl.ledger.events)
-            app.on_close()
+            close_app(app)
             app = None
             recovered = SessionController.recover(db, sid)
             try:
@@ -210,7 +211,7 @@ def main():
         finally:
             (output / 'attempt-trace.json').write_text(json.dumps({'operations': records, 'errors': errors}, ensure_ascii=False, indent=2), encoding='utf-8')
             if app is not None:
-                app.on_close()
+                close_app(app)
 
 
 if __name__ == '__main__':

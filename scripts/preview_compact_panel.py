@@ -9,6 +9,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from blackjack_lab.ui.app import BlackjackLabApp
+from scripts.tk_lifecycle import close_app
 from blackjack_lab.ledger.events import SOURCE_SIMULATOR
 from blackjack_lab.core.table import ACTION_SPLIT, ACTION_DOUBLE
 
@@ -96,7 +97,7 @@ def main():
         app.after(500, poll)
     def close():
         snapshot(True)
-        app.on_close()
+        close_app(app)
     app.protocol('WM_DELETE_WINDOW', close)
     app.after(500, poll)
     app.mainloop()
