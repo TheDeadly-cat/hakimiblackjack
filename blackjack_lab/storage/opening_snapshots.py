@@ -17,6 +17,7 @@ from ..analysis.opening_service import validate_opening_result
 from ..ledger.ledger import EventLedger
 from .database import LocalStore
 from .safe_files import atomic_write
+from .history_catalog import metadata_page
 
 SNAPSHOT_SCHEMA = 'hakimi-opening-snapshot-v1'
 STATUSES = ('available', 'cancelled', 'stale', 'timeout', 'failed', 'unsupported')
@@ -90,6 +91,9 @@ def _validate(body):
 class OpeningSnapshots:
     def __init__(self, directory):
         self.directory = Path(directory)
+
+    def page(self, **kwargs):
+        return metadata_page(self.directory, **kwargs)
 
     def save(self, result, event_prefix, recomputed_from=None, sources=None):
         body = copy.deepcopy(dict(schema=SNAPSHOT_SCHEMA, snapshot_id=uuid.uuid4().hex, saved_at=time(),

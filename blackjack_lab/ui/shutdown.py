@@ -19,6 +19,7 @@ class ExitFlow:
         self.readers=[]
         self.processes=[]
         self.side_history=self.opening_history=None
+        self.main_history=None
 
     def show(self):
         if self.window is not None and self.window.winfo_exists():self.window.lift()
@@ -45,12 +46,16 @@ class ExitFlow:
         record=app.opening_estimate.queue_exit_cancellation()
         if record:cancellations.append(record)
         self.workers=[app.sidebets.worker]
+        h=getattr(panel,'history',None)
+        if h is not None and h.winfo_exists():
+            self.main_history=h;self.workers.append(h.worker)
         h=app.sidebets.history
         if h is not None and h.winfo_exists():
             self.side_history=h;self.workers.append(h.worker)
         h=app.opening_estimate.history
         if h is not None and h.winfo_exists():
             self.opening_history=h;services.append(h.service)
+            if hasattr(h,'worker'):self.workers.append(h.worker)
             h._load_cancel.set();self.readers=list(h._load_threads)
             if getattr(h,'_close_thread',None):self.readers.append(h._close_thread)
             record=app.opening_estimate.queue_exit_cancellation(h)
@@ -132,6 +137,7 @@ class ExitFlow:
     def resume(self):
         app=self.app
         app.sidebets.worker=LatestWorker();app.sidebets.key=None
+        app.sidebets.observation_key=None
         h=self.side_history
         if h is not None and h.winfo_exists() and not h.closed:
             h.worker=LatestWorker();h.expected.clear();h.loading=h.recomputing=False;h.verified=None
@@ -140,9 +146,14 @@ class ExitFlow:
         app._closing=False;app.exit_flow=None
         self.window.grab_release();self.window.destroy();self.phase='returned'
         app.refresh_all()
+        main=self.main_history
+        if main is not None and main.winfo_exists() and not main.closed:
+            main.worker=LatestWorker();main.expected.clear();main.reload()
         if h is not None and h.winfo_exists() and not h.closed:h.reload()
         h=self.opening_history
-        if h is not None and h.winfo_exists() and not h._closed:h.reload()
+        if h is not None and h.winfo_exists() and not h._closed:
+            h.worker=LatestWorker();h.expected.clear();h._load_thread=h.worker.thread;h._load_threads=[h.worker.thread]
+            h.reload()
 
     def discard(self):
         if self.phase!='needs_save' or self.errors:return
@@ -153,6 +164,6 @@ class ExitFlow:
     def finish(self):
         self.phase='finished'
         self.window.grab_release();self.window.destroy()
-        for history in (self.side_history,self.opening_history):
+        for history in (self.side_history,self.opening_history,self.main_history):
             if history is not None and history.winfo_exists():history.close()
         self.app._finalize_close()

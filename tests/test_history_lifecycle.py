@@ -24,7 +24,7 @@ class HistoryLifecycleTests(unittest.TestCase):
         h.worker.submit('history',held,'prior-active')
         try:
             self.assertTrue(entered.wait(1))
-            with patch.object(self.view.store,'list',wraps=self.view.store.list) as loads:
+            with patch.object(self.view.store,'page',wraps=self.view.store.page) as loads:
                 for _ in range(3):
                     h.reload();required=h.expected['load']
                     h.listing.selection_clear(0,'end');h.listing.selection_set(0)

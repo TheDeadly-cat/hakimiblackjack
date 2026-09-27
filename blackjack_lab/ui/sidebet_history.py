@@ -17,6 +17,12 @@ class SidebetHistory(tk.Toplevel):
         self.expected={}
         self.selected_after_load=None
         self.damage_note=''
+        self.page_offset=0;self.total=0
+        pages=ttk.Frame(self);pages.pack(fill=tk.X,padx=8)
+        ttk.Button(pages,text='上一页',command=lambda:self.page(-1)).pack(side=tk.LEFT)
+        ttk.Button(pages,text='下一页',command=lambda:self.page(1)).pack(side=tk.LEFT)
+        self.page_label=tk.StringVar()
+        ttk.Label(pages,textvariable=self.page_label).pack(side=tk.LEFT)
         self.listing=tk.Listbox(self,height=7,exportselection=False);self.listing.pack(fill=tk.X,padx=8,pady=6)
         self.listing.bind('<<ListboxSelect>>',self.select)
         self.text=tk.Text(self,wrap=tk.WORD,state=tk.DISABLED);self.text.pack(fill=tk.BOTH,expand=True,padx=8)
@@ -36,17 +42,24 @@ class SidebetHistory(tk.Toplevel):
         index=self.listing.curselection()
         return self.entries[index[0]] if index and index[0]<len(self.entries) else None
 
+    def page(self,direction):
+        offset=self.page_offset+direction*100
+        if self.loading or self.recomputing or not 0<=offset<self.total:return
+        self.page_offset=offset;self.reload()
+
     def reload(self,selected_id=None):
         if self.closed or self.recomputing or getattr(self.owner.app,'_closing',False):return
         old=self.selected()
+        if selected_id:self.page_offset=0
         self.selected_after_load=selected_id or (old['snapshot_id'] if old else None)
         self.expected.pop('verify',None)
         self.loading=True;self.verified=None;self.recompute_button.state(['disabled'])
         self.corrected_button.state(['disabled'])
-        self.status.set('后台核验历史，可继续录牌；原记录保留。')
+        self.status.set('后台读取本页元数据（未核验）；选中记录后完整核验。')
         store=self.owner.store
+        offset=self.page_offset
         self.expected['load']=self.worker.submit('history_load',lambda:dict(kind='load',selected_id=selected_id,
-            data=store.list(cancelled=self.worker.closed.is_set)))
+            data=store.page(offset=offset,cancelled=self.worker.closed.is_set)))
 
     def show(self,saved):
         text='历史只读 · 不代表当前牌况或仍可下注的机会\n'
@@ -67,9 +80,18 @@ class SidebetHistory(tk.Toplevel):
         self.expected.pop('verify',None)
         self.corrected_button.state(['disabled'])
         if saved is None:return
-        self.show(saved);self.status.set('原结果只读，正在核对原数据库前缀。')
+        self.text.configure(state=tk.NORMAL);self.text.delete('1.0',tk.END)
+        self.text.insert('1.0','记录尚未核验，后台正在读取完整文件和原数据库前缀。')
+        self.text.configure(state=tk.DISABLED)
+        self.status.set('原结果只读，正在核对文件与原数据库前缀。')
         store=self.owner.store;db=self.owner.app.ctrl.store.db_path
-        self.expected['verify']=self.worker.submit('history_verify',lambda:dict(kind='verify',snapshot_id=saved['snapshot_id'],input=store.verified_input(saved,db)))
+        snapshot_id=saved['snapshot_id']
+        def verify():
+            full=store.load(snapshot_id)
+            try:store.verified_input(full,db);error=None
+            except Exception as exc:error=str(exc)
+            return dict(kind='verify',snapshot_id=snapshot_id,saved=full,error=error)
+        self.expected['verify']=self.worker.submit('history_verify',verify)
 
     def recompute(self):
         if self.closed or getattr(self.owner.app,'_closing',False):return
@@ -129,12 +151,13 @@ class SidebetHistory(tk.Toplevel):
             if kind=='load':
                 if message['request_id']!=self.expected.get('load'):continue
                 self.expected.pop('load',None)
-                self.loading=False;self.entries,damaged=value['data'];self.listing.delete(0,tk.END)
+                self.loading=False;data=value['data'];self.entries=data['entries'];damaged=data['damaged']
+                self.total=data['total'];self.listing.delete(0,tk.END)
+                self.page_label.set(f"文件新到旧 · 第 {self.page_offset//100+1} 页 · 共 {self.total} 条 · 元数据未核验")
                 for saved in self.entries:
-                    snapshot=saved['result']['input']
-                    self.listing.insert(tk.END,f"#{snapshot['through_seq']} · {snapshot['seat']} · {saved['timing']} · {saved['snapshot_id'][:8]}")
+                    self.listing.insert(tk.END,f"未核验 · #{saved['through_seq']} · {saved['seat']} · {saved['timing']} · {saved['snapshot_id'][:8]}")
                 if self.entries:
-                    index=next((i for i,r in enumerate(self.entries) if r['snapshot_id']==self.selected_after_load),len(self.entries)-1)
+                    index=next((i for i,r in enumerate(self.entries) if r['snapshot_id']==self.selected_after_load),0)
                     self.listing.selection_set(index);self.select()
                 else:self.status.set('尚无已保存的边注记录。')
                 self.selected_after_load=None
@@ -144,6 +167,9 @@ class SidebetHistory(tk.Toplevel):
                 self.expected.pop('verify',None)
                 selected=self.selected()
                 if selected and selected['snapshot_id']==value['snapshot_id'] and not self.loading and not self.recomputing:
+                    selected=value['saved'];self.entries[self.listing.curselection()[0]]=selected;self.show(selected)
+                    if value['error']:
+                        self.status.set('原数据库未核验：'+value['error']+self.damage_note);continue
                     self.verified=value['snapshot_id'];self.recompute_button.state(['!disabled'])
                     self.corrected_button.state(['!disabled'] if selected['result']['input']['purpose'] in ('forecast','corrected_predeal') else ['disabled'])
                     self.status.set('原数据库完整前缀已核对；原结果只读，复算另存。'+self.damage_note)

@@ -16,6 +16,7 @@ from ..analysis.sidebets.information import build_input,execute,window,dealing_s
 from ..ledger.ledger import EventLedger
 from ..storage.safe_files import atomic_write
 from ..storage.sidebet_snapshots import algorithm_manifest
+from .observation_identity import observed_identity
 
 
 class SidebetView:
@@ -53,7 +54,7 @@ class SidebetView:
         self.pending_label=tk.StringVar()
         ttk.Label(controls,textvariable=self.pending_label).pack(side=tk.LEFT)
         self.key=None;self.current_window=None;self.intents={};self.forecasts={}
-        self.observed=None;self.observed_request=None;self.sealed=False;self.problem=''
+        self.observed=None;self.observed_request=None;self.observation_key=None;self.sealed=False;self.problem=''
         self.trace=app.var_analysis_target.trace_add('write',lambda *_:self.refresh())
         app.ctrl.add_context_listener(self.refresh)
         self.refresh();self.poll_id=app.after(60,self.poll)
@@ -90,12 +91,12 @@ class SidebetView:
             return None
         self.worker.submit('retry',work)
 
-    def _request(self,purpose,profile,intent=None):
+    def _request(self,purpose,profile,intent=None,observation_key=None):
         app=self.app;frozen=app.ctrl.read_prefix();session=frozen.session_id
         seat=app.var_analysis_target.get();request_id=uuid.uuid4().hex
         captured_at=time()
         meta=dict(window=self.current_window,seat=seat,profile=profile.to_dict(),request_id=request_id,
-                  context=app.ctrl.context_token)
+                  context=app.ctrl.context_token,observation_key=observation_key)
         prediction_id=None
         if intent:
             with self._lock:prediction_id=self.saved_ids.get(intent['request_id'])
@@ -122,15 +123,22 @@ class SidebetView:
         if identity!=self.current_window:
             self.current_window=identity;self.intents.clear();self.forecasts.clear();self.observed=None
         self.sealed=dealing_started(current)
-        self.observed=None;self.observed_request=None
-        if not self.enabled.get():self.problem='边注研究已关闭';self.render();return
-        if window(current) is None:self.problem='尚无进行中的牌靴';self.render();return
+        if not self.enabled.get():
+            self.observed=None;self.observed_request=None;self.observation_key=None
+            self.problem='边注研究已关闭';self.render();return
+        if window(current) is None:
+            self.observed=None;self.observed_request=None;self.observation_key=None
+            self.problem='尚无进行中的牌靴';self.render();return
         seat=self.app.var_analysis_target.get()
         if self.sealed:
             intent=self.intents.get(seat)
             profile=SidebetProfile.from_dict(intent['profile']) if intent else self.profile
-            self.observed_request=self._request('observed',profile,intent)['request_id']
+            observation_key=observed_identity(self.app.ctrl.ledger,current,seat,profile)
+            if observation_key!=self.observation_key:
+                self.observed=None;self.observation_key=observation_key
+                self.observed_request=self._request('observed',profile,intent,observation_key)['request_id']
         else:
+            self.observed=None;self.observed_request=None;self.observation_key=None
             self.forecasts.pop(seat,None)
             self.intents[seat]=self._request('forecast',self.profile)
         self.render()
@@ -155,9 +163,11 @@ class SidebetView:
                     self.key=None;continue
                 self.forecasts[seat]=value
             elif message['channel']=='observed' and message['request_id']==self.observed_request:
-                if meta['context']==self.app.ctrl.context_token and seat==self.app.var_analysis_target.get():
-                    if value['result']['input']['prefix_digest']==digest(self.app.ctrl.ledger.to_list()):
-                        self.observed=value
+                if seat==self.app.var_analysis_target.get():
+                    with self.app._view_frame():current=self.app._current_seg()
+                    profile=SidebetProfile.from_dict(meta['profile'])
+                    fresh=observed_identity(self.app.ctrl.ledger,current,seat,profile) if current else None
+                    if meta['observation_key']==fresh==self.observation_key:self.observed=value
                     else:self.key=None
         self.refresh();self.render()
         self.poll_id=self.app.after(60,self.poll)

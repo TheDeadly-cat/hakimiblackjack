@@ -156,7 +156,8 @@ class TestSnapshotHistoryUI(unittest.TestCase):
         error.start()
         self.addCleanup(error.stop)
         self.app = BlackjackLabApp(Path(self.tmp.name) / "n1-ui.db", auto_analysis=False)
-        self.addCleanup(self.app.on_close)
+        from scripts.tk_lifecycle import close_app
+        self.addCleanup(lambda:close_app(self.app))
         ctrl = self.app.ctrl
         ctrl.new_shoe(research_rules(6))
         ctrl.start_round(["玩家1"])
@@ -174,7 +175,10 @@ class TestSnapshotHistoryUI(unittest.TestCase):
 
     def window(self):
         self.app.analysis_panel.show_history()
-        self.app.update()
+        deadline=time.perf_counter()+5
+        while self.app.analysis_panel.history.saved is None and time.perf_counter()<deadline:
+            self.app.update();time.sleep(.01)
+        self.assertIsNotNone(self.app.analysis_panel.history.saved)
         return next(w for w in self.app.winfo_children() if w.winfo_class() == "Toplevel")
 
     def test_real_tk_history_shows_filenames_reasons_and_recomputes_healthy_result(self):
@@ -183,7 +187,8 @@ class TestSnapshotHistoryUI(unittest.TestCase):
         win = self.window()
         texts = [w.get("1.0", "end") for w in win.winfo_children() if w.winfo_class() == "Text"]
         self.assertTrue(any("历史分析" in text and "EV" in text for text in texts))
-        self.assertTrue(any(bad.name in text and "根结构" in text for text in texts))
+        self.assertIn(bad.name,win.status.get())
+        self.assertIn("根结构",win.status.get())
         listing = next(w for w in win.winfo_children() if w.winfo_class() == "Listbox")
         self.assertEqual(listing.size(), 1)
         button = next(w for w in win.winfo_children() if w.winfo_class() == "TButton")
@@ -207,7 +212,7 @@ class TestSnapshotHistoryUI(unittest.TestCase):
         win = self.window()
         listing = next(w for w in win.winfo_children() if w.winfo_class() == "Listbox")
         self.assertEqual(listing.size(), 2)
-        self.assertIn("仅存储信封", listing.get(1))
+        self.assertIn("未核验", listing.get(0))
         texts = [w.get("1.0", "end") for w in win.winfo_children() if w.winfo_class() == "Text"]
         self.assertTrue(any("不能复算" in text for text in texts))
         button = next(w for w in win.winfo_children() if w.winfo_class() == "TButton")
