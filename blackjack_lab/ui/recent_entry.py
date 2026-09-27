@@ -14,6 +14,7 @@ class RecentCard:
     ordinal: int
     rank: str
     revealed: bool
+    suit: str | None = None
 
     @property
     def label(self):
@@ -41,7 +42,7 @@ def recent_visible(ctrl, seg=None):
         for h, hand in enumerate(seg.table.seat(seat).hands, 1):
             for n, card in enumerate(hand.cards, 1):
                 if card.event_id == physical and not card.is_unknown:
-                    return RecentCard(event.event_id, physical, seat, h, n, card.rank, event.etype == CARD_REVEALED)
+                    return RecentCard(event.event_id, physical, seat, h, n, card.rank, event.etype == CARD_REVEALED, card.suit)
     return None
 
 
