@@ -1,6 +1,8 @@
 """Read-only opening history and separately saved original-prefix recalculation."""
 from datetime import datetime
 import json
+from queue import Empty, Queue
+import threading
 from time import perf_counter
 import tkinter as tk
 from tkinter import ttk
@@ -47,6 +49,11 @@ class OpeningHistory(tk.Toplevel):
         self.service = OpeningService()
         self.attempt = None
         self.entries = []
+        self._closed = False
+        self._loading = False
+        self._load_generation = 0
+        self._load_cancel = threading.Event()
+        self._load_queue = Queue()
         self.listing = tk.Listbox(self, height=7, exportselection=False)
         self.listing.pack(fill=tk.X, padx=8, pady=6)
         self.listing.bind('<<ListboxSelect>>', self.select)
@@ -68,9 +75,40 @@ class OpeningHistory(tk.Toplevel):
         return self.entries[indices[0]] if indices else None
 
     def reload(self, selected_id=None):
+        if self._closed:
+            return
         old = self.selected()
         selected_id = selected_id or (old['snapshot_id'] if old else None)
-        self.entries, damaged = self.app.ctrl.opening_store.list()
+        self._load_cancel.set()
+        cancel = self._load_cancel = threading.Event()
+        self._load_generation += 1
+        generation = self._load_generation
+        store = self.app.ctrl.opening_store
+        self._loading = True
+        self.recompute_button.state(['disabled'])
+        self.status.set('正在后台核验开局历史，可继续录牌；原记录不会改变。')
+        def read():
+            try:
+                entries, damaged = store.list(cancelled=cancel.is_set)
+            except Exception as error:
+                entries, damaged = [], [dict(file='历史目录', error=str(error))]
+            if not cancel.is_set():
+                self._load_queue.put((generation, entries, damaged, selected_id))
+        self._load_thread = threading.Thread(target=read,daemon=True,name='opening-history-reader')
+        self._load_thread.start()
+
+    def poll_loading(self):
+        while True:
+            try:
+                generation, entries, damaged, selected_id = self._load_queue.get_nowait()
+            except Empty:
+                break
+            if generation == self._load_generation and not self._closed:
+                self._loading = False
+                self.publish_list(entries,damaged,selected_id)
+
+    def publish_list(self, entries, damaged, selected_id):
+        self.entries = entries
         self.listing.delete(0,tk.END)
         for saved in self.entries:
             result = saved['result']
@@ -94,7 +132,7 @@ class OpeningHistory(tk.Toplevel):
         try:
             self.app.ctrl.opening_store.verified_input(saved, self.app.ctrl.store.db_path)
             message = '原数据库事件前缀已核对；这是历史结果。'
-            self.recompute_button.state(['disabled'] if self.attempt else ['!disabled'])
+            self.recompute_button.state(['disabled'] if self.attempt or self._loading else ['!disabled'])
         except Exception as error:
             message = '原数据库未核验：'+str(error)
             self.recompute_button.state(['disabled'])
@@ -106,7 +144,7 @@ class OpeningHistory(tk.Toplevel):
 
     def recompute(self):
         saved = self.selected()
-        if saved is None or self.attempt:
+        if saved is None or self.attempt or self._loading:
             return
         try:
             snapshot = self.app.ctrl.opening_store.verified_input(saved,self.app.ctrl.store.db_path)
@@ -119,7 +157,10 @@ class OpeningHistory(tk.Toplevel):
             self.status.set('不能复算：'+str(error))
 
     def poll(self):
+        if self._closed:
+            return
         try:
+            self.poll_loading()
             result = self.service.poll()
             if result is not None and self.attempt:
                 attempt, self.attempt = self.attempt, None
@@ -138,7 +179,8 @@ class OpeningHistory(tk.Toplevel):
                 self.reload(saved['snapshot_id'] if saved else None)
                 self.status.set('已另存复算结果；原结果保留。' if saved else '复算完成、未保存；可重试保存。')
         finally:
-            self.poll_id = self.after(100,self.poll)
+            if not self._closed:
+                self.poll_id = self.after(100,self.poll)
 
     def cancel(self):
         self.service.cancel()
@@ -146,11 +188,22 @@ class OpeningHistory(tk.Toplevel):
             attempt, self.attempt = self.attempt, None
             saved = self.owner.persist(terminal_opening_result(attempt['snapshot'],attempt['request_id'],
                 'cancelled','已取消历史开局复算',elapsed_seconds=perf_counter()-attempt['started']),attempt)
-            self.reload(saved['snapshot_id'] if saved else None)
-            self.status.set('已取消复算。')
+            if not self._closed:
+                self.reload(saved['snapshot_id'] if saved else None)
+                self.status.set('已取消复算。')
 
     def close(self):
+        if self._closed:
+            return
+        self._closed = True
+        self._load_cancel.set()
         self.after_cancel(self.poll_id)
         self.cancel()
         self.service.close()
+        self.entries = []
+        while True:
+            try:
+                self._load_queue.get_nowait()
+            except Empty:
+                break
         self.destroy()

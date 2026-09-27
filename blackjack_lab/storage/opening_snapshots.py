@@ -112,9 +112,11 @@ class OpeningSnapshots:
         _validate(body)
         return data
 
-    def list(self):
+    def list(self, *, cancelled=None):
         entries, damaged = [], []
         for path in self.directory.glob('*.json'):
+            if cancelled is not None and cancelled():
+                break  # A cancelling reader must discard the incomplete list.
             try:
                 entries.append(self.load(path.stem))
             except (ValueError, TypeError, KeyError, OSError, OverflowError, RecursionError) as error:

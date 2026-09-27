@@ -3,6 +3,8 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
+import threading
+from time import perf_counter, sleep
 import unittest
 from unittest.mock import patch
 
@@ -140,6 +142,12 @@ class TestOpeningHistoryUI(unittest.TestCase):
     tick = ui_fixture.TestOpeningTitle.tick
     publish = ui_fixture.TestOpeningTitle.publish
 
+    def wait_history(self):
+        deadline = perf_counter()+4
+        while self.view.history._loading and perf_counter()<deadline:
+            self.app.update(); sleep(.01)
+        self.assertFalse(self.view.history._loading)
+
     def test_save_failure_keeps_result_recording_and_retry_original_prefix(self):
         with patch('blackjack_lab.storage.opening_snapshots.atomic_write',side_effect=OSError('disk fault')):
             self.publish(1)
@@ -168,6 +176,7 @@ class TestOpeningHistoryUI(unittest.TestCase):
         file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
         with patch('blackjack_lab.ui.opening_history.OpeningService',ui_fixture.FakeService):
             self.view.show_history()
+        self.wait_history()
         history = self.view.history
         self.assertEqual(history.display.cget('state'),'disabled')
         self.assertIn('原数据库事件前缀已核对',history.display.get('1.0','end'))
@@ -184,6 +193,35 @@ class TestOpeningHistoryUI(unittest.TestCase):
         self.assertEqual(entries[-1]['recomputed_from'],original['snapshot_id'])
         self.assertEqual(self.app.var_opening_ev.get(),current_text)
         self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),file_hash)
+
+    def test_history_verification_does_not_block_recording_and_close_cancels_reader(self):
+        self.publish(1)
+        entered, release = threading.Event(), threading.Event()
+        original = self.app.ctrl.opening_store.list
+        def slow(**kwargs):
+            entered.set()
+            release.wait(4)
+            return original(**kwargs)
+        with patch.object(self.app.ctrl.opening_store,'list',side_effect=slow):
+            started=perf_counter()
+            self.view.show_history()
+            self.assertLess(perf_counter()-started,1)
+            history=self.view.history
+            try:
+                self.assertTrue(entered.wait(1))
+                self.assertTrue(history._loading)
+                self.app.act_new_round()
+                before=len(self.app.ctrl.ledger.events)
+                self.app._key_rank('8')
+                self.assertEqual(len(self.app.ctrl.ledger.events),before+1)
+                self.assertEqual(self.app.ctrl.state().current.shoe.physical_remaining(),415)
+                history.close()
+                self.assertTrue(history._load_cancel.is_set())
+            finally:
+                release.set()
+                history._load_thread.join(timeout=2)
+            self.assertFalse(history._load_thread.is_alive())
+            self.assertFalse(history.winfo_exists())
 
     def test_recovery_exposes_history_without_restoring_it_as_current(self):
         self.publish(1)
