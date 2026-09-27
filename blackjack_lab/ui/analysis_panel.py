@@ -341,65 +341,14 @@ class AnalysisPanel(ttk.Frame):
         self.on_context(self.app._current_seg())
 
     def show_history(self):
-        entries, damaged = self.app.ctrl.analysis_store.list()
-        win = tk.Toplevel(self.app)
-        win.title("历史分析（原结果只读；重算创建新快照）")
-        win.geometry("800x650")
-        win.transient(self.app)
-        listing = tk.Listbox(win, height=7, exportselection=False)
-        listing.pack(fill=tk.X, padx=6, pady=4)
-        display = tk.Text(win, wrap=tk.WORD, state=tk.DISABLED)
-        display.pack(fill=tk.BOTH, expand=True, padx=6)
-        for item in entries:
-            r = item["result"]
-            stamp = datetime.fromtimestamp(item["saved_at"]).strftime("%Y-%m-%d %H:%M:%S")
-            identity = ("仅存储信封，无分析数值" if is_minimal_result(r) else
-                        f"{r['input']['seat']} · #{r['input']['through_seq']} · {r['engine_version']}")
-            listing.insert(tk.END, f"{stamp} · {identity} · {item['snapshot_id'][:8]}")
-        def select(_event=None):
-            indices = listing.curselection()
-            if indices:
-                display.configure(state=tk.NORMAL)
-                display.delete("1.0", tk.END)
-                result = entries[indices[0]]["result"]
-                minimal = is_minimal_result(result)
-                supported = result["schema"] in DISPLAY_RESULT_SCHEMAS
-                text = ("这是兼容的旧存储信封，不包含完整分析结果，不能复算。\n输入摘要：" + result["input_digest"]
-                        if minimal else "当前界面尚不支持此结果格式，原文件已保留，不能在此版本复算。"
-                        if not supported else format_result(result, historical=True))
-                display.insert("1.0", text)
-                display.configure(state=tk.DISABLED)
-                recompute_button.state(["disabled"] if minimal or not supported else ["!disabled"])
-        listing.bind("<<ListboxSelect>>", select)
-        def recompute():
-            indices = listing.curselection()
-            if not indices:
-                return
-            try:
-                saved = entries[indices[0]]
-                if (is_minimal_result(saved["result"])
-                        or saved["result"]["schema"] not in DISPLAY_RESULT_SCHEMAS):
-                    return
-                snapshot = self.app.ctrl.recompute_input(saved)
-                self.start(snapshot, saved["snapshot_id"])
-                win.destroy()
-            except Exception as error:
-                messagebox.showerror("不能复算", str(error), parent=win)
-        recompute_button = ttk.Button(win, text="按选中结果的原事件前缀重新计算", command=recompute)
-        recompute_button.pack(pady=5)
-        note = "无已保存分析" if not entries else "重算采用当前引擎，并保留原结果。"
-        if damaged:
-            note += f" 发现 {len(damaged)} 个损坏快照，已拒绝读取，请保留文件核对。"
-            details = tk.Text(win, height=4, wrap=tk.WORD)
-            details.insert("1.0", "\n".join(f"{item['file']}：{item['error']}" for item in damaged))
-            details.configure(state=tk.DISABLED)
-            details.pack(fill=tk.X, padx=6, pady=3)
-        ttk.Label(win, text=note).pack(pady=3)
-        if entries:
-            listing.selection_set(len(entries) - 1)
-            select()
+        from .analysis_history import AnalysisHistory
+        history=getattr(self,'history',None)
+        if history is not None and history.winfo_exists():history.lift()
+        else:self.history=AnalysisHistory(self)
 
     def close(self):
+        history=getattr(self,'history',None)
+        if history is not None and history.winfo_exists():history.close()
         self._closed = True
         self._views.clear()
         for variable, trace in self._view_traces:

@@ -97,6 +97,7 @@ class TestUIWorkflow(unittest.TestCase):
     def test_history_correction_import_export_and_resume(self):
         self.start()
         self.deal("玩家1", "K")
+        self.app.show_workbench()
         self.app.lst_timeline.selection_set(len(self.app.ctrl.ledger.events) - 1)
         with patch("blackjack_lab.ui.app.simpledialog.askstring", side_effect=["Q", "自建测试牌面纠正"]):
             self.app.act_correct()

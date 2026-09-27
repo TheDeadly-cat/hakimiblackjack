@@ -10,6 +10,7 @@ from tkinter import ttk
 from ..analysis.opening import NOTE
 from ..analysis.opening_service import OpeningService, terminal_opening_result, validate_opening_result
 from ..storage.opening_snapshots import algorithm_manifest
+from ..analysis.sidebets.background import LatestWorker
 
 STATUS = dict(available='已完成', cancelled='已取消', stale='输入已变化', timeout='超时', failed='失败', unsupported='不支持')
 
@@ -56,6 +57,14 @@ class OpeningHistory(tk.Toplevel):
         self._load_queue = Queue()
         self._load_threads=[]
         self._close_thread=None
+        self.worker=LatestWorker();self.expected={};self._verifying=False;self.verified=None
+        self._load_thread=self.worker.thread;self._load_threads=[self.worker.thread]
+        self.page_offset=0;self.total=0;self.damage_note=''
+        pages=ttk.Frame(self);pages.pack(fill=tk.X,padx=8)
+        ttk.Button(pages,text='上一页',command=lambda:self.page(-1)).pack(side=tk.LEFT)
+        ttk.Button(pages,text='下一页',command=lambda:self.page(1)).pack(side=tk.LEFT)
+        self.page_label=tk.StringVar()
+        ttk.Label(pages,textvariable=self.page_label).pack(side=tk.LEFT)
         self.listing = tk.Listbox(self, height=7, exportselection=False)
         self.listing.pack(fill=tk.X, padx=8, pady=6)
         self.listing.bind('<<ListboxSelect>>', self.select)
@@ -76,10 +85,16 @@ class OpeningHistory(tk.Toplevel):
         indices = self.listing.curselection()
         return self.entries[indices[0]] if indices else None
 
+    def page(self,direction):
+        offset=self.page_offset+direction*100
+        if self.attempt or self._loading or not 0<=offset<self.total:return
+        self.page_offset=offset;self.reload()
+
     def reload(self, selected_id=None):
-        if self._closed or getattr(self.app,'_closing',False):
+        if self._closed or self.attempt or getattr(self.app,'_closing',False):
             return
         old = self.selected()
+        if selected_id:self.page_offset=0
         selected_id = selected_id or (old['snapshot_id'] if old else None)
         self._load_cancel.set()
         cancel = self._load_cancel = threading.Event()
@@ -87,39 +102,48 @@ class OpeningHistory(tk.Toplevel):
         generation = self._load_generation
         store = self.app.ctrl.opening_store
         self._loading = True
+        self._verifying=False;self.verified=None;self.expected.pop('verify',None)
         self.recompute_button.state(['disabled'])
-        self.status.set('正在后台核验开局历史，可继续录牌；原记录不会改变。')
+        self.status.set('后台读取本页元数据（未核验）；选中记录后完整核验。')
+        offset=self.page_offset
         def read():
-            try:
-                entries, damaged = store.list(cancelled=cancel.is_set)
-            except Exception as error:
-                entries, damaged = [], [dict(file='历史目录', error=str(error))]
-            if not cancel.is_set():
-                self._load_queue.put((generation, entries, damaged, selected_id))
-        self._load_thread = threading.Thread(target=read,daemon=True,name='opening-history-reader')
-        self._load_threads=[thread for thread in self._load_threads if thread.is_alive()]+[self._load_thread]
-        self._load_thread.start()
+            return dict(kind='load',data=store.page(offset=offset,cancelled=cancel.is_set),selected_id=selected_id)
+        self.expected['load']=self.worker.submit('history_load',read)
+        self._load_thread=self.worker.thread;self._load_threads=[self.worker.thread]
 
     def poll_loading(self):
-        while True:
-            try:
-                generation, entries, damaged, selected_id = self._load_queue.get_nowait()
-            except Empty:
-                break
-            if generation == self._load_generation and not self._closed:
-                self._loading = False
-                self.publish_list(entries,damaged,selected_id)
+        for message in self.worker.poll():
+            kind=next((k for k,v in self.expected.items() if v==message['request_id']),None)
+            if kind is None:continue
+            self.expected.pop(kind,None)
+            if 'error' in message:
+                if kind=='load':self._loading=False
+                if kind=='verify':self._verifying=False
+                self.status.set('未核验：'+message['error']+self.damage_note);continue
+            value=message['result']
+            if kind=='load':
+                self._loading=False;data=value['data'];self.total=data['total']
+                self.page_label.set(f'文件新到旧 · 第 {self.page_offset//100+1} 页 · 共 {self.total} 条 · 元数据未核验')
+                self.publish_list(data['entries'],data['damaged'],value['selected_id'])
+            elif kind=='verify':
+                self._verifying=False;selected=self.selected()
+                if selected is None or selected['snapshot_id']!=value['saved']['snapshot_id']:continue
+                saved=value['saved'];self.entries[self.listing.curselection()[0]]=saved
+                self.verified=saved['snapshot_id'] if value['error'] is None else None
+                message=('原数据库未核验：'+value['error'] if value['error'] else '原数据库事件前缀已核对；这是历史结果。')
+                self.display.configure(state=tk.NORMAL);self.display.delete('1.0',tk.END)
+                self.display.insert('1.0',record_text(saved,message));self.display.configure(state=tk.DISABLED)
+                self.recompute_button.state(['!disabled'] if self.verified and not self.attempt else ['disabled'])
+                self.status.set(message+self.damage_note)
 
     def publish_list(self, entries, damaged, selected_id):
         self.entries = entries
         self.listing.delete(0,tk.END)
         for saved in self.entries:
-            result = saved['result']
-            ev = f" EV {result['ev']:+.4f}" if result['status']=='available' else ''
-            stamp = datetime.fromtimestamp(saved['saved_at']).strftime('%m-%d %H:%M:%S')
-            self.listing.insert(tk.END, f"{stamp} · #{result['input']['through_seq']} · {STATUS[result['status']]}{ev} · {saved['snapshot_id'][:8]}")
+            self.listing.insert(tk.END, f"未核验 · #{saved['through_seq']} · {saved['status']} · {saved['snapshot_id'][:8]}")
+        self.damage_note=('；本页损坏记录已保留：'+'；'.join(item['file']+' '+item['error'] for item in damaged)) if damaged else ''
         if self.entries:
-            index = next((i for i,e in enumerate(self.entries) if e['snapshot_id']==selected_id),len(self.entries)-1)
+            index = next((i for i,e in enumerate(self.entries) if e['snapshot_id']==selected_id),0)
             self.listing.selection_set(index)
             self.select()
         else:
@@ -129,25 +153,27 @@ class OpeningHistory(tk.Toplevel):
             self.status.set('损坏记录已保留，未读取：'+'；'.join(item['file']+' '+item['error'] for item in damaged))
 
     def select(self, _event=None):
+        if self._closed or self._loading or self.attempt or getattr(self.app,'_closing',False):return
         saved = self.selected()
         if saved is None:
             return
-        try:
-            self.app.ctrl.opening_store.verified_input(saved, self.app.ctrl.store.db_path)
-            message = '原数据库事件前缀已核对；这是历史结果。'
-            self.recompute_button.state(['disabled'] if self.attempt or self._loading else ['!disabled'])
-        except Exception as error:
-            message = '原数据库未核验：'+str(error)
-            self.recompute_button.state(['disabled'])
+        self.verified=None;self._verifying=True;self.recompute_button.state(['disabled'])
         self.display.configure(state=tk.NORMAL)
         self.display.delete('1.0',tk.END)
-        self.display.insert('1.0',record_text(saved,message))
+        self.display.insert('1.0','尚未核验，正在后台读取完整文件和原数据库前缀。')
         self.display.configure(state=tk.DISABLED)
-        self.status.set(message)
+        self.status.set('正在完整核验选中记录。'+self.damage_note)
+        snapshot_id=saved['snapshot_id'];store=self.app.ctrl.opening_store;db=self.app.ctrl.store.db_path
+        def verify():
+            full=store.load(snapshot_id)
+            try:store.verified_input(full,db);error=None
+            except Exception as exc:error=str(exc)
+            return dict(saved=full,error=error)
+        self.expected['verify']=self.worker.submit('history_verify',verify)
 
     def recompute(self):
         saved = self.selected()
-        if saved is None or self.attempt or self._loading:
+        if saved is None or self.attempt or self._loading or self.verified!=saved['snapshot_id']:
             return
         try:
             snapshot = self.app.ctrl.opening_store.verified_input(saved,self.app.ctrl.store.db_path)
@@ -205,6 +231,7 @@ class OpeningHistory(tk.Toplevel):
             return
         self._closed = True
         self._load_cancel.set()
+        self.worker.close()
         self.after_cancel(self.poll_id)
         record=self.owner.queue_exit_cancellation(self)
         self.status.set('正在结束后台任务；保存完成后关闭，失败结果保留在应用中。')
@@ -219,7 +246,7 @@ class OpeningHistory(tk.Toplevel):
         self._finish_close()
 
     def _finish_close(self):
-        if self._close_thread.is_alive() or any(thread.is_alive() for thread in self._load_threads):
+        if (self._close_thread is not None and self._close_thread.is_alive()) or any(thread.is_alive() for thread in self._load_threads):
             self.poll_id=self.after(25,self._finish_close);return
         self.after_cancel(self.poll_id)
         self.entries = []

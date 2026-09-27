@@ -553,10 +553,10 @@ class SessionController:
         if plan and plan.mode == MODE_INITIAL and not plan.initial_complete():
             raise InputUnavailable('INITIAL_DEAL', '初始牌未录齐，暂停EV计算', INAPPLICABLE)
         from ..analysis.information import prepare_prefix, build_prepared_input
-        events = self.ledger.to_list()
-        key = self.session_id, digest(events)
+        snapshot=self.read_prefix()
+        key = snapshot.session_id, snapshot.prefix_digest
         if getattr(self, '_analysis_prefix_key', None) != key:
-            prepared = prepare_prefix(self.ledger, events=events)
+            prepared = prepare_prefix(self.ledger, events=snapshot.to_list())
             self._analysis_prefix_key, self._analysis_prepared = key, prepared
             self._analysis_inputs = {}
         current = self._analysis_prepared[2]
@@ -592,6 +592,15 @@ class SessionController:
             return self._read_snapshot
         return self.ledger.replay()
 
+    def read_prefix(self):
+        from .read_snapshot import PrefixSnapshot
+        if not getattr(self,'_read_depth',0):return PrefixSnapshot.capture(self.ledger)
+        key=id(self.ledger),self.context_token
+        if getattr(self,'_read_prefix_key',None)!=key:
+            self._read_prefix=PrefixSnapshot.capture(self.ledger)
+            self._read_prefix_key=key
+        return self._read_prefix
+
     @contextmanager
     def read_frame(self):
         """Share read-only replay within one UI callback; commits invalidate by identity.
@@ -606,6 +615,7 @@ class SessionController:
             self._read_depth -= 1
             if not self._read_depth:
                 self._read_key = self._read_snapshot = None
+                self._read_prefix_key = self._read_prefix = None
 
     def current_rules(self):
         seg = self.state().current

@@ -170,6 +170,10 @@ class TestAnalysisUI(unittest.TestCase):
         self.assertEqual(len(entries), 1)
         self.assertEqual(damaged, [])
         self.app.analysis_panel.show_history()
+        deadline=time.perf_counter()+4
+        while self.app.analysis_panel.history.saved is None and time.perf_counter()<deadline:
+            self.app.update();time.sleep(.01)
+        self.assertIsNotNone(self.app.analysis_panel.history.saved)
         # Invoke the real history-window recompute command.
         windows = [w for w in self.app.winfo_children() if w.winfo_class() == "Toplevel"]
         self.assertEqual(len(windows), 1)

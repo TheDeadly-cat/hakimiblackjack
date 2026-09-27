@@ -144,6 +144,7 @@ class TestAnalysisLifecycleReview(unittest.TestCase):
 
     def test_each_early_redraw_failure_clears_result_then_new_prefix_can_compute(self):
         self.start(cards=("5", "6"), up="2")
+        self.app.show_workbench()  # Exercise visible refresh faults; hidden views are deferred.
         panel = self.app.analysis_panel
         for method in ("refresh_hands", "refresh_table"):
             panel.calculate_current()

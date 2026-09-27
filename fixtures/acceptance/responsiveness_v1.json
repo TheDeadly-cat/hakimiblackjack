@@ -1,0 +1,20 @@
+{
+  "schema": "hakimi-responsiveness-scope-v1",
+  "baseline_commit": "c2eee34c5d07b0f3bbdff42955d9d4e8ba806263",
+  "event_scales": [1000, 5000, 10000],
+  "snapshot_scales": [100, 1000, 5000],
+  "recording_probe": "14 seven-player initial-deal commands per event scale, plus a separately profiled complete round and post-initial actions",
+  "long_shoes": [
+    {"decks": 6, "players": 1, "cut_remaining": 52, "seed": 202609271},
+    {"decks": 7, "players": 3, "cut_remaining": 65, "seed": 202609272},
+    {"decks": 8, "players": 7, "cut_remaining": 78, "seed": 202609273}
+  ],
+  "aspirational_targets_seconds": {
+    "recording_p95": 0.15,
+    "main_thread_segment": 0.05,
+    "history_first_feedback": 0.1,
+    "heartbeat_delay_p99": 0.2
+  },
+  "unchanged_limits": {"hand_request_seconds": 5, "opening_request_seconds": 20, "sidebet_pure_p95_seconds": 0.1},
+  "scope_note": "Measure all specified scales and report misses and supported scale explicitly. Profiling is separate from primary latency. Do not drop slow cases, change math, or relax request budgets. Synthetic data only."
+}

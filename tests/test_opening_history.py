@@ -144,7 +144,7 @@ class TestOpeningHistoryUI(unittest.TestCase):
 
     def wait_history(self):
         deadline = perf_counter()+4
-        while self.view.history._loading and perf_counter()<deadline:
+        while (self.view.history._loading or self.view.history._verifying) and perf_counter()<deadline:
             self.app.update(); sleep(.01)
         self.assertFalse(self.view.history._loading)
 
@@ -197,12 +197,12 @@ class TestOpeningHistoryUI(unittest.TestCase):
     def test_history_verification_does_not_block_recording_and_close_cancels_reader(self):
         self.publish(1)
         entered, release = threading.Event(), threading.Event()
-        original = self.app.ctrl.opening_store.list
+        original = self.app.ctrl.opening_store.page
         def slow(**kwargs):
             entered.set()
             release.wait(4)
             return original(**kwargs)
-        with patch.object(self.app.ctrl.opening_store,'list',side_effect=slow):
+        with patch.object(self.app.ctrl.opening_store,'page',side_effect=slow):
             started=perf_counter()
             self.view.show_history()
             self.assertLess(perf_counter()-started,1)

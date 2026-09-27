@@ -18,6 +18,7 @@ from ..analysis.sidebets.exact import ENGINE
 from ..ledger.ledger import EventLedger
 from .database import LocalStore
 from .safe_files import atomic_write
+from .history_catalog import metadata_page
 
 SCHEMA='hakimi-sidebet-snapshot-v1'
 ROOT=Path(__file__).resolve().parents[2]
@@ -78,6 +79,8 @@ def validate(body):
 
 class SidebetSnapshots:
     def __init__(self,directory):self.directory=Path(directory)
+
+    def page(self,**kwargs):return metadata_page(self.directory,**kwargs)
 
     def save(self,result,event_prefix,timing,recomputed_from=None,prediction_id=None,sources=None,captured_at=None):
         body=copy.deepcopy(dict(schema=SCHEMA,snapshot_id=uuid.uuid4().hex,saved_at=time(),
