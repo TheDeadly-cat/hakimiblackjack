@@ -20,7 +20,7 @@ PALETTE = dict(background='#F3F6F8', surface='#FFFFFF', ink='#173A45', accent='#
 
 class CompactPanel(tk.Frame):
     def __init__(self, parent, app):
-        super().__init__(parent, bg=PALETTE['background'], padx=20, pady=16)
+        super().__init__(parent, bg=PALETTE['background'], padx=20, pady=10)
         self.app, self.panel = app, app.analysis_panel
         self.detail_window = None
         self.detail_text = None
@@ -51,7 +51,7 @@ class CompactPanel(tk.Frame):
         self.opening_label.grid(row=1, column=0, columnspan=5, sticky='w', pady=(4, 0))
         self.opening_label.bind('<Button-1>', lambda event: app.opening_estimate.show_details())
         self.identity_label = self._label(self, variable=self.identity, font=('Microsoft YaHei UI', 12, 'bold'), wrap=640, height=2)
-        self.identity_label.grid(row=1, column=0, sticky='ew', pady=(6, 6))
+        self.identity_label.grid(row=1, column=0, sticky='ew', pady=(4, 4))
         selectors = ttk.Frame(self)
         selectors.grid(row=5, column=0, sticky='ew')
         ttk.Label(selectors, text='分析').pack(side=tk.LEFT)
@@ -115,7 +115,7 @@ class CompactPanel(tk.Frame):
         self.additional_results.grid(row=14,column=0,sticky='ew')
         self._label(self, variable=self.notes, wrap=650, font=('Microsoft YaHei UI', 9)).grid(row=10,column=0,sticky='ew')
         links = ttk.Frame(self)
-        links.grid(row=11, column=0, sticky='ew', pady=(10, 4))
+        links.grid(row=11, column=0, sticky='ew', pady=(4, 2))
         self.record_button = ttk.Button(links, text='录牌设置', command=self.toggle_recording)
         self.record_button.pack(side=tk.LEFT)
         self.cards_toggle = ttk.Button(links, command=self.toggle_cards)
