@@ -133,6 +133,7 @@ class BlackjackLabApp(tk.Tk):
         self.var_simple_hole = tk.BooleanVar(value=False)
         self.var_auto_next = tk.BooleanVar(value=True)
         self.var_suit = tk.StringVar(value="未知")
+        self.var_sidebet_suits = tk.BooleanVar(value=False)
         self.var_status = tk.StringVar(value="就绪：请先选择牌副数并新建牌靴")
         self.var_opening_ev = tk.StringVar(value='下轮EV：尚无可用牌盒')
         self.rule_details = {}
@@ -1240,6 +1241,8 @@ class BlackjackLabApp(tk.Tk):
                 self._sync_from_plan()
                 self.var_analysis_target.set(self.var_my_seat.get())
                 self.set_status('庄家已到终局，上轮自动结算，已进入下一局。Backspace可撤回本次录牌和跳转。')
+            if self.var_sidebet_suits.get():
+                self.var_suit.set('未知')  # One selected suit applies to one actual visible card.
             self.refresh_all()
         except Exception as e:
             self.fail(e)

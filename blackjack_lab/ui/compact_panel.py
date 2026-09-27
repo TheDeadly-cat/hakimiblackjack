@@ -174,6 +174,8 @@ class CompactPanel(tk.Frame):
         self.simple_toggle = ttk.Checkbutton(modes, text='下轮简便暗牌', variable=app.var_simple_hole,
                                              command=app.change_simple_hole)
         self.simple_toggle.pack(side=tk.LEFT, padx=8)
+        ttk.Checkbutton(self.drawer, text='边注：可选花色录入（每张选择，用后清空）',
+                        variable=app.var_sidebet_suits, command=self.toggle_suit_input).pack(anchor='w')
         ttk.Button(modes, text='暂停／恢复', command=app._key_pause).pack(side=tk.RIGHT)
         cards = self.card_strip = ttk.Frame(self.quick_input)
         self.card_buttons = []
@@ -200,6 +202,21 @@ class CompactPanel(tk.Frame):
             if command == app.act_peek_negative:
                 self.peek_button = button
         ttk.Label(self.drawer, textvariable=app.var_status, wraplength=650).pack(anchor='w', pady=2)
+        self.suit_input = ttk.Frame(self.quick_input)
+        ttk.Label(self.suit_input, text='本张').pack(side=tk.LEFT)
+        for text, value in (('♠ 黑桃','S'),('♥ 红桃','H'),('♦ 方块','D'),('♣ 梅花','C'),('未知','未知')):
+            ttk.Radiobutton(self.suit_input,text=text,value=value,variable=app.var_suit).pack(side=tk.LEFT,padx=2)
+        for rank in ('10','J','Q','K'):
+            ttk.Button(self.suit_input,text=rank,width=3,command=lambda r=rank:app._key_rank(r)).pack(side=tk.LEFT,padx=1)
+
+    def toggle_suit_input(self):
+        if self.app.var_sidebet_suits.get():
+            self.suit_input.pack(fill=tk.X)
+            self.quick_input.configure(height=99)
+        else:
+            self.suit_input.pack_forget()
+            self.quick_input.configure(height=68)
+            self.app.var_suit.set('未知')
 
     def toggle_recording(self):
         self.recording_open = not self.recording_open
@@ -451,6 +468,7 @@ class CompactPanel(tk.Frame):
         self.editor = ttk.Frame(self, padding=10, relief='solid', borderwidth=1)
         self.editor.grid(row=7, column=0, rowspan=2, sticky='nsew', pady=3)
         self.edit_rank = tk.StringVar()
+        self.edit_suit = tk.StringVar(value='未知')
         self.edit_reason = tk.StringVar(value='误按牌面')
         self.edit_note = tk.StringVar()
         self.edit_error = tk.StringVar()
@@ -463,7 +481,10 @@ class CompactPanel(tk.Frame):
         ttk.Combobox(self.editor, textvariable=self.edit_reason, width=12, state='readonly',
                      values=('误按牌面', '重新核对牌面')).grid(row=1, column=2, padx=4)
         ttk.Entry(self.editor, textvariable=self.edit_note, width=20).grid(row=1, column=3)
-        ttk.Label(self.editor, text='补充说明可留空；保存后追加纠错，原记录保留。').grid(row=2, column=0, columnspan=4, sticky='w')
+        ttk.Label(self.editor, text='花色').grid(row=2,column=0)
+        ttk.Combobox(self.editor,textvariable=self.edit_suit,state='readonly',width=5,
+                     values=('未知','S','H','D','C')).grid(row=2,column=1)
+        ttk.Label(self.editor, text='可只补花色；原记录保留。').grid(row=2, column=2, columnspan=2, sticky='w')
         self.save_correction = ttk.Button(self.editor, text='保存改牌', command=self.apply_correction)
         self.save_correction.grid(row=3, column=1)
         ttk.Button(self.editor, text='取消', command=self.close_correction).grid(row=3, column=2)
@@ -488,6 +509,7 @@ class CompactPanel(tk.Frame):
         self.edit_event_id, self.edit_context = recent.event_id, self.app.ctrl.context_token
         self.edit_target.set('正在修改：' + recent.label.removeprefix('最近录入：'))
         self.edit_rank.set(recent.rank)
+        self.edit_suit.set(recent.suit or '未知')
         self.edit_note.set('')
         self.edit_error.set('')
         self.save_correction.state(['!disabled'])
@@ -504,7 +526,8 @@ class CompactPanel(tk.Frame):
         before = self.app.ctrl.commit_revision
         try:
             reason = self.edit_reason.get() + (('：' + self.edit_note.get().strip()) if self.edit_note.get().strip() else '')
-            self.app.ctrl.correct_recent_visible(self.edit_event_id, self.edit_rank.get(), reason, self.edit_context)
+            self.app.ctrl.correct_recent_visible(self.edit_event_id, self.edit_rank.get(), reason, self.edit_context,
+                suit=None if self.edit_suit.get()=='未知' else self.edit_suit.get())
             self.close_correction()
             self.app._sync_from_plan()
             self.app.refresh_all()

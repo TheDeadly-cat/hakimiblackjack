@@ -242,7 +242,7 @@ class SessionController:
         seg = self.state().current
         return event, [r for r in seg.settlements if r["round"] == seg.table.round_no]
 
-    def correct_recent_visible(self, event_id, rank, reason, expected_context):
+    def correct_recent_visible(self, event_id, rank, reason, expected_context, *, suit=...):
         from .recent_entry import recent_visible
         if expected_context != self.context_token:
             raise TableError('记录已变化，请关闭改牌区后重新选择最近牌')
@@ -279,7 +279,10 @@ class SessionController:
                     self._advance_entry_hand()
         # The existing append/replay path validates shoe, splits, terminal
         # actions, peek facts and every later event before saving a correction.
-        return self._apply('correct', event_id, {'rank': rank}, reason, _entry_update=updated)
+        fix = {'rank': rank}
+        if suit is not ...:
+            fix['suit'] = suit
+        return self._apply('correct', event_id, fix, reason, _entry_update=updated)
 
     def end_round_unsettled(self, reason, observation_status="unknown"):
         if not reason.strip():
