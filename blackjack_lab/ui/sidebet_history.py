@@ -15,6 +15,7 @@ class SidebetHistory(tk.Toplevel):
         self.title('边注历史（原结果只读，复算另存）');self.geometry('820x670');self.transient(owner.app)
         self.closed=False;self.entries=[];self.loading=False;self.verified=None;self.recomputing=False
         self.expected={}
+        self.selected_after_load=None
         self.damage_note=''
         self.listing=tk.Listbox(self,height=7,exportselection=False);self.listing.pack(fill=tk.X,padx=8,pady=6)
         self.listing.bind('<<ListboxSelect>>',self.select)
@@ -37,11 +38,14 @@ class SidebetHistory(tk.Toplevel):
 
     def reload(self,selected_id=None):
         if self.closed or self.recomputing:return
+        old=self.selected()
+        self.selected_after_load=selected_id or (old['snapshot_id'] if old else None)
+        self.expected.pop('verify',None)
         self.loading=True;self.verified=None;self.recompute_button.state(['disabled'])
         self.corrected_button.state(['disabled'])
         self.status.set('后台核验历史，可继续录牌；原记录保留。')
         store=self.owner.store
-        self.expected['load']=self.worker.submit('history',lambda:dict(kind='load',selected_id=selected_id,
+        self.expected['load']=self.worker.submit('history_load',lambda:dict(kind='load',selected_id=selected_id,
             data=store.list(cancelled=self.worker.closed.is_set)))
 
     def show(self,saved):
@@ -53,17 +57,26 @@ class SidebetHistory(tk.Toplevel):
         self.text.configure(state=tk.NORMAL);self.text.delete('1.0',tk.END);self.text.insert('1.0',text);self.text.configure(state=tk.DISABLED)
 
     def select(self,_event=None):
+        if self.closed or self.recomputing:return
+        if self.loading:
+            saved=self.selected()
+            if saved:self.selected_after_load=saved['snapshot_id']
+            self.status.set('正在更新历史列表；完成后核对选中记录。')
+            return
         saved=self.selected();self.verified=None;self.recompute_button.state(['disabled'])
+        self.expected.pop('verify',None)
         self.corrected_button.state(['disabled'])
         if saved is None:return
         self.show(saved);self.status.set('原结果只读，正在核对原数据库前缀。')
         store=self.owner.store;db=self.owner.app.ctrl.store.db_path
-        self.expected['verify']=self.worker.submit('history',lambda:dict(kind='verify',snapshot_id=saved['snapshot_id'],input=store.verified_input(saved,db)))
+        self.expected['verify']=self.worker.submit('history_verify',lambda:dict(kind='verify',snapshot_id=saved['snapshot_id'],input=store.verified_input(saved,db)))
 
     def recompute(self):
         saved=self.selected()
         if saved is None or self.loading or self.recomputing or self.verified!=saved['snapshot_id']:return
         self.recomputing=True;self.recompute_button.state(['disabled'])
+        self.corrected_button.state(['disabled'])
+        self.expected.pop('verify',None)
         self.status.set('原时点研究复算；不更改当前标题，不覆盖原文件。')
         owner=self.owner;store=owner.store;db=owner.app.ctrl.store.db_path
         def work():
@@ -74,13 +87,14 @@ class SidebetHistory(tk.Toplevel):
                 recomputed_from=saved['snapshot_id'],sources=algorithm_manifest())
             new,error=owner.save_record(record)
             return dict(kind='recompute',saved=new,error=error)
-        self.expected['recompute']=self.worker.submit('history',work)
+        self.expected['recompute']=self.worker.submit('history_recompute',work)
 
     def corrected(self):
         saved=self.selected()
         if (saved is None or self.loading or self.recomputing or self.verified!=saved['snapshot_id']
                 or saved['result']['input']['purpose'] not in ('forecast','corrected_predeal')):return
         self.recomputing=True;self.recompute_button.state(['disabled']);self.corrected_button.state(['disabled'])
+        self.expected.pop('verify',None)
         self.status.set('采纳后来纠正重建原库存，仅作研究，原预测不变。')
         owner=self.owner;db=owner.app.ctrl.store.db_path
         def work():
@@ -94,34 +108,43 @@ class SidebetHistory(tk.Toplevel):
             new,error=owner.save_record(dict(result=result,event_prefix=ledger.to_list(),timing='historical_recompute',
                 recomputed_from=saved['snapshot_id'],sources=algorithm_manifest()))
             return dict(kind='recompute',saved=new,error=error)
-        self.expected['recompute']=self.worker.submit('history',work)
+        self.expected['recompute']=self.worker.submit('history_recompute',work)
 
     def poll(self):
         if self.closed:return
         for message in self.worker.poll():
-            if message['request_id'] not in self.expected.values():continue
+            expected_kind=next((kind for kind,rid in self.expected.items() if rid==message['request_id']),None)
+            if expected_kind is None:continue
             if 'error' in message:
-                self.loading=self.recomputing=False;self.status.set('未核验 / 未完成：'+message['error']);continue
+                self.expected.pop(expected_kind,None)
+                if expected_kind=='load':self.loading=False
+                if expected_kind=='recompute':self.recomputing=False
+                self.verified=None
+                self.status.set('未核验 / 未完成：'+message['error']);continue
             value=message['result'];kind=value['kind']
             if kind=='load':
                 if message['request_id']!=self.expected.get('load'):continue
+                self.expected.pop('load',None)
                 self.loading=False;self.entries,damaged=value['data'];self.listing.delete(0,tk.END)
                 for saved in self.entries:
                     snapshot=saved['result']['input']
                     self.listing.insert(tk.END,f"#{snapshot['through_seq']} · {snapshot['seat']} · {saved['timing']} · {saved['snapshot_id'][:8]}")
                 if self.entries:
-                    index=next((i for i,r in enumerate(self.entries) if r['snapshot_id']==value['selected_id']),len(self.entries)-1)
+                    index=next((i for i,r in enumerate(self.entries) if r['snapshot_id']==self.selected_after_load),len(self.entries)-1)
                     self.listing.selection_set(index);self.select()
                 else:self.status.set('尚无已保存的边注记录。')
+                self.selected_after_load=None
                 self.damage_note=('；损坏记录已保留：'+'；'.join(r['file']+' '+r['error'] for r in damaged)) if damaged else ''
                 if damaged:self.status.set(self.status.get()+self.damage_note)
             elif kind=='verify':
+                self.expected.pop('verify',None)
                 selected=self.selected()
                 if selected and selected['snapshot_id']==value['snapshot_id'] and not self.loading and not self.recomputing:
                     self.verified=value['snapshot_id'];self.recompute_button.state(['!disabled'])
                     self.corrected_button.state(['!disabled'] if selected['result']['input']['purpose'] in ('forecast','corrected_predeal') else ['disabled'])
                     self.status.set('原数据库完整前缀已核对；原结果只读，复算另存。'+self.damage_note)
             elif kind=='recompute':
+                self.expected.pop('recompute',None)
                 self.recomputing=False;saved=value['saved']
                 self.reload(saved['snapshot_id'] if saved else None)
                 if not saved:self.status.set('已计算、未保存：'+value['error']+'；可重试保存原请求。')
