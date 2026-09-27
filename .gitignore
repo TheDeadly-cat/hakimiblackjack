@@ -29,6 +29,7 @@ venv/
 *.opening/
 *.sidebets/
 *.sidebet-profile.json
+*.startup/
 /BUILD_INFO.json
 
 # Source-addressed local numerical accelerator build cache.

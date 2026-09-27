@@ -23,6 +23,10 @@ def main():
     from blackjack_lab.ledger.ledger import EventLedger
     from blackjack_lab.ledger.card_inventory import project,TYPES
     from scripts.process_metrics import ProcessMetrics
+    from scripts.candidate_startup import prepare_runtime
+    preparation=prepare_runtime()
+    (out/'startup-preparation.json').write_text(json.dumps(preparation,ensure_ascii=False,indent=2),encoding='utf-8')
+    assert preparation['status']=='available',preparation
     db=out/'joint.db';app=None;errors=[];commands=[];rounds=[];saved_originals={}
     known=[];hidden=0;decks=0;metrics=ProcessMetrics();began=perf_counter()
     def fail(title,message,**kwargs):errors.append(message)
@@ -110,7 +114,7 @@ def main():
                 command('actual negative peek',app.act_peek_negative)
                 assert app.compact_panel.dealer_bj['probability']==0
                 pump(lambda:app.analysis_panel.last_result is not None)
-                assert app.analysis_panel.last_result['status']=='available'
+                assert app.analysis_panel.last_result['status']=='available',app.analysis_panel.last_result
                 command('stand',lambda:app.act_action(ACTION_STAND))
                 draw('7','H','庄家',hole=True);settle(1)
                 # Three physically distinct 7S cards are legal; highest 21+3 category wins once.
@@ -127,7 +131,7 @@ def main():
                 app.var_sidebet_suits.set(False);app.compact_panel.toggle_suit_input()
                 draw('8',None,'玩家1');draw('6',None,'庄家');draw('9',None,'玩家1',automatic_hole=True)
                 pump(lambda:app.analysis_panel.last_result is not None)
-                assert app.analysis_panel.last_result['status']=='available'
+                assert app.analysis_panel.last_result['status']=='available',app.analysis_panel.last_result
                 assert app.compact_panel.dealer_bj['probability']==0
                 command('stand',lambda:app.act_action(ACTION_STAND))
                 draw('T',None,'庄家',hole=True);draw('2',None,'庄家');settle(-1)
@@ -154,11 +158,17 @@ def main():
                 original_snapshots_unchanged=len(saved_originals),command_seconds=dict(median=statistics.median(durations),
                     p95=sorted(durations)[math.ceil(.95*len(durations))-1],maximum=max(durations)),
                 resources=metrics.summary(),resource_scope='Own process tree including independent checking, not whole-system usage',
-                errors=errors,elapsed_seconds=perf_counter()-began)
+                startup_preparation=preparation,errors=errors,elapsed_seconds=perf_counter()-began)
             (out/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
             (out/'commands.json').write_text(json.dumps(commands,ensure_ascii=False,indent=2),encoding='utf-8')
             print(json.dumps(report,ensure_ascii=True))
     except Exception as error:
+        if app is not None:
+            (out/'failure-context.json').write_text(json.dumps(dict(
+                hand_result=app.analysis_panel.last_result,hand_status=app.analysis_panel.status.get(),
+                opening_text=app.var_opening_ev.get(),opening_result=app.opening_estimate.result,
+                sidebet_lines={k:v.get() for k,v in app.sidebets.lines.items()},
+                events=app.ctrl.ledger.to_list()),ensure_ascii=False,indent=2),encoding='utf-8')
         (out/'failure.json').write_text(json.dumps(dict(error=repr(error),errors=errors,cases=rounds,commands=commands),ensure_ascii=False,indent=2),encoding='utf-8')
         raise
     finally:
