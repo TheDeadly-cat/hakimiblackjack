@@ -1,0 +1,213 @@
+{
+  "notice": "Review reference; not production; paytables and A sequences require user confirmation.",
+  "payout_convention": "net profit per one unit side bet; loss=-1; no extra principal deduction",
+  "ace_sequences": {
+    "A23": true,
+    "QKA": true,
+    "KA2": false
+  },
+  "paytables": {
+    "perfect_pairs": {
+      "perfect": 25,
+      "coloured": 12,
+      "mixed": 6,
+      "loss": -1
+    },
+    "21+3": {
+      "suited_trips": 100,
+      "straight_flush": 40,
+      "trips": 30,
+      "straight": 10,
+      "flush": 5,
+      "loss": -1
+    }
+  },
+  "full_shoes": [
+    {
+      "n_decks": 6,
+      "N": 312,
+      "dealer_bj": {
+        "fraction": "192/4043",
+        "decimal": 0.047489488003957456
+      },
+      "perfect_pairs": {
+        "probabilities": {
+          "perfect": {
+            "fraction": "5/311",
+            "decimal": 0.01607717041800643
+          },
+          "coloured": {
+            "fraction": "6/311",
+            "decimal": 0.01929260450160772
+          },
+          "mixed": {
+            "fraction": "12/311",
+            "decimal": 0.03858520900321544
+          },
+          "loss": {
+            "fraction": "288/311",
+            "decimal": 0.9260450160771704
+          }
+        },
+        "hit_probability": 0.07395498392282958,
+        "ev_fraction": "-19/311",
+        "ev": -0.06109324758842444
+      },
+      "21+3": {
+        "probabilities": {
+          "suited_trips": {
+            "fraction": "2/9641",
+            "decimal": 0.00020744736023234104
+          },
+          "straight_flush": {
+            "fraction": "1296/626665",
+            "decimal": 0.0020680906066239536
+          },
+          "trips": {
+            "fraction": "243/48205",
+            "decimal": 0.005040970853645887
+          },
+          "straight": {
+            "fraction": "3888/125333",
+            "decimal": 0.031021359099359307
+          },
+          "flush": {
+            "fraction": "36612/626665",
+            "decimal": 0.05842355963712669
+          },
+          "loss": {
+            "fraction": "566028/626665",
+            "decimal": 0.9032385724430119
+          }
+        },
+        "hit_probability": 0.09676142755698819,
+        "ev_fraction": "-28958/626665",
+        "ev": -0.0462096973662164
+      }
+    },
+    {
+      "n_decks": 7,
+      "N": 364,
+      "dealer_bj": {
+        "fraction": "224/4719",
+        "decimal": 0.0474676838313202
+      },
+      "perfect_pairs": {
+        "probabilities": {
+          "perfect": {
+            "fraction": "2/121",
+            "decimal": 0.01652892561983471
+          },
+          "coloured": {
+            "fraction": "7/363",
+            "decimal": 0.01928374655647383
+          },
+          "mixed": {
+            "fraction": "14/363",
+            "decimal": 0.03856749311294766
+          },
+          "loss": {
+            "fraction": "112/121",
+            "decimal": 0.9256198347107438
+          }
+        },
+        "hit_probability": 0.0743801652892562,
+        "ev_fraction": "-6/121",
+        "ev": -0.049586776859504134
+      },
+      "21+3": {
+        "probabilities": {
+          "suited_trips": {
+            "fraction": "5/21901",
+            "decimal": 0.0002283000776220264
+          },
+          "straight_flush": {
+            "fraction": "588/284713",
+            "decimal": 0.0020652376252577155
+          },
+          "trips": {
+            "fraction": "112/21901",
+            "decimal": 0.005113921738733391
+          },
+          "straight": {
+            "fraction": "8820/284713",
+            "decimal": 0.030978564378865734
+          },
+          "flush": {
+            "fraction": "16702/284713",
+            "decimal": 0.05866258302220131
+          },
+          "loss": {
+            "fraction": "257082/284713",
+            "decimal": 0.9029513931573199
+          }
+        },
+        "hit_probability": 0.09704860684268017,
+        "ev_fraction": "-11672/284713",
+        "ev": -0.040995669323142955
+      }
+    },
+    {
+      "n_decks": 8,
+      "N": 416,
+      "dealer_bj": {
+        "fraction": "256/5395",
+        "decimal": 0.047451343836886005
+      },
+      "perfect_pairs": {
+        "probabilities": {
+          "perfect": {
+            "fraction": "7/415",
+            "decimal": 0.016867469879518072
+          },
+          "coloured": {
+            "fraction": "8/415",
+            "decimal": 0.01927710843373494
+          },
+          "mixed": {
+            "fraction": "16/415",
+            "decimal": 0.03855421686746988
+          },
+          "loss": {
+            "fraction": "384/415",
+            "decimal": 0.9253012048192771
+          }
+        },
+        "hit_probability": 0.0746987951807229,
+        "ev_fraction": "-17/415",
+        "ev": -0.04096385542168675
+      },
+      "21+3": {
+        "probabilities": {
+          "suited_trips": {
+            "fraction": "7/28635",
+            "decimal": 0.00024445608521040686
+          },
+          "straight_flush": {
+            "fraction": "256/124085",
+            "decimal": 0.0020631019059515654
+          },
+          "trips": {
+            "fraction": "148/28635",
+            "decimal": 0.005168500087305745
+          },
+          "straight": {
+            "fraction": "768/24817",
+            "decimal": 0.03094652858927348
+          },
+          "flush": {
+            "fraction": "21904/372255",
+            "decimal": 0.05884138560932694
+          },
+          "loss": {
+            "fraction": "112016/124085",
+            "decimal": 0.9027360277229318
+          }
+        },
+        "hit_probability": 0.09726397227706814,
+        "ev_fraction": "-4596/124085",
+        "ev": -0.0370391264052867
+      }
+    }
+  ]
+}
