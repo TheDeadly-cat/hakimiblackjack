@@ -281,6 +281,14 @@ class CompactPanel(tk.Frame):
             dealer_text = f"庄家 {' '.join(labels)} · {score}"
             if dealer_finish_message(seg.table):
                 dealer_text += ' · ' + ('已爆牌' if dealer[0].is_bust else '已自动停牌')
+        from ..analysis.dealer_blackjack import evaluate_prepared, label
+        from ..analysis.contracts import digest
+        prefix = self.app.ctrl.ledger.to_list()
+        key = self.app.ctrl.session_id, digest(prefix)
+        if getattr(self, '_bj_key', None) != key:
+            self.dealer_bj = evaluate_prepared(key[0], prefix[-1]['seq'], prefix, seg)
+            self._bj_key = key
+        dealer_text += ' · ' + label(self.dealer_bj)
         hands = seg.table.seat(seat).hands if seat in seg.table.players else []
         selected = self.app._analysis_hand_id(seg)
         index = next((i for i, h in enumerate(hands) if h.hand_id == selected), None)
