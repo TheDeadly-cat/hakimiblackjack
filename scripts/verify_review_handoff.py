@@ -1,4 +1,4 @@
-"""Execute the original review's unmodified tests against this full checkout."""
+"""Execute preserved original review assertions, adapting only async-exit cleanup."""
 import argparse
 from datetime import datetime, timezone
 import hashlib
@@ -65,8 +65,7 @@ def main():
             "print(json.dumps({'production_module':a.__file__,'reference_module':r.__file__})); "
             "runpy.run_path(sys.argv[1],run_name='__main__')")
     run("original-48-scenarios", ["-c", code, str(review / "run_supplementary_math.py"), str(ROOT)], supplement_dir)
-    run("original-handoff", ["-m", "unittest", "discover", "-s", str(review),
-                             "-p", "test_v02a_review_regressions.py", "-v"])
+    run("original-handoff", [str(ROOT/'scripts/run_legacy_handoff.py')])
     original = json.loads((review / "original-supplementary-results.json").read_text(encoding="utf-8"))
     result_path = supplement_dir / "supplementary-math-rerun.json"
     result = json.loads(result_path.read_text(encoding="utf-8")) if result_path.exists() else {}
@@ -80,6 +79,7 @@ def main():
     receipt = {"schema": "hakimi-original-review-handoff-v1", "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "source_identity": identity, "source_manifest": before, "review_provenance": provenance,
         "original_scripts_unchanged": True, "same_48_inputs_as_original": same_scenarios,
+        "cleanup_adapter": "scripts/run_legacy_handoff.py waits for cooperative GUI exit; original assertions and source bytes unchanged",
         "original_max_abs_error": original["max_abs_error"], "current_max_abs_error": result.get("max_abs_error"),
         "checks": checks, "source_unchanged_during_checks": before == source_manifest(), "passed": passed,
         "coverage_note": "5 math methods overlap the core suite; 48 are scenarios, not 48 upstream test methods; 4 original handoff methods run separately."}
