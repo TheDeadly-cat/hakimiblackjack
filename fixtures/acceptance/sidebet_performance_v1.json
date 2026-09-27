@@ -1,0 +1,22 @@
+{
+  "schema": "hakimi-sidebet-performance-cases-v1",
+  "decks": [6, 7, 8],
+  "expected_count": 42,
+  "pure_p95_target_seconds": 0.1,
+  "scenarios": [
+    {"id":"fresh","mode":"full"},
+    {"id":"balanced-24","mode":"cycle","remove":24},
+    {"id":"mid-120","mode":"random","remove":120,"seed":9271},
+    {"id":"cut-52","mode":"random","remaining":52,"seed":9272},
+    {"id":"aces-gone","mode":"aces_zero"},
+    {"id":"spades-gone","mode":"spades_zero"},
+    {"id":"ten-ranks-gone","mode":"tens_zero"},
+    {"id":"suit-skew","mode":"skew"},
+    {"id":"eight-left","mode":"random","remaining":8,"seed":9273},
+    {"id":"changed-payout","mode":"random","remove":95,"seed":9274,"pair_payout":[30,10,5]},
+    {"id":"changed-aces","mode":"random","remaining":64,"seed":9275,"ace_rules":[false,false,true]},
+    {"id":"unconfirmed-payout","mode":"cycle","remove":53,"confirmation":"unconfirmed"},
+    {"id":"two-left","mode":"random","remaining":2,"seed":9276},
+    {"id":"one-left","mode":"random","remaining":1,"seed":9277}
+  ]
+}
