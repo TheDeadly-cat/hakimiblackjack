@@ -55,7 +55,8 @@ class ExitFlow:
             if getattr(h,'_close_thread',None):self.readers.append(h._close_thread)
             record=app.opening_estimate.queue_exit_cancellation(h)
             if record:cancellations.append(record)
-        self.processes=[service.active['process'] for service in services if service.active is not None]
+        self.processes=[service.active['process'] for service in services
+                        if service.active is not None and service.active.get('process') is not None]
         for worker in self.workers:
             # User-requested writes/recomputations are drained, not latest-wins work.
             if (worker.active_channel in ('history_recompute','retry')
