@@ -228,7 +228,23 @@ class SidebetUITests(unittest.TestCase):
 
     def test_sidebet_rows_and_controls_fit_new_default_without_moving_original_links(self):
         self.start();self.forecast();app=self.app
+        # Tk's automatic wm maxsize may be shorter than the requested client
+        # size on a CI desktop. Exercise the intended size explicitly, then
+        # separately exercise the real short-window scroll path below.
+        maximum=app.maxsize()
+        app.maxsize(max(720,maximum[0]),max(850,maximum[1]))
         app.geometry('720x850');app.update()
+        self.assertEqual(app.winfo_height(),850)
         for child in self.view.frame.winfo_children():
             self.assertLessEqual(child.winfo_rooty()+child.winfo_height(),app.winfo_rooty()+app.winfo_height())
         self.assertLess(app.compact_panel.details_button.winfo_rooty(),self.view.frame.winfo_rooty())
+        app.maxsize(*maximum)
+        app.geometry('660x460');app.update()
+        before=app.ctrl.ledger.to_list()
+        app.compact_canvas.yview_moveto(1);app.update()
+        for child in self.view.frame.winfo_children():
+            self.assertGreaterEqual(child.winfo_rooty(),app.winfo_rooty())
+            self.assertLessEqual(child.winfo_rooty()+child.winfo_height(),app.winfo_rooty()+app.winfo_height())
+        app.compact_canvas.yview_moveto(0);app.update()
+        self.assertGreaterEqual(app.compact_panel.add_player.winfo_rooty(),app.winfo_rooty())
+        self.assertEqual(app.ctrl.ledger.to_list(),before)
