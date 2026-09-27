@@ -1,6 +1,7 @@
 """Explicit research/verified/unconfirmed paytables, separate from category probabilities."""
 from dataclasses import asdict, dataclass
 from fractions import Fraction
+from decimal import Decimal, InvalidOperation
 
 from ..contracts import digest
 
@@ -47,8 +48,11 @@ class SidebetProfile:
                     if type(value) not in (int, float, str) or len(str(value)) > 40:
                         raise ValueError('赔付必须是有限非负倍数')
                     try:
-                        number = Fraction(str(value))
-                    except (ValueError, ZeroDivisionError, OverflowError) as error:
+                        decimal = Decimal(str(value))
+                        if not decimal.is_finite() or decimal.copy_abs() > 1_000_000 or decimal.as_tuple().exponent < -12:
+                            raise ValueError('赔付最多100万倍且最多12位小数')
+                        number = Fraction(decimal)
+                    except (ValueError, InvalidOperation, ZeroDivisionError, OverflowError) as error:
                         raise ValueError('赔付必须是有限非负倍数') from error
                     if number < (1 if self.payout_convention == 'gross_return' else 0):
                         raise ValueError('中奖返还至少含本金；净赢倍数不得为负')
@@ -87,7 +91,7 @@ class SidebetProfile:
         if values is None or self.confirmation == 'unconfirmed':
             return None
         offset = 1 if self.payout_convention == 'gross_return' else 0
-        return dict(zip(CATEGORIES[name], (Fraction(str(v))-offset for v in values)), loss=Fraction(-1))
+        return dict(zip(CATEGORIES[name], (Fraction(Decimal(str(v)))-offset for v in values)), loss=Fraction(-1))
 
     def ev(self, name, probabilities):
         if set(probabilities) != set(CATEGORIES[name]) | {'loss'} or sum(probabilities.values()) != 1:
