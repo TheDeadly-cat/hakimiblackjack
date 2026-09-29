@@ -248,7 +248,7 @@ class TestReliabilityBoundaries(unittest.TestCase):
         self.start()
         before = self.app.ctrl.ledger.to_list()
         plan = self.app.ctrl.entry_plan.to_dict()
-        with patch.object(self.app.ctrl.store, 'save_event', side_effect=OSError('injected db failure')):
+        with patch.object(self.app.ctrl.store, '_insert', side_effect=OSError('injected db failure')):
             self.app._key_rank('9')
         self.assertEqual(self.app.ctrl.ledger.to_list(), before)
         self.assertEqual(self.app.ctrl.entry_plan.to_dict(), plan)

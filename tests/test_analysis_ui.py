@@ -149,7 +149,7 @@ class TestAnalysisUI(unittest.TestCase):
         self.assertEqual(self.app.ctrl.store.event_count(), before + 1)
         self.app.act_refresh()
         before = self.app.ctrl.store.event_count()
-        with patch.object(self.app.ctrl.store, "save_event", side_effect=OSError("write failure")):
+        with patch.object(self.app.ctrl.store, "_insert", side_effect=OSError("write failure")):
             self.app.act_card("3")
         self.assertIn("未提交新的牌面事件", self.app.var_status.get())
         self.assertEqual(self.app.ctrl.store.event_count(), before)

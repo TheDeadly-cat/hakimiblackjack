@@ -98,7 +98,7 @@ class TestManualDealOrder(TestUIWorkflow):
     def test_failed_persist_does_not_advance(self):
         self.start()
         cursor = self.app.ctrl.entry_plan.cursor_slot_id
-        with patch.object(self.app.ctrl.store, "save_event", side_effect=OSError("disk")):
+        with patch.object(self.app.ctrl.store, "_insert", side_effect=OSError("disk")):
             self.app._key_rank(TEN_BUCKET)
         self.assertEqual(self.app.ctrl.entry_plan.cursor_slot_id, cursor)
         self.assertEqual(self.app.ctrl.entry_plan.filled_slots, {})

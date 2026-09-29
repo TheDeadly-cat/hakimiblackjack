@@ -79,7 +79,7 @@ class TestAutoNext(unittest.TestCase):
         self.prepare()
         ctrl = self.app.ctrl
         ledger, plan = ctrl.ledger.to_list(), copy.deepcopy(ctrl.entry_plan.to_dict())
-        with patch.object(ctrl.store, 'save_ledger', side_effect=sqlite3.OperationalError('injected disk error')):
+        with patch.object(ctrl.store, '_insert', side_effect=sqlite3.OperationalError('injected disk error')):
             self.app._key_rank('A')
         self.assertEqual(ctrl.ledger.to_list(), ledger)
         self.assertEqual(ctrl.entry_plan.to_dict(), plan)
