@@ -176,6 +176,22 @@ class CommandAppendTests(unittest.TestCase):
         with c.read_frame():
             self.assertNotEqual(c.read_prefix().prefix_digest, committed.prefix_digest)
 
+    def test_session_change_inside_frame_cannot_reuse_previous_prefix_or_state(self):
+        c = self.ctrl
+        other = SessionController(self.db)
+        self.addCleanup(other.close)
+        other.new_shoe(ace_peek_das_research_rules(6))
+        with c.read_frame():
+            first = c.read_prefix()
+            c.load_session(other.session_id)
+            second = c.read_prefix()
+            self.assertEqual(second.session_id, other.session_id)
+            self.assertEqual(c.state().current.shoe.physical_remaining(), 312)
+            self.assertNotEqual(first.prefix_digest, second.prefix_digest)
+            c.load_session(first.session_id)
+            self.assertEqual(c.read_prefix().prefix_digest, first.prefix_digest)
+            self.assertEqual(c.state().current.shoe.physical_remaining(), 416)
+
 
 if __name__ == '__main__':
     unittest.main()
