@@ -1,0 +1,3985 @@
+{
+  "source_commit": "7899bfe363add8a32027e84029de50f4d5e3e395",
+  "fixture_manifest_sha256": "ce07a46019676709c2e4687cf06ac992317188d16a6e684f9a7aacf43aeabce0",
+  "specification": {
+    "schema": "hakimi-responsiveness-scope-v1",
+    "baseline_commit": "c2eee34c5d07b0f3bbdff42955d9d4e8ba806263",
+    "event_scales": [
+      1000,
+      5000,
+      10000
+    ],
+    "snapshot_scales": [
+      100,
+      1000,
+      5000
+    ],
+    "recording_probe": "14 seven-player initial-deal commands per event scale, plus a separately profiled complete round and post-initial actions",
+    "long_shoes": [
+      {
+        "decks": 6,
+        "players": 1,
+        "cut_remaining": 52,
+        "seed": 202609271
+      },
+      {
+        "decks": 7,
+        "players": 3,
+        "cut_remaining": 65,
+        "seed": 202609272
+      },
+      {
+        "decks": 8,
+        "players": 7,
+        "cut_remaining": 78,
+        "seed": 202609273
+      }
+    ],
+    "aspirational_targets_seconds": {
+      "recording_p95": 0.15,
+      "main_thread_segment": 0.05,
+      "history_first_feedback": 0.1,
+      "heartbeat_delay_p99": 0.2
+    },
+    "unchanged_limits": {
+      "hand_request_seconds": 5,
+      "opening_request_seconds": 20,
+      "sidebet_pure_p95_seconds": 0.1
+    },
+    "scope_note": "Measure all specified scales and report misses and supported scale explicitly. Profiling is separate from primary latency. Do not drop slow cases, change math, or relax request budgets. Synthetic data only."
+  },
+  "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "events": [
+    {
+      "requested_prior_events": 1000,
+      "actual_prior_events": 1001,
+      "final_events": 1043,
+      "callback_and_idle_paint_seconds": {
+        "count": 14,
+        "p50": 0.21816089999992982,
+        "p95": 0.5836367000001701,
+        "p99": 0.5836367000001701,
+        "maximum": 0.5836367000001701
+      },
+      "heartbeat_delay_seconds": {
+        "count": 15,
+        "p50": 0.1843865000002552,
+        "p95": 0.5628021000004082,
+        "p99": 0.5628021000004082,
+        "maximum": 0.5628021000004082
+      },
+      "raw_callbacks": [
+        0.21720960000038758,
+        0.2022599000001719,
+        0.2127786000000924,
+        0.2076611000002231,
+        0.20373930000005203,
+        0.20488339999974414,
+        0.21816089999992982,
+        0.4274541999993744,
+        0.47220199999992474,
+        0.5836367000001701,
+        0.45690100000047096,
+        0.3110281999997824,
+        0.35063179999997374,
+        0.23241050000069663
+      ],
+      "segments_separately_profiled": {},
+      "per_command_profiles": [
+        {
+          "command": "simple-hole",
+          "wall_seconds": 1.11976390000018,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1033,
+              "calls": 301631,
+              "self_seconds": 0.055380500000000006,
+              "cumulative_seconds": 0.1513392
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1019,
+              "calls": 1019,
+              "self_seconds": 0.0029313000000000004,
+              "cumulative_seconds": 0.06388
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0009749,
+              "cumulative_seconds": 0.1828312
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.9500000000000002e-05,
+              "cumulative_seconds": 0.025765800000000002
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.7e-06,
+              "cumulative_seconds": 0.025782600000000003
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0001885,
+              "cumulative_seconds": 0.034943300000000004
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 12,
+              "calls": 12,
+              "self_seconds": 0.0650044,
+              "cumulative_seconds": 0.6664794
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 38,
+              "calls": 38,
+              "self_seconds": 4.9300000000000006e-05,
+              "cumulative_seconds": 0.0525436
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 13,
+              "calls": 13,
+              "self_seconds": 0.0009176000000000001,
+              "cumulative_seconds": 0.0555621
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.7e-06,
+              "cumulative_seconds": 0.034948
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.0010251000000000001,
+              "cumulative_seconds": 0.0656724
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.4300000000000005e-05,
+              "cumulative_seconds": 0.022334700000000002
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.00010980000000000001,
+              "cumulative_seconds": 0.0065723000000000005
+            }
+          }
+        },
+        {
+          "command": "stand-1",
+          "wall_seconds": 0.6367368999999599,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1031,
+              "calls": 190782,
+              "self_seconds": 0.0378638,
+              "cumulative_seconds": 0.1045818
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.1900000000000001e-05,
+              "cumulative_seconds": 0.0010105000000000001
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 2.2400000000000002e-05,
+              "cumulative_seconds": 0.018493700000000002
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 6.1e-06,
+              "cumulative_seconds": 0.0185308
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00024440000000000003,
+              "cumulative_seconds": 0.035586400000000004
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.038970000000000005,
+              "cumulative_seconds": 0.39903770000000005
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 30,
+              "calls": 30,
+              "self_seconds": 3.5000000000000004e-05,
+              "cumulative_seconds": 0.0351691
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 11,
+              "calls": 11,
+              "self_seconds": 0.0009337000000000001,
+              "cumulative_seconds": 0.0376946
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.5e-06,
+              "cumulative_seconds": 0.0355889
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0005468000000000001,
+              "cumulative_seconds": 0.0354704
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.11e-05,
+              "cumulative_seconds": 0.008
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.88e-05,
+              "cumulative_seconds": 0.0208989
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 9.400000000000001e-05,
+              "cumulative_seconds": 0.0064698
+            }
+          }
+        },
+        {
+          "command": "stand-2",
+          "wall_seconds": 0.6292813000000024,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1032,
+              "calls": 190959,
+              "self_seconds": 0.0382465,
+              "cumulative_seconds": 0.1040133
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.3300000000000001e-05,
+              "cumulative_seconds": 0.0007209
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 2.08e-05,
+              "cumulative_seconds": 0.014984500000000001
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 5.9e-06,
+              "cumulative_seconds": 0.0150177
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0001763,
+              "cumulative_seconds": 0.0323955
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.0424153,
+              "cumulative_seconds": 0.3934148
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 26,
+              "calls": 26,
+              "self_seconds": 2.93e-05,
+              "cumulative_seconds": 0.0331209
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 0.000595,
+              "cumulative_seconds": 0.0338566
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.6000000000000003e-06,
+              "cumulative_seconds": 0.0323991
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0005048,
+              "cumulative_seconds": 0.0315428
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.08e-05,
+              "cumulative_seconds": 0.009581600000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.4300000000000005e-05,
+              "cumulative_seconds": 0.0205805
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 8.54e-05,
+              "cumulative_seconds": 0.006421700000000001
+            }
+          }
+        },
+        {
+          "command": "stand-3",
+          "wall_seconds": 0.573441599999569,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1033,
+              "calls": 191136,
+              "self_seconds": 0.0340688,
+              "cumulative_seconds": 0.0917198
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.1200000000000001e-05,
+              "cumulative_seconds": 0.0007228
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 2.0300000000000002e-05,
+              "cumulative_seconds": 0.014452000000000001
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 6.1e-06,
+              "cumulative_seconds": 0.0144904
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00012330000000000002,
+              "cumulative_seconds": 0.0325521
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.0346498,
+              "cumulative_seconds": 0.3636566
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 22,
+              "calls": 22,
+              "self_seconds": 2.43e-05,
+              "cumulative_seconds": 0.0277166
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 9,
+              "calls": 9,
+              "self_seconds": 0.0004686,
+              "cumulative_seconds": 0.027539900000000003
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.5e-06,
+              "cumulative_seconds": 0.0325546
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0005162000000000001,
+              "cumulative_seconds": 0.0311477
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 8.900000000000001e-06,
+              "cumulative_seconds": 0.007494300000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 6.170000000000001e-05,
+              "cumulative_seconds": 0.0209068
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 8.76e-05,
+              "cumulative_seconds": 0.0063502
+            }
+          }
+        },
+        {
+          "command": "stand-4",
+          "wall_seconds": 0.581603499999801,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1034,
+              "calls": 191313,
+              "self_seconds": 0.034479,
+              "cumulative_seconds": 0.0925562
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.3300000000000001e-05,
+              "cumulative_seconds": 0.0006832
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 2.5e-05,
+              "cumulative_seconds": 0.0156085
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 8.400000000000001e-06,
+              "cumulative_seconds": 0.0156674
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0001733,
+              "cumulative_seconds": 0.031053800000000003
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.0359546,
+              "cumulative_seconds": 0.3705993
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 18,
+              "calls": 18,
+              "self_seconds": 2.1000000000000002e-05,
+              "cumulative_seconds": 0.0234035
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 0.00040480000000000003,
+              "cumulative_seconds": 0.0226392
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.3e-06,
+              "cumulative_seconds": 0.0310571
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0004906,
+              "cumulative_seconds": 0.030801400000000003
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 9.9e-06,
+              "cumulative_seconds": 0.008768900000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 6.220000000000001e-05,
+              "cumulative_seconds": 0.0198404
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 8.55e-05,
+              "cumulative_seconds": 0.006398
+            }
+          }
+        },
+        {
+          "command": "stand-5",
+          "wall_seconds": 0.5825911000001724,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1035,
+              "calls": 191490,
+              "self_seconds": 0.035969600000000004,
+              "cumulative_seconds": 0.09577440000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.5e-05,
+              "cumulative_seconds": 0.0010485000000000002
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 2.2100000000000002e-05,
+              "cumulative_seconds": 0.014487700000000001
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 4.6e-06,
+              "cumulative_seconds": 0.0145179
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0001429,
+              "cumulative_seconds": 0.0306721
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.0359967,
+              "cumulative_seconds": 0.3809582
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 14,
+              "calls": 14,
+              "self_seconds": 1.8500000000000002e-05,
+              "cumulative_seconds": 0.019684800000000002
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.00032980000000000005,
+              "cumulative_seconds": 0.018191000000000002
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.5000000000000004e-06,
+              "cumulative_seconds": 0.0306756
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0005366,
+              "cumulative_seconds": 0.031103600000000002
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.23e-05,
+              "cumulative_seconds": 0.0082048
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 7.560000000000001e-05,
+              "cumulative_seconds": 0.0204071
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 9.580000000000001e-05,
+              "cumulative_seconds": 0.0062932000000000005
+            }
+          }
+        },
+        {
+          "command": "stand-6",
+          "wall_seconds": 0.6940215000004173,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1036,
+              "calls": 191667,
+              "self_seconds": 0.039942700000000005,
+              "cumulative_seconds": 0.1086598
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.48e-05,
+              "cumulative_seconds": 0.0009903000000000002
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 4.36e-05,
+              "cumulative_seconds": 0.0284497
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 8.5e-06,
+              "cumulative_seconds": 0.0285076
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0002461,
+              "cumulative_seconds": 0.0479585
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.0400895,
+              "cumulative_seconds": 0.40661440000000004
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 2.8000000000000003e-05,
+              "cumulative_seconds": 0.0217182
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.00035370000000000003,
+              "cumulative_seconds": 0.0200281
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.2000000000000003e-06,
+              "cumulative_seconds": 0.0479617
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0006169000000000001,
+              "cumulative_seconds": 0.0396936
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.2800000000000001e-05,
+              "cumulative_seconds": 0.0082907
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 6.86e-05,
+              "cumulative_seconds": 0.0216954
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0001084,
+              "cumulative_seconds": 0.009566100000000001
+            }
+          }
+        },
+        {
+          "command": "stand-7",
+          "wall_seconds": 0.7571810999997979,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1039,
+              "calls": 264760,
+              "self_seconds": 0.0557918,
+              "cumulative_seconds": 0.1503779
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.2600000000000001e-05,
+              "cumulative_seconds": 0.0008354
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 4.78e-05,
+              "cumulative_seconds": 0.0804325
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 1.09e-05,
+              "cumulative_seconds": 0.0804986
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00018240000000000002,
+              "cumulative_seconds": 0.0355334
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.045754,
+              "cumulative_seconds": 0.45964190000000005
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 2.5300000000000002e-05,
+              "cumulative_seconds": 0.026657
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.0003589,
+              "cumulative_seconds": 0.024865
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.6e-06,
+              "cumulative_seconds": 0.035536000000000005
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.0013485,
+              "cumulative_seconds": 0.0796768
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.04e-05,
+              "cumulative_seconds": 0.010611800000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 7.630000000000001e-05,
+              "cumulative_seconds": 0.0278055
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 9.530000000000001e-05,
+              "cumulative_seconds": 0.0075003000000000005
+            }
+          }
+        },
+        {
+          "command": "reveal-settle-next",
+          "wall_seconds": 1.717897699999412,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1045,
+              "calls": 487698,
+              "self_seconds": 0.1186431,
+              "cumulative_seconds": 0.31872
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1029,
+              "calls": 1029,
+              "self_seconds": 0.0051635000000000006,
+              "cumulative_seconds": 0.10646610000000001
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0015721,
+              "cumulative_seconds": 0.2551388
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.38e-05,
+              "cumulative_seconds": 0.3118097
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 9e-06,
+              "cumulative_seconds": 0.31186070000000005
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0002456,
+              "cumulative_seconds": 0.0404595
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 14,
+              "calls": 14,
+              "self_seconds": 0.094074,
+              "cumulative_seconds": 0.9288718
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 17,
+              "calls": 17,
+              "self_seconds": 6.74e-05,
+              "cumulative_seconds": 0.0960874
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 16,
+              "calls": 16,
+              "self_seconds": 0.0019709000000000003,
+              "cumulative_seconds": 0.1019435
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.000000000000001e-06,
+              "cumulative_seconds": 0.0404635
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 0.0035861,
+              "cumulative_seconds": 0.19307310000000003
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 7.38e-05,
+              "cumulative_seconds": 0.0271517
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.3200000000000006e-05,
+              "cumulative_seconds": 0.0045842
+            }
+          }
+        },
+        {
+          "command": "grouped-undo",
+          "wall_seconds": 1.1308533000001262,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1048,
+              "calls": 345088,
+              "self_seconds": 0.0758341,
+              "cumulative_seconds": 0.212312
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1032,
+              "calls": 1032,
+              "self_seconds": 0.0036072,
+              "cumulative_seconds": 0.0782461
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0011485,
+              "cumulative_seconds": 0.2088787
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.58e-05,
+              "cumulative_seconds": 0.034184200000000005
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.9e-06,
+              "cumulative_seconds": 0.0342005
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00020260000000000002,
+              "cumulative_seconds": 0.035575800000000005
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 11,
+              "calls": 11,
+              "self_seconds": 0.0702715,
+              "cumulative_seconds": 0.6719808
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 1.8200000000000002e-05,
+              "cumulative_seconds": 0.0247751
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.0004036,
+              "cumulative_seconds": 0.024058200000000002
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.4e-06,
+              "cumulative_seconds": 0.0355802
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.012510100000000001,
+              "cumulative_seconds": 0.07898050000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.8500000000000006e-05,
+              "cumulative_seconds": 0.0243585
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.00015590000000000002,
+              "cumulative_seconds": 0.006984700000000001
+            }
+          }
+        },
+        {
+          "command": "reveal-again",
+          "wall_seconds": 1.2765000999997937,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1051,
+              "calls": 490513,
+              "self_seconds": 0.0839848,
+              "cumulative_seconds": 0.2268882
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1035,
+              "calls": 1035,
+              "self_seconds": 0.0029011,
+              "cumulative_seconds": 0.0643778
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0010185,
+              "cumulative_seconds": 0.1805332
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.79e-05,
+              "cumulative_seconds": 0.22925150000000002
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.6e-06,
+              "cumulative_seconds": 0.22927940000000002
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00015690000000000002,
+              "cumulative_seconds": 0.029648
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 14,
+              "calls": 14,
+              "self_seconds": 0.08106490000000001,
+              "cumulative_seconds": 0.7814212
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 17,
+              "calls": 17,
+              "self_seconds": 3.91e-05,
+              "cumulative_seconds": 0.0646766
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 16,
+              "calls": 16,
+              "self_seconds": 0.0011254000000000001,
+              "cumulative_seconds": 0.06971780000000001
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.3e-06,
+              "cumulative_seconds": 0.0296503
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 0.0017681,
+              "cumulative_seconds": 0.1219665
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 6.400000000000001e-05,
+              "cumulative_seconds": 0.0204761
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.16e-05,
+              "cumulative_seconds": 0.0038762000000000002
+            }
+          }
+        },
+        {
+          "command": "single-card",
+          "wall_seconds": 0.497722099999919,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 6,
+              "calls": 190268,
+              "self_seconds": 0.036334200000000004,
+              "cumulative_seconds": 0.10063440000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.11e-05,
+              "cumulative_seconds": 0.0012086
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.11e-05,
+              "cumulative_seconds": 0.0060829000000000005
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.65e-05,
+              "cumulative_seconds": 0.0061213000000000005
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00014680000000000002,
+              "cumulative_seconds": 0.0316267
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.0327606,
+              "cumulative_seconds": 0.32839490000000005
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 1.39e-05,
+              "cumulative_seconds": 0.0172501
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 5,
+              "calls": 5,
+              "self_seconds": 0.00025810000000000004,
+              "cumulative_seconds": 0.0150635
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.7e-06,
+              "cumulative_seconds": 0.0316304
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 3,
+              "calls": 3,
+              "self_seconds": 0.0007578000000000001,
+              "cumulative_seconds": 0.0484872
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 9.4e-06,
+              "cumulative_seconds": 0.0066423
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.9800000000000003e-05,
+              "cumulative_seconds": 0.022415300000000003
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.5100000000000005e-05,
+              "cumulative_seconds": 0.0033212000000000003
+            }
+          }
+        },
+        {
+          "command": "suit-correction",
+          "wall_seconds": 0.9394603999999163,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1050,
+              "calls": 485355,
+              "self_seconds": 0.08247310000000001,
+              "cumulative_seconds": 0.21822280000000002
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.6000000000000003e-05,
+              "cumulative_seconds": 0.0017325
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.5e-05,
+              "cumulative_seconds": 0.0286029
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.8e-06,
+              "cumulative_seconds": 0.08210740000000001
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00019170000000000002,
+              "cumulative_seconds": 0.0339398
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 0.05867120000000001,
+              "cumulative_seconds": 0.5717113
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 13,
+              "calls": 13,
+              "self_seconds": 4.0600000000000004e-05,
+              "cumulative_seconds": 0.048210100000000006
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.00021050000000000002,
+              "cumulative_seconds": 0.0107276
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.6e-06,
+              "cumulative_seconds": 0.033942400000000005
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 0.0026361,
+              "cumulative_seconds": 0.1598188
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.4200000000000001e-05,
+              "cumulative_seconds": 0.0088356
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 9,
+              "calls": 9,
+              "self_seconds": 0.0005791,
+              "cumulative_seconds": 0.19010770000000002
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0001112,
+              "cumulative_seconds": 0.007158200000000001
+            }
+          }
+        },
+        {
+          "command": "replace-shoe",
+          "wall_seconds": 1.2484904000002643,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 2091,
+              "calls": 381746,
+              "self_seconds": 0.07509170000000001,
+              "cumulative_seconds": 0.2048537
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1040,
+              "calls": 1040,
+              "self_seconds": 0.0032036,
+              "cumulative_seconds": 0.06677920000000001
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0009581,
+              "cumulative_seconds": 0.1792986
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.25e-05,
+              "cumulative_seconds": 0.3881138
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.3e-06,
+              "cumulative_seconds": 0.3881366
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.0000000000000002e-07,
+              "cumulative_seconds": 2.0000000000000002e-07
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 13,
+              "calls": 13,
+              "self_seconds": 0.0805989,
+              "cumulative_seconds": 0.7662078
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 16,
+              "calls": 16,
+              "self_seconds": 4.58e-05,
+              "cumulative_seconds": 0.0612844
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 15,
+              "calls": 15,
+              "self_seconds": 0.0011604,
+              "cumulative_seconds": 0.06662560000000001
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.0000000000000002e-06,
+              "cumulative_seconds": 1.2000000000000002e-06
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.0010016,
+              "cumulative_seconds": 0.064046
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 6.06e-05,
+              "cumulative_seconds": 0.0209943
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0001127,
+              "cumulative_seconds": 0.0071811
+            }
+          }
+        },
+        {
+          "command": "undo-shoe",
+          "wall_seconds": 0.9864648000002489,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 1053,
+              "calls": 308756,
+              "self_seconds": 0.057583300000000004,
+              "cumulative_seconds": 0.15583850000000002
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1043,
+              "calls": 1043,
+              "self_seconds": 0.0032805,
+              "cumulative_seconds": 0.0728226
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0013180000000000002,
+              "cumulative_seconds": 0.1922116
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.1700000000000001e-05,
+              "cumulative_seconds": 0.0064278
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.9e-06,
+              "cumulative_seconds": 0.006441700000000001
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0001754,
+              "cumulative_seconds": 0.0346712
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 11,
+              "calls": 11,
+              "self_seconds": 0.0641464,
+              "cumulative_seconds": 0.6136528
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 1.45e-05,
+              "cumulative_seconds": 0.021793700000000003
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.0003623,
+              "cumulative_seconds": 0.0207616
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.3e-06,
+              "cumulative_seconds": 0.034674500000000004
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 3,
+              "calls": 3,
+              "self_seconds": 0.0012474,
+              "cumulative_seconds": 0.048605600000000006
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.84e-05,
+              "cumulative_seconds": 0.020513700000000003
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.00010580000000000001,
+              "cumulative_seconds": 0.006524200000000001
+            }
+          }
+        }
+      ],
+      "resources": {
+        "available": true,
+        "samples": 16,
+        "observed_cpu_seconds": 16.84375,
+        "observed_cpu_percent_one_core": 93.527940895903,
+        "peak_tree_working_set_bytes": 71061504,
+        "peak_tree_private_bytes": 47726592,
+        "peak_processes": 1,
+        "note": "Sampled own process tree; exited-between-samples CPU/memory may be missed; not system-wide usage"
+      },
+      "scope": "Main-thread initial-deal probe; auto numeric and sidebet workers disabled to isolate UI/ledger costs. All-services long-shoe probe is separate."
+    },
+    {
+      "requested_prior_events": 5000,
+      "actual_prior_events": 5001,
+      "final_events": 5043,
+      "callback_and_idle_paint_seconds": {
+        "count": 14,
+        "p50": 1.9285340999995242,
+        "p95": 2.3218333999993774,
+        "p99": 2.3218333999993774,
+        "maximum": 2.3218333999993774
+      },
+      "heartbeat_delay_seconds": {
+        "count": 16,
+        "p50": 1.5893676999996387,
+        "p95": 2.2874415000007504,
+        "p99": 2.2874415000007504,
+        "maximum": 2.2874415000007504
+      },
+      "raw_callbacks": [
+        0.9791718999995283,
+        1.0574791999997615,
+        0.9912057999999888,
+        1.0604160000002594,
+        1.0018637000002855,
+        1.6154635999992024,
+        2.3218333999993774,
+        2.220752399999583,
+        2.048601899999994,
+        1.9285340999995242,
+        1.9366481999995813,
+        1.9592867999999726,
+        2.1596707999997307,
+        2.0916430000006585
+      ],
+      "segments_separately_profiled": {},
+      "per_command_profiles": [
+        {
+          "command": "simple-hole",
+          "wall_seconds": 10.208458500000233,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5033,
+              "calls": 1473631,
+              "self_seconds": 0.4711753,
+              "cumulative_seconds": 1.2862849
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 5019,
+              "calls": 5019,
+              "self_seconds": 0.032070800000000003,
+              "cumulative_seconds": 0.7109312000000001
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0091628,
+              "cumulative_seconds": 1.78231
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.2000000000000004e-05,
+              "cumulative_seconds": 0.06794220000000001
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 6.7e-06,
+              "cumulative_seconds": 0.0679753
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0011068,
+              "cumulative_seconds": 0.1544905
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 12,
+              "calls": 12,
+              "self_seconds": 0.8386822,
+              "cumulative_seconds": 6.937512300000001
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 38,
+              "calls": 38,
+              "self_seconds": 7.400000000000001e-05,
+              "cumulative_seconds": 0.3599914
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 13,
+              "calls": 13,
+              "self_seconds": 0.0037996,
+              "cumulative_seconds": 0.3441136
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 6.200000000000001e-06,
+              "cumulative_seconds": 0.15449670000000001
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.009513200000000001,
+              "cumulative_seconds": 0.5261247
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0002472,
+              "cumulative_seconds": 0.23128230000000002
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.00044290000000000003,
+              "cumulative_seconds": 0.045027500000000005
+            }
+          }
+        },
+        {
+          "command": "stand-1",
+          "wall_seconds": 6.026782500000081,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5031,
+              "calls": 924782,
+              "self_seconds": 0.2948913,
+              "cumulative_seconds": 0.8504595
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.5300000000000002e-05,
+              "cumulative_seconds": 0.0014038000000000002
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 3.61e-05,
+              "cumulative_seconds": 0.031932300000000004
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 8.5e-06,
+              "cumulative_seconds": 0.031988300000000004
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0040207,
+              "cumulative_seconds": 0.2129629
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.5444232,
+              "cumulative_seconds": 4.2750825
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 30,
+              "calls": 30,
+              "self_seconds": 6.730000000000001e-05,
+              "cumulative_seconds": 0.4007698
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 11,
+              "calls": 11,
+              "self_seconds": 0.005303400000000001,
+              "cumulative_seconds": 0.4066596
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.1000000000000006e-06,
+              "cumulative_seconds": 0.21296700000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.008825600000000001,
+              "cumulative_seconds": 0.28577640000000004
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.8900000000000002e-05,
+              "cumulative_seconds": 0.0068192
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00023630000000000002,
+              "cumulative_seconds": 0.1799405
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0004467,
+              "cumulative_seconds": 0.052774100000000004
+            }
+          }
+        },
+        {
+          "command": "stand-2",
+          "wall_seconds": 5.647109499999715,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5032,
+              "calls": 924959,
+              "self_seconds": 0.2435998,
+              "cumulative_seconds": 0.6717270000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.1900000000000001e-05,
+              "cumulative_seconds": 0.0007568000000000001
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0001609,
+              "cumulative_seconds": 0.0402278
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 1.01e-05,
+              "cumulative_seconds": 0.0402934
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0019654,
+              "cumulative_seconds": 0.2330036
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.4672954,
+              "cumulative_seconds": 4.1362635
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 26,
+              "calls": 26,
+              "self_seconds": 6.13e-05,
+              "cumulative_seconds": 0.35562550000000004
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 0.0062748000000000005,
+              "cumulative_seconds": 0.357974
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.8e-06,
+              "cumulative_seconds": 0.2330074
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0123789,
+              "cumulative_seconds": 0.3146952
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.1400000000000001e-05,
+              "cumulative_seconds": 0.0079159
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0002861,
+              "cumulative_seconds": 0.2002855
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0006473000000000001,
+              "cumulative_seconds": 0.06552150000000001
+            }
+          }
+        },
+        {
+          "command": "stand-3",
+          "wall_seconds": 5.707194800000252,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5033,
+              "calls": 925136,
+              "self_seconds": 0.27337130000000004,
+              "cumulative_seconds": 0.7450536000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.87e-05,
+              "cumulative_seconds": 0.0015101000000000001
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 4.5900000000000004e-05,
+              "cumulative_seconds": 0.053742200000000004
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 1.01e-05,
+              "cumulative_seconds": 0.0540488
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0014742000000000002,
+              "cumulative_seconds": 0.198717
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.4907751,
+              "cumulative_seconds": 4.1579175
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 22,
+              "calls": 22,
+              "self_seconds": 5.27e-05,
+              "cumulative_seconds": 0.29571000000000003
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 9,
+              "calls": 9,
+              "self_seconds": 0.0038083,
+              "cumulative_seconds": 0.2928327
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5e-06,
+              "cumulative_seconds": 0.198722
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.008816000000000001,
+              "cumulative_seconds": 0.2647659
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.74e-05,
+              "cumulative_seconds": 0.008956500000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00030920000000000003,
+              "cumulative_seconds": 0.1680566
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0007571,
+              "cumulative_seconds": 0.0645256
+            }
+          }
+        },
+        {
+          "command": "stand-4",
+          "wall_seconds": 5.156503399999565,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5034,
+              "calls": 925313,
+              "self_seconds": 0.2775963,
+              "cumulative_seconds": 0.8002486000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.32e-05,
+              "cumulative_seconds": 0.0007718
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.00010350000000000001,
+              "cumulative_seconds": 0.0346049
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 1.01e-05,
+              "cumulative_seconds": 0.034671600000000004
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0008833000000000001,
+              "cumulative_seconds": 0.14320870000000002
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.45654740000000005,
+              "cumulative_seconds": 3.6465337000000004
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 18,
+              "calls": 18,
+              "self_seconds": 4.7300000000000005e-05,
+              "cumulative_seconds": 0.23244530000000002
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 0.0029837,
+              "cumulative_seconds": 0.20710930000000002
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.6e-06,
+              "cumulative_seconds": 0.1432113
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.006540000000000001,
+              "cumulative_seconds": 0.224312
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.0700000000000001e-05,
+              "cumulative_seconds": 0.0061196
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00046150000000000005,
+              "cumulative_seconds": 0.17571740000000002
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0017285,
+              "cumulative_seconds": 0.061876900000000006
+            }
+          }
+        },
+        {
+          "command": "stand-5",
+          "wall_seconds": 5.403370999999424,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5035,
+              "calls": 925490,
+              "self_seconds": 0.2950024,
+              "cumulative_seconds": 0.7722878000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.9200000000000003e-05,
+              "cumulative_seconds": 0.0013615
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 4.39e-05,
+              "cumulative_seconds": 0.0348762
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 9.5e-06,
+              "cumulative_seconds": 0.034932200000000004
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0016740000000000001,
+              "cumulative_seconds": 0.211486
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.4792442,
+              "cumulative_seconds": 3.9284589000000003
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 14,
+              "calls": 14,
+              "self_seconds": 3.4500000000000005e-05,
+              "cumulative_seconds": 0.1902239
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.0020495,
+              "cumulative_seconds": 0.16689530000000002
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.4e-06,
+              "cumulative_seconds": 0.21149040000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0056718,
+              "cumulative_seconds": 0.2762909
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.66e-05,
+              "cumulative_seconds": 0.0132943
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003813,
+              "cumulative_seconds": 0.1728856
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0006141,
+              "cumulative_seconds": 0.0582975
+            }
+          }
+        },
+        {
+          "command": "stand-6",
+          "wall_seconds": 5.419454400000177,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5036,
+              "calls": 925667,
+              "self_seconds": 0.28215480000000004,
+              "cumulative_seconds": 0.7631268
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.9900000000000003e-05,
+              "cumulative_seconds": 0.0021668
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 4.5900000000000004e-05,
+              "cumulative_seconds": 0.0336652
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 1.22e-05,
+              "cumulative_seconds": 0.0337415
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0008963,
+              "cumulative_seconds": 0.141688
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.4796304,
+              "cumulative_seconds": 3.9822812
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 2.9e-05,
+              "cumulative_seconds": 0.1418759
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.0017939000000000002,
+              "cumulative_seconds": 0.11446930000000001
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.9000000000000005e-06,
+              "cumulative_seconds": 0.1416929
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0050428,
+              "cumulative_seconds": 0.2351821
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.6100000000000002e-05,
+              "cumulative_seconds": 0.0100783
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00041820000000000003,
+              "cumulative_seconds": 0.194479
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0010206,
+              "cumulative_seconds": 0.06077900000000001
+            }
+          }
+        },
+        {
+          "command": "stand-7",
+          "wall_seconds": 5.452627399999983,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5039,
+              "calls": 1282760,
+              "self_seconds": 0.40631090000000003,
+              "cumulative_seconds": 1.0848562000000002
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.8200000000000002e-05,
+              "cumulative_seconds": 0.0013079
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 3.9800000000000005e-05,
+              "cumulative_seconds": 0.3495923
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 8.3e-06,
+              "cumulative_seconds": 0.3496441
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0014497000000000002,
+              "cumulative_seconds": 0.2639347
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.46698110000000004,
+              "cumulative_seconds": 3.6830803000000003
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 2.79e-05,
+              "cumulative_seconds": 0.20370580000000002
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.0047438,
+              "cumulative_seconds": 0.1846604
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.2e-06,
+              "cumulative_seconds": 0.2639399
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.010557200000000001,
+              "cumulative_seconds": 0.5509746
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.7e-05,
+              "cumulative_seconds": 0.010116400000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00032070000000000004,
+              "cumulative_seconds": 0.1812086
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0010255000000000002,
+              "cumulative_seconds": 0.0582347
+            }
+          }
+        },
+        {
+          "command": "reveal-settle-next",
+          "wall_seconds": 10.545877599999585,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5045,
+              "calls": 2381698,
+              "self_seconds": 0.6829088000000001,
+              "cumulative_seconds": 1.8825086000000002
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 5029,
+              "calls": 5029,
+              "self_seconds": 0.0266394,
+              "cumulative_seconds": 0.6002172
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0090918,
+              "cumulative_seconds": 1.5276028000000001
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.7400000000000002e-05,
+              "cumulative_seconds": 1.7193059000000002
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 7.4e-06,
+              "cumulative_seconds": 1.7193489000000002
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0013626,
+              "cumulative_seconds": 0.22094760000000002
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 14,
+              "calls": 14,
+              "self_seconds": 0.8140231,
+              "cumulative_seconds": 6.6744211
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 17,
+              "calls": 17,
+              "self_seconds": 7.31e-05,
+              "cumulative_seconds": 0.518119
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 16,
+              "calls": 16,
+              "self_seconds": 0.0077393,
+              "cumulative_seconds": 0.5422789
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.4e-06,
+              "cumulative_seconds": 0.220951
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 0.0225617,
+              "cumulative_seconds": 1.0282234000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00043160000000000003,
+              "cumulative_seconds": 0.17663120000000002
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003818,
+              "cumulative_seconds": 0.026696200000000003
+            }
+          }
+        },
+        {
+          "command": "grouped-undo",
+          "wall_seconds": 8.329971200000728,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5048,
+              "calls": 1671088,
+              "self_seconds": 0.509255,
+              "cumulative_seconds": 1.3824838000000002
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 5032,
+              "calls": 5032,
+              "self_seconds": 0.028793700000000002,
+              "cumulative_seconds": 0.626316
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.009576000000000001,
+              "cumulative_seconds": 1.616807
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.8500000000000002e-05,
+              "cumulative_seconds": 0.18385020000000002
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3e-06,
+              "cumulative_seconds": 0.18386680000000002
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0008644000000000001,
+              "cumulative_seconds": 0.11801800000000001
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 11,
+              "calls": 11,
+              "self_seconds": 0.656912,
+              "cumulative_seconds": 5.337860500000001
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 2.5300000000000002e-05,
+              "cumulative_seconds": 0.1712625
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.0017874000000000002,
+              "cumulative_seconds": 0.14487170000000002
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.5000000000000004e-06,
+              "cumulative_seconds": 0.1180215
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.015505900000000001,
+              "cumulative_seconds": 0.44270550000000003
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0002498,
+              "cumulative_seconds": 0.14973350000000002
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.00045470000000000005,
+              "cumulative_seconds": 0.0688632
+            }
+          }
+        },
+        {
+          "command": "reveal-again",
+          "wall_seconds": 10.627177899999879,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5051,
+              "calls": 2384513,
+              "self_seconds": 0.7358526000000001,
+              "cumulative_seconds": 1.9593230000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 5035,
+              "calls": 5035,
+              "self_seconds": 0.035769300000000004,
+              "cumulative_seconds": 0.5925137
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0120192,
+              "cumulative_seconds": 1.4417384000000002
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.47e-05,
+              "cumulative_seconds": 1.9040055
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 9e-06,
+              "cumulative_seconds": 1.9040545000000002
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0015109000000000001,
+              "cumulative_seconds": 0.1834358
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 14,
+              "calls": 14,
+              "self_seconds": 0.8158988,
+              "cumulative_seconds": 6.624456100000001
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 17,
+              "calls": 17,
+              "self_seconds": 8.970000000000001e-05,
+              "cumulative_seconds": 0.5276476
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 16,
+              "calls": 16,
+              "self_seconds": 0.0052897000000000005,
+              "cumulative_seconds": 0.550682
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 6.1e-06,
+              "cumulative_seconds": 0.18344190000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 0.0225267,
+              "cumulative_seconds": 1.1148071000000002
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00030070000000000004,
+              "cumulative_seconds": 0.18502180000000001
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.000277,
+              "cumulative_seconds": 0.0281517
+            }
+          }
+        },
+        {
+          "command": "single-card",
+          "wall_seconds": 3.873243299999558,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 6,
+              "calls": 924268,
+              "self_seconds": 0.2679905,
+              "cumulative_seconds": 0.7151153
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.93e-05,
+              "cumulative_seconds": 0.0015151000000000001
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.9200000000000003e-05,
+              "cumulative_seconds": 0.016502600000000003
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.5e-06,
+              "cumulative_seconds": 0.0165293
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0012243,
+              "cumulative_seconds": 0.1813679
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.35106610000000005,
+              "cumulative_seconds": 2.8701497000000002
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 2.2400000000000002e-05,
+              "cumulative_seconds": 0.13706100000000002
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 5,
+              "calls": 5,
+              "self_seconds": 0.0012954000000000002,
+              "cumulative_seconds": 0.1087318
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.6000000000000003e-06,
+              "cumulative_seconds": 0.18137150000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 3,
+              "calls": 3,
+              "self_seconds": 0.006908,
+              "cumulative_seconds": 0.3602559
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.7e-05,
+              "cumulative_seconds": 0.0078724
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0001775,
+              "cumulative_seconds": 0.1851807
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00023520000000000002,
+              "cumulative_seconds": 0.026982100000000002
+            }
+          }
+        },
+        {
+          "command": "suit-correction",
+          "wall_seconds": 8.5271472000004,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5050,
+              "calls": 2355355,
+              "self_seconds": 0.7107110000000001,
+              "cumulative_seconds": 1.8531056000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.86e-05,
+              "cumulative_seconds": 0.0012204000000000002
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.2800000000000004e-05,
+              "cumulative_seconds": 0.2322226
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.2e-05,
+              "cumulative_seconds": 0.822239
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0014607,
+              "cumulative_seconds": 0.17940350000000002
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 0.7210939000000001,
+              "cumulative_seconds": 5.6976104
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 13,
+              "calls": 13,
+              "self_seconds": 7.72e-05,
+              "cumulative_seconds": 0.425456
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.0009319,
+              "cumulative_seconds": 0.0801686
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5e-06,
+              "cumulative_seconds": 0.1794085
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 0.0319822,
+              "cumulative_seconds": 1.3847533
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.6100000000000002e-05,
+              "cumulative_seconds": 0.0085039
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 9,
+              "calls": 9,
+              "self_seconds": 0.0024815,
+              "cumulative_seconds": 1.662349
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0005128,
+              "cumulative_seconds": 0.0525967
+            }
+          }
+        },
+        {
+          "command": "replace-shoe",
+          "wall_seconds": 11.05466129999968,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10091,
+              "calls": 1849746,
+              "self_seconds": 0.61273,
+              "cumulative_seconds": 1.6632855000000002
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 5040,
+              "calls": 5040,
+              "self_seconds": 0.021519,
+              "cumulative_seconds": 0.5405055000000001
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0091413,
+              "cumulative_seconds": 1.462914
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.57e-05,
+              "cumulative_seconds": 3.4654813000000004
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 9.100000000000001e-06,
+              "cumulative_seconds": 3.4655341
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.0000000000000004e-07,
+              "cumulative_seconds": 3.0000000000000004e-07
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 13,
+              "calls": 13,
+              "self_seconds": 0.8616699000000001,
+              "cumulative_seconds": 7.1372949000000006
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 16,
+              "calls": 16,
+              "self_seconds": 9.66e-05,
+              "cumulative_seconds": 0.511849
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 15,
+              "calls": 15,
+              "self_seconds": 0.007546000000000001,
+              "cumulative_seconds": 0.5414921
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.3e-06,
+              "cumulative_seconds": 1.6000000000000001e-06
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.012440300000000001,
+              "cumulative_seconds": 0.5381301000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0002569,
+              "cumulative_seconds": 0.1700199
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.00048290000000000003,
+              "cumulative_seconds": 0.057296700000000006
+            }
+          }
+        },
+        {
+          "command": "undo-shoe",
+          "wall_seconds": 10.22488340000018,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 5053,
+              "calls": 1492756,
+              "self_seconds": 0.5087893,
+              "cumulative_seconds": 1.4194302
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 5043,
+              "calls": 5043,
+              "self_seconds": 0.039319900000000005,
+              "cumulative_seconds": 0.7872526000000001
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0117269,
+              "cumulative_seconds": 2.0275778
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.44e-05,
+              "cumulative_seconds": 0.017173900000000002
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.6e-06,
+              "cumulative_seconds": 0.017202600000000002
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0015785,
+              "cumulative_seconds": 0.20068160000000002
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 11,
+              "calls": 11,
+              "self_seconds": 0.8699334000000001,
+              "cumulative_seconds": 6.9054175
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 2.8000000000000003e-05,
+              "cumulative_seconds": 0.1920259
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.0015767,
+              "cumulative_seconds": 0.1647212
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.1e-06,
+              "cumulative_seconds": 0.20068670000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 3,
+              "calls": 3,
+              "self_seconds": 0.007463900000000001,
+              "cumulative_seconds": 0.41828980000000004
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00037620000000000004,
+              "cumulative_seconds": 0.17096750000000002
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0005802,
+              "cumulative_seconds": 0.0613753
+            }
+          }
+        }
+      ],
+      "resources": {
+        "available": true,
+        "samples": 16,
+        "observed_cpu_seconds": 117.71875,
+        "observed_cpu_percent_one_core": 86.4939327994827,
+        "peak_tree_working_set_bytes": 124223488,
+        "peak_tree_private_bytes": 102088704,
+        "peak_processes": 1,
+        "note": "Sampled own process tree; exited-between-samples CPU/memory may be missed; not system-wide usage"
+      },
+      "scope": "Main-thread initial-deal probe; auto numeric and sidebet workers disabled to isolate UI/ledger costs. All-services long-shoe probe is separate."
+    },
+    {
+      "requested_prior_events": 10000,
+      "actual_prior_events": 10001,
+      "final_events": 10043,
+      "callback_and_idle_paint_seconds": {
+        "count": 14,
+        "p50": 2.1632525000004534,
+        "p95": 2.3484975000001214,
+        "p99": 2.3484975000001214,
+        "maximum": 2.3484975000001214
+      },
+      "heartbeat_delay_seconds": {
+        "count": 15,
+        "p50": 2.134666500000276,
+        "p95": 2.3150153999997203,
+        "p99": 2.3150153999997203,
+        "maximum": 2.3150153999997203
+      },
+      "raw_callbacks": [
+        2.071040799999537,
+        2.1632525000004534,
+        2.1457125999995696,
+        2.2020535000001473,
+        2.2780252000002292,
+        2.1650307999998404,
+        2.0739829000003738,
+        2.3484975000001214,
+        2.167889500000456,
+        2.1111227999999755,
+        2.273378899999443,
+        2.1921855999999025,
+        2.1219323000004806,
+        2.130489299999681
+      ],
+      "segments_separately_profiled": {},
+      "per_command_profiles": [
+        {
+          "command": "simple-hole",
+          "wall_seconds": 10.879513300000326,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10033,
+              "calls": 2938631,
+              "self_seconds": 0.5372271000000001,
+              "cumulative_seconds": 1.5455239
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 10019,
+              "calls": 10019,
+              "self_seconds": 0.0267444,
+              "cumulative_seconds": 0.6071548
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.012242300000000001,
+              "cumulative_seconds": 1.6724599
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.0100000000000003e-05,
+              "cumulative_seconds": 0.061668
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.2e-06,
+              "cumulative_seconds": 0.061686300000000006
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0034305000000000004,
+              "cumulative_seconds": 0.2720725
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 12,
+              "calls": 12,
+              "self_seconds": 1.0292333,
+              "cumulative_seconds": 7.295127900000001
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 38,
+              "calls": 38,
+              "self_seconds": 5.7700000000000007e-05,
+              "cumulative_seconds": 0.5110258000000001
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 13,
+              "calls": 13,
+              "self_seconds": 0.006119100000000001,
+              "cumulative_seconds": 0.5400814
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5e-06,
+              "cumulative_seconds": 0.2720775
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.0169985,
+              "cumulative_seconds": 0.6346101000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00032900000000000003,
+              "cumulative_seconds": 0.20644720000000003
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0006398,
+              "cumulative_seconds": 0.0650515
+            }
+          }
+        },
+        {
+          "command": "stand-1",
+          "wall_seconds": 6.084821699999338,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10031,
+              "calls": 1842282,
+              "self_seconds": 0.3346777,
+              "cumulative_seconds": 0.9254107
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.7500000000000002e-05,
+              "cumulative_seconds": 0.0008601
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 2.0600000000000003e-05,
+              "cumulative_seconds": 0.016838000000000002
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 4.3e-06,
+              "cumulative_seconds": 0.0168685
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0019577,
+              "cumulative_seconds": 0.23447250000000003
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.5996909,
+              "cumulative_seconds": 4.3046876
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 30,
+              "calls": 30,
+              "self_seconds": 4.3100000000000004e-05,
+              "cumulative_seconds": 0.37131390000000003
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 11,
+              "calls": 11,
+              "self_seconds": 0.0042622,
+              "cumulative_seconds": 0.3791601
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.6000000000000003e-06,
+              "cumulative_seconds": 0.23447610000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.008362300000000001,
+              "cumulative_seconds": 0.3217283
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.29e-05,
+              "cumulative_seconds": 0.007636100000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003085,
+              "cumulative_seconds": 0.2095796
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0007022,
+              "cumulative_seconds": 0.0643913
+            }
+          }
+        },
+        {
+          "command": "stand-2",
+          "wall_seconds": 6.049721999999747,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10032,
+              "calls": 1842459,
+              "self_seconds": 0.33924770000000004,
+              "cumulative_seconds": 0.9298820000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.1900000000000001e-05,
+              "cumulative_seconds": 0.0009754000000000001
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 2.3800000000000003e-05,
+              "cumulative_seconds": 0.0202212
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 6.7e-06,
+              "cumulative_seconds": 0.0202575
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0018407,
+              "cumulative_seconds": 0.2314757
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.6062591,
+              "cumulative_seconds": 4.3010538
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 26,
+              "calls": 26,
+              "self_seconds": 4.3e-05,
+              "cumulative_seconds": 0.3472059
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 0.0038706,
+              "cumulative_seconds": 0.35047090000000003
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.3e-06,
+              "cumulative_seconds": 0.23147900000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0097239,
+              "cumulative_seconds": 0.3191996
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.04e-05,
+              "cumulative_seconds": 0.007128000000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003213,
+              "cumulative_seconds": 0.20416520000000002
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0007372,
+              "cumulative_seconds": 0.066889
+            }
+          }
+        },
+        {
+          "command": "stand-3",
+          "wall_seconds": 5.903267800000322,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10033,
+              "calls": 1842636,
+              "self_seconds": 0.3386306,
+              "cumulative_seconds": 0.9308649000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.11e-05,
+              "cumulative_seconds": 0.0009053
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 2.4900000000000002e-05,
+              "cumulative_seconds": 0.0185171
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 7.5e-06,
+              "cumulative_seconds": 0.018566000000000003
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0024594,
+              "cumulative_seconds": 0.2692571
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.5935913,
+              "cumulative_seconds": 4.1792064
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 22,
+              "calls": 22,
+              "self_seconds": 3.32e-05,
+              "cumulative_seconds": 0.2896162
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 9,
+              "calls": 9,
+              "self_seconds": 0.0031287000000000003,
+              "cumulative_seconds": 0.2861251
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.3e-06,
+              "cumulative_seconds": 0.26925940000000004
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.053380500000000004,
+              "cumulative_seconds": 0.3572034
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 9.2e-06,
+              "cumulative_seconds": 0.007175900000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0007739,
+              "cumulative_seconds": 0.2060352
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0006276000000000001,
+              "cumulative_seconds": 0.064857
+            }
+          }
+        },
+        {
+          "command": "stand-4",
+          "wall_seconds": 6.049902100000509,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10034,
+              "calls": 1842813,
+              "self_seconds": 0.3449458,
+              "cumulative_seconds": 1.0001819
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.02e-05,
+              "cumulative_seconds": 0.0008175000000000001
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 2.23e-05,
+              "cumulative_seconds": 0.0163568
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 5.2e-06,
+              "cumulative_seconds": 0.0163895
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.001915,
+              "cumulative_seconds": 0.22693270000000001
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.6185547,
+              "cumulative_seconds": 4.337795600000001
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 18,
+              "calls": 18,
+              "self_seconds": 2.72e-05,
+              "cumulative_seconds": 0.25462860000000004
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 0.0032202000000000003,
+              "cumulative_seconds": 0.24421500000000002
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.5000000000000004e-06,
+              "cumulative_seconds": 0.2269362
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0076430000000000005,
+              "cumulative_seconds": 0.3171718
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 9.800000000000001e-06,
+              "cumulative_seconds": 0.0084749
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003214,
+              "cumulative_seconds": 0.2053182
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0006393000000000001,
+              "cumulative_seconds": 0.0663171
+            }
+          }
+        },
+        {
+          "command": "stand-5",
+          "wall_seconds": 5.845440699999926,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10035,
+              "calls": 1842990,
+              "self_seconds": 0.38945690000000005,
+              "cumulative_seconds": 0.9741538000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.1200000000000001e-05,
+              "cumulative_seconds": 0.0008285
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 1.9600000000000002e-05,
+              "cumulative_seconds": 0.0168232
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 4.800000000000001e-06,
+              "cumulative_seconds": 0.0168552
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.003144,
+              "cumulative_seconds": 0.22861150000000002
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.5932563000000001,
+              "cumulative_seconds": 4.153183100000001
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 14,
+              "calls": 14,
+              "self_seconds": 2.5300000000000002e-05,
+              "cumulative_seconds": 0.2174016
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.0020534,
+              "cumulative_seconds": 0.1998389
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.8e-06,
+              "cumulative_seconds": 0.22861530000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.008094200000000001,
+              "cumulative_seconds": 0.31507490000000005
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 9.5e-06,
+              "cumulative_seconds": 0.0082585
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003756,
+              "cumulative_seconds": 0.2056993
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0006511,
+              "cumulative_seconds": 0.06770290000000001
+            }
+          }
+        },
+        {
+          "command": "stand-6",
+          "wall_seconds": 5.970240800000283,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10036,
+              "calls": 1843167,
+              "self_seconds": 0.3318145,
+              "cumulative_seconds": 0.9191448000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.2100000000000001e-05,
+              "cumulative_seconds": 0.0007813000000000001
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 2.37e-05,
+              "cumulative_seconds": 0.017759200000000003
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 5.500000000000001e-06,
+              "cumulative_seconds": 0.0177928
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0019428000000000002,
+              "cumulative_seconds": 0.23440450000000002
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.6247353,
+              "cumulative_seconds": 4.4346815
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 1.86e-05,
+              "cumulative_seconds": 0.1734053
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.0015531000000000002,
+              "cumulative_seconds": 0.1482022
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.7e-06,
+              "cumulative_seconds": 0.2344072
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0130875,
+              "cumulative_seconds": 0.32427500000000004
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.0300000000000001e-05,
+              "cumulative_seconds": 0.0076293
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003239,
+              "cumulative_seconds": 0.2090381
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0006365,
+              "cumulative_seconds": 0.065073
+            }
+          }
+        },
+        {
+          "command": "stand-7",
+          "wall_seconds": 6.274567399999796,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10039,
+              "calls": 2555260,
+              "self_seconds": 0.4541312,
+              "cumulative_seconds": 1.2801479
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.39e-05,
+              "cumulative_seconds": 0.0009040000000000001
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 3.3100000000000005e-05,
+              "cumulative_seconds": 0.4870952
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 6.200000000000001e-06,
+              "cumulative_seconds": 0.487132
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0018924,
+              "cumulative_seconds": 0.23189030000000002
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.6020676,
+              "cumulative_seconds": 4.2935563000000005
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 2.3800000000000003e-05,
+              "cumulative_seconds": 0.2185552
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 0.0021507,
+              "cumulative_seconds": 0.20089
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.7e-06,
+              "cumulative_seconds": 0.23189400000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.0181376,
+              "cumulative_seconds": 0.6899401000000001
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.2600000000000001e-05,
+              "cumulative_seconds": 0.007952200000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00035,
+              "cumulative_seconds": 0.21374
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0006489,
+              "cumulative_seconds": 0.06649150000000001
+            }
+          }
+        },
+        {
+          "command": "reveal-settle-next",
+          "wall_seconds": 13.07228909999958,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10045,
+              "calls": 4749198,
+              "self_seconds": 0.8496872000000001,
+              "cumulative_seconds": 2.3672869000000003
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 10029,
+              "calls": 10029,
+              "self_seconds": 0.0274988,
+              "cumulative_seconds": 0.6203994
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0671045,
+              "cumulative_seconds": 1.7549107000000002
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.8900000000000002e-05,
+              "cumulative_seconds": 2.1905674
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.2e-06,
+              "cumulative_seconds": 2.1906007
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0028604000000000004,
+              "cumulative_seconds": 0.23088160000000002
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 14,
+              "calls": 14,
+              "self_seconds": 1.1931737,
+              "cumulative_seconds": 8.3535467
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 17,
+              "calls": 17,
+              "self_seconds": 5.64e-05,
+              "cumulative_seconds": 0.6404908
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 16,
+              "calls": 16,
+              "self_seconds": 0.007254300000000001,
+              "cumulative_seconds": 0.6825633000000001
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.3e-06,
+              "cumulative_seconds": 0.2308849
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 0.0340986,
+              "cumulative_seconds": 1.2898446000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003348,
+              "cumulative_seconds": 0.2086075
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003171,
+              "cumulative_seconds": 0.032583100000000004
+            }
+          }
+        },
+        {
+          "command": "grouped-undo",
+          "wall_seconds": 10.233352299999751,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10048,
+              "calls": 3328588,
+              "self_seconds": 0.6079862,
+              "cumulative_seconds": 1.6820220000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 10032,
+              "calls": 10032,
+              "self_seconds": 0.027550900000000003,
+              "cumulative_seconds": 0.6257914
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0140593,
+              "cumulative_seconds": 1.7395715
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.45e-05,
+              "cumulative_seconds": 0.21816210000000003
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.3e-06,
+              "cumulative_seconds": 0.218178
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0018255,
+              "cumulative_seconds": 0.21862230000000002
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 11,
+              "calls": 11,
+              "self_seconds": 0.9747793,
+              "cumulative_seconds": 6.7851303000000005
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 1.87e-05,
+              "cumulative_seconds": 0.21671200000000002
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.0022056000000000003,
+              "cumulative_seconds": 0.1986101
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3e-06,
+              "cumulative_seconds": 0.21862530000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.022615200000000002,
+              "cumulative_seconds": 0.6305908
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00033130000000000003,
+              "cumulative_seconds": 0.21654400000000001
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0007740000000000001,
+              "cumulative_seconds": 0.1127171
+            }
+          }
+        },
+        {
+          "command": "reveal-again",
+          "wall_seconds": 13.20369380000011,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10051,
+              "calls": 4752013,
+              "self_seconds": 0.8907400000000001,
+              "cumulative_seconds": 2.4650804
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 10035,
+              "calls": 10035,
+              "self_seconds": 0.0277874,
+              "cumulative_seconds": 0.6257752000000001
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0159359,
+              "cumulative_seconds": 1.7547508
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.88e-05,
+              "cumulative_seconds": 2.0618468
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 4.9000000000000005e-06,
+              "cumulative_seconds": 2.0618772
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0017209,
+              "cumulative_seconds": 0.2193968
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 14,
+              "calls": 14,
+              "self_seconds": 1.2491722,
+              "cumulative_seconds": 8.5323302
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 17,
+              "calls": 17,
+              "self_seconds": 5.5700000000000005e-05,
+              "cumulative_seconds": 0.6152949000000001
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 16,
+              "calls": 16,
+              "self_seconds": 0.0076179,
+              "cumulative_seconds": 0.6564827000000001
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.5000000000000004e-06,
+              "cumulative_seconds": 0.21940030000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 8,
+              "calls": 8,
+              "self_seconds": 0.034567,
+              "cumulative_seconds": 1.3672278
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00032460000000000003,
+              "cumulative_seconds": 0.25977340000000004
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00032260000000000004,
+              "cumulative_seconds": 0.0321311
+            }
+          }
+        },
+        {
+          "command": "single-card",
+          "wall_seconds": 5.037163199999668,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 6,
+              "calls": 1841768,
+              "self_seconds": 0.3391424,
+              "cumulative_seconds": 0.9288642
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.36e-05,
+              "cumulative_seconds": 0.0008611000000000001
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.29e-05,
+              "cumulative_seconds": 0.008523600000000001
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 2.7e-06,
+              "cumulative_seconds": 0.0085381
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0018087,
+              "cumulative_seconds": 0.2360507
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.5393242,
+              "cumulative_seconds": 3.7234627000000002
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 1.7800000000000002e-05,
+              "cumulative_seconds": 0.1750283
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 5,
+              "calls": 5,
+              "self_seconds": 0.0016578,
+              "cumulative_seconds": 0.15076430000000002
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.5000000000000004e-06,
+              "cumulative_seconds": 0.23605420000000002
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 3,
+              "calls": 3,
+              "self_seconds": 0.06400600000000001,
+              "cumulative_seconds": 0.5303859000000001
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.2800000000000001e-05,
+              "cumulative_seconds": 0.0073804000000000005
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003255,
+              "cumulative_seconds": 0.2059862
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003242,
+              "cumulative_seconds": 0.0336319
+            }
+          }
+        },
+        {
+          "command": "suit-correction",
+          "wall_seconds": 9.338977000000341,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10050,
+              "calls": 4692855,
+              "self_seconds": 0.780587,
+              "cumulative_seconds": 2.1155477
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.1900000000000001e-05,
+              "cumulative_seconds": 0.0010186000000000001
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.54e-05,
+              "cumulative_seconds": 0.22282220000000003
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 7.9e-06,
+              "cumulative_seconds": 0.8200048000000001
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0017310000000000001,
+              "cumulative_seconds": 0.22564330000000002
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 0.8898716000000001,
+              "cumulative_seconds": 6.145446700000001
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 13,
+              "calls": 13,
+              "self_seconds": 4.43e-05,
+              "cumulative_seconds": 0.49320040000000004
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.0010749000000000002,
+              "cumulative_seconds": 0.1000718
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.6000000000000003e-06,
+              "cumulative_seconds": 0.2256469
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 10,
+              "calls": 10,
+              "self_seconds": 0.0457214,
+              "cumulative_seconds": 1.5748885000000001
+            },
+            "database.py:115:save_event": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.23e-05,
+              "cumulative_seconds": 0.007648
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 9,
+              "calls": 9,
+              "self_seconds": 0.0030846000000000003,
+              "cumulative_seconds": 1.8784754000000001
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0006197,
+              "cumulative_seconds": 0.064294
+            }
+          }
+        },
+        {
+          "command": "replace-shoe",
+          "wall_seconds": 12.372745399999985,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 20091,
+              "calls": 3684746,
+              "self_seconds": 0.6742222,
+              "cumulative_seconds": 1.8900669
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 10040,
+              "calls": 10040,
+              "self_seconds": 0.030264000000000003,
+              "cumulative_seconds": 0.6622527
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.013490700000000001,
+              "cumulative_seconds": 1.7758373
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.79e-05,
+              "cumulative_seconds": 4.0029344
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 5.9e-06,
+              "cumulative_seconds": 4.002964700000001
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3.0000000000000004e-07,
+              "cumulative_seconds": 3.0000000000000004e-07
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 13,
+              "calls": 13,
+              "self_seconds": 1.1566842000000002,
+              "cumulative_seconds": 8.017907300000001
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 16,
+              "calls": 16,
+              "self_seconds": 5.7e-05,
+              "cumulative_seconds": 0.6263779
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 15,
+              "calls": 15,
+              "self_seconds": 0.006952000000000001,
+              "cumulative_seconds": 0.6698856000000001
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 9.000000000000001e-07,
+              "cumulative_seconds": 1.2000000000000002e-06
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 4,
+              "calls": 4,
+              "self_seconds": 0.018931,
+              "cumulative_seconds": 0.6323002000000001
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.00031600000000000004,
+              "cumulative_seconds": 0.206546
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0006393000000000001,
+              "cumulative_seconds": 0.06738330000000001
+            }
+          }
+        },
+        {
+          "command": "undo-shoe",
+          "wall_seconds": 10.30586409999978,
+          "segments": {
+            "copy.py:110:deepcopy": {
+              "primitive_calls": 10053,
+              "calls": 2972756,
+              "self_seconds": 0.5638484,
+              "cumulative_seconds": 1.6043838000000001
+            },
+            "database.py:98:_insert": {
+              "primitive_calls": 10043,
+              "calls": 10043,
+              "self_seconds": 0.028753,
+              "cumulative_seconds": 0.6500302
+            },
+            "database.py:119:save_ledger": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0140973,
+              "cumulative_seconds": 1.8606101000000002
+            },
+            "app.py:1441:_refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 1.4400000000000001e-05,
+              "cumulative_seconds": 0.009357
+            },
+            "app.py:1437:refresh_all": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3e-06,
+              "cumulative_seconds": 0.0093732
+            },
+            "controller.py:761:_write_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0020069000000000003,
+              "cumulative_seconds": 0.2212386
+            },
+            "ledger.py:283:replay": {
+              "primitive_calls": 11,
+              "calls": 11,
+              "self_seconds": 1.0240748000000002,
+              "cumulative_seconds": 6.897925900000001
+            },
+            "contracts.py:25:canonical": {
+              "primitive_calls": 7,
+              "calls": 7,
+              "self_seconds": 1.97e-05,
+              "cumulative_seconds": 0.2258853
+            },
+            "contracts.py:29:digest": {
+              "primitive_calls": 6,
+              "calls": 6,
+              "self_seconds": 0.0020151,
+              "cumulative_seconds": 0.1967143
+            },
+            "controller.py:754:save_entry_plan": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 3e-06,
+              "cumulative_seconds": 0.2212416
+            },
+            "ledger.py:537:to_list": {
+              "primitive_calls": 3,
+              "calls": 3,
+              "self_seconds": 0.0126952,
+              "cumulative_seconds": 0.4926278
+            },
+            "read_snapshot.py:16:capture": {
+              "primitive_calls": 1,
+              "calls": 1,
+              "self_seconds": 0.0003909,
+              "cumulative_seconds": 0.2348349
+            },
+            "read_snapshot.py:22:to_list": {
+              "primitive_calls": 2,
+              "calls": 2,
+              "self_seconds": 0.0008739,
+              "cumulative_seconds": 0.1012769
+            }
+          }
+        }
+      ],
+      "resources": {
+        "available": true,
+        "samples": 16,
+        "observed_cpu_seconds": 151.171875,
+        "observed_cpu_percent_one_core": 96.01385492275848,
+        "peak_tree_working_set_bytes": 194195456,
+        "peak_tree_private_bytes": 171560960,
+        "peak_processes": 1,
+        "note": "Sampled own process tree; exited-between-samples CPU/memory may be missed; not system-wide usage"
+      },
+      "scope": "Main-thread initial-deal probe; auto numeric and sidebet workers disabled to isolate UI/ledger costs. All-services long-shoe probe is separate."
+    }
+  ],
+  "history": [],
+  "passed": true,
+  "elapsed_seconds": 358.70857590000014
+}
