@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import math
+import platform
 from pathlib import Path
 import random
 import statistics
@@ -25,7 +26,9 @@ def main():
     parser.add_argument('--runtime',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--smoke-rounds',type=int,default=0)
+    parser.add_argument('--low-interference',action='store_true',help='No method wrappers; heartbeat only during callbacks and numeric waits, excluding oracle work')
     args = parser.parse_args()
+    harness_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     runtime, out = args.runtime.resolve(), args.output.resolve()
     out.mkdir(parents=True,exist_ok=False)
     build = json.loads((runtime/'BUILD_INFO.json').read_text(encoding='utf-8'))
@@ -50,7 +53,8 @@ def main():
     specification=json.loads((runtime/'fixtures/acceptance/responsiveness_v1.json').read_text(encoding='utf-8'))
     preparation=prepare_runtime();assert preparation['status']=='available',preparation
     (out/'startup-preparation.json').write_text(json.dumps(preparation,indent=2),encoding='utf-8')
-    telemetry=TrialTelemetry();telemetry.install()
+    telemetry=TrialTelemetry()
+    if not args.low_interference:telemetry.install()
     metrics = ProcessMetrics()
     sidebets=[];heartbeats=[];beat_id=None;beat_last=None
     saved_originals={};growth=[]
@@ -59,13 +63,20 @@ def main():
         now=perf_counter()
         if beat_last is not None:heartbeats.append(max(0,now-beat_last-.05))
         beat_last=now;beat_id=app.after(50,heartbeat)
+    def resume_heartbeat():
+        if args.low_interference and beat_id is None:heartbeat()
     def stop_heartbeat():
         nonlocal beat_id,beat_last
         if beat_id is not None:app.after_cancel(beat_id)
         beat_id=None;beat_last=None
     def file_growth():
         files=[p for p in out.rglob('*') if p.is_file() and ('continuous.db' in p.name or any('continuous.db.' in q for q in p.parts))]
-        growth.append(dict(seq=len(app.ctrl.ledger.events),files=len(files),bytes=sum(p.stat().st_size for p in files)))
+        categories={}
+        for path in files:
+            category=next((kind for kind in ('analysis','opening','sidebets') if '.db.'+kind in str(path)),
+                          'database' if path.name=='continuous.db' else 'plan-or-other')
+            row=categories.setdefault(category,dict(files=0,bytes=0));row['files']+=1;row['bytes']+=path.stat().st_size
+        growth.append(dict(seq=len(app.ctrl.ledger.events),files=len(files),bytes=sum(p.stat().st_size for p in files),categories=categories))
     def remember_sidebet(value):
         assert value['saved_id'];path=app.ctrl.sidebet_store.directory/(value['saved_id']+'.json')
         saved_originals[str(path)]=hashlib.sha256(path.read_bytes()).hexdigest()
@@ -102,9 +113,11 @@ def main():
 
     def command(label, callback):
         before = len(app.ctrl.ledger.events)
+        resume_heartbeat()
         tick = perf_counter()
         callback(); app.update()
         elapsed = perf_counter()-tick
+        if args.low_interference:stop_heartbeat()
         added = app.ctrl.ledger.events[before:]
         assert not errors,(label,errors)
         current_results()
@@ -126,12 +139,17 @@ def main():
 
     def pump_until(predicate, seconds):
         deadline = perf_counter()+seconds
-        while perf_counter()<deadline:
-            app.update(); current_results(); metrics.sample();telemetry.sample()
-            if predicate():
-                return True
-            sleep(.02)
-        return False
+        resume_heartbeat()
+        try:
+            while perf_counter()<deadline:
+                app.update()
+                if not args.low_interference:current_results();metrics.sample();telemetry.sample()
+                if predicate():return True
+                sleep(.02)
+            return False
+        finally:
+            if args.low_interference:stop_heartbeat()
+            current_results()
 
     def wait_opening():
         start = perf_counter()
@@ -165,7 +183,8 @@ def main():
         app = BlackjackLabApp(db,recording_source=SOURCE_SIMULATOR)
         app.title('Hakimi · 连续牌靴验收（独立模拟记录）')
         if args.smoke_rounds:app.withdraw()
-        app.ctrl.recording_source=SOURCE_SIMULATOR; app.update();heartbeat()
+        app.ctrl.recording_source=SOURCE_SIMULATOR; app.update()
+        if not args.low_interference:heartbeat()
         assert app.ctrl.session_id==sid and app.ctrl.ledger.to_list()==events
         assert app.ctrl.entry_plan.to_dict()==plan
         assert app.analysis_panel.auto.get()
@@ -179,7 +198,7 @@ def main():
             app = BlackjackLabApp(db,recording_source=SOURCE_SIMULATOR)
             app.title('Hakimi · 连续牌靴验收（独立模拟记录）')
             if args.smoke_rounds:app.withdraw()
-            heartbeat()
+            if not args.low_interference:heartbeat()
             for shoe_no, shoe_spec in enumerate(specification['long_shoes'],1):
                 count=shoe_spec['players'];decks=shoe_spec['decks'];cut=shoe_spec['cut_remaining']
                 if args.smoke_rounds and shoe_no>1:
@@ -343,14 +362,34 @@ def main():
                 for path,h in saved_originals.items():assert hashlib.sha256(Path(path).read_bytes()).hexdigest()==h,path
             finally:recovered.close()
             durations=[row['seconds'] for row in operations]
+            # Outside all latency/heartbeat intervals: inspect saved bytes without
+            # rewriting, deduplicating, or compressing any original evidence.
+            disk_detail={}
+            for kind in ('analysis','opening','sidebets'):
+                files=list(Path(str(db)+'.'+kind).glob('*.json'))
+                detail=dict(files=len(files),bytes=0,canonical_event_prefix_bytes=0,status_counts={})
+                for path in files:
+                    detail['bytes']+=path.stat().st_size
+                    body=json.loads(path.read_text(encoding='utf-8'))
+                    prefix=body.get('event_prefix',body.get('ledger_events'))
+                    if prefix is not None:
+                        detail['canonical_event_prefix_bytes']+=len(json.dumps(prefix,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode('utf-8'))
+                    status=body.get('result',{}).get('status','unknown')
+                    detail['status_counts'][status]=detail['status_counts'].get(status,0)+1
+                disk_detail[kind]=detail
             for name,expected_hash in build['package_manifest'].items():
                 assert hashlib.sha256((runtime/name).read_bytes()).hexdigest()==expected_hash,name
             report=dict(passed=True,source_commit=build['source_commit'],runtime=str(runtime),
+                actual_module_root=str(Path(blackjack_lab.__file__).resolve()),harness_sha256=harness_sha256,
+                python=sys.version,platform=platform.platform(),file_growth_by_type=disk_detail,
+                low_interference=args.low_interference,
+                measurement_scope='Committed callbacks and Tk update; heartbeat excludes oracle, resource/file sampling and recovery setup' if args.low_interference else 'Instrumented whole harness',
                 kind='Real Tk callbacks and background workers; automated independent synthetic truth, not native-key or human-speed acceptance',
                 smoke=bool(args.smoke_rounds),window_visibility='withdrawn' if args.smoke_rounds else 'visible',
                 shoes=shoes,rounds=sum(s['rounds'] for s in shoes),
                 cards_drawn=sum(s['drawn'] for s in shoes),events=len(events),commands=len(operations),
-                command_seconds=quantiles(durations),heartbeat_delay_seconds=quantiles(heartbeats),telemetry=telemetry.summary(),
+                command_seconds=quantiles(durations),rank_seconds=quantiles([r['seconds'] for r in operations if r['label'].startswith('rank:')]),
+                heartbeat_delay_seconds=quantiles(heartbeats),telemetry=telemetry.summary(),
                 sidebets=sidebets,saved_originals_unchanged=len(saved_originals),file_growth=growth,
                 main_records=len(main_entries),sidebet_records=len(edge),final_processes=sorted(metrics.descendants()),
                 resources=metrics.summary(),resource_scope='Own test process tree, including truth-verification overhead; 50ms/operation samples can miss brief peaks',

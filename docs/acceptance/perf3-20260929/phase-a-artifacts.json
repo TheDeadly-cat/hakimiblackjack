@@ -1,0 +1,6 @@
+{
+  "profile_zip_sha256": "4d43d49c5b9693c85e631b16799b444344177e1112850e83b20d6e2526956760",
+  "fixture_manifest_sha256": "ce07a46019676709c2e4687cf06ac992317188d16a6e684f9a7aacf43aeabce0",
+  "baseline_runtime": "7899bfe363add8a32027e84029de50f4d5e3e395",
+  "contracts_passed": 12
+}

@@ -130,19 +130,35 @@ def main():
                         app.update();metrics.sample();sleep(.01)
                     # Separate profiler sample: the last initial player card also
                     # creates the simple hidden slot. Never mix this with the 14 latencies.
-                    profiler=cProfile.Profile();profiler.enable();app._key_rank('9');app.update_idletasks()
-                    for _ in range(7):app._key_stand();app.update_idletasks()
-                    app._key_rank('T');app.update_idletasks();profiler.disable()
-                    measured=pstats.Stats(profiler)
-                    for (file,line,name),(primitive,calls,total,cumulative,callers) in measured.stats.items():
-                        if name in ('replay','deepcopy','to_list','digest','canonical','save_event','save_entry_plan','refresh_timeline',
-                                    'refresh_table','refresh_composition','refresh_all','_refresh_all','project','project_prepared'):
-                            key=f'{Path(file).name}:{line}:{name}'
-                            segments[key]=dict(primitive_calls=primitive,calls=calls,self_seconds=total,cumulative_seconds=cumulative)
+                    profiles=[]
+                    def profiled(label,command):
+                        profiler=cProfile.Profile();start=perf_counter();profiler.enable()
+                        command();app.update_idletasks();profiler.disable()
+                        elapsed=perf_counter()-start
+                        profiler.dump_stats(str(case/(label+'.prof')))
+                        measured=pstats.Stats(profiler);rows={}
+                        for (file,line,name),(primitive,calls,total,cumulative,callers) in measured.stats.items():
+                            if name in ('replay','deepcopy','to_list','digest','canonical','save_event','save_ledger',
+                                        'append_validated','_insert','save_entry_plan','_write_entry_plan',
+                                        'refresh_timeline','refresh_table','refresh_composition','refresh_all',
+                                        '_refresh_all','project','project_prepared','capture'):
+                                key=f'{Path(file).name}:{line}:{name}'
+                                rows[key]=dict(primitive_calls=primitive,calls=calls,self_seconds=total,cumulative_seconds=cumulative)
+                        profiles.append(dict(command=label,wall_seconds=elapsed,segments=rows))
+                    profiled('simple-hole',lambda:app._key_rank('9'))
+                    for i in range(7):profiled(f'stand-{i+1}',app._key_stand)
+                    profiled('reveal-settle-next',lambda:app._key_rank('T'))
+                    profiled('grouped-undo',app.act_undo)
+                    profiled('reveal-again',lambda:app._key_rank('T'))
+                    profiled('single-card',lambda:app._key_rank('8'))
+                    recent=next(e for e in reversed(app.ctrl.ledger.events) if e.etype=='CARD_DEALT')
+                    profiled('suit-correction',lambda:(app.ctrl.correct(recent.event_id,{'suit':'S'},'Synthetic profiler correction'),app.refresh_all()))
+                    profiled('replace-shoe',app.act_new_shoe)
+                    profiled('undo-shoe',app.act_undo)
                     app.after_cancel(beat_id[0]);events=app.ctrl.ledger.to_list()
                     row=dict(requested_prior_events=target,actual_prior_events=len(prefix),final_events=len(events),
                              callback_and_idle_paint_seconds=stats(values),heartbeat_delay_seconds=stats(beats),raw_callbacks=values,
-                             segments_separately_profiled=segments,resources=metrics.summary(),
+                             segments_separately_profiled=segments,per_command_profiles=profiles,resources=metrics.summary(),
                              scope='Main-thread initial-deal probe; auto numeric and sidebet workers disabled to isolate UI/ledger costs. All-services long-shoe probe is separate.')
                     write(case/'events.json',events);write(case/'report.json',row);report['events'].append(row);close()
                     write(out/'progress.json',report);print(json.dumps(dict(event_scale=target,latency=row['callback_and_idle_paint_seconds']),ensure_ascii=False),flush=True)
