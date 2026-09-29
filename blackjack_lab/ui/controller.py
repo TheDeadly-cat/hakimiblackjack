@@ -88,7 +88,15 @@ class SessionController:
         self._context_listeners.remove(listener)
 
     def _publish_context_change(self):
+        previous_key = id(self.ledger), self.context_token
         self._context_revision += 1
+        # Retag only this callback's committed content, never a different ledger.
+        if getattr(self, '_read_depth', 0):
+            current_key = id(self.ledger), self.context_token
+            if getattr(self, '_read_key', None) == previous_key:
+                self._read_key = current_key
+            if getattr(self, '_read_prefix_key', None) == previous_key:
+                self._read_prefix_key = current_key
         self.context_warning = ""
         # The durable commit and in-memory publication have already succeeded.
         # Notification errors must never roll back or repeat that commit.
@@ -102,19 +110,30 @@ class SessionController:
         return self.store.list_sessions()
 
     def _apply(self, method, *args, _entry_update=None, _evidence=None, **kwargs):
-        candidate = copy.deepcopy(self.ledger)
+        candidate = self._command_candidate()
         event = getattr(candidate, method)(*args, **kwargs)
         if event.event_id not in self.ledger._ids:
             event.source = self.recording_source
         if _evidence is not None:
             event.evidence = _evidence
-        self.store.save_event(event)
+        self.store.append_validated(candidate)
         self._accept_committed(candidate, [event], _entry_update)
         return event
 
     def _accept_committed(self, candidate, events, entry_update=None):
-        self.ledger = candidate
+        with self.read_frame():
+            self._accept_committed_frame(candidate, events, entry_update)
+
+    def _command_candidate(self):
+        from ..ledger.command import CommandCandidate
+        return CommandCandidate(self.ledger, self.read_prefix())
+
+    def _accept_committed_frame(self, candidate, events, entry_update=None):
+        validated_state = candidate.replay()
+        self.ledger = candidate.published_ledger()
         self.commit_revision += len(events)
+        self._read_key = id(self.ledger), self.context_token
+        self._read_snapshot = validated_state
         # A durable event always gets its receipt, even when the derived sidecar
         # or a view fails. No listener can interrupt the plan synchronization.
         try:
@@ -138,12 +157,12 @@ class SessionController:
         seg = self.state().current
         if seg is None or seg.closed:
             return self.new_shoe(rules)
-        prefix = self.ledger.to_list()
-        prefix_digest = digest(prefix)
+        prefix = self.read_prefix()
+        prefix_digest = prefix.prefix_digest
         plan = self.entry_plan
         saved_plan = (plan.to_dict() if plan and plan.ledger_digest == prefix_digest
-                      and plan.ledger_seq == prefix[-1]['seq'] else None)
-        candidate = copy.deepcopy(self.ledger)
+                      and plan.ledger_seq == prefix.through_seq else None)
+        candidate = self._command_candidate()
         events = []
         if seg.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS):
             events.append(candidate.end_round(settle=False, observation_status='unknown',
@@ -153,14 +172,13 @@ class SessionController:
         events.append(created)
         created.evidence = json.dumps({'manual_shoe_change_v1': dict(
             event_ids=[event.event_id for event in events], previous_plan=saved_plan,
-            prefix_digest=prefix_digest, prefix_seq=prefix[-1]['seq'])}, ensure_ascii=False)
-        # Each ledger append validates via a copied candidate; earlier returned
-        # Event objects can be detached after a subsequent append.
+            prefix_digest=prefix_digest, prefix_seq=prefix.through_seq)}, ensure_ascii=False)
+        # Resolve the command's canonical event objects before assigning provenance.
         events = [candidate._find(event.event_id) for event in events]
         for event in events:
             event.source = self.recording_source
         # The new rules and the complete transition are validated before any write.
-        self.store.save_ledger(candidate)
+        self.store.append_validated(candidate)
         def clear_plan(_event):
             self.entry_plan = None
             self.entry_warning = ''
@@ -226,7 +244,7 @@ class SessionController:
         if problem:
             raise TableError(problem)
         ordered, evidence, freeze = self._round_options(participants, my_seat, deal_direction, simple_hole)
-        candidate = copy.deepcopy(self.ledger)
+        candidate = self._command_candidate()
         ended = candidate.end_round(settle=True, observation_status='complete')
         ended.source = self.recording_source
         results = [r for r in candidate.replay().current.settlements if r['round'] == seg.table.round_no]
@@ -235,7 +253,7 @@ class SessionController:
         if evidence:
             started.evidence = evidence
         # Both commands are preflighted before the single SQLite transaction.
-        self.store.save_ledger(candidate)
+        self.store.append_validated(candidate)
         self._accept_committed(candidate, [ended, started],
                                lambda event: freeze(event) if event.etype == ROUND_STARTED else None)
         return ended, started, results
@@ -258,7 +276,7 @@ class SessionController:
         trusted = bool(plan and plan.mode not in (MODE_UNALIGNED, MODE_MANUAL)
                        and not plan.paused and not plan.unresolved_slots
                        and (plan.session_id, plan.shoe_id, plan.round_id) == (self.session_id, seg.shoe_id, seg.round_id)
-                       and plan.ledger_digest == digest(self.ledger.to_list())
+                       and plan.ledger_digest == self.read_prefix().prefix_digest
                        and set(plan.observed_card_ids) == set(self.live_card_event_ids()))
         saved_plan = copy.deepcopy(plan) if trusted else None
         def updated(event):
@@ -298,7 +316,7 @@ class SessionController:
     def deal_shown(self, seat, rank, hand_id=None, suit=None, track_id=None, confirm_status=CONFIRMED,
                    *, initial_slot_id=None, auto_next=None):
         if self._should_add_initial_hole(seat, hand_id, initial_slot_id, confirm_status):
-            candidate = copy.deepcopy(self.ledger)
+            candidate = self._command_candidate()
             visible = candidate.deal(seat, rank, hand_id=hand_id, suit=suit, track_id=track_id,
                                      confirm_status=confirm_status, source=self.recording_source)
             hidden = candidate.deal(DEALER, hidden=True, source=self.recording_source,
@@ -307,7 +325,7 @@ class SessionController:
                     'trigger_event_id': visible.event_id}, ensure_ascii=False))
             # Both events are appended in the existing SQLite transaction. No
             # partial hand/hole publication if either insert fails.
-            self.store.save_ledger(candidate)
+            self.store.append_validated(candidate)
             self._accept_committed(candidate, [visible, hidden])
             return visible
         if auto_next is not None and seat == DEALER and confirm_status == CONFIRMED:
@@ -335,7 +353,7 @@ class SessionController:
         plan, seg = self.entry_plan, self.state().current
         return (self.simple_hole_active() and not plan.input_paused and self._simple_rules_confirmed(seg) and not seg.closed
                 and (plan.session_id, plan.shoe_id, plan.round_id) == (self.session_id, seg.shoe_id, seg.round_id)
-                and plan.ledger_digest == digest(self.ledger.to_list())
+                and plan.ledger_digest == self.read_prefix().prefix_digest
                 and plan.ledger_seq == self.ledger.events[-1].seq
                 and not plan.unresolved_slots and not seg.shoe.gap and not seg.shoe.pending_candidates)
 
@@ -407,8 +425,8 @@ class SessionController:
                        and plan.initial_complete()
                        and (plan.session_id, plan.shoe_id, plan.round_id) ==
                            (self.session_id, before.shoe_id, before.round_id)
-                       and plan.ledger_digest == digest(self.ledger.to_list()))
-        candidate = copy.deepcopy(self.ledger)
+                       and plan.ledger_digest == self.read_prefix().prefix_digest)
+        candidate = self._command_candidate()
         event = getattr(candidate, method)(*args, **kwargs)
         event.source = self.recording_source
         current = candidate.replay().current
@@ -417,7 +435,7 @@ class SessionController:
         if (not trusted or not dealer_finish_message(table)
                 or not (next_open_hand(table, plan.participating_seats) is None or natural)
                 or self.round_completion_problem(current)):
-            self.store.save_event(event)
+            self.store.append_validated(candidate)
             self._accept_committed(candidate, [event])
             return event
         ordered, evidence, freeze = self._round_options(**auto_next)
@@ -429,7 +447,7 @@ class SessionController:
         receipt['automatic_next_v1'] = dict(trigger=event.event_id, ended=ended.event_id,
                                             previous_plan=plan.to_dict())
         started.evidence = json.dumps(receipt, ensure_ascii=False)
-        self.store.save_ledger(candidate)
+        self.store.append_validated(candidate)
         self._accept_committed(candidate, [event, ended, started],
                                lambda item: freeze(item) if item.etype == ROUND_STARTED else None)
         return event
@@ -456,12 +474,12 @@ class SessionController:
             if plan and self.entry_plan and self.entry_plan.input_paused:
                 plan.input_paused = True
                 plan.input_pause_reason = self.entry_plan.input_pause_reason
-            candidate = copy.deepcopy(self.ledger)
+            candidate = self._command_candidate()
             undos = [candidate.undo_last(reason or default_reason) for _ in events]
             undos = [candidate._find(event.event_id) for event in undos]
             for event in undos:
                 event.source = self.recording_source
-            self.store.save_ledger(candidate)
+            self.store.append_validated(candidate)
             self.entry_plan = plan
             self.entry_warning = ''
             def restore(_event):
@@ -765,7 +783,7 @@ class SessionController:
         # rather than guessing from card counts or the last filled slot.
         plan = self.entry_plan
         plan.ledger_seq = self.ledger.events[-1].seq
-        plan.ledger_digest = digest(self.ledger.to_list())
+        plan.ledger_digest = self.read_prefix().prefix_digest
         if plan.mode != MODE_UNALIGNED:
             plan.reconcile(self.live_card_event_ids())
         payload = json.dumps(plan.to_dict(), ensure_ascii=False, indent=2, sort_keys=True)
@@ -790,7 +808,7 @@ class SessionController:
             if (plan.session_id, plan.shoe_id, plan.round_id) != (self.session_id, shoe_id, round_id):
                 raise ValueError("计划与会话、牌靴或轮次不匹配")
             if (plan.ledger_seq != self.ledger.events[-1].seq
-                    or plan.ledger_digest != digest(self.ledger.to_list())):
+                    or plan.ledger_digest != self.read_prefix().prefix_digest):
                 raise ValueError("账本与计划的事件前缀不同步；已保存牌不能重录")
             if plan.participating_seats and plan.participating_seats != tuple(seg.table.participants):
                 raise ValueError("冻结参与顺序与账本不同")

@@ -215,7 +215,7 @@ class TestAnalysisLifecycleReview(unittest.TestCase):
         panel.calculate_current()
         result = self.wait_result()
         before = self.app.ctrl.context_token
-        with patch.object(self.app.ctrl.store, "save_event", side_effect=OSError("disk full")):
+        with patch.object(self.app.ctrl.store, "_insert", side_effect=OSError("disk full")):
             self.app.act_card("2")
         self.assertEqual(self.app.ctrl.context_token, before)
         self.assertEqual(panel.last_result, result)

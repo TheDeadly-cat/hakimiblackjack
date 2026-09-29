@@ -15,7 +15,9 @@ class PrefixSnapshot:
 
     @classmethod
     def capture(cls,ledger):
-        events=ledger.to_list()
+        # Serialization itself produces owned immutable bytes. Copying every
+        # payload first adds no isolation: capture is synchronous on the owner.
+        events=[event.to_dict() for event in ledger.events]
         content=canonical(events).encode('utf-8')
         return cls(ledger.session_id,events[-1]['seq'] if events else None,content,hashlib.sha256(content).hexdigest())
 

@@ -116,6 +116,36 @@ class LocalStore:
         with self.conn:
             return self._insert(ev)
 
+    def append_validated(self, candidate):
+        """Internal command suffix; full baseline checked under the write lock.
+
+        No schema/version shortcut: even same-sequence historical edits are
+        compared. Exact whole-batch retry is idempotent; partial/stale batches
+        are conflicts. Imports continue to use save_ledger.
+        """
+        from ..ledger.command import CommandCandidate
+        if not isinstance(candidate, CommandCandidate):
+            raise TypeError('本地追加需要经过验证的录牌候选')
+        suffix = candidate.validated_suffix()
+        baseline = candidate._baseline_events
+        session_id = candidate.session_id
+        if candidate._baseline.session_id != session_id or any(e['session_id'] != session_id for e in baseline):
+            raise ValueError('录牌基线会话不匹配')
+        last = baseline[-1]['seq'] if baseline else 0
+        if any(e.session_id != session_id or e.seq != last + i for i, e in enumerate(suffix, 1)):
+            raise ValueError('录牌后缀会话或序号不连续')
+        proposed = baseline + [e.to_dict() for e in suffix]
+        with self.conn:
+            self.conn.execute('BEGIN IMMEDIATE')
+            if not self.conn.execute('SELECT 1 FROM sessions WHERE session_id=?', (session_id,)).fetchone():
+                raise ValueError('录牌会话不存在')
+            existing = [e.to_dict() for e in self.load_events(session_id)]
+            if existing == proposed:
+                return 0
+            if existing != baseline:
+                raise ValueError('录牌基线与已保存历史不同，请重新加载并核对')
+            return sum(self._insert(event) for event in suffix)
+
     def save_ledger(self, ledger):
         ledger.replay()
         # 只接受现有记录的完整前缀延长，导入不能删除或篡改历史。

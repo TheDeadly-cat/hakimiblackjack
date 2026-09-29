@@ -97,7 +97,7 @@ class EventLedger:
                         raise LedgerError("事件ID已存在但内容不同，拒绝静默丢弃冲突记录")
                     return old
             raise LedgerError("event_id 状态异常")
-        candidate = copy.deepcopy(self)
+        candidate = self._copy_for_append()
         event = copy.deepcopy(event)
         event.seq = self._seq + 1
         event.session_id = self.session_id
@@ -116,9 +116,15 @@ class EventLedger:
         candidate.events.append(event)
         candidate._ids.add(event.event_id)
         candidate._seq = event.seq
-        candidate._sync_context(candidate.replay())  # 完整预演成功后才发布内存状态
+        candidate._validate_append()  # 完整预演成功后才发布内存状态
         self.__dict__.update(candidate.__dict__)
         return event
+
+    def _copy_for_append(self):
+        return copy.deepcopy(self)
+
+    def _validate_append(self):
+        self._sync_context(self.replay())
 
     def _sync_context(self, replay: ReplayResult) -> None:
         cur = replay.current

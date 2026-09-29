@@ -135,7 +135,7 @@ class TestRecentCorrection(unittest.TestCase):
         self.initial()
         ctrl = self.app.ctrl
         before = ctrl.ledger.to_list()
-        with patch.object(ctrl.store, 'save_event', side_effect=OSError('disk full')), self.assertRaises(OSError):
+        with patch.object(ctrl.store, '_insert', side_effect=OSError('disk full')), self.assertRaises(OSError):
             self.change('5')
         self.assertEqual(ctrl.ledger.to_list(), before)
         self.change('5')

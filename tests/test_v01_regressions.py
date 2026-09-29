@@ -65,7 +65,7 @@ class TestPersistenceRegressions(unittest.TestCase):
     def test_disk_failure_rolls_back_memory(self):
         c = self.controller()
         before = c.ledger.to_list()
-        with patch.object(c.store, "save_event", side_effect=sqlite3.OperationalError("disk full")):
+        with patch.object(c.store, "_insert", side_effect=sqlite3.OperationalError("disk full")):
             with self.assertRaises(sqlite3.OperationalError):
                 c.new_shoe(RuleProfile())
         self.assertEqual(c.ledger.to_list(), before)
