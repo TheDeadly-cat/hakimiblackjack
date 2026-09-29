@@ -129,11 +129,16 @@ class SessionController:
         return CommandCandidate(self.ledger, self.read_prefix())
 
     def _accept_committed_frame(self, candidate, events, entry_update=None):
-        validated_state = candidate.replay()
-        self.ledger = candidate.published_ledger()
+        from ..ledger.command import CommandCandidate
+        prepared = isinstance(candidate, CommandCandidate)
+        # First-pass player adjustment retains its full save_ledger transaction
+        # and passes a normal EventLedger. Publish either durable representation
+        # before derived plan/view work; never strand a committed legacy batch.
+        self.ledger = candidate.published_ledger() if prepared else candidate
         self.commit_revision += len(events)
-        self._read_key = id(self.ledger), self.context_token
-        self._read_snapshot = validated_state
+        if prepared:
+            self._read_key = id(self.ledger), self.context_token
+            self._read_snapshot = candidate.replay()
         # A durable event always gets its receipt, even when the derived sidecar
         # or a view fails. No listener can interrupt the plan synchronization.
         try:
