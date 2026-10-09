@@ -595,6 +595,18 @@ class BlackjackLabApp(tk.Tk):
     def recording_busy(self):
         return bool(self._recording_inputs)
 
+    def recording_advice_pause(self):
+        if self.recording_busy:
+            return '录牌待保存，当前建议暂停'
+        if self._recording_faults:
+            return '录牌需要核对，当前建议暂停'
+        return None
+
+    def _pause_recording_advice(self):
+        self.analysis_panel.pause_recording()
+        self.opening_estimate.pause_recording()
+        self.compact_panel.render()
+
     def recording_guard(self):
         if self.recording_busy:
             self.set_status('正在按顺序保存录牌；请等保存完成后再切换位置、模式、牌靴或修改记录。')
@@ -623,9 +635,13 @@ class BlackjackLabApp(tk.Tk):
         reveal_id = self._timeline_ids[selected[0]] if selected and selected[0] < len(self._timeline_ids) else None
         plan = self.ctrl.entry_plan
         intent = dict(kind=kind, selection=selection,
-                      follow_plan=bool(plan and not plan.paused and kind in ('rank', 'hole', 'action')),
+                      follow_plan=bool(plan and not plan.paused and selection['mode'] != '揭示'
+                                       and kind in ('rank', 'card', 'hole', 'action')),
                       auto_next=self._automatic_next_options(),
                       reveal_event_id=reveal_id)
+        if self.recording_busy and not intent['follow_plan'] and kind not in ('peek', 'undo'):
+            self.var_recording_save.set('本次手动输入未接收：请等已接收录牌保存完成，再补录或揭示指定位置')
+            return
         if kind in ('rank', 'card'):
             intent['rank'] = value
         elif kind == 'action':
@@ -650,6 +666,7 @@ class BlackjackLabApp(tk.Tk):
         if self.var_sidebet_suits.get() and kind in ('rank', 'card'):
             self.var_suit.set('未知')
         self.var_recording_save.set(f'待保存 {len(self._recording_inputs)} 条输入 · 按录入顺序处理')
+        self._pause_recording_advice()
         if self._recording_after is None:
             self._recording_after = self.after(20, self._poll_recording)
         return request_id
@@ -716,6 +733,8 @@ class BlackjackLabApp(tk.Tk):
             self._recording_after = self.after(20, self._poll_recording)
         else:
             self._recording_base = None
+        if self.recording_advice_pause() and not self._closing:
+            self._pause_recording_advice()
 
     def recording_fault_message(self):
         labels = dict(failed_before_commit='未保存', not_executed='未执行',
@@ -1850,7 +1869,9 @@ class BlackjackLabApp(tk.Tk):
             f"阶段 {'牌靴已结束' if seg.closed else seg.table.phase}｜记录：{self._record_status(seg)}｜"
             f"守恒：{'正常' if ok else '异常'}｜"
             f"规则确认：{seg.rules.confirm_status}｜分析：" + (
-                "两手先补齐DAS" if seg.rules.profile_id in (BOTH_INITIAL_PROFILE, BCLC_PROFILE) else
+                ("两手先补齐" + ("DAS" if seg.rules.double_after_split is True else
+                 "无DAS" if seg.rules.double_after_split is False else "·DAS待确认"))
+                if seg.rules.profile_id in (BOTH_INITIAL_PROFILE, BCLC_PROFILE) else
                 "两手同点值DAS" if seg.rules.profile_id in (SAME_VALUE_DAS_PROFILE, ACE_PEEK_DAS_PROFILE)
                 else "两手同点值分牌" if seg.rules.profile_id == SAME_VALUE_SPLIT_PROFILE
                 else "两手DAS模型" if seg.rules.profile_id == DAS_PROFILE

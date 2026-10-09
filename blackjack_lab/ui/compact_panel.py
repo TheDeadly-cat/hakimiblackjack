@@ -398,8 +398,10 @@ class CompactPanel(tk.Frame):
 
     def _render(self):
         panel = self.panel
-        self.model = summarize_result(panel.last_result, bool(panel.recomputed_from)) if panel.last_result else self.pending_summary()
-        if not self.model.historical:
+        pause = self.app.recording_advice_pause()
+        self.model = (DecisionSummary('建议暂停', self.live_identity(), pause) if pause else
+                      summarize_result(panel.last_result, bool(panel.recomputed_from)) if panel.last_result else self.pending_summary())
+        if not self.model.historical and not pause:
             self.model = replace(self.model, identity=self.live_identity())
             current = self.app._current_seg()
             seat = self.app.var_analysis_target.get()
@@ -417,8 +419,8 @@ class CompactPanel(tk.Frame):
         self.state.set(model.state)
         self.message.set(model.message)
         self.notes.set(' '.join(model.notes))
-        self.decision_evs.set(decision_evs(panel.last_result))
-        multi = len(self.panel.overview.rows) > 1 and not model.historical
+        self.decision_evs.set('' if pause else decision_evs(panel.last_result))
+        multi = len(self.panel.overview.rows) > 1 and not model.historical and not pause
         if multi:
             self.notes.set(NOTE)
             self.message.set(f'{self.app.var_analysis_target.get()}：' +

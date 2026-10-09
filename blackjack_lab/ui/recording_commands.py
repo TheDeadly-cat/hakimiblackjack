@@ -21,7 +21,7 @@ def _hand_id(seg, seat, selection):
 def record_input(ctrl, intent):
     """Use the same controller commands/validation as direct recording.
 
-    Automatic keyboard input follows the worker's *current* frozen plan. A
+    Automatic button/key input follows the worker's *current* frozen plan. A
     manual selection remains explicit; navigation is disabled during a batch.
     """
     kind, selection = intent['kind'], intent['selection']
@@ -32,7 +32,7 @@ def record_input(ctrl, intent):
     hand_id = _hand_id(seg, seat, selection)
     revealing = selection['mode'] == '揭示'
     if intent['follow_plan'] and not revealing and plan and not plan.paused:
-        if plan.mode == MODE_INITIAL and kind == 'rank':
+        if plan.mode == MODE_INITIAL and kind in ('rank', 'card'):
             slot = plan.slot()
             if slot:
                 seat, hand_id = slot.seat, None
@@ -44,7 +44,7 @@ def record_input(ctrl, intent):
     automatic_target = (ctrl.recording_dealer_route(seat, hand_id)
                         if kind in ('rank', 'card') and not revealing else None)
     if kind not in ('peek', 'undo'):
-        if plan and (plan.input_paused or kind in ('rank', 'hole') and plan.mode == MODE_UNALIGNED):
+        if plan and (plan.input_paused or kind in ('rank', 'card', 'hole') and plan.mode == MODE_UNALIGNED):
             raise TableError('录入已暂停；请先核对已保存记录，不要重复录牌')
         if plan and plan.mode == MODE_PEEK_WAIT and not revealing and not automatic_target:
             raise TableError('等待实际庄家检查结果，不能继续录入玩家牌')
@@ -54,7 +54,7 @@ def record_input(ctrl, intent):
             if acting and (seat, hand_id) != acting[:2]:
                 raise TableError(f'当前实际行动位置：{acting[0]}／第{acting[2]}手；导航不会提前行动')
     slot_id = None
-    if kind == 'rank' and not revealing and plan and plan.mode in (MODE_INITIAL, MODE_MANUAL):
+    if kind in ('rank', 'card') and not revealing and plan and plan.mode in (MODE_INITIAL, MODE_MANUAL):
         slot = plan.slot()
         if slot and slot.expected_face != 'shown':
             raise TableError('当前槽位是庄家暗牌，不能用点值键代替暗牌确认')

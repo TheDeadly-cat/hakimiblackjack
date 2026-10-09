@@ -61,6 +61,9 @@ class OpeningEstimateView:
         if self.detail is not None and self.detail.winfo_exists():
             self.update_details()
 
+    def pause_recording(self):
+        self.set_text('下轮EV：' + self.app.recording_advice_pause())
+
     def context_changed(self, *_):
         if self._closed or getattr(self.app,'_closing',False) or self.live_key() == self.key:
             return
@@ -160,6 +163,9 @@ class OpeningEstimateView:
     def refresh(self, force=False):
         if self._closed or getattr(self.app,'_closing',False):
             return
+        if self.app.recording_advice_pause():
+            self.pause_recording()
+            return
         key = self.live_key()
         if not force and key == self.key:
             return
@@ -211,6 +217,7 @@ class OpeningEstimateView:
         if getattr(self.app,'_closing',False):
             self._poll_id=self.app.after(100,self.poll);return
         if self.app.recording_busy or self.app._recording_faults:
+            self.pause_recording()
             self._poll_id=self.app.after(100,self.poll);return
         try:
             if self.writer:
@@ -294,7 +301,7 @@ class OpeningEstimateView:
             lines += ['', f'参与：{len(self.snapshot.participants)}人；本人：{self.snapshot.participants[self.snapshot.focal]}',
                       f'剩余：{sum(self.snapshot.counts)}张；牌面A～9／T：{self.snapshot.counts}',
                       f'桌规：S17、3:2、{peek}、同值分牌（{order}）、无再分、分A一张。']
-        if self.result:
+        if self.result and not self.app.recording_advice_pause():
             low, high = self.result['interval']
             lines += [f"样本：{self.result['samples']:,}个独立模拟轮次；每轮从同一剩余组成重新洗牌。",
                       f'每1单位底注预期净收益：{self.result["ev"]:+.6f}',

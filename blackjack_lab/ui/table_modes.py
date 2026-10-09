@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 import hashlib
 import json
 from pathlib import Path
@@ -127,7 +127,13 @@ class ModeSettings:
     def from_dict(cls, data):
         if not isinstance(data, dict) or set(data) != {'rules', 'deal_direction', 'simple_hole', 'auto_next'}:
             raise ValueError('桌面模式设置字段不完整')
-        return cls(RuleProfile(**data['rules']), data['deal_direction'], data['simple_hole'], data['auto_next'])
+        rules = data['rules']
+        if not isinstance(rules, dict) or set(rules) != {field.name for field in fields(RuleProfile)}:
+            raise ValueError('桌面模式的规则快照字段无效')
+        try:
+            return cls(RuleProfile(**rules), data['deal_direction'], data['simple_hole'], data['auto_next'])
+        except (TypeError, ValueError) as error:
+            raise ValueError('桌面模式的规则或开关格式无效') from error
 
 
 def default_settings(mode):
@@ -145,12 +151,16 @@ class TableModeStore:
         self.selected = PRAGMATIC
         self.modes = {}
         if self._original is not None:
-            data = json.loads(self._original.decode('utf-8-sig'))
-            if (data.get('schema') != SETTINGS_SCHEMA or data.get('selected') not in MODE_LABELS
-                    or not isinstance(data.get('modes'), dict) or set(data['modes']) - set(MODE_LABELS)):
-                raise ValueError('已保存的桌面模式格式无效；原文件保留')
-            self.modes = {key: ModeSettings.from_dict(value) for key, value in data['modes'].items()}
-            self.selected = data['selected']
+            try:
+                data = json.loads(self._original.decode('utf-8-sig'))
+                if (not isinstance(data, dict) or data.get('schema') != SETTINGS_SCHEMA
+                        or not isinstance(data.get('selected'), str) or data['selected'] not in MODE_LABELS
+                        or not isinstance(data.get('modes'), dict) or set(data['modes']) - set(MODE_LABELS)):
+                    raise ValueError('桌面模式结构无效')
+                self.modes = {key: ModeSettings.from_dict(value) for key, value in data['modes'].items()}
+                self.selected = data['selected']
+            except (TypeError, ValueError) as error:
+                raise ValueError('已保存的桌面模式格式无效；原文件保留') from error
 
     def get(self, mode):
         result = copy.deepcopy(self.modes.get(mode) or default_settings(mode))
