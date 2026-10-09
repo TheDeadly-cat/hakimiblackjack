@@ -8,7 +8,8 @@ from .probability import CalculationStopped, InsufficientCards, FiniteModel, LAB
 from .split_actions import solve_split_counts
 from .split_contracts import (
     SPLIT_ENGINE, SPLIT_STRATEGY, DAS_ENGINE, DAS_STRATEGY, _hand_can_das,
-    is_das_engine, BOTH_INITIAL_ENGINE, BOTH_INITIAL_STRATEGY)
+    is_das_engine, BOTH_INITIAL_ENGINE, BOTH_INITIAL_STRATEGY,
+    NO_DAS_BOTH_INITIAL_ENGINE, NO_DAS_BOTH_INITIAL_STRATEGY, is_both_initial_engine)
 from .native_backend import solve_presplit_native
 
 SPLIT_ACTION_ZH = {**ACTION_ZH, "deal": "录入已确定要发的一张牌", "complete": "两手完成，等待庄家结算"}
@@ -189,9 +190,10 @@ def calculate_split(snapshot, request_id, budget_seconds):
     try:
         snapshot.validate()
         das = _is_das_snapshot(snapshot)
-        both_initial = snapshot.engine_version == BOTH_INITIAL_ENGINE
+        both_initial = is_both_initial_engine(snapshot.engine_version)
         if both_initial:
-            if snapshot.strategy_version != BOTH_INITIAL_STRATEGY:
+            expected = BOTH_INITIAL_STRATEGY if das else NO_DAS_BOTH_INITIAL_STRATEGY
+            if snapshot.strategy_version != expected:
                 raise ValueError('两手先补齐的引擎和策略不匹配')
         elif das:
             if snapshot.engine_version != DAS_ENGINE or snapshot.strategy_version != DAS_STRATEGY:
@@ -254,6 +256,8 @@ def calculate_split(snapshot, request_id, budget_seconds):
             else:
                 item['additional_investment'] = 1 if snapshot.pre_split and action in ('split','double') else 0
                 item['total_investment'] = (1 if snapshot.pre_split else 2)+item['additional_investment']
+                item['possible_future_additional'] = 0
+                item['max_final_investment'] = item['total_investment']
         _validate_split_probabilities(snapshot, result['probabilities'])
         partial = bool(snapshot.uncertain_actions) or any(result['actions'][a]['status'] != AVAILABLE for a in snapshot.legal_actions)
         ordered = sorted(((v['ev'],a) for a,v in result['actions'].items() if v['status'] == AVAILABLE),reverse=True)

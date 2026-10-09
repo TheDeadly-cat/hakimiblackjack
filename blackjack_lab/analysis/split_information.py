@@ -10,13 +10,16 @@ from .split_contracts import (
     SplitAnalysisInput, SplitHand, VALUES, supported_split_rules, supported_das_rules,
     supported_same_value_split_rules, supported_same_value_das_rules,
     DAS_ENGINE, DAS_STRATEGY, SAME_VALUE_SCOPE, SAME_VALUE_DAS_SCOPE, _hand_can_das,
-    supported_both_initial_rules, pending_hands, BOTH_INITIAL_ENGINE, BOTH_INITIAL_STRATEGY)
+    supported_both_initial_rules, pending_hands, BOTH_INITIAL_ENGINE, BOTH_INITIAL_STRATEGY,
+    supported_bclc_rules, NO_DAS_BOTH_INITIAL_ENGINE, NO_DAS_BOTH_INITIAL_STRATEGY, NO_DAS_BOTH_INITIAL_SCOPE)
+from ..ui.read_snapshot import event_prefix_digest
 
 
 def build_split_input(session_id, current, seat, selected_id, seq, prefix):
     rules, shoe, table = current.rules, current.shoe, current.table
     das = supported_das_rules(rules) or supported_same_value_das_rules(rules)
-    if not (supported_split_rules(rules) or supported_same_value_split_rules(rules) or das):
+    bclc_no_das = supported_bclc_rules(rules)
+    if not (supported_split_rules(rules) or supported_same_value_split_rules(rules) or das or bclc_no_das):
         raise InputUnavailable("SPLIT_RULE_UNSUPPORTED", "两手分析需要明确的顺序、无再分、无DAS或已声明DAS、分A一张研究模板", UNSUPPORTED)
     hands = table.players[seat].hands
     if not hands or len(hands) > 2:
@@ -56,7 +59,7 @@ def build_split_input(session_id, current, seat, selected_id, seq, prefix):
             tuple(c.event_id for c in h.cards), tuple(c.rank for c in h.cards[:origin_length]),
             tuple(c.event_id for c in h.cards[:origin_length]), h.from_split, h.is_split_ace,
             closed, len(h.cards) == 1 or h.awaiting_hit, units))
-    pending = pending_hands(items, supported_both_initial_rules(rules))
+    pending = pending_hands(items, supported_both_initial_rules(rules) or bclc_no_das)
     active = pending[0] if pending else None
     states = table.action_states(seat, active) if active else {}
     uncertain = ()
@@ -82,7 +85,10 @@ def build_split_input(session_id, current, seat, selected_id, seq, prefix):
         "split_order_violations": list(table.split_order_violations),
         "action_states": {a: asdict(state) for a, state in states.items()}}
     extra = {}
-    if supported_same_value_das_rules(rules):
+    if bclc_no_das:
+        extra = dict(engine_version=NO_DAS_BOTH_INITIAL_ENGINE, strategy_version=NO_DAS_BOTH_INITIAL_STRATEGY,
+                     support_scope=NO_DAS_BOTH_INITIAL_SCOPE)
+    elif supported_same_value_das_rules(rules):
         extra = dict(engine_version=DAS_ENGINE, strategy_version=DAS_STRATEGY,
                      support_scope=SAME_VALUE_DAS_SCOPE)
     elif das:
@@ -95,7 +101,7 @@ def build_split_input(session_id, current, seat, selected_id, seq, prefix):
     if supported_both_initial_rules(rules):
         extra.update(engine_version=BOTH_INITIAL_ENGINE, strategy_version=BOTH_INITIAL_STRATEGY,
                      support_scope=extra['support_scope'].replace('two-sequential', 'both-second-cards-first'))
-    snapshot = SplitAnalysisInput(session_id, current.shoe_id, current.round_id, seq, digest(prefix),
+    snapshot = SplitAnalysisInput(session_id, current.shoe_id, current.round_id, seq, event_prefix_digest(prefix),
         seat, selected_id, rules.n_decks, canonical(json.loads(rules.to_json())), canonical(info),
         counts, shoe.physical_remaining(), tuple(items), active, pending, up, peek, legal, uncertain,
         **extra)

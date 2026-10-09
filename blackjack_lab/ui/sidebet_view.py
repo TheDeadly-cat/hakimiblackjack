@@ -17,6 +17,7 @@ from ..ledger.ledger import EventLedger
 from ..storage.safe_files import atomic_write
 from ..storage.sidebet_snapshots import algorithm_manifest
 from .observation_identity import observed_identity
+from .table_modes import BCLC, PRAGMATIC, mode_for_rules
 
 
 class SidebetView:
@@ -31,6 +32,7 @@ class SidebetView:
         self.history=self.details=None
         self.profile=SidebetProfile()
         self.profile_error=''
+        self._profile_mode=PRAGMATIC
         self.settings=Path(str(app.ctrl.store.db_path)+'.sidebet-profile.json')
         self.enabled=tk.BooleanVar(value=app.auto_analysis)
         if self.settings.exists():
@@ -55,6 +57,7 @@ class SidebetView:
         ttk.Label(controls,textvariable=self.pending_label).pack(side=tk.LEFT)
         self.key=None;self.current_window=None;self.intents={};self.forecasts={}
         self.observed=None;self.observed_request=None;self.observation_key=None;self.sealed=False;self.problem=''
+        self.recording_refresh_id=None
         self.trace=app.var_analysis_target.trace_add('write',lambda *_:self.refresh())
         app.ctrl.add_context_listener(self.refresh)
         self.refresh();self.poll_id=app.after(60,self.poll)
@@ -115,10 +118,17 @@ class SidebetView:
 
     def refresh(self):
         if self.closed or getattr(self.app,'_closing',False):return
+        if self.app.recording_busy or self.app._recording_faults:return
+        if self.app._coalescing_recording_views:
+            if self.recording_refresh_id is None:
+                self.recording_refresh_id=self.app.after(50,self._after_recording)
+            return
         key=(self.app.ctrl.context_token,self.app.var_analysis_target.get(),self.profile.rules_digest,self.enabled.get())
         if self.key==key:return
-        self.key=key;self.problem=''
         with self.app._view_frame():current=self.app._current_seg()
+        self._select_table_profile(current)
+        key=(self.app.ctrl.context_token,self.app.var_analysis_target.get(),self.profile.rules_digest,self.enabled.get())
+        self.key=key;self.problem=''
         identity=(self.app.ctrl.session_id,*(window(current) or (None,None)))
         if identity!=self.current_window:
             self.current_window=identity;self.intents.clear();self.forecasts.clear();self.observed=None
@@ -143,9 +153,44 @@ class SidebetView:
             self.intents[seat]=self._request('forecast',self.profile)
         self.render()
 
+    def _after_recording(self):
+        self.recording_refresh_id=None
+        self.refresh()
+
+    def _select_table_profile(self, current):
+        mode = mode_for_rules(current.rules) if current else None
+        mode = mode or PRAGMATIC
+        if mode == self._profile_mode:
+            return
+        self._profile_mode = mode
+        suffix = '.bclc-sidebet-profile.json' if mode == BCLC else '.sidebet-profile.json'
+        self.settings = Path(str(self.app.ctrl.store.db_path) + suffix)
+        default = (SidebetProfile(profile_id='bclc-playnow-sidebets-unconfirmed-v2', version=2,
+                                  source='用户提供手册1.1已列Perfect Pairs/21+3奖级；赔付和A顺子细则待确认',
+                                  confirmation='unconfirmed', perfect_pairs=None,
+                                  twenty_one_plus_three=None, a23=None, qka=None, ka2=None) if mode == BCLC else SidebetProfile())
+        self.profile, self.profile_error = default, ''
+        if self.settings.exists():
+            try:
+                data = json.loads(self.settings.read_text(encoding='utf-8'))
+                if set(data) != {'schema', 'profile', 'enabled'} or type(data['schema']) is not int or data['schema'] != 1 or type(data['enabled']) is not bool:
+                    raise ValueError('设置格式无效')
+                self.profile = SidebetProfile.from_dict(data['profile'])
+                if (mode == BCLC and self.profile.profile_id == 'bclc-playnow-sidebets-unconfirmed-v1'
+                        and self.profile.version == 1 and self.profile.confirmation == 'unconfirmed'
+                        and self.profile.perfect_pairs is None and self.profile.twenty_one_plus_three is None
+                        and self.profile.source == 'BCLC视频中的边注；奖级和赔付待确认，不沿用Pragmatic研究表'):
+                    self.profile = default
+                self.enabled.set(data['enabled'] and self.app.auto_analysis)
+            except Exception as error:
+                self.profile = replace(default, confirmation='unconfirmed')
+                self.profile_error = '边注设置需核对：' + str(error)
+
     def poll(self):
         if self.closed:return
         if getattr(self.app,'_closing',False):
+            self.poll_id=self.app.after(60,self.poll);return
+        if self.app.recording_busy or self.app._recording_faults:
             self.poll_id=self.app.after(60,self.poll);return
         for message in self.worker.poll():
             if message['channel']=='retry':continue
@@ -214,6 +259,9 @@ class SidebetView:
     def close(self):
         if self.closed:return
         self.closed=True;self.app.after_cancel(self.poll_id)
+        if self.recording_refresh_id is not None:
+            self.app.after_cancel(self.recording_refresh_id)
+            self.recording_refresh_id=None
         self.app.ctrl.remove_context_listener(self.refresh)
         self.app.var_analysis_target.trace_remove('write',self.trace)
         if self.history is not None and self.history.winfo_exists():self.history.close()

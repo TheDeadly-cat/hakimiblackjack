@@ -3,6 +3,8 @@
 
 def rule_summary(rules):
     parts = [rules.dealer_soft17 or '停牌规则待核对']
+    if rules.profile_id == 'bclc-playnow-classic-two-initial-v1' and rules.version == 2 and rules.double_after_split is False:
+        parts.append('分牌后禁止加倍')
     if rules.check_bj_when == 'before_player_actions_A':
         parts += ['仅A检查', '十点未排除BJ']
     elif rules.check_bj_when == 'before_player_actions_A_T':

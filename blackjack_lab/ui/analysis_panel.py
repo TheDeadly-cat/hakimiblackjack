@@ -205,7 +205,12 @@ class AnalysisPanel(ttk.Frame):
 
     def _run_auto(self):
         self._auto_id = None
+        writer = getattr(getattr(self.app, 'opening_estimate', None), 'writer', None)
+        if writer and writer.busy and self.auto.get() and not self._closed and not self.app._closing:
+            self._auto_id = self.after(250, self._run_auto)
+            return
         if (self.auto.get() and not self._closed and not getattr(self.app,'_closing',False) and not self.recomputed_from
+                and not self.app.recording_busy and not self.app._recording_faults
                 and self._live_key() != self._auto_suppressed_key):
             self.calculate_current()
 
@@ -235,6 +240,13 @@ class AnalysisPanel(ttk.Frame):
 
     def calculate_current(self):
         if getattr(self.app,'_closing',False):return
+        if self.app.recording_busy or self.app._recording_faults:
+            self.status.set('录牌尚在保存或需要核对；保存完成后再计算当前手牌')
+            return
+        with self.app._view_frame():
+            self._calculate_current()
+
+    def _calculate_current(self):
         self._cancel_auto()
         try:
             segment = self.app._current_seg()
@@ -271,6 +283,11 @@ class AnalysisPanel(ttk.Frame):
         if self._closed:
             return
         if getattr(self.app,'_closing',False):
+            self._poll_id=self.after(50,self._poll);return
+        if self.app.recording_busy or self.app._recording_faults:
+            self._poll_id=self.after(50,self._poll);return
+        writer = getattr(getattr(self.app, 'opening_estimate', None), 'writer', None)
+        if writer and writer.busy:
             self._poll_id=self.after(50,self._poll);return
         if self._poll_id:
             self.after_cancel(self._poll_id)

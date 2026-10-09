@@ -69,8 +69,8 @@ def compute(snapshot):
             bets[name]=dict(status='unavailable',category=None,net_units=None,reason='原始结算牌未齐')
             continue
         try:category=classify(name,[(c['rank'],c['suit']) for c in cards],profile)
-        except ValueError:
-            bets[name]=dict(status='unavailable',category=None,net_units=None,reason='原始牌面需细分或补花色')
+        except ValueError as error:
+            bets[name]=dict(status='unavailable',category=None,net_units=None,reason=str(error))
             continue
         payouts=profile.payouts(name);net=None if payouts is None else payouts[category]
         bets[name]=dict(status='available',category=category,net_units=None if net is None else float(net),

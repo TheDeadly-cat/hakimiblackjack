@@ -554,6 +554,33 @@ class SplitEngine {
         }
         return result;
     }
+    // Same physical order, but neither split hand may double. Reuse the
+    // independently tested unit-stake shared-shoe tree after both cards exist.
+    D9 BothInitialNoDasDist(ulong c,int[] one,int[] two) {
+        if(one.Length>2||two.Length!=1)throw new ArgumentException("INITIAL_ORDER");
+        int base1=0,base2=0;bool ace1=false,ace2=false;
+        foreach(int v in one){base1+=v;ace1|=v==1;}
+        foreach(int v in two){base2+=v;ace2|=v==1;}
+        int size=Size(c),mass=Mass(c,size);
+        if(size<(one.Length==1?3:2)||mass<=0)throw new InvalidOperationException("INSUFFICIENT_CARDS");
+        D9 result=new D9();
+        for(int j=0;j<10;j++) {
+            if(Count(c,j)==0)continue;
+            h2=base2+j+1;a2=ace2||j==0;force2=false;
+            firstCache.Clear();firstDistCache.Clear();
+            for(int i=0;i<(one.Length==1?10:1);i++) {
+                double p1=one.Length==1?Draw(c,i,size,mass):1;
+                if(p1==0)continue;
+                ulong afterFirst=one.Length==1?Remove(c,i):c;
+                int left=Size(afterFirst),m=Mass(afterFirst,left);
+                double p2=Draw(afterFirst,j,left,m);
+                if(p2==0)continue;
+                int h=base1+(one.Length==1?i+1:0);bool a=ace1||(one.Length==1&&i==0);
+                result.Add(FirstDist(Remove(afterFirst,j),h,a,false),p1*p2);
+            }
+        }
+        return result;
+    }
     void FillDasActions(ulong c,int[] one,int[] two,int h1,bool a1,int active,bool forceActive,bool forceClose,int stake1,int st2,Dictionary<string,object> actions) {
         stake2=st2;
         cards1=one.Length; cards2=two.Length;
@@ -602,7 +629,6 @@ class SplitEngine {
         if(active<2&&Size(c)<2)throw new InvalidOperationException("INSUFFICIENT_CARDS");
         bool allowDas=input.ContainsKey("allow_das")&&(bool)input["allow_das"];
         bool bothInitial=input.ContainsKey("both_initial")&&(bool)input["both_initial"];
-        if(bothInitial&&!allowDas)throw new ArgumentException("INITIAL_DAS_REQUIRED");
         int stake1=1,st2=1;
         if(input.ContainsKey("stakes")){int[] st=Ints(input["stakes"]); if(st.Length!=2||(st[0]!=1&&st[0]!=2)||(st[1]!=1&&st[1]!=2)) throw new ArgumentException("STAKES"); stake1=st[0]; st2=st[1];}
         bool forceClose=input.ContainsKey("force_close")&&(bool)input["force_close"];
@@ -613,14 +639,14 @@ class SplitEngine {
             object[] requested=(object[])input["single_actions"];
             probabilities=Single(c,Ints(input["single_player"]),requested,actions);
             if(Array.IndexOf(requested,"split")>=0){
-                if(bothInitial)actions["split"]=DasResult(BothInitialDist(c,one,two));
+                if(bothInitial)actions["split"]=allowDas?DasResult(BothInitialDist(c,one,two)):Result(BothInitialNoDasDist(c,one,two));
                 else if(allowDas){ stake2=st2; cards1=one.Length; cards2=two.Length;
                     secondForceDeal=true; secondCanDas=false;
                     actions["split"]=DasResult(FirstDistDas(c,h1,a1,stake1,true,false,false,cards1)); }
                 else actions["split"]=Result(FirstDist(c,h1,a1,true));
             }
         }
-        else if(bothInitial&&(one.Length==1||two.Length==1))actions["deal"]=DasResult(BothInitialDist(c,one,two));
+        else if(bothInitial&&(one.Length==1||two.Length==1))actions["deal"]=allowDas?DasResult(BothInitialDist(c,one,two)):Result(BothInitialNoDasDist(c,one,two));
         else if(allowDas) FillDasActions(c,one,two,h1,a1,active,forceActive,forceClose,stake1,st2,actions);
         else if(active==2)actions["complete"]=Result(Terminal(c,Math.Min(Score(h1,a1),22),Math.Min(Score(h2,a2),22)));
         else if(active==0){if(one.Length==1||(input.ContainsKey("force_active")&&(bool)input["force_active"]))actions["deal"]=Result(FirstDist(c,h1,a1,true));else{

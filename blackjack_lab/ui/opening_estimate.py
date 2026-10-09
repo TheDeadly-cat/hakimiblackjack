@@ -2,7 +2,7 @@
 import tkinter as tk
 from tkinter import ttk
 import copy
-from time import perf_counter
+from time import perf_counter, sleep
 import uuid
 
 from ..analysis.contracts import InputUnavailable
@@ -24,6 +24,8 @@ class OpeningEstimateView:
         self.snapshot = self.result = self.key = None
         self.attempt = self.saved = None
         self.pending_saves = []
+        self.writer = None
+        self.reaper = None
         self.history = None
         self.cancelled_key = None
         self._closed = False
@@ -69,10 +71,33 @@ class OpeningEstimateView:
 
     def persist(self, result, attempt):
         record=self.queue_record(result,attempt)
+        if self.app.background_recording and not getattr(self.app, '_closing', False):
+            self._schedule_record(record)
+            return None
+        return self.write_pending_record(record)
+
+    def _schedule_record(self, record):
+        from .result_writer import ResultWriter
+        if self.writer is None:
+            self.writer = ResultWriter(self._write_when_recording_ready)
+        try:
+            if not self.writer.submit(record):
+                record['save_error'] = '保存任务未接收；原结果仍保留，可明确重试'
+        except Exception as error:
+            record['save_error'] = str(error)
+
+    def _write_when_recording_ready(self, record):
+        # Preserve the frozen original now; validate/save it after accepted card
+        # input and its GUI publication finish. No Tk access on this worker.
+        while self.app.recording_busy or self.app._recording_receipt_active:
+            sleep(.05)
         return self.write_pending_record(record)
 
     def queue_record(self,result,attempt):
-        record = dict(result=copy.deepcopy(result), event_prefix=copy.deepcopy(attempt['prefix']),
+        from .read_snapshot import PrefixSnapshot
+        prefix = attempt['prefix']
+        record = dict(result=copy.deepcopy(result),
+                      event_prefix=prefix if isinstance(prefix, PrefixSnapshot) else copy.deepcopy(prefix),
                       sources=attempt['sources'], recomputed_from=attempt.get('recomputed_from'))
         self.pending_saves.append(record)
         return record
@@ -80,7 +105,11 @@ class OpeningEstimateView:
     def write_pending_record(self,record):
         """No Tk calls; shutdown retries run only while views are suspended."""
         try:
-            saved = self.app.ctrl.opening_store.save(**{k:v for k,v in record.items() if k!='save_error'})
+            from .read_snapshot import PrefixSnapshot
+            data = {k:v for k,v in record.items() if k!='save_error'}
+            if isinstance(data['event_prefix'], PrefixSnapshot):
+                data['event_prefix'] = data['event_prefix'].to_list()
+            saved = self.app.ctrl.opening_store.save(**data)
             self.pending_saves.remove(record)
             return saved
         except Exception as error:
@@ -96,13 +125,12 @@ class OpeningEstimateView:
 
     def retry_saves(self):
         for record in list(self.pending_saves):
-            try:
-                saved = self.app.ctrl.opening_store.save(**{k:v for k,v in record.items() if k != 'save_error'})
-                self.pending_saves.remove(record)
-                if self.result and record['result']['request_id'] == self.result['request_id']:
-                    self.saved = saved
-            except Exception as error:
-                record['save_error'] = str(error)
+            if self.app.background_recording:
+                self._schedule_record(record)
+                continue
+            saved = self.write_pending_record(record)
+            if saved and self.result and record['result']['request_id'] == self.result['request_id']:
+                self.saved = saved
         if self.result:
             self.set_text(title_text(self.result) + ('' if self.saved else ' · 已计算、未保存'))
         elif self.detail is not None and self.detail.winfo_exists():
@@ -111,8 +139,17 @@ class OpeningEstimateView:
             self.history.reload()
 
     def stop_request(self, status='cancelled'):
-        attempt, self.attempt = self.attempt, None
-        self.service.cancel()
+        attempt = self.attempt
+        if self.app.background_recording and not getattr(self.app, '_closing', False) and self.service.active:
+            from .job_reaper import JobReaper
+            if self.reaper is None:
+                self.reaper = JobReaper()
+            job = self.service.active
+            self.reaper.submit(job)
+            self.service.active = self.service.result = None
+        else:
+            self.service.cancel()
+        self.attempt = None
         if attempt is not None:
             result = terminal_opening_result(attempt['snapshot'], attempt['request_id'], status,
                 '输入变化，原开局请求已失效' if status == 'stale' else
@@ -148,7 +185,8 @@ class OpeningEstimateView:
         self.result = self.saved = None
         self.stop_request('stale')
         self.attempt = dict(snapshot=self.snapshot, request_id=uuid.uuid4().hex, started=perf_counter(),
-            prefix=[e for e in self.app.ctrl.ledger.to_list() if e['seq'] <= self.snapshot.through_seq],
+            prefix=self.app.ctrl.read_prefix() if self.app.background_recording else
+                   [e for e in self.app.ctrl.ledger.to_list() if e['seq'] <= self.snapshot.through_seq],
             sources=algorithm_manifest())
         try:
             self.attempt['request_id'] = self.service.start(self.snapshot)
@@ -172,7 +210,14 @@ class OpeningEstimateView:
             return
         if getattr(self.app,'_closing',False):
             self._poll_id=self.app.after(100,self.poll);return
+        if self.app.recording_busy or self.app._recording_faults:
+            self._poll_id=self.app.after(100,self.poll);return
         try:
+            if self.writer:
+                for record, saved in self.writer.poll():
+                    if saved and self.result and record['result']['request_id'] == self.result['request_id']:
+                        self.saved = saved
+                        self.set_text(title_text(self.result))
             self.refresh()
             was_active = self.service.active is not None
             result = self.service.poll()
@@ -266,6 +311,10 @@ class OpeningEstimateView:
 
     def close(self):
         self._closed = True
+        if self.writer:
+            self.writer.close()
+        if self.reaper:
+            self.reaper.close()
         if self._poll_id:
             self.app.after_cancel(self._poll_id)
         for variable, trace_id in self.traces:

@@ -24,9 +24,9 @@ class SidebetProfile:
     twenty_one_plus_three: tuple = (100, 40, 30, 10, 5)
     pair_priority: tuple = PP
     three_priority: tuple = PLUS
-    a23: bool = True
-    qka: bool = True
-    ka2: bool = False
+    a23: bool | None = True
+    qka: bool | None = True
+    ka2: bool | None = False
     split_policy: str = 'original_two_only_once'
 
     def __post_init__(self):
@@ -60,8 +60,10 @@ class SidebetProfile:
             value = getattr(self, name)
             if type(value) is not tuple or len(value) != len(expected) or set(value) != set(expected):
                 raise ValueError('优先级必须包含所有奖级且不重复')
-        if any(type(getattr(self, name)) is not bool for name in ('a23', 'qka', 'ka2')):
-            raise ValueError('A顺子规则必须明确为布尔值')
+        if any(type(getattr(self, name)) is not bool and
+               not (getattr(self, name) is None and self.confirmation == 'unconfirmed')
+               for name in ('a23', 'qka', 'ka2')):
+            raise ValueError('A顺子规则必须明确为布尔值；仅待确认档案可保存未知')
         if self.split_policy != 'original_two_only_once':
             raise ValueError('本版边注只用原始两张，不支持分牌重复开奖')
 

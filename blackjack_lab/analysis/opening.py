@@ -84,6 +84,11 @@ def validate_counts(counts, seats, focal):
 
 
 def validate_rules(rules):
+    if rules.get('profile_id') == 'bclc-playnow-classic-two-initial-v1' and rules.get('version') == 2:
+        if rules.get('start_from_new_shoe') is not True:
+            raise InputUnavailable('START_UNKNOWN', '本靴观察待确认：是否从完整新靴开始')
+        if rules.get('burn_cards_known') is not True or rules.get('initial_burn_count') is None:
+            raise InputUnavailable('BURN_COUNT_UNKNOWN', '本靴观察待确认：初始烧牌数量')
     required = dict(confirm_status=CONFIRM_VERIFIED, shoe_model='finite_no_replacement',
                     dealer_soft17='S17', american_hole_card=True,
                     dealer_bj_extra_bet_rule='all_bets_lost', double_on_totals=None, split_match='same_value',

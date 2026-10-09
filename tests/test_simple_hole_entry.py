@@ -138,6 +138,9 @@ class TestSimpleHoleEntry(unittest.TestCase):
         self.assertEqual(self.errors, [])
 
     def test_restart_after_reveal_next_key_is_a_new_dealer_card(self):
+        # This scenario expects automatic settlement/continuation after restart.
+        # The shared manual fixture disables it, and mode settings now persist it.
+        self.app.var_auto_next.set(True)
         self.initial()
         self.app._key_stand()
         self.app._key_rank('8')
@@ -169,6 +172,18 @@ class TestSimpleHoleEntry(unittest.TestCase):
         self.app.update()
         self.assertEqual(len(self.app.ctrl.ledger.events), 7)
         self.assertEqual(len(self.hidden()), 1)
+        self.assertEqual(self.errors, [])
+
+    def test_restart_preserves_explicitly_disabled_automatic_next(self):
+        self.app.var_auto_next.set(False)
+        self.initial(); self.app._key_stand(); self.app._key_rank('8')
+        self.close()
+        self.app = BlackjackLabApp(self.db, auto_analysis=False)
+        self.app.update()
+        self.assertFalse(self.app.var_auto_next.get())
+        self.app._key_rank('3')
+        self.assertEqual(self.app.ctrl.ledger.events[-1].etype, 'CARD_DEALT')
+        self.assertEqual(self.app.ctrl.state().current.table.round_no, 1)
         self.assertEqual(self.errors, [])
 
     def test_ace_and_ten_do_not_fabricate_peek_or_infer_it_from_player_action(self):

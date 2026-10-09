@@ -13,6 +13,8 @@ from .recent_entry import recent_visible, undo_label
 from .automatic_flow import dealer_finish_message
 from .ev_display import ev_sign, decision_evs
 from .rule_summary import rule_summary
+from .table_modes import BCLC, PRAGMATIC, MODE_LABELS, mode_for_rules
+from .bclc_help import show_bclc_help, insurance_summary
 
 PALETTE = dict(background='#F3F6F8', surface='#FFFFFF', ink='#173A45', accent='#187365',
                caution='#935213', error='#AD3030', muted='#52636B')
@@ -20,7 +22,7 @@ PALETTE = dict(background='#F3F6F8', surface='#FFFFFF', ink='#173A45', accent='#
 
 class CompactPanel(tk.Frame):
     def __init__(self, parent, app):
-        super().__init__(parent, bg=PALETTE['background'], padx=20, pady=10)
+        super().__init__(parent, bg=PALETTE['background'], padx=20, pady=6)
         self.app, self.panel = app, app.analysis_panel
         self.detail_window = None
         self.detail_text = None
@@ -46,9 +48,25 @@ class CompactPanel(tk.Frame):
         self.add_player.grid(row=0, column=3, padx=2)
         self.new_shoe_button = ttk.Button(top, text='新建牌靴', width=9, command=app.act_new_shoe)
         self.new_shoe_button.grid(row=0, column=4, padx=(8, 0))
+        mode_bar = ttk.Frame(top)
+        mode_bar.grid(row=1, column=0, columnspan=5, sticky='w', pady=(4, 0))
+        self.mode_buttons = {}
+        for mode, label in MODE_LABELS.items():
+            button = ttk.Button(mode_bar, text=label, width=11,
+                                command=lambda value=mode: app.select_table_mode(value))
+            button.pack(side=tk.LEFT, padx=(0, 5))
+            self.mode_buttons[mode] = button
+        self.mode_status = tk.StringVar()
+        ttk.Label(mode_bar, textvariable=self.mode_status).pack(side=tk.LEFT, padx=4)
+        ttk.Button(mode_bar, text='BCLC说明', width=8, command=lambda: show_bclc_help(app)).pack(side=tk.LEFT)
+        save_bar = ttk.Frame(top)
+        save_bar.grid(row=3, column=0, columnspan=5, sticky='ew')
+        ttk.Label(save_bar, textvariable=app.var_recording_save, wraplength=530,
+                  foreground=PALETTE['caution']).pack(side=tk.LEFT)
+        ttk.Button(save_bar, text='核对录牌', width=9, command=app.act_reconcile_recording).pack(side=tk.RIGHT)
         self.opening_label = self._label(top, variable=app.var_opening_ev,
                                         font=('Microsoft YaHei UI', 9, 'bold'), wrap=640, height=2, cursor='hand2')
-        self.opening_label.grid(row=1, column=0, columnspan=5, sticky='w', pady=(4, 0))
+        self.opening_label.grid(row=2, column=0, columnspan=5, sticky='w', pady=(4, 0))
         self.opening_label.bind('<Button-1>', lambda event: app.opening_estimate.show_details())
         self.identity_label = self._label(self, variable=self.identity, font=('Microsoft YaHei UI', 12, 'bold'), wrap=640, height=2)
         self.identity_label.grid(row=1, column=0, sticky='ew', pady=(4, 4))
@@ -110,7 +128,7 @@ class CompactPanel(tk.Frame):
         self.seat_table.bind('<<TreeviewSelect>>', self.select_seat)
         self.seat_table_frame.grid_remove()
         self.message_label = self._label(self, variable=self.message, wrap=650)
-        self.message_label.grid(row=9, column=0, sticky='ew', pady=(7, 2))
+        self.message_label.grid(row=9, column=0, sticky='ew', pady=(3, 2))
         self.additional_results = ttk.Frame(self)
         self.additional_results.grid(row=14,column=0,sticky='ew')
         self._label(self, variable=self.notes, wrap=650, font=('Microsoft YaHei UI', 9)).grid(row=10,column=0,sticky='ew')
@@ -161,10 +179,9 @@ class CompactPanel(tk.Frame):
         self.record_prompt.pack(anchor='w')
         preset = ttk.Frame(self.drawer)
         preset.pack(fill=tk.X, pady=3)
-        self.common_settings_button = ttk.Button(preset, text='一键常用设置', command=app.act_common_settings)
+        self.common_settings_button = ttk.Button(preset, text='Pragmatic · 恢复默认', command=app.act_common_settings)
         self.common_settings_button.pack(side=tk.LEFT)
-        ttk.Label(preset, text='8副 / S17 / 同值分牌 / 晚投降 / 允许加倍 / 简便暗牌',
-                  wraplength=495).pack(side=tk.LEFT, padx=6)
+        ttk.Label(preset, textvariable=app.var_table_mode_summary, wraplength=470).pack(side=tk.LEFT, padx=6)
         modes = ttk.Frame(self.drawer)
         modes.pack(fill=tk.X, pady=3)
         self.manual_modes = []
@@ -284,6 +301,26 @@ class CompactPanel(tk.Frame):
         finally:
             self._syncing_seat_table = False
 
+    def render_table_mode(self):
+        seg = self.app._current_seg()
+        selected = self.app.var_table_mode.get()
+        current_mode = mode_for_rules(seg.rules) if seg else None
+        for mode, button in self.mode_buttons.items():
+            button.state(['pressed'] if mode == selected else ['!pressed'])
+        if seg and self.app._mode_change_pending(seg):
+            self.mode_status.set(f'当前 {MODE_LABELS.get(current_mode, "自定义")} · 下个牌靴 {MODE_LABELS[selected]}')
+            if current_mode == selected == BCLC:
+                self.mode_status.set('当前 BCLC 视频草案 · 新牌靴采用手册1.1')
+        else:
+            self.mode_status.set(f'{MODE_LABELS[selected]} · ' + ('待新建牌靴' if not seg else seg.rules.confirm_status))
+        if seg and current_mode == BCLC and not self.app._mode_change_pending(seg) and seg.rules.confirm_status != '已确认':
+            self.mode_status.set(f'BCLC 桌规待确认 · 暂按 {seg.rules.n_decks} 副登记')
+        elif seg and current_mode == BCLC and seg.rules.version == 2 and not self.app._mode_change_pending(seg):
+            observations = (seg.rules.start_from_new_shoe is True and seg.rules.burn_cards_known is True
+                            and seg.rules.initial_burn_count is not None)
+            self.mode_status.set('BCLC · 手册1.1 / 8副 / 无DAS · ' +
+                                 ('本靴观察已确认' if observations else '本靴观察待确认'))
+
     def live_identity(self):
         seg = self.app._current_seg()
         seat = self.app.var_analysis_target.get()
@@ -304,7 +341,7 @@ class CompactPanel(tk.Frame):
         snapshot=self.app.ctrl.read_prefix()
         key = snapshot.session_id, snapshot.prefix_digest
         if getattr(self, '_bj_key', None) != key:
-            self.dealer_bj = evaluate_prepared(key[0], snapshot.through_seq, snapshot.to_list(), seg)
+            self.dealer_bj = evaluate_prepared(key[0], snapshot.through_seq, snapshot, seg)
             self._bj_key = key
         dealer_text += ' · ' + label(self.dealer_bj)
         hands = seg.table.seat(seat).hands if seat in seg.table.players else []
@@ -353,7 +390,10 @@ class CompactPanel(tk.Frame):
         return DecisionSummary(state, identity, text)
 
     def render(self):
+        if self.app._coalescing_recording_views:
+            return  # Post-commit notifications invalidate immediately; paint once after all updates.
         with self.app._view_frame():
+            self.render_table_mode()
             self._render()
 
     def _render(self):
@@ -504,6 +544,8 @@ class CompactPanel(tk.Frame):
             self.save_correction.state(['disabled'])
 
     def open_correction(self):
+        if self.app.recording_guard():
+            return
         recent = recent_visible(self.app.ctrl, self.app._current_seg())
         if recent is None:
             return
@@ -524,6 +566,9 @@ class CompactPanel(tk.Frame):
         self.app.focus_set()
 
     def apply_correction(self):
+        if self.app.recording_guard():
+            self.edit_error.set('录牌仍在保存或需要核对；完成后再改牌。')
+            return
         before = self.app.ctrl.commit_revision
         try:
             reason = self.edit_reason.get() + (('：' + self.edit_note.get().strip()) if self.edit_note.get().strip() else '')
@@ -550,6 +595,11 @@ class CompactPanel(tk.Frame):
             except (ValueError, tk.TclError):
                 message += '\n桌规设置待核对。'
         self.flow_message.set(flow.notice + message)
+        if flow.stage == 'peek':
+            seg = self.app._current_seg()
+            text = insurance_summary(seg.rules, self.app.ctrl.entry_plan, getattr(self, 'dealer_bj', {}))
+            if text:
+                self.flow_message.set(self.flow_message.get() + '\n' + text)
         commands = {'review': self.app.show_workbench, 'new_shoe': self.app.act_new_shoe, 'start': self.app.act_new_round,
                     'resume': self.app._key_pause, 'peek': self.app.act_peek_negative,
                     'next': lambda rid=flow.round_id: self.app.act_complete_and_next(rid)}

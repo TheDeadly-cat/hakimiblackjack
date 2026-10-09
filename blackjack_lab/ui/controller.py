@@ -139,6 +139,11 @@ class SessionController:
         if prepared:
             self._read_key = id(self.ledger), self.context_token
             self._read_snapshot = candidate.replay()
+            # Bind the already validated, durably committed state to owned full
+            # prefix bytes. Analysis views may share this exact current frame.
+            from .read_snapshot import PrefixSnapshot
+            self._read_prefix = PrefixSnapshot.capture(self.ledger)
+            self._read_prefix_key = self._read_key
         # A durable event always gets its receipt, even when the derived sidecar
         # or a view fails. No listener can interrupt the plan synchronization.
         try:
@@ -150,6 +155,44 @@ class SessionController:
             self.save_entry_plan()
         except Exception as error:
             self._pause_entry_recovery(f"记录已保存，发牌位置未能保存；不要重复录入：{error}")
+        self._publish_context_change()
+
+    def publish_recording_receipts(self, receipts, expected_context, expected_ledger, verified_token=None):
+        """Publish this process's SQLite-owner receipts on the UI thread.
+
+        Every command has already traversed independent candidate replay and
+        SQLite baseline/transaction validation in the owner. Verify the full
+        before/after bytes and FIFO chain here; do not execute or save it again.
+        The prepared read state is shared only for this callback's painting.
+        """
+        from .read_snapshot import PrefixSnapshot
+        if not getattr(self, '_read_depth', 0):
+            raise RuntimeError('录牌回执必须在界面读取帧内发布')
+        if self.context_token != expected_context or self.ledger is not expected_ledger:
+            raise LedgerError('等待录牌回执时当前会话已改变；请读取已保存记录核对')
+        if not receipts or any(r.status != 'committed' for r in receipts):
+            raise LedgerError('仅能发布后台已保存的录牌回执')
+        prefix = PrefixSnapshot.capture(self.ledger)
+        event_ids = []
+        for receipt in receipts:
+            if (receipt.chain_id != receipts[0].chain_id or receipt.before.session_id != self.session_id
+                    or receipt.after.session_id != self.session_id or receipt.before.content != prefix.content):
+                raise LedgerError('录牌回执的完整前缀或顺序不符；请读取已保存记录核对')
+            prefix = receipt.after
+            event_ids.extend(receipt.event_ids)
+        last = receipts[-1]
+        transport_verified = verified_token is not None and all(r.verified_token is verified_token for r in receipts)
+        if ((not transport_verified and PrefixSnapshot.capture(last.ledger).content != prefix.content) or last.state is None
+                or len(set(event_ids)) != len(event_ids) or not event_ids
+                or tuple(e.event_id for e in last.ledger.events[-len(event_ids):]) != tuple(event_ids)):
+            raise LedgerError('录牌回执内容与已保存事件不符；请读取已保存记录核对')
+        self.ledger = last.ledger
+        self.entry_plan = copy.deepcopy(last.entry_plan)
+        self.entry_warning = last.entry_warning
+        self.commit_revision += len(event_ids)
+        self._read_key = id(self.ledger), self.context_token
+        self._read_snapshot = last.state
+        self._read_prefix_key, self._read_prefix = self._read_key, last.after
         self._publish_context_change()
 
     def new_shoe(self, rules: RuleProfile):
@@ -408,6 +451,33 @@ class SessionController:
             raise TableError('庄家底牌状态需核对，请转人工录入')
         return None
 
+    def recording_dealer_route(self, seat, hand_id=None):
+        """Reveal the original BCLC hole, including an observed Ace-peek result."""
+        target = self.simple_dealer_route(seat, hand_id)
+        if target or seat != DEALER:
+            return target
+        from ..analysis.split_contracts import BCLC_PROFILE
+        plan, seg = self.entry_plan, self.state().current
+        if (not plan or not seg or seg.rules.profile_id != BCLC_PROFILE
+                or plan.mode not in (MODE_DEALER, MODE_PEEK_WAIT)
+                or plan.paused or plan.input_paused or not plan.initial_complete() or plan.unresolved_slots):
+            return None
+        waiting_peek = plan.mode == MODE_PEEK_WAIT and dealer_up_requires_peek(seg.rules, plan.dealer_up_rank)
+        if ((plan.session_id, plan.shoe_id, plan.round_id) != (self.session_id, seg.shoe_id, seg.round_id)
+                or plan.ledger_digest != self.read_prefix().prefix_digest or seg.shoe.gap or seg.shoe.pending_candidates
+                or (not waiting_peek and next_open_hand(seg.table, plan.participating_seats) is not None)):
+            raise TableError('庄家开牌位置需核对；请在工作台选择原暗牌事件')
+        holes = [(eid, info) for eid, info in seg.unresolved.items()
+                 if info['seat'] == DEALER and info['round_id'] == seg.round_id]
+        if not holes:
+            return None
+        hands, slot = seg.table.dealer.hands, plan.hole_slot()
+        if (len(holes) != 1 or holes[0][1]['face_state'] != FACE_HIDDEN or not slot
+                or plan.filled_slots.get(slot.slot_id) != holes[0][0] or len(hands) != 1
+                or len(hands[0].cards) != 2 or hand_id not in (None, hands[0].hand_id)):
+            raise TableError('初始暗牌身份不唯一；请在工作台明确选择要揭示的原事件')
+        return holes[0][0]
+
     def deal_hidden(self, seat, hand_id=None, track_id=None):
         return self._apply("deal", seat, None, hidden=True, hand_id=hand_id, track_id=track_id)
 
@@ -575,11 +645,23 @@ class SessionController:
         plan = self.entry_plan
         if plan and plan.mode == MODE_INITIAL and not plan.initial_complete():
             raise InputUnavailable('INITIAL_DEAL', '初始牌未录齐，暂停EV计算', INAPPLICABLE)
-        from ..analysis.information import prepare_prefix, build_prepared_input
+        from ..analysis.information import build_prepared_input
         snapshot=self.read_prefix()
         key = snapshot.session_id, snapshot.prefix_digest
         if getattr(self, '_analysis_prefix_key', None) != key:
-            prepared = prepare_prefix(self.ledger, events=snapshot.to_list())
+            with self.read_frame():
+                try:
+                    current = self.state().current
+                except (ValueError, LedgerError) as error:
+                    raise InputUnavailable('INVALID_EVENTS', f'事件校验失败，不能用于分析：{error}') from error
+                validated = self.read_prefix()
+                # A view must not replace the identity after replay. Comparing
+                # full content also detects in-place changes without a new seq.
+                from .read_snapshot import PrefixSnapshot
+                actual = PrefixSnapshot.capture(self.ledger)
+                if snapshot.content != validated.content or snapshot.content != actual.content:
+                    raise LedgerError('分析前缀在已验证视图中发生变化，请刷新核对')
+                prepared = (snapshot.through_seq, snapshot, current)
             self._analysis_prefix_key, self._analysis_prepared = key, prepared
             self._analysis_inputs = {}
         current = self._analysis_prepared[2]
@@ -612,6 +694,9 @@ class SessionController:
             if getattr(self, '_read_key', None) != key:
                 self._read_snapshot = self.ledger.replay()
                 self._read_key = key
+                from .read_snapshot import PrefixSnapshot
+                self._read_prefix = PrefixSnapshot.capture(self.ledger)
+                self._read_prefix_key = key
             return self._read_snapshot
         return self.ledger.replay()
 
@@ -734,7 +819,7 @@ class SessionController:
                 self._advance_entry_hand()
         elif event.etype == PEEK_NEGATIVE and plan.mode == MODE_PEEK_WAIT:
             self._advance_entry_hand()
-        elif event.etype == CARD_REVEALED and plan.simple_hole and payload['seat'] == DEALER:
+        elif event.etype == CARD_REVEALED and payload['seat'] == DEALER:
             if plan.mode == MODE_PEEK_WAIT:
                 dealer = seg.table.dealer.hands[0]
                 if is_natural_blackjack(dealer.ranks):

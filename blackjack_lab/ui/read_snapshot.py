@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 
-from ..analysis.contracts import canonical
+from ..analysis.contracts import canonical, digest
 
 
 @dataclass(frozen=True)
@@ -24,3 +24,8 @@ class PrefixSnapshot:
     def to_list(self):
         """Consumers receive a new mutable copy; the shared byte snapshot cannot change."""
         return json.loads(self.content)
+
+
+def event_prefix_digest(prefix):
+    """Owned immutable bytes need no repeated JSON serialization per seat."""
+    return prefix.prefix_digest if isinstance(prefix, PrefixSnapshot) else digest(prefix)

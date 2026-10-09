@@ -1,5 +1,6 @@
 """Cooperative GUI exit: drain writes, retain failed results, never join on Tk."""
 import threading
+from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox,ttk
 
@@ -20,15 +21,25 @@ class ExitFlow:
         self.processes=[]
         self.side_history=self.opening_history=None
         self.main_history=None
+        self.recording_acknowledged=False
+        self.result_writers=[]
 
     def show(self):
         if self.window is not None and self.window.winfo_exists():self.window.lift()
 
     def start(self):
         app=self.app;app._closing=True
+        if app._recording_owner:
+            app._recording_owner.close()
+        if app.opening_estimate.writer:
+            self.result_writers.append(app.opening_estimate.writer)
+            app.opening_estimate.writer.close()
+        if app.opening_estimate.reaper:
+            self.result_writers.append(app.opening_estimate.reaper)
+            app.opening_estimate.reaper.close()
         self.window=tk.Toplevel(app);self.window.title('安全退出')
         self.window.transient(app);self.window.geometry('560x235');self.window.resizable(False,False)
-        self.message=tk.StringVar(value='正在结束后台任务；已提交的牌面记录已保存。')
+        self.message=tk.StringVar(value='正在保存已接收的录牌输入并结束后台任务；请等待保存回执。')
         ttk.Label(self.window,textvariable=self.message,wraplength=510).pack(fill=tk.X,padx=20,pady=20)
         ttk.Label(self.window,text='尚未完成的当前计算会取消；明确请求的边注复算和已开始的保存会等待完成。',
                   wraplength=510).pack(fill=tk.X,padx=20)
@@ -91,13 +102,26 @@ class ExitFlow:
                 try:process_busy=process.is_alive() or process_busy
                 except ValueError:pass  # Service already joined and closed this handle.
         busy=(process_busy or cleanup_busy
-              or any(not w.stopped for w in self.workers) or any(t.is_alive() for t in self.readers))
+              or any(not w.stopped for w in self.workers) or any(t.is_alive() for t in self.readers)
+              or self.app.recording_busy
+              or any(not w.stopped for w in self.result_writers)
+              or bool(self.app._recording_owner and not self.app._recording_owner.stopped))
         if busy:
             self.app.after(25,self.poll);return
         for process in self.processes:
             try:process.close()
             except ValueError:pass
         if self.return_requested:self.resume();return
+        if self.app._recording_faults and not self.recording_acknowledged:
+            self.phase='needs_recording'
+            self.message.set('录牌保存有待核对输入，未自动重试。请返回应用读取已保存记录。\n'
+                             + self.app.recording_fault_message())
+            self.retry_button.state(['disabled'])
+            self.discard_button.configure(text='保留待核对输入并退出')
+            retained=all(f.get('failure_path') and Path(f['failure_path']).is_file()
+                         for f in self.app._recording_faults)
+            self.discard_button.state(['!disabled'] if retained else ['disabled'])
+            return
         counts=self.pending();total=sum(counts.values())
         if not total and not self.errors:self.finish();return
         self.phase='needs_save'
@@ -105,6 +129,7 @@ class ExitFlow:
                          +'牌面数据库已提交；可以重试、返回继续处理，或明确放弃这些结果。'
                          +(' 后台结束需核对：'+'；'.join(self.errors) if self.errors else ''))
         self.retry_button.state(['!disabled'])
+        self.discard_button.configure(text='放弃未保存结果并退出')
         if not self.errors:self.discard_button.state(['!disabled'])
 
     def retry(self):
@@ -131,7 +156,7 @@ class ExitFlow:
 
     def return_to_app(self):
         self.return_requested=True
-        if self.phase=='needs_save':self.resume()
+        if self.phase in ('needs_save','needs_recording'):self.resume()
         else:self.message.set('正在结束本次后台操作；完成后返回应用，未保存结果仍保留。')
 
     def resume(self):
@@ -143,6 +168,11 @@ class ExitFlow:
             h.worker=LatestWorker();h.expected.clear();h.loading=h.recomputing=False;h.verified=None
         app.opening_estimate.key=None
         app.analysis_panel.context_key=None
+        app.opening_estimate.writer=None
+        app.opening_estimate.reaper=None
+        if app._recording_owner and not app._recording_faults:
+            app._recording_owner.release_resources()
+            app._recording_owner=None
         app._closing=False;app.exit_flow=None
         self.window.grab_release();self.window.destroy();self.phase='returned'
         app.refresh_all()
@@ -156,6 +186,18 @@ class ExitFlow:
             h.reload()
 
     def discard(self):
+        if self.phase=='needs_recording':
+            retained=all(f.get('failure_path') and Path(f['failure_path']).is_file()
+                         for f in self.app._recording_faults)
+            if retained and messagebox.askyesno('保留待核对录牌并退出',
+                    '原输入与错误已保存在数据库旁的 recording-failures 文件夹。\n'
+                    '这些输入没有自动重试；保存结果待核对的牌也不能重复录入。\n\n'
+                    '保留核对记录并继续退出？', parent=self.window):
+                self.recording_acknowledged=True
+                self.phase='draining'
+                self.discard_button.state(['disabled'])
+                self.poll()
+            return
         if self.phase!='needs_save' or self.errors:return
         total=sum(self.pending().values())
         if messagebox.askyesno('明确放弃未保存结果',f'放弃这 {total} 条尚未保存的分析结果并退出？\n已提交的牌面记录及已有历史文件不会删除。',parent=self.window):

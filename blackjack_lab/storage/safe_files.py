@@ -56,7 +56,13 @@ def atomic_write(path, data, *, overwrite=True, protected_paths=()):
             os.replace(temp, path)
         else:
             # Atomic create-without-overwrite, including two concurrent result writers.
-            os.link(temp, path)
+            # Windows rename refuses an existing target and avoids requiring
+            # hard-link support/permission. POSIX rename would overwrite, so
+            # retain the link-based no-replace operation on those platforms.
+            if os.name == 'nt':
+                os.rename(temp, path)
+            else:
+                os.link(temp, path)
         return path
     finally:
         # Cleanup failure must not turn an already published file into "unsaved".

@@ -296,8 +296,27 @@ class EventLedger:
         corrections: Dict[str, dict] = {}
         seen = {}
         past_voided = set()
+        # 可撤销候选按追加顺序增量维护，替代在每个 UNDO 处重建全量列表。
+        # 原写法对每条 UNDO 都遍历 seen 的全部事件，复杂度 O(U×N)；在真实
+        # 数据上（撤回占比约 7%）这一项占单次重放的 13%–25%，而冻结规模输入
+        # 不含 UNDO，规模档测量完全覆盖不到它。
+        # 等价性依据：event_id 在 append() 与 from_list() 两处都强制唯一
+        # （重复即幂等返回或抛 LedgerError），因此 seen 的键数恒等于已遍历事件数、
+        # 不存在被覆盖的键，seen.values() 的迭代顺序严格等于 self.events 顺序；
+        # undoable 只在"可撤销且未被撤销"时追加、只在撤销成功时弹出，故其内容
+        # 与顺序均与列表推导 [e for e in seen.values() if ...] 逐项一致。
+        undoable: List[Event] = []
         for index, ev in enumerate(self.events):
-            Event.from_dict(ev.to_dict())
+            # 校验强度与原 `Event.from_dict(ev.to_dict())` 完全一致：
+            # from_dict 先拒绝 observed_at 为 None 的字典（原 __post_init__ 会把它
+            # 静默替换为 event_time），再用 to_dict 的全部字段构造新对象触发
+            # __post_init__。to_dict 的键集与 dataclass 字段集恒等，且各字段均
+            # 显式出现在字典中，from_dict 的默认值分支永不触发，故直接复用同一
+            # 实例的 __post_init__ 与构造新对象等价；先补上 observed_at 检查以
+            # 保留唯一的语义差异点。省去每事件一次的字典构造与关键字传参。
+            if ev.observed_at is None:
+                raise ValueError("导入事件缺少观察时间")
+            ev.__post_init__()
             if ev.etype == SESSION_STARTED and index != 0:
                 raise LedgerError("会话开始事件只能位于首条")
             if ev.etype in (UNDO, CORRECTION):
@@ -307,10 +326,10 @@ class EventLedger:
                 if target in past_voided:
                     raise LedgerError("控制事件不可引用已撤销记录")
                 if ev.etype == UNDO:
-                    candidates = [e for e in seen.values() if e.etype not in (UNDO, SESSION_STARTED) and e.event_id not in past_voided]
-                    if not candidates or candidates[-1].event_id != target:
+                    if not undoable or undoable[-1].event_id != target:
                         raise LedgerError("只能逆序撤销最后有效事件，不能跳过后续记录")
                     past_voided.add(target)
+                    undoable.pop()
             if ev.etype == CORRECTION and ev.event_id not in voided:
                 original = seen[ev.payload["target_event_id"]]
                 fix = ev.payload.get("payload_fix")
@@ -325,6 +344,8 @@ class EventLedger:
                     raise LedgerError("观察完整性纠错必须使用已定义状态")
                 corrections.setdefault(ev.payload["target_event_id"], {}).update(ev.payload["payload_fix"])
             seen[ev.event_id] = ev
+            if ev.etype not in (UNDO, SESSION_STARTED) and ev.event_id not in past_voided:
+                undoable.append(ev)
         segments: List[ShoeSegment] = []
         cur: Optional[ShoeSegment] = None
         dealt_tracks: set = set()
