@@ -392,9 +392,37 @@ class CompactPanel(tk.Frame):
     def render(self):
         if self.app._coalescing_recording_views:
             return  # Post-commit notifications invalidate immediately; paint once after all updates.
+        if self.app.recording_advice_pause():
+            self.pause_recording()
+            return
         with self.app._view_frame():
             self.render_table_mode()
             self._render()
+
+    def pause_recording(self):
+        """Withdraw advice without rebuilding the saved shoe or probabilities."""
+        message = self.app.recording_advice_pause()
+        if self.message.get() != message or self.model.choices:
+            self.model = DecisionSummary('建议暂停', self.identity.get(), message)
+            self.state.set(self.model.state)
+            self.message.set(message)
+            self.notes.set('已保存牌面仍保留；等待一致回执和最新判断。')
+            self.decision_evs.set('')
+            self.empty_result.grid()
+            self.seat_table_frame.grid_remove()
+            self.compute.state(['disabled'])
+            for row, rank, action, extra, profit, ev in self.rows:
+                row.grid_remove()
+                rank.configure(text=''); action.configure(text='—')
+                extra.configure(text=''); profit.configure(text='净盈利 —'); ev.configure(text='EV —')
+        if self.detail_window and self.detail_window.winfo_exists():
+            text = self.panel.text.get('1.0', 'end-1c')
+            if getattr(self, '_pause_detail_text', None) != text:
+                self.detail_text.configure(state=tk.NORMAL)
+                self.detail_text.delete('1.0', tk.END)
+                self.detail_text.insert('1.0', text)
+                self.detail_text.configure(state=tk.DISABLED)
+                self._pause_detail_text = text
 
     def _render(self):
         panel = self.panel

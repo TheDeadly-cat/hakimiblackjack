@@ -193,6 +193,8 @@ class AnalysisPanel(ttk.Frame):
         if not message:
             return
         self._cancel_auto()
+        if self.status.get() == message:
+            return
         self._retain_unsaved_result()
         self.compute_button.state(['disabled'])
         self.status.set(message)

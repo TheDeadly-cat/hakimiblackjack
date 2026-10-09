@@ -188,6 +188,14 @@ class RecordingCloseoutTests(unittest.TestCase):
         app.var_mode.set('新发牌'); self.wait_saved()
         self.assertEqual(self.deals(), [('玩家1', '8')])
 
+    def test_pending_advice_pause_does_not_rebuild_live_probabilities(self):
+        app = self.app
+        with patch.object(app.compact_panel, 'live_identity', side_effect=AssertionError('pending redraw rebuilt probabilities')):
+            self.click('8'); self.assert_paused()
+            app.analysis_panel._poll(); app.opening_estimate.poll()
+            app.compact_panel.render(); self.assert_paused()
+        self.wait_saved()
+
     def test_bclc_workbench_label_uses_no_das_rule_field(self):
         app = self.app; app.select_table_mode(BCLC); app.act_new_shoe()
         self.assertIn('两手先补齐无DAS', app.var_topinfo.get())

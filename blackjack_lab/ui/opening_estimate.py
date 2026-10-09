@@ -62,7 +62,9 @@ class OpeningEstimateView:
             self.update_details()
 
     def pause_recording(self):
-        self.set_text('下轮EV：' + self.app.recording_advice_pause())
+        text = '下轮EV：' + self.app.recording_advice_pause()
+        if self.app.var_opening_ev.get() != text:
+            self.set_text(text)
 
     def context_changed(self, *_):
         if self._closed or getattr(self.app,'_closing',False) or self.live_key() == self.key:
