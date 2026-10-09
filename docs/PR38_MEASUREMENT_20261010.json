@@ -1,0 +1,884 @@
+{
+  "schema": "pr38-fixed-source-measurement-summary-v1",
+  "measured_runtime_commit": "8590e4cacb2ca1f735a464ab6e26d41be065b303",
+  "runtime_and_probe_sha256": "59fa59124fcd8a3f83652379a367e699afef55d60d6562c0448398b3ed065018",
+  "runtime_and_probe_manifest": {
+    "blackjack_lab/__init__.py": "9e18df7e8c2f8074a8ab97e98df4bcfd54789e9a3564169de46f528bcf452269",
+    "blackjack_lab/analysis/__init__.py": "5922ba9f02301767199135259b5a0f92592878f732e481b68ffb4c1c35e20c24",
+    "blackjack_lab/analysis/actions.py": "db62d08cfe4cfe7da52fd2bf2fdeb690e0b757ce6101501ec3eefeedeb160770",
+    "blackjack_lab/analysis/contracts.py": "97afa9c647822d56a58e74ab0db5bb3bcb1e06fdb6d1e9e3d3228df5fa5e1cd4",
+    "blackjack_lab/analysis/dealer_blackjack.py": "31607776aa45ad1dfe776dc066f811f9a9e0bc82162610d4ba4db525f35dc5a0",
+    "blackjack_lab/analysis/decision_summary.py": "238a7aba34fc30bd69b49c5b3a29ccc71af6358f438e17a2a6bc0d2969bce75b",
+    "blackjack_lab/analysis/environment.py": "24f2001082bf25760c951bcfbcfe84447f2eeaba6ee7737af46016d3eb5899fd",
+    "blackjack_lab/analysis/external_pw.py": "1dccbd5cd2dbe8b8c65cc9f21a64cd7ab2225ce8d39ef00df57faf6af9d27a9c",
+    "blackjack_lab/analysis/information.py": "78875b30508f2ae71c14f0dcaaf25f410e27317747780aaecc3813af82b4ab64",
+    "blackjack_lab/analysis/native/SplitEngine.cs": "ab903877633dd08765c9f7b13bc8c56154ac0a766b7ecd6d5cff128c84b63fee",
+    "blackjack_lab/analysis/native_backend.py": "a3e5beb645474398717607510ae85aec0979d247042b84e3ae52edb4048adc1e",
+    "blackjack_lab/analysis/opening.py": "24fee3cf95a27c97301f4b2c996a63e80d06f2607aa996e99bdd093c04e67c57",
+    "blackjack_lab/analysis/opening_service.py": "e0a3539e36dc67a3d4ea79dc002f84509c07be87650f2d5c1bd8c427213fde80",
+    "blackjack_lab/analysis/probability.py": "e08237a80407ae2284f4a4fc35c0d85446525080d86261b8d7724c3460c22659",
+    "blackjack_lab/analysis/seat_scenario.py": "af29fbbf4becc8ebaca12e7b9cbf61c96870336305e64684fe9cb421d6cccf45",
+    "blackjack_lab/analysis/service.py": "7b6923b79eab5e451633c57881a15bf0d5e1dcaab6c28b29ad2ea6a2bbf82ed3",
+    "blackjack_lab/analysis/sidebets/__init__.py": "b5541d9228a95bb2be9246524fea78ef1f50a4b93a6033bbe5a0511141797c03",
+    "blackjack_lab/analysis/sidebets/background.py": "f7d75d5bd5357a87aac3f3d39e20f90d7ea233c948cb9c49fdd6e45c4baf9d2b",
+    "blackjack_lab/analysis/sidebets/contracts.py": "ac01509a5034505bb61c7059239fbcc6ea079fc424e124b6dde23860f0c31eb1",
+    "blackjack_lab/analysis/sidebets/exact.py": "0de8242232efb791eba4bc33e3f2420ddd1f48a12751e30b93c530a18cd635af",
+    "blackjack_lab/analysis/sidebets/information.py": "1051eee8fc2e0ce6bb1a1ebfc0147690e99415dc045b01bedcf039e63af9fe7e",
+    "blackjack_lab/analysis/sidebets/research.py": "bf5c93d27f1f5f940544797b1389e499db0a5d361d3e55bb9a5bf260cd9d021f",
+    "blackjack_lab/analysis/split_actions.py": "3809452a3432565449a54c22761b67bec0bf5e136b65ad0b790e284f02a77b6c",
+    "blackjack_lab/analysis/split_contracts.py": "2d69e15a879dc5853658acb49fc1e71076428e2242f0392e2bfbd2842eca36f3",
+    "blackjack_lab/analysis/split_information.py": "2842b8c56aa9f3ef466fc4bc982b5af318823b4dd688ca33fb7aaa76087f22c3",
+    "blackjack_lab/analysis/split_service.py": "50acfcea25b51a729b3a8d2caff2064026389bfe2d65bfc24c9322d5e9a94c37",
+    "blackjack_lab/capture/__init__.py": "f3156222606b13cf3570d06bce289f62e3bf778a18921cb989456bfb51d5c996",
+    "blackjack_lab/core/__init__.py": "43bdc873fa77328bed637e21711f8a93a7b437bb15866c7d1b5448be0b5f24fd",
+    "blackjack_lab/core/cards.py": "a302bc9e7b814d8f6a6857acd5089fedf8610a376ae7a43769ba982d8e2a21b6",
+    "blackjack_lab/core/rules.py": "8d1588cd0e1f6d78f8618342906f8a5a9f43cbff6bc0ae74e120a5ab3015cc01",
+    "blackjack_lab/core/shoe.py": "6e4ec77ec6fc94416cc517f4de731dc353b3228cd0e45a9f5dc78417f7a4ee9e",
+    "blackjack_lab/core/table.py": "df7fb605b0b34da0eb4602e61f8ef7dc600ebc3667df42e23f67407b865768e7",
+    "blackjack_lab/experiments/__init__.py": "2b4f16d069815880abd2c7137ed7dedf71c6194f1d2dc8d3badeea26322bea8e",
+    "blackjack_lab/experiments/contracts.py": "ef93fae291547d4592947b33f656ab25d0a478cd68007ec3ffc63bcb27706de7",
+    "blackjack_lab/experiments/results.py": "c5216917a786db29dc1deab09a06d6c085e129690c0cfbe0d2524601fb5aef66",
+    "blackjack_lab/experiments/runner.py": "3459d2e6b0e7aef3003cedb39cb06c453f4b1742fdf62cc9eeacb62852887d97",
+    "blackjack_lab/experiments/scenarios.py": "ba7ff93448281d0dd970031bce3e48d88665eedf66b5b7f0365473e24f36fcb4",
+    "blackjack_lab/ledger/__init__.py": "95ac1402dab497c35c216574f98d76a9d518137025c10c4d43f3ebf6d1c34c4f",
+    "blackjack_lab/ledger/card_inventory.py": "302bbda812bd689985d333d62af21e9c4e343ed6addd3b8e2247577351c53e22",
+    "blackjack_lab/ledger/command.py": "b7a2d40495ec8e6762a4e3256c378f109d69c3483aaaca9f5f7bbb2eb0443eb7",
+    "blackjack_lab/ledger/events.py": "a4a64a553928807ecf230b2c2787d54f898ba0e4185d1d5c1b580599a3e77403",
+    "blackjack_lab/ledger/ledger.py": "17e69267ba68219e30f526770079d17570283e9caf5bd087fa6b7ee99286688b",
+    "blackjack_lab/main.py": "bd692a4f5938c04800031e8042c601a68822af179aa1b51baf50799568303f3b",
+    "blackjack_lab/simulator/__init__.py": "322b7a424ff1a4619678a074894010ab314a491eccac897c623180ce7bec3533",
+    "blackjack_lab/storage/__init__.py": "14c945eba5bb2b1401107dd27eaa5d73ca06b0434b95ea28d3d922fb0627e0a9",
+    "blackjack_lab/storage/analysis_snapshots.py": "5e8ae9317cece5e450ec5277a3a1b6102947fd7ee936b772bde232146ea61956",
+    "blackjack_lab/storage/database.py": "8d6903bfdee847863d889e2b413e09d35db4c50bfabf63fd32a689e42fbe6c68",
+    "blackjack_lab/storage/export.py": "184a4034404e8015f7939a53a53a6ab932ed718e3afb4b3d6879f1b06cd7b95b",
+    "blackjack_lab/storage/history_catalog.py": "500645e57e7dcc0329c5c0b206010f5caced6da1415e0e25741f815686534e05",
+    "blackjack_lab/storage/opening_snapshots.py": "f3edb0c6206f667b4d229adb889471829f408eaf0e473458e881effeffe690c9",
+    "blackjack_lab/storage/safe_files.py": "5632119b34007fcd7e8e274bed39fe674a8c0b083458eb6e1c7912ce7033913e",
+    "blackjack_lab/storage/sidebet_snapshots.py": "117210cbd24876c1c7edc10016239165a477bbd4ebc9034ff59d3c024866c151",
+    "blackjack_lab/ui/__init__.py": "6952597003836f4b60494daa675ab7598e11fe74c9c24ba68402aedffcb46e78",
+    "blackjack_lab/ui/analysis_history.py": "b2dbf3142a4efb1212cf201e28581012b9e73b49ba74c86f69b96dd2c9457b76",
+    "blackjack_lab/ui/analysis_panel.py": "6f34b22298f26bb6a5a793a8c3a7ebf6bca145898c8cabc7b54122a12b9ecdb4",
+    "blackjack_lab/ui/app.py": "b811737a63ac1c531e49011763daca3a40e91d8e815298f79694c45f664de383",
+    "blackjack_lab/ui/automatic_flow.py": "fb04d51e72570b5e8e44b109f677c84dbac8d71589714f66a3f326ba67310c12",
+    "blackjack_lab/ui/bclc_help.py": "b357eb4e1d210d9e9d0a9c8ad3b7d3c671d2725d717139dd19ff5a500e6b8197",
+    "blackjack_lab/ui/compact_panel.py": "4d835220db9790b3ed5c0fd615cae3c7d8ae202bc3b0a4e186ca0ed9074dcdbe",
+    "blackjack_lab/ui/controller.py": "cae80fe2c3745eb28818c2bd15693fd5fb27a7b8da9f2a02ea599ba73f0dede7",
+    "blackjack_lab/ui/daily_flow.py": "ba319c70a8c46b7bd57579b264d4de8b388cb4e586461e1e3b6d45e4e5001a7a",
+    "blackjack_lab/ui/deal_entry.py": "be2688b0fb264c926294f7121d4db5aa0df0063c9160bf6cae2ab26e48760090",
+    "blackjack_lab/ui/ev_display.py": "38adfdcfdcbb77ff6cdadd277e38b7d4485febb56d89f7142ff50f088b2c0690",
+    "blackjack_lab/ui/experiment_panel.py": "1c344520dca0304d93ffec9a87efc6ca1c07f872a4e727da936b2a2017902f3c",
+    "blackjack_lab/ui/job_reaper.py": "edb88bcb00d71c4a2acd79d0dc8bf1f45a1bcb5cb2b4e4a53d735f3b832723a2",
+    "blackjack_lab/ui/manual_keymap.py": "8989f93055a19d05b2b243e2686a2ccada040b2e0d20aaaf55669238e08c1531",
+    "blackjack_lab/ui/observation_identity.py": "b764db90415087cc2f6f9dcbf22415315ad3fc69c85e8f0c1c5d524a407d5d79",
+    "blackjack_lab/ui/opening_estimate.py": "819f9f6845bbff47bf9d493571db977018bb00708048d8b8f95998c3c1b53a71",
+    "blackjack_lab/ui/opening_history.py": "d0a82efecd92e83aa95e3bb98e90c4303c2578e4ffc3cd4f3836b9d8a143a51c",
+    "blackjack_lab/ui/read_snapshot.py": "aa8bddadd193938ca45a0763ddc52bc75c3bcca4f30e0230e1bb85cf26ea3c3d",
+    "blackjack_lab/ui/recent_entry.py": "e3df561f3ac2c5d5eb845d31f4f42f90736152e0af684306d3aadf3f83058b9e",
+    "blackjack_lab/ui/recording_commands.py": "cc88d51bb39eecca9e790244a5e7dc196f386042a3cd6ac9ea3c2da8db904cd4",
+    "blackjack_lab/ui/recording_failures.py": "e662b6f9d509ec98a4fe195e8381500c3a8bab77bc1de83bddc72703541ed4be",
+    "blackjack_lab/ui/recording_owner.py": "ffe3d160e5f38c24655d3e7e44de40967a397cd7ce0c5513367c862e57edc85a",
+    "blackjack_lab/ui/recording_process.py": "cee56f1ca7e4f585b9a4164f6c6ceb2b4a720b1ed9c4441e68eb5c093cc34eb5",
+    "blackjack_lab/ui/recording_scheduling.py": "e43498035c4b5d73e23b77999f96051f8dc56dccc9eaf4916e483f3102c6dcb6",
+    "blackjack_lab/ui/result_writer.py": "b7168eae6695ead68357452465ce6d9b6c11a79bfe2f1e768b9919fd6dc6b492",
+    "blackjack_lab/ui/round_players.py": "d48b99567fea15895a67e6958ff034960fa7255b2523bb528b3dc1a9ea3c8ab4",
+    "blackjack_lab/ui/rule_summary.py": "c16c74751b192b383766b69c2f8cbc78f5d9e83e680fe14e55555ed18f9fc5e8",
+    "blackjack_lab/ui/seat_overview.py": "316ac9666239bf5593cd03161c6f69740615cf5fb57cb8a8b07656a32f13a7c4",
+    "blackjack_lab/ui/shutdown.py": "930b18668e57f05f9355ceb28b99462e16341da87cb4a37f3a9423a6fb066716",
+    "blackjack_lab/ui/sidebet_details.py": "1054bb88dfea7509911139ce35f87609de2e16f38d5ccfd31b38fda1f3e9f56f",
+    "blackjack_lab/ui/sidebet_history.py": "817f7a1fe2a78cdea8b5022551a7709c6ac33cd879200508651a0a94e438878f",
+    "blackjack_lab/ui/sidebet_view.py": "c316874cca7a5b4a75d35db3d4bf19def39e2d96e88088fa8f0caa1a6f2158e6",
+    "blackjack_lab/ui/split_display.py": "d6669f7b8b394dcc97c68fb83f05dbaf640e7af26847e8dae2ab65dc38271f1b",
+    "blackjack_lab/ui/table_modes.py": "ae91f81c58fdfc5e080530f87509f4493b4e4bd17ca4679f8a19f3f338566492",
+    "blackjack_lab/ui/window_layout.py": "b10273004872c8ee882f56051f0bedbd4a08afa57b88cda4cb12f52e0eb2db02",
+    "blackjack_lab/vision/__init__.py": "2f0b2df8201e0d67fed2d9a02d686fac0e4f80f8e9f01348544bb1360e89ea54",
+    "scripts/recording_end_to_end.py": "38f8b14b44a069ad288ff5653ba97106b32fe9c90ed37512bf5afded51d32327",
+    "启动BCLC候选.cmd": "dcb8c64d64e9944dc03f6ba009acdbed1fdb3a80ea281e28256f8834c962519e"
+  },
+  "background_recording": true,
+  "recording_process": true,
+  "cases": [
+    {
+      "mode": "bclc",
+      "players": 7,
+      "fixture_events": 1001,
+      "fixture_sha256": "8059b6d898535ff7c4ecfa54f6606b67a9a47e8111be2acf2e53ebe030ee86af",
+      "rounds": 0,
+      "remaining": 400,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.1474000164307654,
+          "p95": 14.056699990760535,
+          "p99": 14.056699990760535,
+          "maximum": 14.056699990760535
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 1723.0057999840938,
+          "p95": 2863.2047999999486,
+          "p99": 2863.2047999999486,
+          "maximum": 2863.2047999999486
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 51.187100005336106,
+          "p95": 68.66169994464144,
+          "p99": 68.66169994464144,
+          "maximum": 68.66169994464144
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 4237.093400035519,
+          "p95": 4257.027800020296,
+          "p99": 4257.027800020296,
+          "maximum": 4257.027800020296
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 149,
+        "p50": 1.8151999870315194,
+        "p95": 27.548000002279878,
+        "p99": 178.5145999933593,
+        "maximum": 255.3349000122398
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 165,
+        "p50": 858.9802000205964,
+        "p95": 2696.549399988726,
+        "p99": 2869.2804999882355,
+        "maximum": 2890.0857999688014
+      },
+      "kind": "frozen_history",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": null,
+      "recorded_inputs": 16,
+      "decision_batches_by_status": {
+        "available": 1
+      },
+      "raw_report_sha256": "9c29845cda2a3f3f03ea0c47cca9124a01d9a0f11554fbb0ca2207952d5ef9d5"
+    },
+    {
+      "mode": "bclc",
+      "players": 7,
+      "fixture_events": 10001,
+      "fixture_sha256": "157a8a27705a0123fa6abb515837725ba4c3ec155241949fb7d1e06c74e233d1",
+      "rounds": 0,
+      "remaining": 400,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.06920000305399299,
+          "p95": 75.4575000028126,
+          "p99": 75.4575000028126,
+          "maximum": 75.4575000028126
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 15401.618400006555,
+          "p95": 27128.568000043742,
+          "p99": 27128.568000043742,
+          "maximum": 27128.568000043742
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 362.824100011494,
+          "p95": 664.5977000007406,
+          "p99": 664.5977000007406,
+          "maximum": 664.5977000007406
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 34268.101199995726,
+          "p95": 34353.930399985984,
+          "p99": 34353.930399985984,
+          "maximum": 34353.930399985984
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 1092,
+        "p50": 1.5459000319242477,
+        "p95": 3.018999956548214,
+        "p99": 201.64070000872016,
+        "maximum": 2087.5987000367604
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 1108,
+        "p50": 13058.078700036276,
+        "p95": 26127.647600020282,
+        "p99": 27068.854800018016,
+        "maximum": 27461.28480002517
+      },
+      "kind": "frozen_history",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": null,
+      "recorded_inputs": 16,
+      "decision_batches_by_status": {
+        "available": 1
+      },
+      "raw_report_sha256": "8ae331688fab46ee17b93c77fae01b8c673e8a62207b6175262c19afd3773cd1"
+    },
+    {
+      "mode": "bclc",
+      "players": 7,
+      "fixture_events": 5001,
+      "fixture_sha256": "cf2679bd011303a2d8b22e887fdda0dc4c32525206c4b9f517c123795f12a898",
+      "rounds": 0,
+      "remaining": 400,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.07700000423938036,
+          "p95": 41.40670003835112,
+          "p99": 41.40670003835112,
+          "maximum": 41.40670003835112
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 6282.684799982235,
+          "p95": 11800.692900025751,
+          "p99": 11800.692900025751,
+          "maximum": 11800.692900025751
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 185.77749998075888,
+          "p95": 223.82359998300672,
+          "p99": 223.82359998300672,
+          "maximum": 223.82359998300672
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 15699.305999965873,
+          "p95": 15745.474399998784,
+          "p99": 15745.474399998784,
+          "maximum": 15745.474399998784
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 485,
+        "p50": 1.4578000013716519,
+        "p95": 60.635700025595725,
+        "p99": 196.2483999854885,
+        "maximum": 953.6569999950007
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 501,
+        "p50": 5440.091600001324,
+        "p95": 11380.05149998935,
+        "p99": 11801.58929998288,
+        "maximum": 11956.653400033247
+      },
+      "kind": "frozen_history",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": null,
+      "recorded_inputs": 16,
+      "decision_batches_by_status": {
+        "available": 1
+      },
+      "raw_report_sha256": "a46253ce437b1d5f7a8c547fb4e321a88af1be0d9ae1ee8865db7a2b1bc28644"
+    },
+    {
+      "mode": "bclc",
+      "players": 1,
+      "fixture_events": 0,
+      "fixture_sha256": null,
+      "rounds": 64,
+      "remaining": 51,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 525,
+          "p50": 1.1413000174798071,
+          "p95": 4.829299985431135,
+          "p99": 7.181399967521429,
+          "maximum": 36.05140000581741
+        },
+        "input_to_db_commit_ms": {
+          "count": 525,
+          "p50": 120.66600000252947,
+          "p95": 338.91719998791814,
+          "p99": 450.3967000055127,
+          "maximum": 489.7221000283025
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 525,
+          "p50": 27.682999963872135,
+          "p95": 43.016100011300296,
+          "p99": 52.51740000676364,
+          "maximum": 200.67439996637404
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 236,
+          "p50": 1188.5626000002958,
+          "p95": 1750.69529999746,
+          "p99": 1825.2905999543145,
+          "maximum": 1834.5379999955185
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 4417,
+        "p50": 1.544200018979609,
+        "p95": 23.71940001146868,
+        "p99": 208.71180000947788,
+        "maximum": 604.4021999882534
+      },
+      "queue_max": 4,
+      "oldest_wait_ms": {
+        "count": 4942,
+        "p50": 3.4032000112347305,
+        "p95": 235.24740000721067,
+        "p99": 378.307799983304,
+        "maximum": 517.2789000207558
+      },
+      "kind": "long_shoe",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": {
+        "decks": 6,
+        "players": 1,
+        "cut_remaining": 52,
+        "seed": 202609271
+      },
+      "recorded_inputs": 525,
+      "decision_batches_by_status": {
+        "available": 59,
+        "inapplicable": 4,
+        "pending": 1
+      },
+      "raw_report_sha256": "903aea8c6718dafb1af35553264f83cc2139254189e68e7b57f558446a6108aa"
+    },
+    {
+      "mode": "bclc",
+      "players": 7,
+      "fixture_events": 0,
+      "fixture_sha256": null,
+      "rounds": 15,
+      "remaining": 75,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 504,
+          "p50": 0.2592999953776598,
+          "p95": 4.229700018186122,
+          "p99": 8.443799975793809,
+          "maximum": 28.94910000031814
+        },
+        "input_to_db_commit_ms": {
+          "count": 504,
+          "p50": 151.75439999438822,
+          "p95": 884.5891000237316,
+          "p99": 1208.29209999647,
+          "maximum": 1775.4612999851815
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 504,
+          "p50": 27.226299978792667,
+          "p95": 42.47019998729229,
+          "p99": 49.9091999954544,
+          "maximum": 163.39499998139217
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 224,
+          "p50": 1744.0393000142649,
+          "p95": 2753.1624999828637,
+          "p99": 2760.9883000259288,
+          "maximum": 2772.1428999793716
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 2407,
+        "p50": 1.6929999878630042,
+        "p95": 17.291399959940463,
+        "p99": 107.41820001974702,
+        "maximum": 403.2211000053212
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 2911,
+        "p50": 30.825599969830364,
+        "p95": 782.9642999568023,
+        "p99": 1327.3402000195347,
+        "maximum": 1819.012499996461
+      },
+      "kind": "long_shoe",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": {
+        "decks": 8,
+        "players": 7,
+        "cut_remaining": 78,
+        "seed": 202609273
+      },
+      "recorded_inputs": 504,
+      "decision_batches_by_status": {
+        "available": 14,
+        "pending": 1
+      },
+      "raw_report_sha256": "74d899bb35ab1c7ad9d677ab2e71a605d65c85ebfeef0242a60ca7daca53add0"
+    },
+    {
+      "mode": "pragmatic",
+      "players": 7,
+      "fixture_events": 1001,
+      "fixture_sha256": "8059b6d898535ff7c4ecfa54f6606b67a9a47e8111be2acf2e53ebe030ee86af",
+      "rounds": 0,
+      "remaining": 400,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.07589999586343765,
+          "p95": 18.34379998035729,
+          "p99": 18.34379998035729,
+          "maximum": 18.34379998035729
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 1398.4076000051573,
+          "p95": 2283.0329000134952,
+          "p99": 2283.0329000134952,
+          "maximum": 2283.0329000134952
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 49.296799988951534,
+          "p95": 61.10470002749935,
+          "p99": 61.10470002749935,
+          "maximum": 61.10470002749935
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 3211.258099996485,
+          "p95": 3232.6623999979347,
+          "p99": 3232.6623999979347,
+          "maximum": 3232.6623999979347
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 122,
+        "p50": 1.6499000089243054,
+        "p95": 19.543699997011572,
+        "p99": 133.83640001527965,
+        "maximum": 185.79400000860915
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 137,
+        "p50": 732.9541000071913,
+        "p95": 2169.309799966868,
+        "p99": 2282.692800043151,
+        "maximum": 2304.7628000495024
+      },
+      "kind": "frozen_history",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": null,
+      "recorded_inputs": 15,
+      "decision_batches_by_status": {
+        "available": 1
+      },
+      "raw_report_sha256": "0d59768e08d6f1d26097a15144f0a02d89c70a84044389198a2c21fa8c1fd5b3"
+    },
+    {
+      "mode": "pragmatic",
+      "players": 7,
+      "fixture_events": 10001,
+      "fixture_sha256": "157a8a27705a0123fa6abb515837725ba4c3ec155241949fb7d1e06c74e233d1",
+      "rounds": 0,
+      "remaining": 400,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.06340001709759235,
+          "p95": 67.11709999945015,
+          "p99": 67.11709999945015,
+          "maximum": 67.11709999945015
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 11938.927499984857,
+          "p95": 21913.705199956894,
+          "p99": 21913.705199956894,
+          "maximum": 21913.705199956894
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 344.14390003075823,
+          "p95": 430.1335999625735,
+          "p99": 430.1335999625735,
+          "maximum": 430.1335999625735
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 28737.44940001052,
+          "p95": 28813.94880003063,
+          "p99": 28813.94880003063,
+          "maximum": 28813.94880003063
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 900,
+        "p50": 1.47139998851344,
+        "p95": 3.2077999971807003,
+        "p99": 242.41980004124343,
+        "maximum": 1434.0020999847911
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 915,
+        "p50": 10441.622300015297,
+        "p95": 21134.531099989545,
+        "p99": 21904.529799998272,
+        "maximum": 22232.70809999667
+      },
+      "kind": "frozen_history",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": null,
+      "recorded_inputs": 15,
+      "decision_batches_by_status": {
+        "available": 1
+      },
+      "raw_report_sha256": "ad48415f0236e86832efa98d9b59a2a81837f9d1a8921eb51e7d3cb90c7d81ae"
+    },
+    {
+      "mode": "pragmatic",
+      "players": 7,
+      "fixture_events": 5001,
+      "fixture_sha256": "cf2679bd011303a2d8b22e887fdda0dc4c32525206c4b9f517c123795f12a898",
+      "rounds": 0,
+      "remaining": 400,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.06669998401775956,
+          "p95": 38.96370000438765,
+          "p99": 38.96370000438765,
+          "maximum": 38.96370000438765
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 5377.916799974628,
+          "p95": 9462.577700032853,
+          "p99": 9462.577700032853,
+          "maximum": 9462.577700032853
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 172.11939999833703,
+          "p95": 208.7521000066772,
+          "p99": 208.7521000066772,
+          "maximum": 208.7521000066772
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 12288.851999968756,
+          "p95": 12330.889999982901,
+          "p99": 12330.889999982901,
+          "maximum": 12330.889999982901
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 411,
+        "p50": 1.6354000149294734,
+        "p95": 44.34039998566732,
+        "p99": 249.4583999691531,
+        "maximum": 382.7410999988206
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 426,
+        "p50": 4258.667000045534,
+        "p95": 9089.62420001626,
+        "p99": 9461.590000020806,
+        "maximum": 9594.965700001922
+      },
+      "kind": "frozen_history",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": null,
+      "recorded_inputs": 15,
+      "decision_batches_by_status": {
+        "available": 1
+      },
+      "raw_report_sha256": "0e4a1fb2cfaab7a8fa0642bdb5849b40af9a8024549d8ec81175b18f361e7ea7"
+    },
+    {
+      "mode": "pragmatic",
+      "players": 1,
+      "fixture_events": 0,
+      "fixture_sha256": null,
+      "rounds": 64,
+      "remaining": 51,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 461,
+          "p50": 1.6543999663554132,
+          "p95": 4.92769997799769,
+          "p99": 6.157300027552992,
+          "maximum": 11.451800004579127
+        },
+        "input_to_db_commit_ms": {
+          "count": 461,
+          "p50": 107.00920003000647,
+          "p95": 254.14450000971556,
+          "p99": 367.78299999423325,
+          "maximum": 456.9420000188984
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 461,
+          "p50": 25.871300022117794,
+          "p95": 41.675600048620254,
+          "p99": 47.53559996606782,
+          "maximum": 51.03710002731532
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 177,
+          "p50": 1083.5636000265367,
+          "p95": 1487.6292000408284,
+          "p99": 2242.200699984096,
+          "maximum": 2248.7799000227824
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 4148,
+        "p50": 1.4849000331014395,
+        "p95": 23.97420003078878,
+        "p99": 146.50719998870045,
+        "maximum": 404.7713999939151
+      },
+      "queue_max": 3,
+      "oldest_wait_ms": {
+        "count": 4609,
+        "p50": 1.8003999721258879,
+        "p95": 180.87479996029288,
+        "p99": 286.6855000029318,
+        "maximum": 472.0340000349097
+      },
+      "kind": "long_shoe",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": {
+        "decks": 6,
+        "players": 1,
+        "cut_remaining": 52,
+        "seed": 202609271
+      },
+      "recorded_inputs": 461,
+      "decision_batches_by_status": {
+        "available": 59,
+        "inapplicable": 4,
+        "pending": 1
+      },
+      "raw_report_sha256": "966480e820472048108597e4117d483f213d8a297d9cb8ec206ba36743169ae1"
+    },
+    {
+      "mode": "pragmatic",
+      "players": 7,
+      "fixture_events": 0,
+      "fixture_sha256": null,
+      "rounds": 15,
+      "remaining": 75,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 489,
+          "p50": 0.2709999680519104,
+          "p95": 4.032500030007213,
+          "p99": 5.243599996902049,
+          "maximum": 10.795200010761619
+        },
+        "input_to_db_commit_ms": {
+          "count": 489,
+          "p50": 137.26769998902455,
+          "p95": 857.9964999807999,
+          "p99": 1127.943100000266,
+          "maximum": 1375.4449000116438
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 489,
+          "p50": 25.7518999860622,
+          "p95": 42.583800037391484,
+          "p99": 48.486199986655265,
+          "maximum": 124.98349999077618
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 210,
+          "p50": 1716.1966999992728,
+          "p95": 2281.755500007421,
+          "p99": 2310.3886999888346,
+          "maximum": 2328.9302999619395
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 2223,
+        "p50": 1.63729997118935,
+        "p95": 13.349699981044978,
+        "p99": 92.15190001530573,
+        "maximum": 318.46890000859275
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 2712,
+        "p50": 25.051300006452948,
+        "p95": 697.326899971813,
+        "p99": 1073.0114000034519,
+        "maximum": 1397.2292999969795
+      },
+      "kind": "long_shoe",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": {
+        "decks": 8,
+        "players": 7,
+        "cut_remaining": 78,
+        "seed": 202609273
+      },
+      "recorded_inputs": 489,
+      "decision_batches_by_status": {
+        "available": 14,
+        "pending": 1
+      },
+      "raw_report_sha256": "7ccbfd0eee66381bb0c0f45a12c5269c6cc76a98eaeb2c3a2a87b1e6bcebd3b9"
+    },
+    {
+      "mode": "bclc",
+      "players": 3,
+      "fixture_events": 0,
+      "fixture_sha256": null,
+      "rounds": 31,
+      "remaining": 56,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 535,
+          "p50": 0.7938999915495515,
+          "p95": 8.934299985412508,
+          "p99": 13.339099998120219,
+          "maximum": 105.80390004906803
+        },
+        "input_to_db_commit_ms": {
+          "count": 535,
+          "p50": 221.8074999982491,
+          "p95": 796.4291000389494,
+          "p99": 1070.5357000115328,
+          "maximum": 1268.206199980341
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 535,
+          "p50": 30.96110001206398,
+          "p95": 50.92439998406917,
+          "p99": 65.85449998965487,
+          "maximum": 98.46319997450337
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 240,
+          "p50": 1568.416399997659,
+          "p95": 2417.496600013692,
+          "p99": 2697.2057999810204,
+          "maximum": 2714.0048000146635
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 4028,
+        "p50": 1.8910000403411686,
+        "p95": 24.03770004864782,
+        "p99": 130.25130001595244,
+        "maximum": 614.8456999985501
+      },
+      "queue_max": 8,
+      "oldest_wait_ms": {
+        "count": 4563,
+        "p50": 57.37529997713864,
+        "p95": 637.9504000069574,
+        "p99": 971.6820000321604,
+        "maximum": 1275.9288999950513
+      },
+      "kind": "long_shoe",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": {
+        "decks": 7,
+        "players": 3,
+        "cut_remaining": 65,
+        "seed": 202609272
+      },
+      "recorded_inputs": 535,
+      "decision_batches_by_status": {
+        "available": 30,
+        "inapplicable": 1
+      },
+      "raw_report_sha256": "3eb8337204f1c2a0f7de2a78e35af34db5a5e3fa538e267e199f4f588d43aca0"
+    },
+    {
+      "mode": "pragmatic",
+      "players": 3,
+      "fixture_events": 0,
+      "fixture_sha256": null,
+      "rounds": 31,
+      "remaining": 56,
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 504,
+          "p50": 0.9783999994397163,
+          "p95": 8.201999997254461,
+          "p99": 12.43820000672713,
+          "maximum": 21.288900054059923
+        },
+        "input_to_db_commit_ms": {
+          "count": 504,
+          "p50": 253.6654999712482,
+          "p95": 878.0014000367373,
+          "p99": 1092.0779000152834,
+          "maximum": 1233.267200004775
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 504,
+          "p50": 36.012600001413375,
+          "p95": 57.70269996719435,
+          "p99": 63.47910000476986,
+          "maximum": 76.63379999576136
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 210,
+          "p50": 2002.9490999877453,
+          "p95": 2672.7840999956243,
+          "p99": 2824.962200014852,
+          "maximum": 2838.484600011725
+        }
+      },
+      "heartbeat_delay_ms": {
+        "count": 4616,
+        "p50": 1.9338000169955194,
+        "p95": 23.855800002347678,
+        "p99": 127.39810000173748,
+        "maximum": 557.9821000178345
+      },
+      "queue_max": 7,
+      "oldest_wait_ms": {
+        "count": 5120,
+        "p50": 77.17910001520067,
+        "p95": 709.1664000181481,
+        "p99": 1047.6189000182785,
+        "maximum": 1237.951899995096
+      },
+      "kind": "long_shoe",
+      "actual_n_decks": 8,
+      "reference_long_shoe_spec": {
+        "decks": 7,
+        "players": 3,
+        "cut_remaining": 65,
+        "seed": 202609272
+      },
+      "recorded_inputs": 504,
+      "decision_batches_by_status": {
+        "available": 30,
+        "inapplicable": 1
+      },
+      "raw_report_sha256": "97d8a3adc82a91aa51c8a923eceeb8be133ed270da1876eade71f25602615004"
+    }
+  ],
+  "synthetic_only": true,
+  "full_default_process_workflow_verified": true,
+  "total_recorded_inputs": 3111,
+  "long_shoe_rounds": 220,
+  "all_durable_checks_passed": true,
+  "universal_latency_targets_passed": false,
+  "native_keyboard_or_ime_acceptance": false,
+  "fixed_source_binding": "Later publication may change tests or documentation only; runtime, probe and launcher must retain every hash above.",
+  "timing_unit": "milliseconds",
+  "commit_clock": "Successful append_validated return after SQLite context commit; timestamp/log wrapper overhead included.",
+  "decision_clock": "Latest matching AVAILABLE result for eligible batch prefixes. Other states remain explicit; this is not one decision sample per transient input.",
+  "shoe_scope": "Current eight-deck presets; reuse all three existing long-shoe seeds/player counts/cuts. Original reference deck fields are retained separately, not claimed as actual measured deck counts.",
+  "old_evidence": "Old 327/871 results and October 7 timings retain their original scopes; aborted repeated-redraw diagnostics remain local and are not final acceptance."
+}

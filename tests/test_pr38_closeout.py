@@ -49,6 +49,14 @@ class RecordingCloseoutTests(unittest.TestCase):
         self.assertIn('暂停', app.var_opening_ev.get())
         self.assertIn('暂停', app.analysis_panel.text.get('1.0', 'end-1c'))
 
+    def poll_now(self, view, method):
+        # Replace the scheduled callback instead of creating a second Tk timer.
+        if view._poll_id:
+            scheduler = view if hasattr(view, 'after_cancel') else self.app
+            scheduler.after_cancel(view._poll_id)
+            view._poll_id = None
+        method()
+
     def test_fast_workbench_mouse_and_equal_cards_follow_committed_plan(self):
         self.click('8'); self.click('8'); self.click('8')
         self.assertTrue(self.app.recording_busy)
@@ -140,7 +148,7 @@ class RecordingCloseoutTests(unittest.TestCase):
         old_digest = app.analysis_panel.request_digest
         self.click('3'); self.click('2')
         self.assert_paused()
-        app.analysis_panel._poll(); self.assert_paused()
+        self.poll_now(app.analysis_panel, app.analysis_panel._poll); self.assert_paused()
         self.wait_saved()
         self.assertFalse(app.compact_panel.model.choices)
         app.analysis_panel.calculate_current()
@@ -192,7 +200,8 @@ class RecordingCloseoutTests(unittest.TestCase):
         app = self.app
         with patch.object(app.compact_panel, 'live_identity', side_effect=AssertionError('pending redraw rebuilt probabilities')):
             self.click('8'); self.assert_paused()
-            app.analysis_panel._poll(); app.opening_estimate.poll()
+            self.poll_now(app.analysis_panel, app.analysis_panel._poll)
+            self.poll_now(app.opening_estimate, app.opening_estimate.poll)
             app.compact_panel.render(); self.assert_paused()
         self.wait_saved()
 
