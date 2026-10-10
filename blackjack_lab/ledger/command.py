@@ -6,11 +6,72 @@ This candidate is discarded on failure and never published as a live ledger.
 import copy
 
 from .ledger import EventLedger, LedgerError
+from .events import Event
+
+
+_ATOMIC_TYPES = frozenset((str, int, float, bool, type(None)))
+
+
+class _GenericCopyRequired(Exception):
+    pass
+
+
+def _copy_command_state(ledger):
+    """Copy ordinary local data without generic object reconstruction overhead.
+
+    Own all mutable containers and retain shared references within the copy.
+    Extensions and custom copy protocols use the original deepcopy operation.
+    This performs no validation; every independent replay remains unchanged.
+    """
+    if any(name in Event.__dict__ for name in
+           ('__deepcopy__', '__reduce__', '__reduce_ex__', '__getstate__', '__setstate__',
+            '__getnewargs__', '__getnewargs_ex__')):
+        return copy.deepcopy(ledger.__dict__)
+    memo = {}
+
+    def clone(value):
+        kind = type(value)
+        if kind in _ATOMIC_TYPES:
+            return value
+        if id(value) in memo:
+            return memo[id(value)]
+        if kind is dict:
+            result = {}
+            memo[id(value)] = result
+            for key, item in value.items():
+                if type(key) not in _ATOMIC_TYPES:
+                    raise _GenericCopyRequired
+                result[key] = clone(item)
+            return result
+        if kind is list:
+            result = []
+            memo[id(value)] = result
+            result.extend(clone(item) for item in value)
+            return result
+        if kind is tuple and all(type(item) in _ATOMIC_TYPES for item in value):
+            return value  # deepcopy also retains an entirely atomic tuple.
+        if kind is set and all(type(item) in _ATOMIC_TYPES for item in value):
+            result = value.copy()
+            memo[id(value)] = result
+            return result
+        if kind is Event:
+            result = object.__new__(Event)
+            memo[id(value)] = result
+            result.__dict__.update(clone(value.__dict__))
+            return result
+        raise _GenericCopyRequired
+
+    try:
+        return clone(ledger.__dict__)
+    except (_GenericCopyRequired, RecursionError):
+        # The speculative built-in copies touched no source object and invoked
+        # no custom protocol. Fall back with a fresh memo and original ordering.
+        return copy.deepcopy(ledger.__dict__)
 
 
 class CommandCandidate(EventLedger):
     def __init__(self, ledger, baseline):
-        self.__dict__.update(copy.deepcopy(ledger.__dict__))
+        self.__dict__.update(_copy_command_state(ledger))
         self._baseline = baseline
         self._baseline_events = baseline.to_list()
         if [e.to_dict() for e in self.events] != self._baseline_events:
