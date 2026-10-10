@@ -694,9 +694,9 @@ class SessionController:
             if getattr(self, '_read_key', None) != key:
                 self._read_snapshot = self.ledger.replay()
                 self._read_key = key
-                from .read_snapshot import PrefixSnapshot
-                self._read_prefix = PrefixSnapshot.capture(self.ledger)
-                self._read_prefix_key = key
+                # A prefix-first reader may already own these exact full bytes
+                # in this frame. Do not serialize them again after replay.
+                self.read_prefix()
             return self._read_snapshot
         return self.ledger.replay()
 

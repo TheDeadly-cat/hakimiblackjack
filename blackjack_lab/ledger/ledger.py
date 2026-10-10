@@ -347,6 +347,8 @@ class EventLedger:
             if ev.etype not in (UNDO, SESSION_STARTED) and ev.event_id not in past_voided:
                 undoable.append(ev)
         segments: List[ShoeSegment] = []
+        plain_shoe_ids = set()
+        all_plain_shoe_ids = True
         cur: Optional[ShoeSegment] = None
         dealt_tracks: set = set()
         # 发牌事件 -> 重放解析出的 hand_id（payload 是副本，单独维护映射）
@@ -366,7 +368,15 @@ class EventLedger:
                     raise LedgerError("建靴事件身份与负载不一致")
                 if cur and cur.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS):
                     raise LedgerError("当前轮尚未结束，不能换靴")
-                if any(s.shoe_id == payload["shoe_id"] for s in segments):
+                shoe_id = payload["shoe_id"]
+                # Imported IDs are ordinary strings: keep the same uniqueness
+                # check in linear total time. Preserve equality semantics for
+                # explicitly supplied str subclasses using the original scan.
+                if type(shoe_id) is str and all_plain_shoe_ids:
+                    duplicate_shoe = shoe_id in plain_shoe_ids
+                else:
+                    duplicate_shoe = any(s.shoe_id == shoe_id for s in segments)
+                if duplicate_shoe:
                     raise LedgerError("新牌靴必须使用唯一身份")
                 rules = RuleProfile.from_json(payload["rules_snapshot"])
                 if rules.shoe_model != FINITE_NO_REPLACEMENT:
@@ -379,6 +389,10 @@ class EventLedger:
                                   shoe=ShoeState(rules.n_decks),
                                   table=TableState(rules))
                 segments.append(cur)
+                if type(shoe_id) is str:
+                    plain_shoe_ids.add(shoe_id)
+                else:
+                    all_plain_shoe_ids = False
                 dealt_tracks = set()
                 cur.events.append(ev)
                 if rules.start_from_new_shoe is False or rules.burn_cards_known is False:

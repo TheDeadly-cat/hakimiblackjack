@@ -208,22 +208,25 @@ class RecordingOwner:
                 started_at = perf_counter()
                 operation_started = False
                 try:
-                    if task.chain_id != chain:
+                    new_chain = task.chain_id != chain
+                    if new_chain:
                         if controller:
                             controller.close()
                         controller = SessionController.recover(self.db_path, task.base.session_id)
                         controller.recording_source = self.recording_source
-                        before = PrefixSnapshot.capture(controller.ledger)
-                        if before.content != task.base.content:
-                            raise ValueError('原数据库与录牌批次完整基线不符，未执行请求')
-                        chain, chain_failed = task.chain_id, False
-                    else:
-                        before = PrefixSnapshot.capture(controller.ledger)
-                    if chain_failed:
-                        raise RuntimeError('前一请求失败；后续输入保留为未执行，需人工核对')
-                    data = json.loads(task.arguments_json)
-                    old_count = len(controller.ledger.events)
                     with controller.read_frame():
+                        # Share the owned, complete before-prefix only within
+                        # this command. Independent replay and SQLite's full
+                        # baseline comparison remain on their existing paths.
+                        before = controller.read_prefix()
+                        if new_chain:
+                            if before.content != task.base.content:
+                                raise ValueError('原数据库与录牌批次完整基线不符，未执行请求')
+                            chain, chain_failed = task.chain_id, False
+                        if chain_failed:
+                            raise RuntimeError('前一请求失败；后续输入保留为未执行，需人工核对')
+                        data = json.loads(task.arguments_json)
+                        old_count = len(controller.ledger.events)
                         operation_started = True
                         if task.operation == 'record_input':
                             from .recording_commands import record_input

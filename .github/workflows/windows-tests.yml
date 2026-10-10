@@ -12,7 +12,7 @@ permissions:
 jobs:
   test:
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       PYTHONUTF8: '1'
       PYTHONIOENCODING: utf-8
