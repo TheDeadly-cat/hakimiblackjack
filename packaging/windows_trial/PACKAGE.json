@@ -1,0 +1,62 @@
+{
+  "product": "Hakimi Blackjack",
+  "edition": "试用版 / TRIAL",
+  "package_id": "T1R4-3ec2006",
+  "package_kind": "online-source-installer-kit",
+  "self_contained_offline_executable": false,
+  "upstream_repository": "TheDeadly-cat/hakimiblackjack",
+  "source_commit": "3ec2006e82c4bdbc8da01bb0e1212b64c9111d2c",
+  "source_tree": "7fc1e8bb64c5bc4a783941fee536f394acf1fff7",
+  "target": "Windows x64",
+  "requires_existing_python": "3.14 x64 with Tcl/Tk",
+  "requires_dotnet_framework_compiler": true,
+  "bundled_python_runtime": false,
+  "bundled_upstream_source": false,
+  "main_analysis": true,
+  "sidebet_research": false,
+  "automatic_betting": false,
+  "business_source_modified_by_kit": false,
+  "github_write_performed_by_kit": false,
+  "real_time_acceptance": false,
+  "native_windows_installer_tested": false,
+  "publisher_signed": false,
+  "trial_expiration": null,
+  "prepared_on": "2026-10-11",
+  "original_package_sha256": "b196f66e54c5e13c491dac2a644a6f94774e06dcf61ae5d6fb5adb3c21d10697",
+  "original_source_commit": "ce9c8bd6c664a63fed02f51ef91ec14b45cacaa1",
+  "source_review": "https://github.com/TheDeadly-cat/hakimiblackjack/pull/41",
+  "upstream_CI": {
+    "commit": "3ec2006e82c4bdbc8da01bb0e1212b64c9111d2c",
+    "status": "passed exact-head checks",
+    "runs": [
+      {
+        "run_id": 38083712442,
+        "kind": "source-pr",
+        "url": "https://github.com/TheDeadly-cat/hakimiblackjack/actions/runs/38083712442",
+        "tested": 919,
+        "passed": 917,
+        "skipped": 2,
+        "seconds": 569.109
+      },
+      {
+        "run_id": 38083708473,
+        "kind": "source-push",
+        "url": "https://github.com/TheDeadly-cat/hakimiblackjack/actions/runs/38083708473",
+        "tested": 919,
+        "passed": 917,
+        "skipped": 2,
+        "seconds": 579.324
+      }
+    ]
+  },
+  "data_policy": "New trial-only data directory; no automatic migration; uninstall retains data",
+  "note": "Build-time scope only. Artifact-specific installation and UI receipts are reported separately; CI is not installer or real-time acceptance.",
+  "preceding_trial_package_sha256": "5c3c04e5dc70bf76ce6d856a906072059cc33098708bbe589616764525bb242a",
+  "packaging_changes": [
+    "Close backup SQLite connections",
+    "Set synthetic Git executable mode in index on Windows",
+    "Preserve trial title during construction and view changes",
+    "External batch runner retains actual uninstall exit status after deleting program",
+    "Pin separately reviewed command-prefix and full-replay optimization candidate"
+  ]
+}
