@@ -1,0 +1,4514 @@
+{
+  "schema": "point-value-qualified-scope-public-v1",
+  "measured_source": {
+    "commit": "affd4948099d07c70176212f702eb2c598117b2b",
+    "runtime_and_probe_sha256": "edeea68a7128e7f2439621a69108fb7a0b6dbe3d8d5d7db80b66696b129fd91e",
+    "files": {
+      "blackjack_lab/__init__.py": "9e18df7e8c2f8074a8ab97e98df4bcfd54789e9a3564169de46f528bcf452269",
+      "blackjack_lab/analysis/__init__.py": "5922ba9f02301767199135259b5a0f92592878f732e481b68ffb4c1c35e20c24",
+      "blackjack_lab/analysis/actions.py": "db62d08cfe4cfe7da52fd2bf2fdeb690e0b757ce6101501ec3eefeedeb160770",
+      "blackjack_lab/analysis/contracts.py": "97afa9c647822d56a58e74ab0db5bb3bcb1e06fdb6d1e9e3d3228df5fa5e1cd4",
+      "blackjack_lab/analysis/dealer_blackjack.py": "31607776aa45ad1dfe776dc066f811f9a9e0bc82162610d4ba4db525f35dc5a0",
+      "blackjack_lab/analysis/decision_summary.py": "238a7aba34fc30bd69b49c5b3a29ccc71af6358f438e17a2a6bc0d2969bce75b",
+      "blackjack_lab/analysis/environment.py": "24f2001082bf25760c951bcfbcfe84447f2eeaba6ee7737af46016d3eb5899fd",
+      "blackjack_lab/analysis/external_pw.py": "1dccbd5cd2dbe8b8c65cc9f21a64cd7ab2225ce8d39ef00df57faf6af9d27a9c",
+      "blackjack_lab/analysis/information.py": "78875b30508f2ae71c14f0dcaaf25f410e27317747780aaecc3813af82b4ab64",
+      "blackjack_lab/analysis/native/SplitEngine.cs": "ab903877633dd08765c9f7b13bc8c56154ac0a766b7ecd6d5cff128c84b63fee",
+      "blackjack_lab/analysis/native_backend.py": "a3e5beb645474398717607510ae85aec0979d247042b84e3ae52edb4048adc1e",
+      "blackjack_lab/analysis/opening.py": "24fee3cf95a27c97301f4b2c996a63e80d06f2607aa996e99bdd093c04e67c57",
+      "blackjack_lab/analysis/opening_service.py": "e0a3539e36dc67a3d4ea79dc002f84509c07be87650f2d5c1bd8c427213fde80",
+      "blackjack_lab/analysis/probability.py": "e08237a80407ae2284f4a4fc35c0d85446525080d86261b8d7724c3460c22659",
+      "blackjack_lab/analysis/seat_scenario.py": "af29fbbf4becc8ebaca12e7b9cbf61c96870336305e64684fe9cb421d6cccf45",
+      "blackjack_lab/analysis/service.py": "7b6923b79eab5e451633c57881a15bf0d5e1dcaab6c28b29ad2ea6a2bbf82ed3",
+      "blackjack_lab/analysis/sidebets/__init__.py": "b5541d9228a95bb2be9246524fea78ef1f50a4b93a6033bbe5a0511141797c03",
+      "blackjack_lab/analysis/sidebets/background.py": "62ae3c334e065961de3c264c62e31fe761d32cc4856d5438c0d8b95424b1ab3d",
+      "blackjack_lab/analysis/sidebets/contracts.py": "ac01509a5034505bb61c7059239fbcc6ea079fc424e124b6dde23860f0c31eb1",
+      "blackjack_lab/analysis/sidebets/exact.py": "0de8242232efb791eba4bc33e3f2420ddd1f48a12751e30b93c530a18cd635af",
+      "blackjack_lab/analysis/sidebets/information.py": "1051eee8fc2e0ce6bb1a1ebfc0147690e99415dc045b01bedcf039e63af9fe7e",
+      "blackjack_lab/analysis/sidebets/research.py": "bf5c93d27f1f5f940544797b1389e499db0a5d361d3e55bb9a5bf260cd9d021f",
+      "blackjack_lab/analysis/split_actions.py": "3809452a3432565449a54c22761b67bec0bf5e136b65ad0b790e284f02a77b6c",
+      "blackjack_lab/analysis/split_contracts.py": "2d69e15a879dc5853658acb49fc1e71076428e2242f0392e2bfbd2842eca36f3",
+      "blackjack_lab/analysis/split_information.py": "2842b8c56aa9f3ef466fc4bc982b5af318823b4dd688ca33fb7aaa76087f22c3",
+      "blackjack_lab/analysis/split_service.py": "50acfcea25b51a729b3a8d2caff2064026389bfe2d65bfc24c9322d5e9a94c37",
+      "blackjack_lab/capture/__init__.py": "f3156222606b13cf3570d06bce289f62e3bf778a18921cb989456bfb51d5c996",
+      "blackjack_lab/core/__init__.py": "43bdc873fa77328bed637e21711f8a93a7b437bb15866c7d1b5448be0b5f24fd",
+      "blackjack_lab/core/cards.py": "a302bc9e7b814d8f6a6857acd5089fedf8610a376ae7a43769ba982d8e2a21b6",
+      "blackjack_lab/core/rules.py": "8d1588cd0e1f6d78f8618342906f8a5a9f43cbff6bc0ae74e120a5ab3015cc01",
+      "blackjack_lab/core/shoe.py": "6e4ec77ec6fc94416cc517f4de731dc353b3228cd0e45a9f5dc78417f7a4ee9e",
+      "blackjack_lab/core/table.py": "df7fb605b0b34da0eb4602e61f8ef7dc600ebc3667df42e23f67407b865768e7",
+      "blackjack_lab/experiments/__init__.py": "2b4f16d069815880abd2c7137ed7dedf71c6194f1d2dc8d3badeea26322bea8e",
+      "blackjack_lab/experiments/contracts.py": "ef93fae291547d4592947b33f656ab25d0a478cd68007ec3ffc63bcb27706de7",
+      "blackjack_lab/experiments/results.py": "c5216917a786db29dc1deab09a06d6c085e129690c0cfbe0d2524601fb5aef66",
+      "blackjack_lab/experiments/runner.py": "3459d2e6b0e7aef3003cedb39cb06c453f4b1742fdf62cc9eeacb62852887d97",
+      "blackjack_lab/experiments/scenarios.py": "ba7ff93448281d0dd970031bce3e48d88665eedf66b5b7f0365473e24f36fcb4",
+      "blackjack_lab/ledger/__init__.py": "95ac1402dab497c35c216574f98d76a9d518137025c10c4d43f3ebf6d1c34c4f",
+      "blackjack_lab/ledger/card_inventory.py": "302bbda812bd689985d333d62af21e9c4e343ed6addd3b8e2247577351c53e22",
+      "blackjack_lab/ledger/command.py": "b7a2d40495ec8e6762a4e3256c378f109d69c3483aaaca9f5f7bbb2eb0443eb7",
+      "blackjack_lab/ledger/events.py": "a4a64a553928807ecf230b2c2787d54f898ba0e4185d1d5c1b580599a3e77403",
+      "blackjack_lab/ledger/ledger.py": "17e69267ba68219e30f526770079d17570283e9caf5bd087fa6b7ee99286688b",
+      "blackjack_lab/main.py": "77d6a15328e1d9701ff9fde501cffbd311c529d86e2003b43ce31b118f11d1e9",
+      "blackjack_lab/simulator/__init__.py": "322b7a424ff1a4619678a074894010ab314a491eccac897c623180ce7bec3533",
+      "blackjack_lab/storage/__init__.py": "14c945eba5bb2b1401107dd27eaa5d73ca06b0434b95ea28d3d922fb0627e0a9",
+      "blackjack_lab/storage/analysis_snapshots.py": "5e8ae9317cece5e450ec5277a3a1b6102947fd7ee936b772bde232146ea61956",
+      "blackjack_lab/storage/database.py": "8d6903bfdee847863d889e2b413e09d35db4c50bfabf63fd32a689e42fbe6c68",
+      "blackjack_lab/storage/export.py": "184a4034404e8015f7939a53a53a6ab932ed718e3afb4b3d6879f1b06cd7b95b",
+      "blackjack_lab/storage/history_catalog.py": "500645e57e7dcc0329c5c0b206010f5caced6da1415e0e25741f815686534e05",
+      "blackjack_lab/storage/opening_snapshots.py": "f3edb0c6206f667b4d229adb889471829f408eaf0e473458e881effeffe690c9",
+      "blackjack_lab/storage/safe_files.py": "5632119b34007fcd7e8e274bed39fe674a8c0b083458eb6e1c7912ce7033913e",
+      "blackjack_lab/storage/sidebet_snapshots.py": "117210cbd24876c1c7edc10016239165a477bbd4ebc9034ff59d3c024866c151",
+      "blackjack_lab/ui/__init__.py": "6952597003836f4b60494daa675ab7598e11fe74c9c24ba68402aedffcb46e78",
+      "blackjack_lab/ui/analysis_history.py": "b2dbf3142a4efb1212cf201e28581012b9e73b49ba74c86f69b96dd2c9457b76",
+      "blackjack_lab/ui/analysis_panel.py": "6f34b22298f26bb6a5a793a8c3a7ebf6bca145898c8cabc7b54122a12b9ecdb4",
+      "blackjack_lab/ui/app.py": "c44f727bac3874017a68348906d878f05c638c8c97e9da67e33356bb00ecdce2",
+      "blackjack_lab/ui/automatic_flow.py": "fb04d51e72570b5e8e44b109f677c84dbac8d71589714f66a3f326ba67310c12",
+      "blackjack_lab/ui/bclc_help.py": "b357eb4e1d210d9e9d0a9c8ad3b7d3c671d2725d717139dd19ff5a500e6b8197",
+      "blackjack_lab/ui/compact_panel.py": "52f7d9fb2f45a6e1b415419bde038596b1beb5e1e51fc66af8fb291d58134929",
+      "blackjack_lab/ui/controller.py": "cae80fe2c3745eb28818c2bd15693fd5fb27a7b8da9f2a02ea599ba73f0dede7",
+      "blackjack_lab/ui/daily_flow.py": "ba319c70a8c46b7bd57579b264d4de8b388cb4e586461e1e3b6d45e4e5001a7a",
+      "blackjack_lab/ui/deal_entry.py": "be2688b0fb264c926294f7121d4db5aa0df0063c9160bf6cae2ab26e48760090",
+      "blackjack_lab/ui/ev_display.py": "38adfdcfdcbb77ff6cdadd277e38b7d4485febb56d89f7142ff50f088b2c0690",
+      "blackjack_lab/ui/experiment_panel.py": "1c344520dca0304d93ffec9a87efc6ca1c07f872a4e727da936b2a2017902f3c",
+      "blackjack_lab/ui/job_reaper.py": "edb88bcb00d71c4a2acd79d0dc8bf1f45a1bcb5cb2b4e4a53d735f3b832723a2",
+      "blackjack_lab/ui/manual_keymap.py": "8989f93055a19d05b2b243e2686a2ccada040b2e0d20aaaf55669238e08c1531",
+      "blackjack_lab/ui/observation_identity.py": "b764db90415087cc2f6f9dcbf22415315ad3fc69c85e8f0c1c5d524a407d5d79",
+      "blackjack_lab/ui/opening_estimate.py": "819f9f6845bbff47bf9d493571db977018bb00708048d8b8f95998c3c1b53a71",
+      "blackjack_lab/ui/opening_history.py": "d0a82efecd92e83aa95e3bb98e90c4303c2578e4ffc3cd4f3836b9d8a143a51c",
+      "blackjack_lab/ui/read_snapshot.py": "aa8bddadd193938ca45a0763ddc52bc75c3bcca4f30e0230e1bb85cf26ea3c3d",
+      "blackjack_lab/ui/recent_entry.py": "e3df561f3ac2c5d5eb845d31f4f42f90736152e0af684306d3aadf3f83058b9e",
+      "blackjack_lab/ui/recording_commands.py": "cc88d51bb39eecca9e790244a5e7dc196f386042a3cd6ac9ea3c2da8db904cd4",
+      "blackjack_lab/ui/recording_failures.py": "e662b6f9d509ec98a4fe195e8381500c3a8bab77bc1de83bddc72703541ed4be",
+      "blackjack_lab/ui/recording_owner.py": "ffe3d160e5f38c24655d3e7e44de40967a397cd7ce0c5513367c862e57edc85a",
+      "blackjack_lab/ui/recording_process.py": "cee56f1ca7e4f585b9a4164f6c6ceb2b4a720b1ed9c4441e68eb5c093cc34eb5",
+      "blackjack_lab/ui/recording_scheduling.py": "e43498035c4b5d73e23b77999f96051f8dc56dccc9eaf4916e483f3102c6dcb6",
+      "blackjack_lab/ui/result_writer.py": "b7168eae6695ead68357452465ce6d9b6c11a79bfe2f1e768b9919fd6dc6b492",
+      "blackjack_lab/ui/round_players.py": "d48b99567fea15895a67e6958ff034960fa7255b2523bb528b3dc1a9ea3c8ab4",
+      "blackjack_lab/ui/rule_summary.py": "c16c74751b192b383766b69c2f8cbc78f5d9e83e680fe14e55555ed18f9fc5e8",
+      "blackjack_lab/ui/seat_overview.py": "316ac9666239bf5593cd03161c6f69740615cf5fb57cb8a8b07656a32f13a7c4",
+      "blackjack_lab/ui/shutdown.py": "930b18668e57f05f9355ceb28b99462e16341da87cb4a37f3a9423a6fb066716",
+      "blackjack_lab/ui/sidebet_details.py": "15962e4706158b6a54d0b57dd59d961042d7a695a77701ab308a9f3834d6700c",
+      "blackjack_lab/ui/sidebet_history.py": "9ac87482abaa7841be2ff33ddf8392d5a3a57682e4c346dd8cd8cef1450f6914",
+      "blackjack_lab/ui/sidebet_view.py": "9821eb650aeade22d74bb495881af3389df730b8da3b3445c3fc1fa85f2478be",
+      "blackjack_lab/ui/split_display.py": "d6669f7b8b394dcc97c68fb83f05dbaf640e7af26847e8dae2ab65dc38271f1b",
+      "blackjack_lab/ui/table_modes.py": "ae91f81c58fdfc5e080530f87509f4493b4e4bd17ca4679f8a19f3f338566492",
+      "blackjack_lab/ui/window_layout.py": "b10273004872c8ee882f56051f0bedbd4a08afa57b88cda4cb12f52e0eb2db02",
+      "blackjack_lab/vision/__init__.py": "2f0b2df8201e0d67fed2d9a02d686fac0e4f80f8e9f01348544bb1360e89ea54",
+      "scripts/recording_end_to_end.py": "8080229a4ea1f6fbba77dd20830a4b4a580dcf7fd699e7fb440a07233c18f76d",
+      "启动BCLC候选.cmd": "dcb8c64d64e9944dc03f6ba009acdbed1fdb3a80ea281e28256f8834c962519e"
+    },
+    "component_probe_sha256": "94bb5e14b94035aca07b6cbd54494cba2c45b9065681cbf31dfc828aa0e3e3d2",
+    "point_probe_sha256": "d66f9b2c35aadc5cd3e8b07faf933dc3466ba5565a8a6dc8989745430ea3c067",
+    "git_blobs": {
+      "blackjack_lab/__init__.py": "644dde22edc9ee2ad656a9f9eda829fde80bbf56",
+      "blackjack_lab/analysis/__init__.py": "d118053702a3377394a97de5077d905f707b7580",
+      "blackjack_lab/analysis/actions.py": "39080b145b321c68e311098e37e2059228bb2197",
+      "blackjack_lab/analysis/contracts.py": "a302d64ede81b545847479bd08265f5965515236",
+      "blackjack_lab/analysis/dealer_blackjack.py": "1f08952df4a735c5cbdc18a7b834c3a1791665d5",
+      "blackjack_lab/analysis/decision_summary.py": "34b31f6ed56c1cb56bfe4a00141431ec1413c5f3",
+      "blackjack_lab/analysis/environment.py": "4d20d5400190ec6bf867baa99e54a629545ab556",
+      "blackjack_lab/analysis/external_pw.py": "690c125387ee58f94f66fba1f2bc24d5a57f6356",
+      "blackjack_lab/analysis/information.py": "c7266f59a8404d6a84376e3ed421de6465a259cc",
+      "blackjack_lab/analysis/native/SplitEngine.cs": "592b6dfb093810c2970317e27a1409e198946672",
+      "blackjack_lab/analysis/native_backend.py": "3cfb6e9a5b986c789b8b0a9b92258a209ed4292d",
+      "blackjack_lab/analysis/opening.py": "e72678021254df54e3fc9593a10b70c9ec4b9075",
+      "blackjack_lab/analysis/opening_service.py": "f6c0fbd7af5818c9f1bf107b565a945c1463743a",
+      "blackjack_lab/analysis/probability.py": "52c4ff942a2d26aaab075d6ef4f76b1fe903bb5f",
+      "blackjack_lab/analysis/seat_scenario.py": "25824e98c136cdaf4e0518686077a7424287eb37",
+      "blackjack_lab/analysis/service.py": "fb35c3a422cc42e8205fde9c5ca15a0621462e27",
+      "blackjack_lab/analysis/sidebets/__init__.py": "da3c6fe5e3b746ef00f5bf197d4296bfbe1da32e",
+      "blackjack_lab/analysis/sidebets/background.py": "3f30bd026cc04f03c3a421e13d5a66147a3a03e3",
+      "blackjack_lab/analysis/sidebets/contracts.py": "c78c4a36d3890b60aeb9546ac7026d7a555b3c06",
+      "blackjack_lab/analysis/sidebets/exact.py": "39a43d8829932098b8bee43ed9712852c517c653",
+      "blackjack_lab/analysis/sidebets/information.py": "2257ffa17ded865e659c9e86da3eab8e6c04dd18",
+      "blackjack_lab/analysis/sidebets/research.py": "80c5a8a0714298319db23eec0676ec92b259800a",
+      "blackjack_lab/analysis/split_actions.py": "83b77b66ee5bdd17f7797c253de15c27f8be6435",
+      "blackjack_lab/analysis/split_contracts.py": "cb4668fce28d1ca9fed54e95a8c1f1084d31cede",
+      "blackjack_lab/analysis/split_information.py": "e045fbdcf18d02adda7c265abe4cc22153b54efd",
+      "blackjack_lab/analysis/split_service.py": "5c334ef84ac83fffecf106a42915d2321ad0f1a1",
+      "blackjack_lab/capture/__init__.py": "ff5d893d6f53ae8e3b892643484d40ec8a06d728",
+      "blackjack_lab/core/__init__.py": "4c45c925354b788362d29754d2da56bc477b599e",
+      "blackjack_lab/core/cards.py": "a0a1a8793aea23bbb5eb59110af25a4713a97c1e",
+      "blackjack_lab/core/rules.py": "404d21f744fba53e0a1139a5df99080f9a103ede",
+      "blackjack_lab/core/shoe.py": "ea0ed909283ccb1c4b3ec1c2ad11cf08b72981fe",
+      "blackjack_lab/core/table.py": "92c074e48388495ede983176243215803845a4da",
+      "blackjack_lab/experiments/__init__.py": "302369dc61b7cca86f270bd08e001ff6be4a6fa4",
+      "blackjack_lab/experiments/contracts.py": "c8f999125151502cf00496a568de1e2d50432aa1",
+      "blackjack_lab/experiments/results.py": "1cf57eb7889cbc38e038e65c3e9c1229141af5e6",
+      "blackjack_lab/experiments/runner.py": "436463bc1a18b2c9d641cff1cbd49c7d9f2eb9d5",
+      "blackjack_lab/experiments/scenarios.py": "3159fd3c16e24776ca1b2cd2cc0c393f1cf19832",
+      "blackjack_lab/ledger/__init__.py": "5d7e8d16818e861e1b97a03233320928755f894b",
+      "blackjack_lab/ledger/card_inventory.py": "2f9e0c8722e4324a14987a45099cd2df31ef420e",
+      "blackjack_lab/ledger/command.py": "cb70a96e7acd940af70a4aa4c1f2e5e453c4a323",
+      "blackjack_lab/ledger/events.py": "6363ed2e813220c0ed17bf16552e733f67682ef4",
+      "blackjack_lab/ledger/ledger.py": "184a230b7fdbc9e00aafc6fa19afbb1364898133",
+      "blackjack_lab/main.py": "4744e27bb237e2387607d44cab01fbc859a0cf34",
+      "blackjack_lab/simulator/__init__.py": "cc4c37e0b0741b0e3ad9414847b787c16f487873",
+      "blackjack_lab/storage/__init__.py": "e01caca90350cd3a469bb4cbd89dfce55ba2d897",
+      "blackjack_lab/storage/analysis_snapshots.py": "ca708989624ecd994b3df3357037b0d56017ca7d",
+      "blackjack_lab/storage/database.py": "0b183ced8726cbd0611374b28aea5f7c3e0fed78",
+      "blackjack_lab/storage/export.py": "f65677e0673230b886276c49a86e4a13880f4535",
+      "blackjack_lab/storage/history_catalog.py": "6209e95c8eb4d79e88344804f9b533ed749bd516",
+      "blackjack_lab/storage/opening_snapshots.py": "24ffdaa89d63a3201fd100e908f1d49411cd902f",
+      "blackjack_lab/storage/safe_files.py": "3b1c7ce2793648224340e73e752ea7881ad12a9c",
+      "blackjack_lab/storage/sidebet_snapshots.py": "23d823f0e15b3c22a42105d2ee2311141fddfc25",
+      "blackjack_lab/ui/__init__.py": "ca33ff7b08af4738c44cf011e4ae2fa434ea86ea",
+      "blackjack_lab/ui/analysis_history.py": "c9548927b8bd68454f29f2ec8c90511e665e6b89",
+      "blackjack_lab/ui/analysis_panel.py": "104e4572b41d2b215ab473d377eed846ff1cf5bd",
+      "blackjack_lab/ui/app.py": "9bedb2cdcab66f1f501de204e209316cfdf85e39",
+      "blackjack_lab/ui/automatic_flow.py": "5c8b2fe3f58b6a73a3c728a7935b09a59eb94936",
+      "blackjack_lab/ui/bclc_help.py": "cc5b564463e47f6ca5733f6d68e1decfa696bb62",
+      "blackjack_lab/ui/compact_panel.py": "d2f35f980ae032c19e2e8bacbe717bd5bc7c3a42",
+      "blackjack_lab/ui/controller.py": "ad87518ee150fcc4d3d7296e0f36341a76ec9573",
+      "blackjack_lab/ui/daily_flow.py": "6decc13ebb2a85e9f71d6c71b7041ded1f6d63f9",
+      "blackjack_lab/ui/deal_entry.py": "576a914fb6d53a73b45984b3de8d222234e3991c",
+      "blackjack_lab/ui/ev_display.py": "c3f2e9be18c40ea44068b8047ad2c8b61fa55a27",
+      "blackjack_lab/ui/experiment_panel.py": "3a4fda02593e3a4d8bea639cc0aee5199d09bbe4",
+      "blackjack_lab/ui/job_reaper.py": "288fffae22bc7053d659523198d3c5f545e58355",
+      "blackjack_lab/ui/manual_keymap.py": "6bce191bfb12f4b01189176c6d75e0c6dc2f20b7",
+      "blackjack_lab/ui/observation_identity.py": "80fd9e809e193a86f4d95c8e264afb6b57c94b1f",
+      "blackjack_lab/ui/opening_estimate.py": "f380aae642c4b0bf8966aabd89c2454f1e05d3e9",
+      "blackjack_lab/ui/opening_history.py": "988ce1005ecc4cbfd42ce8210fbfb421188c16ec",
+      "blackjack_lab/ui/read_snapshot.py": "0f1a5657ea4d3c03fdd3517d0500c9bff4c68d20",
+      "blackjack_lab/ui/recent_entry.py": "a424149fdd5261e1d8f33b3de0aafa243e09c468",
+      "blackjack_lab/ui/recording_commands.py": "2967bfef5e63a0bd6e43cca777c17a2f6049640c",
+      "blackjack_lab/ui/recording_failures.py": "ae07436daec0f7638d139f4a75984be9e5586d51",
+      "blackjack_lab/ui/recording_owner.py": "5875af2381c44e39d34b8f7218d01aed08cda99d",
+      "blackjack_lab/ui/recording_process.py": "096688ed073fbf882dbf2bb50e57858a96d66524",
+      "blackjack_lab/ui/recording_scheduling.py": "19e8b150f2b55b8912908bebaa2481bcf8eb9f8e",
+      "blackjack_lab/ui/result_writer.py": "905598e9891b33ef0adf50bc36374e841d9d92aa",
+      "blackjack_lab/ui/round_players.py": "fdb04f71ae8ab075d17a1c0cee9278f1bd1036d9",
+      "blackjack_lab/ui/rule_summary.py": "f99e9ba10333508a046c3d9cc30bd5517374ba5e",
+      "blackjack_lab/ui/seat_overview.py": "6d69d218fa735d08a76510f694acfc1047dacac9",
+      "blackjack_lab/ui/shutdown.py": "713f0c63354d49082bfb7c815346e101d0965883",
+      "blackjack_lab/ui/sidebet_details.py": "842b7bdbb37b7cf4a71d5e8b8d35cc70dc701f07",
+      "blackjack_lab/ui/sidebet_history.py": "787683e2040c1d508099f614620f20a28e6fee1a",
+      "blackjack_lab/ui/sidebet_view.py": "3f55d94db5bc6baffdefe6379bcc005f8b0df121",
+      "blackjack_lab/ui/split_display.py": "3ffbd9bd339f451959b21c2654bf94296202429a",
+      "blackjack_lab/ui/table_modes.py": "17772c9b1e577eb231d21e15c58fb064ee153818",
+      "blackjack_lab/ui/window_layout.py": "deffb243701df2dc0085c9bf20ea162fa667a753",
+      "blackjack_lab/vision/__init__.py": "bed14781eb5cd08b531d28d6179d12105b761696",
+      "scripts/recording_end_to_end.py": "07ade2fd5edd831301fffc10538064496c2f3871",
+      "启动BCLC候选.cmd": "98259bf9fbf2a713d0e5428ffb3179420601eb04",
+      "scripts/sidebet_closeout_measure.py": "1ddf8fb59f80fb765b4fd6b8b17f5694f96db960",
+      "scripts/point_value_measure.py": "1f0bc4a8e6d66083f536f757058080e48f013285"
+    }
+  },
+  "input_count": 279,
+  "available_decision_batches": 18,
+  "fixture_identity": {
+    "events-1000.json": {
+      "event_count": 1001,
+      "sha256": "8059b6d898535ff7c4ecfa54f6606b67a9a47e8111be2acf2e53ebe030ee86af"
+    },
+    "events-5000.json": {
+      "event_count": 5001,
+      "sha256": "cf2679bd011303a2d8b22e887fdda0dc4c32525206c4b9f517c123795f12a898"
+    },
+    "events-10000.json": {
+      "event_count": 10001,
+      "sha256": "157a8a27705a0123fa6abb515837725ba4c3ec155241949fb7d1e06c74e233d1"
+    }
+  },
+  "groups": [
+    {
+      "mode": "pragmatic",
+      "scale": 1000,
+      "fixture_events": 1001,
+      "input_count": 45,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 45,
+          "p50": 0.22280000848695636,
+          "p95": 15.658500022254884,
+          "p99": 20.07099997717887,
+          "maximum": 20.07099997717887
+        },
+        "input_to_db_commit_ms": {
+          "count": 45,
+          "p50": 1515.1263999869116,
+          "p95": 2499.1201999946497,
+          "p99": 2524.9304000171833,
+          "maximum": 2524.9304000171833
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 59.56030002562329,
+          "p95": 66.00859999889508,
+          "p99": 67.59429996600375,
+          "maximum": 67.59429996600375
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 3519.519599969499,
+          "p95": 3558.025899983477,
+          "p99": 3558.025899983477,
+          "maximum": 3558.025899983477
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 3482.2541999747045,
+          "p95": 3516.22769999085,
+          "p99": 3516.22769999085,
+          "maximum": 3516.22769999085
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 654.6540999552235,
+          "p95": 663.6787999887019,
+          "p99": 663.6787999887019,
+          "maximum": 663.6787999887019
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 45,
+          "p50": 1408.1623000092804,
+          "p95": 2370.3837000066414,
+          "p99": 2395.807099994272,
+          "maximum": 2395.807099994272
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 45,
+          "p50": 14.955200022086501,
+          "p95": 18.723600020166487,
+          "p99": 19.180600007530302,
+          "maximum": 19.180600007530302
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 45,
+          "p50": 6.149500026367605,
+          "p95": 7.231199997477233,
+          "p99": 7.77550000930205,
+          "maximum": 7.77550000930205
+        },
+        "ui_validated_publication_ms": {
+          "count": 45,
+          "p50": 7.133500010240823,
+          "p95": 16.418200044427067,
+          "p99": 17.88170001236722,
+          "maximum": 17.88170001236722
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 45,
+          "p50": 9.055100032128394,
+          "p95": 21.460200019646436,
+          "p99": 22.86259998800233,
+          "maximum": 22.86259998800233
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 171.23440001159906,
+          "p95": 174.79309998452663,
+          "p99": 174.79309998452663,
+          "maximum": 174.79309998452663
+        },
+        "recovery_including_validation_ms": {
+          "count": 45,
+          "p50": 0,
+          "p95": 122.54660000326112,
+          "p99": 128.8844000082463,
+          "maximum": 128.8844000082463,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 45,
+          "p50": 57.57060006726533,
+          "p95": 76.31959998980165,
+          "p99": 77.86730001680553,
+          "maximum": 77.86730001680553,
+          "executed_request_count": 45
+        },
+        "prefix_capture_ms": {
+          "count": 45,
+          "p50": 17.798100016079843,
+          "p95": 19.68760002637282,
+          "p99": 23.50880007725209,
+          "maximum": 23.50880007725209,
+          "executed_request_count": 45
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 45,
+          "p50": 23.833599989302456,
+          "p95": 25.95350000774488,
+          "p99": 29.9790000426583,
+          "maximum": 29.9790000426583,
+          "executed_request_count": 45
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 127.48100003227592,
+          "p95": 128.8844000082463,
+          "p99": 128.8844000082463,
+          "maximum": 128.8844000082463
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 26.40800003428012,
+          "p95": 28.407900012098253,
+          "p99": 29.616500018164515,
+          "maximum": 29.616500018164515
+        }
+      },
+      "queue_max": 15,
+      "heartbeat_delay_ms": {
+        "count": 412,
+        "p50": 1.6883000102825463,
+        "p95": 13.025700016878545,
+        "p99": 118.88710003811866,
+        "maximum": 145.9372000140138
+      },
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 5000,
+      "fixture_events": 5001,
+      "input_count": 45,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 45,
+          "p50": 0.21709996508434415,
+          "p95": 36.89019999001175,
+          "p99": 43.39930001879111,
+          "maximum": 43.39930001879111
+        },
+        "input_to_db_commit_ms": {
+          "count": 45,
+          "p50": 5919.733100046869,
+          "p95": 10104.326300031971,
+          "p99": 10887.928000011016,
+          "maximum": 10887.928000011016
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 181.83019995922223,
+          "p95": 233.70179999619722,
+          "p99": 276.08079998753965,
+          "maximum": 276.08079998753965
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 13025.73619998293,
+          "p95": 13113.547299988568,
+          "p99": 13113.547299988568,
+          "maximum": 13113.547299988568
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 12958.216200000606,
+          "p95": 13041.605399979744,
+          "p99": 13041.605399979744,
+          "maximum": 13041.605399979744
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 631.7191999987699,
+          "p95": 631.7659000051208,
+          "p99": 631.7659000051208,
+          "maximum": 631.7659000051208
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 45,
+          "p50": 5340.286399994511,
+          "p95": 9514.536999980919,
+          "p99": 10153.834700002335,
+          "maximum": 10153.834700002335
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 45,
+          "p50": 77.49989995500073,
+          "p95": 109.57550001330674,
+          "p99": 119.84330002451316,
+          "maximum": 119.84330002451316
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 45,
+          "p50": 33.7878999998793,
+          "p95": 84.45490000303835,
+          "p99": 101.62679996574298,
+          "maximum": 101.62679996574298
+        },
+        "ui_validated_publication_ms": {
+          "count": 45,
+          "p50": 34.573899989482015,
+          "p95": 72.29509996250272,
+          "p99": 92.64310001162812,
+          "maximum": 92.64310001162812
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 45,
+          "p50": 39.61989999515936,
+          "p95": 82.55349996034056,
+          "p99": 97.18370001064613,
+          "maximum": 97.18370001064613
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 167.1092999749817,
+          "p95": 167.81300003640354,
+          "p99": 167.81300003640354,
+          "maximum": 167.81300003640354
+        },
+        "recovery_including_validation_ms": {
+          "count": 45,
+          "p50": 0,
+          "p95": 562.4028000165708,
+          "p99": 615.9457999747247,
+          "maximum": 615.9457999747247,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 45,
+          "p50": 312.0613000355661,
+          "p95": 403.94009998999536,
+          "p99": 425.462500017602,
+          "maximum": 425.462500017602,
+          "executed_request_count": 45
+        },
+        "prefix_capture_ms": {
+          "count": 45,
+          "p50": 98.33770000841469,
+          "p95": 132.57499993778765,
+          "p99": 137.83650007098913,
+          "maximum": 137.83650007098913,
+          "executed_request_count": 45
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 45,
+          "p50": 92.22170000430197,
+          "p95": 130.42000000132248,
+          "p99": 157.13360003428534,
+          "maximum": 157.13360003428534,
+          "executed_request_count": 45
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 578.7131999968551,
+          "p95": 615.9457999747247,
+          "p99": 615.9457999747247,
+          "maximum": 615.9457999747247
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 52.93659999733791,
+          "p95": 104.34329998679459,
+          "p99": 118.69079997995868,
+          "maximum": 118.69079997995868
+        }
+      },
+      "queue_max": 15,
+      "heartbeat_delay_ms": {
+        "count": 1382,
+        "p50": 1.527600008994341,
+        "p95": 46.77340000169352,
+        "p99": 104.79519995395094,
+        "maximum": 634.6228000079282
+      },
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 10000,
+      "fixture_events": 10001,
+      "input_count": 45,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 45,
+          "p50": 0.2145000034943223,
+          "p95": 66.96590001229197,
+          "p99": 72.58249999722466,
+          "maximum": 72.58249999722466
+        },
+        "input_to_db_commit_ms": {
+          "count": 45,
+          "p50": 11214.704599988181,
+          "p95": 20117.12000000989,
+          "p99": 20748.541700013448,
+          "maximum": 20748.541700013448
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 356.47830000380054,
+          "p95": 517.4395000212826,
+          "p99": 537.0366999995895,
+          "maximum": 537.0366999995895
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 23765.03850001609,
+          "p95": 24553.83150000125,
+          "p99": 24553.83150000125,
+          "maximum": 24553.83150000125
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 23679.621800023597,
+          "p95": 24458.40980001958,
+          "p99": 24458.40980001958,
+          "maximum": 24458.40980001958
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 706.5595000167377,
+          "p95": 826.2749999994412,
+          "p99": 826.2749999994412,
+          "maximum": 826.2749999994412
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 45,
+          "p50": 10114.928200026043,
+          "p95": 18738.76650002785,
+          "p99": 19345.517400011886,
+          "maximum": 19345.517400011886
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 45,
+          "p50": 181.47940002381802,
+          "p95": 228.20420004427433,
+          "p99": 273.41429999796674,
+          "maximum": 273.41429999796674
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 45,
+          "p50": 78.06400000117719,
+          "p95": 207.45099999476224,
+          "p99": 271.75509999506176,
+          "maximum": 271.75509999506176
+        },
+        "ui_validated_publication_ms": {
+          "count": 45,
+          "p50": 63.589700032025576,
+          "p95": 182.0020999875851,
+          "p99": 251.63489999249578,
+          "maximum": 251.63489999249578
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 45,
+          "p50": 71.57909998204559,
+          "p95": 189.5119000109844,
+          "p99": 260.5391999823041,
+          "maximum": 260.5391999823041
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 164.60710001410916,
+          "p95": 172.32810001587495,
+          "p99": 172.32810001587495,
+          "maximum": 172.32810001587495
+        },
+        "recovery_including_validation_ms": {
+          "count": 45,
+          "p50": 0,
+          "p95": 1125.5197999998927,
+          "p99": 1139.7877999697812,
+          "maximum": 1139.7877999697812,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 45,
+          "p50": 636.8924999260344,
+          "p95": 862.3310000402853,
+          "p99": 927.9039999237284,
+          "maximum": 927.9039999237284,
+          "executed_request_count": 45
+        },
+        "prefix_capture_ms": {
+          "count": 45,
+          "p50": 224.1431000875309,
+          "p95": 270.68930002860725,
+          "p99": 292.1865999815054,
+          "maximum": 292.1865999815054,
+          "executed_request_count": 45
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 45,
+          "p50": 174.99259999021888,
+          "p95": 221.26560000469908,
+          "p99": 291.07149998890236,
+          "maximum": 291.07149998890236,
+          "executed_request_count": 45
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 1135.8816999709234,
+          "p95": 1139.7877999697812,
+          "p99": 1139.7877999697812,
+          "maximum": 1139.7877999697812
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 95.2959000132978,
+          "p95": 223.84729998884723,
+          "p99": 288.4178999811411,
+          "maximum": 288.4178999811411
+        }
+      },
+      "queue_max": 15,
+      "heartbeat_delay_ms": {
+        "count": 2564,
+        "p50": 1.4517000131309032,
+        "p95": 44.603000006172806,
+        "p99": 147.17270005028695,
+        "maximum": 1238.7930000154302
+      },
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false
+    },
+    {
+      "mode": "bclc",
+      "scale": 1000,
+      "fixture_events": 1001,
+      "input_count": 48,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 48,
+          "p50": 0.2133999951183796,
+          "p95": 15.006300003733486,
+          "p99": 15.39539999794215,
+          "maximum": 15.39539999794215
+        },
+        "input_to_db_commit_ms": {
+          "count": 48,
+          "p50": 1495.5600000103004,
+          "p95": 2498.4571999520995,
+          "p99": 2554.774699965492,
+          "maximum": 2554.774699965492
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 58.34460002370179,
+          "p95": 77.40650000050664,
+          "p99": 210.04790003644302,
+          "maximum": 210.04790003644302
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 3452.577000018209,
+          "p95": 3505.2537000156008,
+          "p99": 3505.2537000156008,
+          "maximum": 3505.2537000156008
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 3417.7513000322506,
+          "p95": 3468.7240999774076,
+          "p99": 3468.7240999774076,
+          "maximum": 3468.7240999774076
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 548.7721000099555,
+          "p95": 640.0708999717608,
+          "p99": 640.0708999717608,
+          "maximum": 640.0708999717608
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 48,
+          "p50": 1385.1043000468053,
+          "p95": 2394.5450999890454,
+          "p99": 2450.079900037963,
+          "maximum": 2450.079900037963
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 48,
+          "p50": 15.30629995977506,
+          "p95": 40.7188999815844,
+          "p99": 161.36399999959394,
+          "maximum": 161.36399999959394
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 48,
+          "p50": 6.099399994127452,
+          "p95": 8.232400054112077,
+          "p99": 8.97399999666959,
+          "maximum": 8.97399999666959
+        },
+        "ui_validated_publication_ms": {
+          "count": 47,
+          "p50": 7.204099965747446,
+          "p95": 15.85319999139756,
+          "p99": 175.93220004346222,
+          "maximum": 175.93220004346222
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 47,
+          "p50": 9.114700020290911,
+          "p95": 20.856200018897653,
+          "p99": 177.80910001602024,
+          "maximum": 177.80910001602024
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 169.11309998249635,
+          "p95": 180.15700002433732,
+          "p99": 180.15700002433732,
+          "maximum": 180.15700002433732
+        },
+        "recovery_including_validation_ms": {
+          "count": 48,
+          "p50": 0,
+          "p95": 121.54639995424077,
+          "p99": 125.17939996905625,
+          "maximum": 125.17939996905625,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 48,
+          "p50": 56.30389996804297,
+          "p95": 61.29650003276765,
+          "p99": 70.25749998865649,
+          "maximum": 70.25749998865649,
+          "executed_request_count": 48
+        },
+        "prefix_capture_ms": {
+          "count": 48,
+          "p50": 17.278900020755827,
+          "p95": 25.03160003107041,
+          "p99": 25.22300003329292,
+          "maximum": 25.22300003329292,
+          "executed_request_count": 48
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 48,
+          "p50": 23.125700012315065,
+          "p95": 24.087600002530962,
+          "p99": 25.199900032021105,
+          "maximum": 25.199900032021105,
+          "executed_request_count": 48
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 122.11669998941943,
+          "p95": 125.17939996905625,
+          "p99": 125.17939996905625,
+          "maximum": 125.17939996905625
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 26.47640003124252,
+          "p95": 28.860899969004095,
+          "p99": 29.672999982722104,
+          "maximum": 29.672999982722104
+        }
+      },
+      "queue_max": 16,
+      "heartbeat_delay_ms": {
+        "count": 397,
+        "p50": 1.6401999932713807,
+        "p95": 15.094499995466322,
+        "p99": 126.03130001341924,
+        "maximum": 178.35510000120848
+      },
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false
+    },
+    {
+      "mode": "bclc",
+      "scale": 5000,
+      "fixture_events": 5001,
+      "input_count": 48,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 48,
+          "p50": 0.20740000763908029,
+          "p95": 39.941800001543015,
+          "p99": 40.99869995843619,
+          "maximum": 40.99869995843619
+        },
+        "input_to_db_commit_ms": {
+          "count": 48,
+          "p50": 5664.480300038122,
+          "p95": 10362.848899967503,
+          "p99": 10554.132300021593,
+          "maximum": 10554.132300021593
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 179.4940999825485,
+          "p95": 367.7675999933854,
+          "p99": 374.3836999638006,
+          "maximum": 374.3836999638006
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 12605.242799967527,
+          "p95": 12657.417899987195,
+          "p99": 12657.417899987195,
+          "maximum": 12657.417899987195
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 12539.966799959075,
+          "p95": 12595.58379999362,
+          "p99": 12595.58379999362,
+          "maximum": 12595.58379999362
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 614.025299961213,
+          "p95": 722.0364999957383,
+          "p99": 722.0364999957383,
+          "maximum": 722.0364999957383
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 48,
+          "p50": 5085.9319000155665,
+          "p95": 9825.939400005154,
+          "p99": 10025.43689997401,
+          "maximum": 10025.43689997401
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 48,
+          "p50": 74.86340001923963,
+          "p95": 99.81489996425807,
+          "p99": 101.98249999666587,
+          "maximum": 101.98249999666587
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 48,
+          "p50": 36.49620001669973,
+          "p95": 227.95710002537817,
+          "p99": 243.625900009647,
+          "maximum": 243.625900009647
+        },
+        "ui_validated_publication_ms": {
+          "count": 48,
+          "p50": 33.14759995555505,
+          "p95": 73.1062000268139,
+          "p99": 238.5497000068426,
+          "maximum": 238.5497000068426
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 48,
+          "p50": 38.48799999104813,
+          "p95": 83.23019999079406,
+          "p99": 243.0498999892734,
+          "maximum": 243.0498999892734
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 161.17199999280274,
+          "p95": 169.28159998496994,
+          "p99": 169.28159998496994,
+          "maximum": 169.28159998496994
+        },
+        "recovery_including_validation_ms": {
+          "count": 48,
+          "p50": 0,
+          "p95": 568.2348000118509,
+          "p99": 579.7633999609388,
+          "maximum": 579.7633999609388,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 48,
+          "p50": 302.86899994825944,
+          "p95": 318.80050007021055,
+          "p99": 334.77650000713766,
+          "maximum": 334.77650000713766,
+          "executed_request_count": 48
+        },
+        "prefix_capture_ms": {
+          "count": 48,
+          "p50": 90.0629999814555,
+          "p95": 120.77919993316755,
+          "p99": 130.9208999737166,
+          "maximum": 130.9208999737166,
+          "executed_request_count": 48
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 48,
+          "p50": 86.81589999468997,
+          "p95": 116.65270000230521,
+          "p99": 117.16289998730645,
+          "maximum": 117.16289998730645,
+          "executed_request_count": 48
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 572.6827000034973,
+          "p95": 579.7633999609388,
+          "p99": 579.7633999609388,
+          "maximum": 579.7633999609388
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 56.14450003486127,
+          "p95": 246.59649998648092,
+          "p99": 262.62289995793253,
+          "maximum": 262.62289995793253
+        }
+      },
+      "queue_max": 16,
+      "heartbeat_delay_ms": {
+        "count": 1318,
+        "p50": 1.476800029631704,
+        "p95": 51.24850002583116,
+        "p99": 167.3881000210531,
+        "maximum": 642.4513000133447
+      },
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false
+    },
+    {
+      "mode": "bclc",
+      "scale": 10000,
+      "fixture_events": 10001,
+      "input_count": 48,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 48,
+          "p50": 0.19479996990412474,
+          "p95": 68.5317000024952,
+          "p99": 70.67589997313917,
+          "maximum": 70.67589997313917
+        },
+        "input_to_db_commit_ms": {
+          "count": 48,
+          "p50": 11848.955499997828,
+          "p95": 21331.24589995714,
+          "p99": 22816.870300041046,
+          "maximum": 22816.870300041046
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 357.19589999644086,
+          "p95": 635.0734999869019,
+          "p99": 685.3880000417121,
+          "maximum": 685.3880000417121
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 25339.957799995318,
+          "p95": 27207.487600040622,
+          "p99": 27207.487600040622,
+          "maximum": 27207.487600040622
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 25251.106899988372,
+          "p95": 27116.979300044477,
+          "p99": 27116.979300044477,
+          "maximum": 27116.979300044477
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 816.6574999922886,
+          "p95": 817.2928999993019,
+          "p99": 817.2928999993019,
+          "maximum": 817.2928999993019
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 48,
+          "p50": 10694.171099981759,
+          "p95": 20201.075999997556,
+          "p99": 21012.592800019775,
+          "maximum": 21012.592800019775
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 48,
+          "p50": 187.3893000301905,
+          "p95": 210.23939998121932,
+          "p99": 222.53099997760728,
+          "maximum": 222.53099997760728
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 48,
+          "p50": 77.78160000452772,
+          "p95": 362.8791000228375,
+          "p99": 440.00910001341254,
+          "maximum": 440.00910001341254
+        },
+        "ui_validated_publication_ms": {
+          "count": 48,
+          "p50": 62.811899988446385,
+          "p95": 359.2990000033751,
+          "p99": 368.95979999098927,
+          "maximum": 368.95979999098927
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 48,
+          "p50": 71.14710001042113,
+          "p95": 367.7952000289224,
+          "p99": 377.40559998201206,
+          "maximum": 377.40559998201206
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 160.19699996104464,
+          "p95": 168.58629998750985,
+          "p99": 168.58629998750985,
+          "maximum": 168.58629998750985
+        },
+        "recovery_including_validation_ms": {
+          "count": 48,
+          "p50": 0,
+          "p95": 1154.7249000286683,
+          "p99": 1209.2107000062242,
+          "maximum": 1209.2107000062242,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 48,
+          "p50": 640.0017000269145,
+          "p95": 679.8469999339432,
+          "p99": 1146.7455999809317,
+          "maximum": 1146.7455999809317,
+          "executed_request_count": 48
+        },
+        "prefix_capture_ms": {
+          "count": 48,
+          "p50": 228.02850004518405,
+          "p95": 274.78070004144683,
+          "p99": 299.1590000456199,
+          "maximum": 299.1590000456199,
+          "executed_request_count": 48
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 48,
+          "p50": 183.60430002212524,
+          "p95": 225.36360000958666,
+          "p99": 285.73830000823364,
+          "maximum": 285.73830000823364,
+          "executed_request_count": 48
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 1196.1274999775924,
+          "p95": 1209.2107000062242,
+          "p99": 1209.2107000062242,
+          "maximum": 1209.2107000062242
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 94.34090001741424,
+          "p95": 379.7593000344932,
+          "p99": 453.41640000697225,
+          "maximum": 453.41640000697225
+        }
+      },
+      "queue_max": 16,
+      "heartbeat_delay_ms": {
+        "count": 2644,
+        "p50": 1.4675000170245767,
+        "p95": 46.96970004122704,
+        "p99": 215.9322000411339,
+        "maximum": 1081.2240999843925
+      },
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false
+    }
+  ],
+  "cases": [
+    {
+      "mode": "pragmatic",
+      "scale": 1000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "0687141fc0866f69f525864d3f812b9523c86b3e66d9287b3a2fb9a0df0b0c49",
+          "decision_at": 372228.5548223,
+          "input_ids": [
+            "c62fdf44436b4ddfbeb8230ad89172d9",
+            "6bb694627b8644248d2d2806ef416c25",
+            "95a33932900f4cf2823d3ecc7bb4a367",
+            "52299ac34dee446294d204199ad7ca2a",
+            "309261e2198a41bdbbc5a87e8bc01b7a",
+            "361be44ba78a462f8382c14f3b259bd4",
+            "597de7c659754664bac536fad3623c3f",
+            "e9d262ea0f1b483ca1cc086060e7d770",
+            "826eadadeea6437bbd45d5a3bec4abd3",
+            "743361e6fb19449b91cc833730fa8325",
+            "97353dd7ca5f4b0280dbb606dc7bbf42",
+            "5c7d4672ee354d39a697ca0dc38242dc",
+            "bfe2d68c7ed24e2bb2c4d9ccf880c70a",
+            "80ba5f5d9aa24f51a9ebb7ddd53290b9",
+            "21d8e14f43fe4d58914c990c621931e0"
+          ],
+          "first_input_to_available_ms": 3413.9369999757037,
+          "last_input_to_available_ms": 3368.9577999757603,
+          "request_start_to_available_ms": 524.8151999549009
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.2794000320136547,
+          "p95": 20.07099997717887,
+          "p99": 20.07099997717887,
+          "maximum": 20.07099997717887
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 1524.3866000091657,
+          "p95": 2516.826700011734,
+          "p99": 2516.826700011734,
+          "maximum": 2516.826700011734
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 60.488899995107204,
+          "p95": 63.96549998316914,
+          "p99": 63.96549998316914,
+          "maximum": 63.96549998316914
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 3381.503499986138,
+          "p95": 3413.9369999757037,
+          "p99": 3413.9369999757037,
+          "maximum": 3413.9369999757037
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 1417.6730000181124,
+          "p95": 2388.8351999921724,
+          "p99": 2388.8351999921724,
+          "maximum": 2388.8351999921724
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 14.462499995715916,
+          "p95": 18.9630999811925,
+          "p99": 18.9630999811925,
+          "maximum": 18.9630999811925
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 6.169100000988692,
+          "p95": 7.77550000930205,
+          "p99": 7.77550000930205,
+          "maximum": 7.77550000930205
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 26.53559995815158,
+          "p95": 29.616500018164515,
+          "p99": 29.616500018164515,
+          "maximum": 29.616500018164515
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 7.093799998983741,
+          "p95": 16.418200044427067,
+          "p99": 16.418200044427067,
+          "maximum": 16.418200044427067
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 8.909800031688064,
+          "p95": 21.460200019646436,
+          "p99": 21.460200019646436,
+          "maximum": 21.460200019646436
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 167.91169997304678,
+          "p95": 167.91169997304678,
+          "p99": 167.91169997304678,
+          "maximum": 167.91169997304678
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 128.8844000082463,
+          "p99": 128.8844000082463,
+          "maximum": 128.8844000082463
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 57.569899945519865,
+          "p95": 77.86730001680553,
+          "p99": 77.86730001680553,
+          "maximum": 77.86730001680553
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 17.439399962313473,
+          "p95": 23.50880007725209,
+          "p99": 23.50880007725209,
+          "maximum": 23.50880007725209
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 23.772599990479648,
+          "p95": 29.9790000426583,
+          "p99": 29.9790000426583,
+          "maximum": 29.9790000426583
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 151,
+        "p50": 811.8485999875702,
+        "p95": 2376.8029999919236,
+        "p99": 2519.333700009156,
+        "maximum": 2541.350900020916
+      },
+      "heartbeat_delay_ms": {
+        "count": 136,
+        "p50": 1.802400005981326,
+        "p95": 12.347399974241853,
+        "p99": 86.1485999962315,
+        "maximum": 145.9372000140138
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "3b6c4dda76e020093dc35081ca98635034550129557ad9b18aad880b3d13036f",
+        "components": "bfdb45c7c915e9041eaa13ad96733d19095394b6ee2bea199791589ed6cc7f51"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 1000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "a229bc0256695e31a69f38a60d78f7c2654ecc485068d87f6356c368c889f25b",
+          "decision_at": 372233.8073979,
+          "input_ids": [
+            "ba10933dda4b411e89f4318fdcf5f20c",
+            "fcccc8f56e8747199d49d22184fbc222",
+            "e0632cc6f23c47d796254f50163c8fab",
+            "ac93ff30d37a4fe9bb1de745cc91c1ff",
+            "b24f3657fa2c48a2825c9e72e9a2e1e0",
+            "c4f1329d0c5b42d0a27bc96a9bdd3ee4",
+            "f2516a3e2c364ab9911dc54aabb1f016",
+            "b81d2969533a4c3684a234988d0651e7",
+            "8483ef9c7e164edf8c2a1ea2426a5c5e",
+            "795fdb56df82497b84e340b218d261b3",
+            "0ed83e2b5f944fd58ede9e10cdd2504f",
+            "8577cab579784e77968ca65c6dec9e30",
+            "b9aa6ae1b8b442909861da6d6679ad38",
+            "fc1233dd9a294f08902d52de50d80f2c",
+            "e3750c13921f4a07bdcbd24dbf0ba91f"
+          ],
+          "first_input_to_available_ms": 3558.025899983477,
+          "last_input_to_available_ms": 3516.22769999085,
+          "request_start_to_available_ms": 663.6787999887019
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.21809997269883752,
+          "p95": 16.122500004712492,
+          "p99": 16.122500004712492,
+          "maximum": 16.122500004712492
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 1515.1263999869116,
+          "p95": 2524.9304000171833,
+          "p99": 2524.9304000171833,
+          "maximum": 2524.9304000171833
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 54.62700000498444,
+          "p95": 67.59429996600375,
+          "p99": 67.59429996600375,
+          "maximum": 67.59429996600375
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 3526.3907999615185,
+          "p95": 3558.025899983477,
+          "p99": 3558.025899983477,
+          "maximum": 3558.025899983477
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 1408.1623000092804,
+          "p95": 2395.807099994272,
+          "p99": 2395.807099994272,
+          "maximum": 2395.807099994272
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 15.322600025683641,
+          "p95": 19.180600007530302,
+          "p99": 19.180600007530302,
+          "maximum": 19.180600007530302
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 6.149500026367605,
+          "p95": 6.5175999770872295,
+          "p99": 6.5175999770872295,
+          "maximum": 6.5175999770872295
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 26.197300001513213,
+          "p95": 28.469599958043545,
+          "p99": 28.469599958043545,
+          "maximum": 28.469599958043545
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 7.140500005334616,
+          "p95": 16.653899976518005,
+          "p99": 16.653899976518005,
+          "maximum": 16.653899976518005
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 8.992899965960532,
+          "p95": 22.036899987142533,
+          "p99": 22.036899987142533,
+          "maximum": 22.036899987142533
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 171.23440001159906,
+          "p95": 171.23440001159906,
+          "p99": 171.23440001159906,
+          "maximum": 171.23440001159906
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 122.54660000326112,
+          "p99": 122.54660000326112,
+          "maximum": 122.54660000326112
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 57.26559995673597,
+          "p95": 76.56929997028783,
+          "p99": 76.56929997028783,
+          "maximum": 76.56929997028783
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 18.07999995071441,
+          "p95": 19.817400083411485,
+          "p99": 19.817400083411485,
+          "maximum": 19.817400083411485
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 23.799599963240325,
+          "p95": 26.62429999327287,
+          "p99": 26.62429999327287,
+          "maximum": 26.62429999327287
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 153,
+        "p50": 785.9199000522494,
+        "p95": 2387.5447000027634,
+        "p99": 2526.9980000448413,
+        "maximum": 2549.0140999900177
+      },
+      "heartbeat_delay_ms": {
+        "count": 138,
+        "p50": 1.5922999777831137,
+        "p95": 13.025700016878545,
+        "p99": 128.87450000969693,
+        "maximum": 142.48360002646223
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "719def9f285d2cd25fbfc4bd67cccb21dcb7ec540883229592a2a9e5ac096558",
+        "components": "a430453bf1da607cc2c88a8e41cdbb77611bfb0f16b6731173988bc6ca9c4033"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 1000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "09bb384c8e0090f03b6f158a65d2d039d8cca15adf10cbf081fe13e63ea6f5e2",
+          "decision_at": 372239.0365897,
+          "input_ids": [
+            "8c27ad2d59e64a6daa5059d76d973204",
+            "5775c7efea0049dd865965f3d634e2cc",
+            "80182315735e4d049d478c48b81ff254",
+            "03cabe8063614ea780fed5697f26ee1c",
+            "d81c8433018949899e12a56a2c468bd0",
+            "fcb7f9afb0f348b3ba458efe911bb0f2",
+            "a4b3a15486c74b26a095217aeb5b8dbf",
+            "5f805c6c89354fbcaf2d432a03d69919",
+            "9d525ad35b284179aad33090736e5129",
+            "f8d8cba0bd4f4fbfaba4428a2ffb0d86",
+            "794c4e0fc545406598f6866b03114c1a",
+            "e9feb61069d347f5b3b2e7aeef11cccf",
+            "10d491a4c9f14bb8a89f3757e2138533",
+            "335b1bd3087c4c78873f1979790d1101",
+            "8621e35568aa499184074b80ed1d491c"
+          ],
+          "first_input_to_available_ms": 3519.519599969499,
+          "last_input_to_available_ms": 3482.2541999747045,
+          "request_start_to_available_ms": 654.6540999552235
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.21760002709925175,
+          "p95": 15.658500022254884,
+          "p99": 15.658500022254884,
+          "maximum": 15.658500022254884
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 1511.0066000488587,
+          "p95": 2499.1201999946497,
+          "p99": 2499.1201999946497,
+          "maximum": 2499.1201999946497
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 59.84930001432076,
+          "p95": 66.21379998978227,
+          "p99": 66.21379998978227,
+          "maximum": 66.21379998978227
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 3490.9257999970578,
+          "p95": 3519.519599969499,
+          "p99": 3519.519599969499,
+          "maximum": 3519.519599969499
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 1401.3772000325844,
+          "p95": 2370.3837000066414,
+          "p99": 2370.3837000066414,
+          "maximum": 2370.3837000066414
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 15.412500011734664,
+          "p95": 18.41640000930056,
+          "p99": 18.41640000930056,
+          "maximum": 18.41640000930056
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 6.064600020181388,
+          "p95": 6.9071000325493515,
+          "p99": 6.9071000325493515,
+          "maximum": 6.9071000325493515
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 26.40800003428012,
+          "p95": 28.0678000417538,
+          "p99": 28.0678000417538,
+          "maximum": 28.0678000417538
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 7.094100001268089,
+          "p95": 17.88170001236722,
+          "p99": 17.88170001236722,
+          "maximum": 17.88170001236722
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 9.214800025802106,
+          "p95": 22.86259998800233,
+          "p99": 22.86259998800233,
+          "maximum": 22.86259998800233
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 174.79309998452663,
+          "p95": 174.79309998452663,
+          "p99": 174.79309998452663,
+          "maximum": 174.79309998452663
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 127.48100003227592,
+          "p99": 127.48100003227592,
+          "maximum": 127.48100003227592
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 58.54840000392869,
+          "p95": 76.31959998980165,
+          "p99": 76.31959998980165,
+          "maximum": 76.31959998980165
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 17.855599988251925,
+          "p95": 18.81500001763925,
+          "p99": 18.81500001763925,
+          "maximum": 18.81500001763925
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 24.113500025123358,
+          "p95": 25.07190004689619,
+          "p99": 25.07190004689619,
+          "maximum": 25.07190004689619
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 153,
+        "p50": 786.0676999553107,
+        "p95": 2365.3711000224575,
+        "p99": 2501.0210999753326,
+        "maximum": 2523.467699997127
+      },
+      "heartbeat_delay_ms": {
+        "count": 138,
+        "p50": 1.6530999750830233,
+        "p95": 15.954000020865351,
+        "p99": 118.88710003811866,
+        "maximum": 132.27600000798702
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "afdcbe40be0de36daae93c680e51ae37b849d38822e0c57035cc25cc85da145a",
+        "components": "47a5bded7bc3171e40a91871f74b3eaf4cfdc51da4abf1b6c6499b145b2dfcf7"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 5000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "d1055266e41b8e98a9a667c7d0f79fc99e8436345122638cc5024c523dd4aca9",
+          "decision_at": 372257.5981063,
+          "input_ids": [
+            "c46a724c9a0940b9b9ae97957c559c91",
+            "d5d47b989c5a4255a39ea40b498630e3",
+            "18e50445ea2b40558279d2b9b05d687f",
+            "0057c32806bd471a97ca0afda2159720",
+            "8745cce334a445f29e4c1de8d5a8fda6",
+            "56ea9e1efcbf463f942529ec34e67b5c",
+            "78c770e4ab78475490fb1b1c60bcc09b",
+            "3006e99134d646b88cd0f306c85f4801",
+            "f79816828f574857a75f5148026ed1e4",
+            "51cfd17eedec44e8b345c3120101d50d",
+            "0356b4c2755f437c9558950b4cc7c902",
+            "11ba2060d53f4ea3ab95926bbb41f2db",
+            "ebde12fadc1c4c38960d480d3cc6c131",
+            "c04494cec5004777b8951864746d8f61",
+            "38bc5be065fb4d6f87b4fd9b20cc3f5f"
+          ],
+          "first_input_to_available_ms": 13025.73619998293,
+          "last_input_to_available_ms": 12958.216200000606,
+          "request_start_to_available_ms": 631.7659000051208
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.24170003598555923,
+          "p95": 41.34290001820773,
+          "p99": 41.34290001820773,
+          "maximum": 41.34290001820773
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 5919.733100046869,
+          "p95": 10887.928000011016,
+          "p99": 10887.928000011016,
+          "maximum": 10887.928000011016
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 180.41650002123788,
+          "p95": 276.08079998753965,
+          "p99": 276.08079998753965,
+          "maximum": 276.08079998753965
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 12970.823500014376,
+          "p95": 13025.73619998293,
+          "p99": 13025.73619998293,
+          "maximum": 13025.73619998293
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 5340.286399994511,
+          "p95": 10153.834700002335,
+          "p99": 10153.834700002335,
+          "maximum": 10153.834700002335
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 75.9089999482967,
+          "p95": 114.69179997220635,
+          "p99": 114.69179997220635,
+          "maximum": 114.69179997220635
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 35.48880002927035,
+          "p95": 89.67120002489537,
+          "p99": 89.67120002489537,
+          "maximum": 89.67120002489537
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 54.48360001901165,
+          "p95": 108.164899982512,
+          "p99": 108.164899982512,
+          "maximum": 108.164899982512
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 34.73460004897788,
+          "p95": 77.45979999890551,
+          "p99": 77.45979999890551,
+          "maximum": 77.45979999890551
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 39.61989999515936,
+          "p95": 88.5190999833867,
+          "p99": 88.5190999833867,
+          "maximum": 88.5190999833867
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 167.1092999749817,
+          "p95": 167.1092999749817,
+          "p99": 167.1092999749817,
+          "maximum": 167.1092999749817
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 578.7131999968551,
+          "p99": 578.7131999968551,
+          "maximum": 578.7131999968551
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 324.7404999565333,
+          "p95": 425.462500017602,
+          "p99": 425.462500017602,
+          "maximum": 425.462500017602
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 96.5293999761343,
+          "p95": 137.75830005761236,
+          "p99": 137.75830005761236,
+          "maximum": 137.75830005761236
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 98.88389997649938,
+          "p95": 157.13360003428534,
+          "p99": 157.13360003428534,
+          "maximum": 157.13360003428534
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 491,
+        "p50": 4918.135699990671,
+        "p95": 10469.995699997526,
+        "p99": 10899.388200021349,
+        "maximum": 11043.158299988136
+      },
+      "heartbeat_delay_ms": {
+        "count": 476,
+        "p50": 1.5025999932549894,
+        "p95": 46.77340000169352,
+        "p99": 113.04650003556162,
+        "maximum": 587.2130000102334
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "6a54aec46f4b526c90d32afc2b0cfd12ede2313e19f213325f54fdec59fe7c8b",
+        "components": "6b009420620ed0d757af5c69bcd824c15d5305cf17f6cd49104868ab12efb76a"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 5000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "dc4bfdf203f1d4e348be0b755576c4b0356b21bb771a4df605f5876b90b7948b",
+          "decision_at": 372277.1993862,
+          "input_ids": [
+            "e7d9136a53504f39a83e6920bfc7e61a",
+            "2f785dbf38db4475bfe49fac2c89250f",
+            "658dc7a060f341efbc2c4b8afa8afe3c",
+            "9dc60e7a044b45d4a04e3bd67ce64877",
+            "18f344cfae0f45a8866f51a087999b26",
+            "da15e64917334ba3b047d7a830fdaba3",
+            "c58d12d2e5c7425da5a164a95d7de85e",
+            "32e754f1849f45a189160c3839dbb5d5",
+            "32395273cea0484381799b0c48c6056e",
+            "f174796ef7ba46dfa81b4366a45addf3",
+            "15e2761bd058472a9eaa4237a3329aed",
+            "9d5a79c2fe404f2cafdcaa08b3175369",
+            "1bb567b208ab4f2fb062fcbacdead9fa",
+            "785664f74bd3405899ad544e3a78249f",
+            "2ff6db37c851459fa867eaeeb89d056e"
+          ],
+          "first_input_to_available_ms": 13113.547299988568,
+          "last_input_to_available_ms": 13041.605399979744,
+          "request_start_to_available_ms": 631.7191999987699
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.24780002422630787,
+          "p95": 43.39930001879111,
+          "p99": 43.39930001879111,
+          "maximum": 43.39930001879111
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 6166.27620003419,
+          "p95": 10851.67389997514,
+          "p99": 10851.67389997514,
+          "maximum": 10851.67389997514
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 185.18219998804852,
+          "p95": 252.7715999749489,
+          "p99": 252.7715999749489,
+          "maximum": 252.7715999749489
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 13054.528900014702,
+          "p95": 13113.547299988568,
+          "p99": 13113.547299988568,
+          "maximum": 13113.547299988568
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 5592.877899995074,
+          "p95": 10121.212999976706,
+          "p99": 10121.212999976706,
+          "maximum": 10121.212999976706
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 77.94719998491928,
+          "p95": 119.84330002451316,
+          "p99": 119.84330002451316,
+          "maximum": 119.84330002451316
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 39.83989998232573,
+          "p95": 101.62679996574298,
+          "p99": 101.62679996574298,
+          "maximum": 101.62679996574298
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 58.69360000360757,
+          "p95": 118.69079997995868,
+          "p99": 118.69079997995868,
+          "maximum": 118.69079997995868
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 35.98330001113936,
+          "p95": 72.29509996250272,
+          "p99": 72.29509996250272,
+          "maximum": 72.29509996250272
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 40.235300024505705,
+          "p95": 82.55349996034056,
+          "p99": 82.55349996034056,
+          "maximum": 82.55349996034056
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 167.81300003640354,
+          "p95": 167.81300003640354,
+          "p99": 167.81300003640354,
+          "maximum": 167.81300003640354
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 615.9457999747247,
+          "p99": 615.9457999747247,
+          "maximum": 615.9457999747247
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 326.528099947609,
+          "p95": 403.94009998999536,
+          "p99": 403.94009998999536,
+          "maximum": 403.94009998999536
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 99.247700010892,
+          "p95": 137.83650007098913,
+          "p99": 137.83650007098913,
+          "maximum": 137.83650007098913
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 92.29190001497045,
+          "p95": 132.31489999452606,
+          "p99": 132.31489999452606,
+          "maximum": 132.31489999452606
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 493,
+        "p50": 4725.891400012188,
+        "p95": 10434.87900000764,
+        "p99": 10864.453599962872,
+        "maximum": 11016.006399993785
+      },
+      "heartbeat_delay_ms": {
+        "count": 478,
+        "p50": 1.4216000167652965,
+        "p95": 49.61750000482425,
+        "p99": 110.10099995881319,
+        "maximum": 634.6228000079282
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "2d666c1d251c1abbe803d1e6955a9147e930f6754a75308c91e96542a7497db9",
+        "components": "24ef1cdca0899e3c021d1055edb8d2706a4c869ff3ea0830578e59a368e76385"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 5000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "bc399a8693e58931ebebcace9a963fc40ab7154000bf3719c068e34c6850b258",
+          "decision_at": 372295.0161927,
+          "input_ids": [
+            "8e48a9d1e5054915b6a9c1dd56d612e3",
+            "a510fd1592ba4567be93dacb5ff1c6f9",
+            "11f56477e7ce47398794c7dce815f8dc",
+            "473df7513e1e42e3ac55d339f7b2de5f",
+            "1681ee3d21c94a4186c8c653ad5514f9",
+            "65151ed7e34b4f3a82bc8b3b9260808e",
+            "6a7a8bb66b08408882129e734a10293f",
+            "4f64d2d7b62a48ad8e90348f8d2750bc",
+            "58854a3ed3e542059ce8757b31553f15",
+            "191125650a044c2c9f13de978cdf53f0",
+            "11b3ade615f24e9b9258e32298b0d3b3",
+            "e725af28337e4d86876a7675aa895d5b",
+            "6b43b3fa64c74205b70bb7eafb8e2179",
+            "1075bb32fb354443a7350c6082369d29",
+            "ba66eef665e84f16b2742e1527edf4f7"
+          ],
+          "first_input_to_available_ms": 11704.584799997974,
+          "last_input_to_available_ms": 11648.697900003754,
+          "request_start_to_available_ms": 548.5813000123017
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.1824999926611781,
+          "p95": 36.89019999001175,
+          "p99": 36.89019999001175,
+          "maximum": 36.89019999001175
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 5468.368500005454,
+          "p95": 9671.868600009475,
+          "p99": 9671.868600009475,
+          "maximum": 9671.868600009475
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 179.3218000093475,
+          "p95": 233.70179999619722,
+          "p99": 233.70179999619722,
+          "maximum": 233.70179999619722
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 11656.87770000659,
+          "p95": 11704.584799997974,
+          "p99": 11704.584799997974,
+          "maximum": 11704.584799997974
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 4924.219299980905,
+          "p95": 9047.878100012895,
+          "p99": 9047.878100012895,
+          "maximum": 9047.878100012895
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 87.31579995946959,
+          "p95": 89.80760001577437,
+          "p99": 89.80760001577437,
+          "maximum": 89.80760001577437
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 32.81039994908497,
+          "p95": 84.45490000303835,
+          "p99": 84.45490000303835,
+          "maximum": 84.45490000303835
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 52.42249998264015,
+          "p95": 104.34329998679459,
+          "p99": 104.34329998679459,
+          "maximum": 104.34329998679459
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 30.898400000296533,
+          "p95": 92.64310001162812,
+          "p99": 92.64310001162812,
+          "maximum": 92.64310001162812
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 34.849599993322045,
+          "p95": 97.18370001064613,
+          "p99": 97.18370001064613,
+          "maximum": 97.18370001064613
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 155.65079997759312,
+          "p95": 155.65079997759312,
+          "p99": 155.65079997759312,
+          "maximum": 155.65079997759312
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 562.4028000165708,
+          "p99": 562.4028000165708,
+          "maximum": 562.4028000165708
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 296.0072999703698,
+          "p95": 382.899800024461,
+          "p99": 382.899800024461,
+          "maximum": 382.899800024461
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 113.10900002717972,
+          "p95": 115.44499994488433,
+          "p99": 115.44499994488433,
+          "maximum": 115.44499994488433
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 85.69610002450645,
+          "p95": 105.82609998527914,
+          "p99": 105.82609998527914,
+          "maximum": 105.82609998527914
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 443,
+        "p50": 4223.650500003714,
+        "p95": 9282.143099990208,
+        "p99": 9668.565500003751,
+        "maximum": 9803.919399972074
+      },
+      "heartbeat_delay_ms": {
+        "count": 428,
+        "p50": 1.6778999892994761,
+        "p95": 46.371499968227,
+        "p99": 98.88569995062426,
+        "maximum": 264.041500010062
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "fb5739965d45679fa860badb5996d50fb93117f18a5979fa6e80ef36945ac4bc",
+        "components": "8e19d3c2a80500b43304fa180fab00d7b355d9deb21a884fc073fe0ddbb0cdd1"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 10000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "4467f72070ef494cd54f87ffaaa1a0396ce2f8aaf9b2a468e9254a58deb555d5",
+          "decision_at": 372329.7900601,
+          "input_ids": [
+            "60ebf019cdcb40499ee02ab484daa0db",
+            "8dfabd64fd244fdb9b777dd07e8ded7d",
+            "b9d1f4e7a2be43ad914c5389db2a6a6f",
+            "ca6c7f55809e4558aa73ee71d94a145b",
+            "b5dd917ad9a744fa84d7f2626dbacd81",
+            "ce409fe8160540bfa7b674ae6daf7397",
+            "0c70f62d3c774f2f9169ce8787f57a8c",
+            "892bbaf38a134b70baca19735853d22a",
+            "29e6970b872f436d8f0b601bb4a27b6f",
+            "503ea4f594414a15a0dc0a6117347129",
+            "e61e5dddb9084998b3f57e5a41d6c2d6",
+            "1960324e4aec4c00ae79bc6a3c0494da",
+            "ceaa53ff5112447e90fea793a0cd1051",
+            "2b80e1169e304b139816ea095e69984e",
+            "04eb4e13ab5945639eaf607be1be0f5a"
+          ],
+          "first_input_to_available_ms": 23541.59029998118,
+          "last_input_to_available_ms": 23454.048299987335,
+          "request_start_to_available_ms": 676.5780999558046
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.21929998183622956,
+          "p95": 68.04959999863058,
+          "p99": 68.04959999863058,
+          "maximum": 68.04959999863058
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 11205.716500000563,
+          "p95": 20198.35800002329,
+          "p99": 20198.35800002329,
+          "maximum": 20198.35800002329
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 316.7662000050768,
+          "p95": 448.2924999902025,
+          "p99": 448.2924999902025,
+          "maximum": 448.2924999902025
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 23461.88799996162,
+          "p95": 23541.59029998118,
+          "p99": 23541.59029998118,
+          "maximum": 23541.59029998118
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 10114.928200026043,
+          "p95": 18818.20850004442,
+          "p99": 18818.20850004442,
+          "maximum": 18818.20850004442
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 143.43880000524223,
+          "p95": 273.41429999796674,
+          "p99": 273.41429999796674,
+          "maximum": 273.41429999796674
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 76.71429996844381,
+          "p95": 178.8370999856852,
+          "p99": 178.8370999856852,
+          "maximum": 178.8370999856852
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 91.57030005007982,
+          "p95": 196.73710002098233,
+          "p99": 196.73710002098233,
+          "maximum": 196.73710002098233
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 60.7247999869287,
+          "p95": 182.0020999875851,
+          "p99": 182.0020999875851,
+          "maximum": 182.0020999875851
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 68.04649997502565,
+          "p95": 189.5119000109844,
+          "p99": 189.5119000109844,
+          "maximum": 189.5119000109844
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 160.2923000464216,
+          "p95": 160.2923000464216,
+          "p99": 160.2923000464216,
+          "maximum": 160.2923000464216
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 1139.7877999697812,
+          "p99": 1139.7877999697812,
+          "maximum": 1139.7877999697812
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 642.8236000356264,
+          "p95": 862.3310000402853,
+          "p99": 862.3310000402853,
+          "maximum": 862.3310000402853
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 189.79900004342198,
+          "p95": 270.68930002860725,
+          "p99": 270.68930002860725,
+          "maximum": 270.68930002860725
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 177.32040002010763,
+          "p95": 291.07149998890236,
+          "p99": 291.07149998890236,
+          "maximum": 291.07149998890236
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 868,
+        "p50": 9424.092300003394,
+        "p95": 19453.60150001943,
+        "p99": 20207.343099988066,
+        "maximum": 20508.45190003747
+      },
+      "heartbeat_delay_ms": {
+        "count": 853,
+        "p50": 1.562199981417507,
+        "p95": 47.9727999959141,
+        "p99": 133.28010002849624,
+        "maximum": 969.4730999949388
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "1400926e6b8955b2ad25426e1e78a1c78980ac9b45b70f2f552196ccd07f6328",
+        "components": "2fbb4a0dcb51c1e373e92bb8c5e5b47b9109ee3ddf7b6ccd41ab803215f9d255"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 10000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "5b2965a6c61c15710095c3cf8bff30a4536943607d977c2cb6ad199b33872065",
+          "decision_at": 372366.1322804,
+          "input_ids": [
+            "dc70f13421db4187a7af6019035f1e7b",
+            "a9cba92b17bf4e22a5716206d9451772",
+            "90bc7121171a41909f8325a54d69b8b1",
+            "f316483f43d74e6dabd62f6b69d20340",
+            "20ae1bdbd3dd45849711548ff60adc2e",
+            "5d1aad4e43004da48268e1575e25dbee",
+            "cac71e3289124ce7a51ac3a0b2aed340",
+            "af5027b81c6341faa244a0f501fe941e",
+            "b05c22a36d6444e5bde7488eccace0c1",
+            "1c0b9eedc07d479c93977999b9fe4d20",
+            "014a283bf6094f1e87cb8b73b98dcb87",
+            "75c4f9f352f543f49a358abe262850ef",
+            "391a8f5747b247edb46e4cdaa8a11d85",
+            "aeb9e9570ff849da91dabd688da45b95",
+            "3de94414b53d4cd7810bdd29228bf495"
+          ],
+          "first_input_to_available_ms": 23765.03850001609,
+          "last_input_to_available_ms": 23679.621800023597,
+          "request_start_to_available_ms": 826.2749999994412
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.18229999113827944,
+          "p95": 66.96590001229197,
+          "p99": 66.96590001229197,
+          "maximum": 66.96590001229197
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 11214.704599988181,
+          "p95": 20117.12000000989,
+          "p99": 20117.12000000989,
+          "maximum": 20117.12000000989
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 365.4282999923453,
+          "p95": 530.2664000191726,
+          "p99": 530.2664000191726,
+          "maximum": 530.2664000191726
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 23686.939000035636,
+          "p95": 23765.03850001609,
+          "p99": 23765.03850001609,
+          "maximum": 23765.03850001609
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 10121.22739996994,
+          "p95": 18738.76650002785,
+          "p99": 18738.76650002785,
+          "maximum": 18738.76650002785
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 191.70480000320822,
+          "p95": 257.2230999940075,
+          "p99": 257.2230999940075,
+          "maximum": 257.2230999940075
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 76.07269997242838,
+          "p95": 207.45099999476224,
+          "p99": 207.45099999476224,
+          "maximum": 207.45099999476224
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 92.522100021597,
+          "p95": 223.84729998884723,
+          "p99": 223.84729998884723,
+          "maximum": 223.84729998884723
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 63.589700032025576,
+          "p95": 209.82220000587404,
+          "p99": 209.82220000587404,
+          "maximum": 209.82220000587404
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 71.56279997434467,
+          "p95": 217.27600001031533,
+          "p99": 217.27600001031533,
+          "maximum": 217.27600001031533
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 164.60710001410916,
+          "p95": 164.60710001410916,
+          "p99": 164.60710001410916,
+          "maximum": 164.60710001410916
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 1135.8816999709234,
+          "p99": 1135.8816999709234,
+          "maximum": 1135.8816999709234
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 632.8407999244519,
+          "p95": 864.0215999912471,
+          "p99": 864.0215999912471,
+          "maximum": 864.0215999912471
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 238.62079996615648,
+          "p95": 273.159799980931,
+          "p99": 273.159799980931,
+          "maximum": 273.159799980931
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 171.9431999954395,
+          "p95": 214.33049999177456,
+          "p99": 214.33049999177456,
+          "maximum": 214.33049999177456
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 867,
+        "p50": 9529.973800003063,
+        "p95": 19380.002100020647,
+        "p99": 20121.45249999594,
+        "maximum": 20503.6778000067
+      },
+      "heartbeat_delay_ms": {
+        "count": 852,
+        "p50": 1.4112999965436757,
+        "p95": 42.122999981511384,
+        "p99": 209.77069998160005,
+        "maximum": 807.3292999947444
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "27faf5eca1b9201625ef445e7174672e146974ff6a9abc4198a0281cf0e3d7ae",
+        "components": "fb595c830614e28e17e8ccc229f10aa544fa56b193e126ad8238f94f9536263d"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 10000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "633388e542fe0f43bb8f68723a2df7f6e8428e2640b42d0719422bb20a8a4f48",
+          "decision_at": 372403.5079111,
+          "input_ids": [
+            "50cc80b8e5b44f6c98b282f80e764554",
+            "ec85e53a988c4dcd828487c7e6b4cef5",
+            "318ca19aec9e4a7bbd0bf2d2d2b86b5f",
+            "a746468bbf7e4b09854ffe52db51715c",
+            "20d4b6b7ad784c0b9a97e59071975315",
+            "77e9f42a8d964e908ab72909fc232a57",
+            "5ffc628bc2a4469bb7d44b7282265d89",
+            "dd1f455f11e24c82978c24a58d3a6602",
+            "2a9b61551fbb455a9c58bc7521cf59b5",
+            "37f94eec106a4440827b01490de5b946",
+            "e33c86e14df441cc9b1669fb77c89c66",
+            "21f4eb3ba8984c3da4e3f34ed92ee69e",
+            "a3a60c82445444e2b128a47c7d165357",
+            "cd8bdb5fa2a047849caeb12e23fc2fe7",
+            "9ccf156b30704a42b7254201a5ac8a50"
+          ],
+          "first_input_to_available_ms": 24553.83150000125,
+          "last_input_to_available_ms": 24458.40980001958,
+          "request_start_to_available_ms": 706.5595000167377
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.22300001000985503,
+          "p95": 72.58249999722466,
+          "p99": 72.58249999722466,
+          "maximum": 72.58249999722466
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 11253.39410000015,
+          "p95": 20748.541700013448,
+          "p99": 20748.541700013448,
+          "maximum": 20748.541700013448
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 356.91630002111197,
+          "p95": 537.0366999995895,
+          "p99": 537.0366999995895,
+          "maximum": 537.0366999995895
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 24468.196199974045,
+          "p95": 24553.83150000125,
+          "p99": 24553.83150000125,
+          "maximum": 24553.83150000125
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 10088.687299983576,
+          "p95": 19345.517400011886,
+          "p99": 19345.517400011886,
+          "maximum": 19345.517400011886
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 173.1052999966778,
+          "p95": 228.20420004427433,
+          "p99": 228.20420004427433,
+          "maximum": 228.20420004427433
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 86.40959998592734,
+          "p95": 271.75509999506176,
+          "p99": 271.75509999506176,
+          "maximum": 271.75509999506176
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 103.32890000427142,
+          "p95": 288.4178999811411,
+          "p99": 288.4178999811411,
+          "maximum": 288.4178999811411
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 65.94529998255894,
+          "p95": 251.63489999249578,
+          "p99": 251.63489999249578,
+          "maximum": 251.63489999249578
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 74.43849998526275,
+          "p95": 260.5391999823041,
+          "p99": 260.5391999823041,
+          "maximum": 260.5391999823041
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 172.32810001587495,
+          "p95": 172.32810001587495,
+          "p99": 172.32810001587495,
+          "maximum": 172.32810001587495
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 1125.5197999998927,
+          "p99": 1125.5197999998927,
+          "maximum": 1125.5197999998927
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 650.5942000076175,
+          "p95": 927.9039999237284,
+          "p99": 927.9039999237284,
+          "maximum": 927.9039999237284
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 216.1562999826856,
+          "p95": 292.1865999815054,
+          "p99": 292.1865999815054,
+          "maximum": 292.1865999815054
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 178.02360001951456,
+          "p95": 218.65719999186695,
+          "p99": 218.65719999186695,
+          "maximum": 218.65719999186695
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 874,
+        "p50": 9605.155800003558,
+        "p95": 20023.098900041077,
+        "p99": 20773.687100037932,
+        "maximum": 21084.874300053343
+      },
+      "heartbeat_delay_ms": {
+        "count": 859,
+        "p50": 1.397200005594641,
+        "p95": 49.411000004038215,
+        "p99": 148.51909999968484,
+        "maximum": 1238.7930000154302
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "430fd86fd6d231792200ed6a251e7dbd2c1022bbb5afd9f96c1939562098dd35",
+        "components": "13a464aaae95fb9e62dd171ab62740e4b7c06cb76840416b3061657a32d4132d"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 1000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "0757cda79786f76a2180f0f86786339782383f97d635f3ececf7b8a7e40c4b66",
+          "decision_at": 372410.2698804,
+          "input_ids": [
+            "14f6805e4d0c46ef80139fbc8b9c697f",
+            "36e466405f6b497680149b30b56ac895",
+            "a07bab1bd2b7417ebf7cbd8838f8b032",
+            "d864a5f90df94efdb1b00228faae0d8b",
+            "ff73e8a6c95746199cc1eaff2505ffef",
+            "6b53f6ed2c5f4077bd42d4eb8974bb78",
+            "eed1b6fd214045c59d6220c1448ccb47",
+            "043a7e04af68477a96aa064fb42f40dc",
+            "4e85eea3d95b4cc9ba42ba52e18bb498",
+            "9a7449b704db449c8d39594c169ac54e",
+            "a9d8895767404cb7a5a45b4b19f13d22",
+            "c8b6a0a6b26d4e399378fae49e3b6d42",
+            "3cffd4c65c394ab18f6798215b2e20fd",
+            "5cbb13232f9d4d2a80c5a69fb0ee9451",
+            "e6d887938c544a388481c8241752fb1d",
+            "a3810dd6399040389934bf4275628221"
+          ],
+          "first_input_to_available_ms": 3449.328999966383,
+          "last_input_to_available_ms": 3407.4915999663062,
+          "request_start_to_available_ms": 514.1580000054091
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.24530000519007444,
+          "p95": 15.39539999794215,
+          "p99": 15.39539999794215,
+          "maximum": 15.39539999794215
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 1495.5600000103004,
+          "p95": 2554.774699965492,
+          "p99": 2554.774699965492,
+          "maximum": 2554.774699965492
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 58.34460002370179,
+          "p95": 210.04790003644302,
+          "p99": 210.04790003644302,
+          "maximum": 210.04790003644302
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 3420.2136999811046,
+          "p95": 3449.328999966383,
+          "p99": 3449.328999966383,
+          "maximum": 3449.328999966383
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 1385.1043000468053,
+          "p95": 2450.079900037963,
+          "p99": 2450.079900037963,
+          "maximum": 2450.079900037963
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 14.55830002669245,
+          "p95": 161.36399999959394,
+          "p99": 161.36399999959394,
+          "maximum": 161.36399999959394
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 6.108400004450232,
+          "p95": 8.232400054112077,
+          "p99": 8.232400054112077,
+          "maximum": 8.232400054112077
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 26.468000025488436,
+          "p95": 28.186500014271587,
+          "p99": 28.186500014271587,
+          "maximum": 28.186500014271587
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 7.238999998662621,
+          "p95": 15.85319999139756,
+          "p99": 15.85319999139756,
+          "maximum": 15.85319999139756
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 9.552699979394674,
+          "p95": 20.66959999501705,
+          "p99": 20.66959999501705,
+          "maximum": 20.66959999501705
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 162.06800000509247,
+          "p95": 162.06800000509247,
+          "p99": 162.06800000509247,
+          "maximum": 162.06800000509247
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 121.54639995424077,
+          "p99": 121.54639995424077,
+          "maximum": 121.54639995424077
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 57.14880005689338,
+          "p95": 61.29650003276765,
+          "p99": 61.29650003276765,
+          "maximum": 61.29650003276765
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 17.202399962116033,
+          "p95": 25.03160003107041,
+          "p99": 25.03160003107041,
+          "maximum": 25.03160003107041
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 23.28319998923689,
+          "p95": 24.244300031568855,
+          "p99": 24.244300031568855,
+          "maximum": 24.244300031568855
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 147,
+        "p50": 726.6910999896936,
+        "p95": 2427.7129999827594,
+        "p99": 2561.7553999763913,
+        "maximum": 2592.2356999944896
+      },
+      "heartbeat_delay_ms": {
+        "count": 131,
+        "p50": 1.723699988797307,
+        "p95": 21.904999990947545,
+        "p99": 112.8815000015311,
+        "maximum": 147.4444999662228
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "61b7ab3e23b762198b4fc34e23f5e4501876bb7af61284009ab503464a02c52b",
+        "components": "55f3a2b313e0b548e5e61120f71e70a34f7d5a48c85098b8d9d878ce1f1c190d"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 1000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "ec7b4a99e9d731612e6e6700437b7e1f8f70a4179d494980b8abc83404796e41",
+          "decision_at": 372415.5882802,
+          "input_ids": [
+            "78fb69a39bbd4972bfe9f185f83cb1be",
+            "6a2bf218438a4f74a9fd802f83b02aa2",
+            "5aac5012f73c4325a6b9de7a45efc3a0",
+            "00ea0cf0428440508072706fd2507d0c",
+            "35fe9531b769432aa1ec5c01a7377ccc",
+            "b9465d3196d8453294ebc57dea3ac4bb",
+            "2fe06cdfbfc84d6cab3067d7f736d00f",
+            "a3ecdb6d9f764105b9f19fc10fdd4f01",
+            "4c5d00787f1c4aa7b7688f2f1cf5cdaa",
+            "d43ebb106fa24ae5909906a388c69b41",
+            "60d4418f80d94bf69f2a930e7f66219d",
+            "383fc8cd38404db989031a71c64defd4",
+            "b904c6245e99490bb13ae27dbc4d8c2a",
+            "d8f9702701b74880bf3e9cb77a9056e1",
+            "be4934e1716949718bd79e29d85bc255",
+            "95414c5d35b04056b4ae448da8be4d62"
+          ],
+          "first_input_to_available_ms": 3452.577000018209,
+          "last_input_to_available_ms": 3417.7513000322506,
+          "request_start_to_available_ms": 548.7721000099555
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.1993000041693449,
+          "p95": 15.222799964249134,
+          "p99": 15.222799964249134,
+          "maximum": 15.222799964249134
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 1447.9373000212945,
+          "p95": 2513.0402999930084,
+          "p99": 2513.0402999930084,
+          "maximum": 2513.0402999930084
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 58.26610000804067,
+          "p95": 76.53710001613945,
+          "p99": 76.53710001613945,
+          "maximum": 76.53710001613945
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 3424.5822000084445,
+          "p95": 3452.577000018209,
+          "p99": 3452.577000018209,
+          "maximum": 3452.577000018209
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 1338.041900016833,
+          "p95": 2402.809699997306,
+          "p99": 2402.809699997306,
+          "maximum": 2402.809699997306
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 15.008500020485371,
+          "p95": 19.117499992717057,
+          "p99": 19.117499992717057,
+          "maximum": 19.117499992717057
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 6.054600002244115,
+          "p95": 6.8020999897271395,
+          "p99": 6.8020999897271395,
+          "maximum": 6.8020999897271395
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 26.47640003124252,
+          "p95": 28.860899969004095,
+          "p99": 28.860899969004095,
+          "maximum": 28.860899969004095
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 7.210800016764551,
+          "p95": 15.084799961186945,
+          "p99": 15.084799961186945,
+          "maximum": 15.084799961186945
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 9.020299999974668,
+          "p95": 20.856200018897653,
+          "p99": 20.856200018897653,
+          "maximum": 20.856200018897653
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 180.15700002433732,
+          "p95": 180.15700002433732,
+          "p99": 180.15700002433732,
+          "maximum": 180.15700002433732
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 125.17939996905625,
+          "p99": 125.17939996905625,
+          "maximum": 125.17939996905625
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 55.596099933609366,
+          "p95": 70.25749998865649,
+          "p99": 70.25749998865649,
+          "maximum": 70.25749998865649
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 16.644000017549843,
+          "p95": 21.909399947617203,
+          "p99": 21.909399947617203,
+          "maximum": 21.909399947617203
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 22.689699952024966,
+          "p95": 24.051399959716946,
+          "p99": 24.051399959716946,
+          "maximum": 24.051399959716946
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 154,
+        "p50": 742.2668000217527,
+        "p95": 2399.1054000216536,
+        "p99": 2541.9338999781758,
+        "maximum": 2568.1573000038043
+      },
+      "heartbeat_delay_ms": {
+        "count": 138,
+        "p50": 1.6134999645873904,
+        "p95": 13.330000005662441,
+        "p99": 75.0911000254564,
+        "maximum": 134.579299967736
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "2dbecd594a2769e97a9e4b62cb9ca0d59ce52882d217a9673068e2cec2135c67",
+        "components": "493af4c443b6ccaeb42c026ae840546a60c907d2ef0eff0cdcbd6321968b5d4a"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 1000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "5d0608f0b3349bb00f7a867ec50cfca0c6f1a0968e82c0791cc06b87002e66ca",
+          "decision_at": 372420.9591483,
+          "input_ids": [
+            "f55a2018b67a4981a936a9f7d70e6562",
+            "679ac24159774fc2ac51ab50ce72d9a8",
+            "195767882d87400289450887b996b54c",
+            "a0aa4118a81540a69ed39c2fadb268ae",
+            "21cad42e061f4d349e947c90ab1d37d3",
+            "36c89cc9615148c4b41518e34ee9b1c7",
+            "968e75abd4e24ff592e3e5da2d82af95",
+            "38ae48ae0c044351bc72bf660f08c6ec",
+            "a68bb3e0ab56466a859ac087aa93d3ec",
+            "d363d1266816416dbad129dee1867f99",
+            "fc47e72be2d048619ad684e42f73d474",
+            "6f649fe6bfdb4ef2b086c67e79f42f4a",
+            "c686a6bbbbc8498c965b27f61e00a1ad",
+            "f4fd4d41399445e7a05e851ede6e2753",
+            "c65ededf401a4e70be72a92ed36d91f9",
+            "018857cc430c4ce58c3e3af854a45449"
+          ],
+          "first_input_to_available_ms": 3505.2537000156008,
+          "last_input_to_available_ms": 3468.7240999774076,
+          "request_start_to_available_ms": 640.0708999717608
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.2036000369116664,
+          "p95": 15.006300003733486,
+          "p99": 15.006300003733486,
+          "maximum": 15.006300003733486
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 1450.3442000132054,
+          "p95": 2498.4571999520995,
+          "p99": 2498.4571999520995,
+          "maximum": 2498.4571999520995
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 58.31839999882504,
+          "p95": 123.85539995739236,
+          "p99": 123.85539995739236,
+          "maximum": 123.85539995739236
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 3477.5104000000283,
+          "p95": 3505.2537000156008,
+          "p99": 3505.2537000156008,
+          "maximum": 3505.2537000156008
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 1345.4889000277035,
+          "p95": 2394.5450999890454,
+          "p99": 2394.5450999890454,
+          "maximum": 2394.5450999890454
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 15.77619998715818,
+          "p95": 75.38759999442846,
+          "p99": 75.38759999442846,
+          "maximum": 75.38759999442846
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 6.127099972218275,
+          "p95": 8.97399999666959,
+          "p99": 8.97399999666959,
+          "maximum": 8.97399999666959
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 26.292200025636703,
+          "p95": 29.672999982722104,
+          "p99": 29.672999982722104,
+          "maximum": 29.672999982722104
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 6.9926000433042645,
+          "p95": 175.93220004346222,
+          "p99": 175.93220004346222,
+          "maximum": 175.93220004346222
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 8.844399999361485,
+          "p95": 177.80910001602024,
+          "p99": 177.80910001602024,
+          "maximum": 177.80910001602024
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 169.11309998249635,
+          "p95": 169.11309998249635,
+          "p99": 169.11309998249635,
+          "maximum": 169.11309998249635
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 122.11669998941943,
+          "p99": 122.11669998941943,
+          "maximum": 122.11669998941943
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 55.575399950612336,
+          "p95": 62.66430002870038,
+          "p99": 62.66430002870038,
+          "maximum": 62.66430002870038
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 17.690900014713407,
+          "p95": 25.22300003329292,
+          "p99": 25.22300003329292,
+          "maximum": 25.22300003329292
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 23.187799961306155,
+          "p95": 25.199900032021105,
+          "p99": 25.199900032021105,
+          "maximum": 25.199900032021105
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 144,
+        "p50": 623.3461999800056,
+        "p95": 2360.862100031227,
+        "p99": 2501.8992999684997,
+        "maximum": 2523.043699970003
+      },
+      "heartbeat_delay_ms": {
+        "count": 128,
+        "p50": 1.62399998633191,
+        "p95": 14.707400016486645,
+        "p99": 126.03130001341924,
+        "maximum": 178.35510000120848
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "dd8f902b39962d6d4bb4737c52b5466e5f6087e82cdf86da2060d43d3b8ec573",
+        "components": "10ae21bb841117119d1eba4c8d49ed61aff00b8e62a552d8da545591df2d5c5c"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 5000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "0b28c31b54ece113d2a85e1af7012723d795b62cec9ad29e9211768243da6459",
+          "decision_at": 372439.9744905,
+          "input_ids": [
+            "e0156f33b11144e6a7f555f3e26a745b",
+            "29fcb4269e274b5081f93091731756f9",
+            "0049e877e3af4cb596eb93c0a49ec148",
+            "c7adca3f2e9341ab87787b41ee6aa0a9",
+            "36ef483580b9458e8b92de30a6af9112",
+            "b00b3448957d464292872d72dcdf5235",
+            "c001b1c6adf341328b5c2b85b78bef3e",
+            "3fcd122dc5ce45f88cf61e9fe4599c87",
+            "e83dbf1fa94648338b92799f40efda62",
+            "0c822fc7fe3f4de393436798c89ff8c9",
+            "c4810770cdc146c0b948ea3a92d8b626",
+            "fcc5f7bbbb3a4d1c82dfc2dd8c9505d8",
+            "0be286c3d52540b7ba421a1fe739ebb9",
+            "1e45c091eafe4cfabd14591dfea9539b",
+            "538cd64f97174f52a9377d2d3c73d508",
+            "23582e22c8194a898a5eec0f2cb38c27"
+          ],
+          "first_input_to_available_ms": 12657.417899987195,
+          "last_input_to_available_ms": 12595.58379999362,
+          "request_start_to_available_ms": 722.0364999957383
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.18799997633323073,
+          "p95": 39.941800001543015,
+          "p99": 39.941800001543015,
+          "maximum": 39.941800001543015
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 5581.381399999373,
+          "p95": 10554.132300021593,
+          "p99": 10554.132300021593,
+          "maximum": 10554.132300021593
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 187.278299999889,
+          "p95": 368.34909999743104,
+          "p99": 368.34909999743104,
+          "maximum": 368.34909999743104
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 12605.128000024706,
+          "p95": 12657.417899987195,
+          "p99": 12657.417899987195,
+          "maximum": 12657.417899987195
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 5036.918599973433,
+          "p95": 10025.43689997401,
+          "p99": 10025.43689997401,
+          "maximum": 10025.43689997401
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 76.1777000152506,
+          "p95": 101.98249999666587,
+          "p99": 101.98249999666587,
+          "maximum": 101.98249999666587
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 38.13920001266524,
+          "p95": 227.95710002537817,
+          "p99": 227.95710002537817,
+          "maximum": 227.95710002537817
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 57.627499976661056,
+          "p95": 246.59649998648092,
+          "p99": 246.59649998648092,
+          "maximum": 246.59649998648092
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 33.3484000293538,
+          "p95": 73.1062000268139,
+          "p99": 73.1062000268139,
+          "maximum": 73.1062000268139
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 38.81630004616454,
+          "p95": 83.23019999079406,
+          "p99": 83.23019999079406,
+          "maximum": 83.23019999079406
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 169.28159998496994,
+          "p95": 169.28159998496994,
+          "p99": 169.28159998496994,
+          "maximum": 169.28159998496994
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 568.2348000118509,
+          "p99": 568.2348000118509,
+          "maximum": 568.2348000118509
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 303.05299995234236,
+          "p95": 334.77650000713766,
+          "p99": 334.77650000713766,
+          "maximum": 334.77650000713766
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 90.17179999500513,
+          "p95": 130.9208999737166,
+          "p99": 130.9208999737166,
+          "maximum": 130.9208999737166
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 87.12599996943027,
+          "p95": 117.16289998730645,
+          "p99": 117.16289998730645,
+          "maximum": 117.16289998730645
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 456,
+        "p50": 4712.441399984527,
+        "p95": 10170.718299981672,
+        "p99": 10552.347899996676,
+        "maximum": 10691.058399970643
+      },
+      "heartbeat_delay_ms": {
+        "count": 440,
+        "p50": 1.5053000138141215,
+        "p95": 51.782799961511046,
+        "p99": 197.9177000070922,
+        "maximum": 583.049099969212
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "2f37b79c280c0a30c7bf5ef24c92e8f587fbff309bbcd6de1695ae8b59cd9159",
+        "components": "873f3ffd9711e65d50049247f840b2aeeb0044bcadd07c8948d6aa5ad032cd03"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 5000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "124d379f345692555de2f61e25417e51c9faeb35eeee1f09af08072d39e047b4",
+          "decision_at": 372459.7431789,
+          "input_ids": [
+            "43871f11185a45d1bb1acb25d4b71c0c",
+            "179c08ceadfc4df7aa52813872008539",
+            "6e1fe5f6b50244098d72f01ac51fe06e",
+            "b5d9309401564a1eababa4c77878d43a",
+            "3509fa7c31494c4da5f41d76cf42d4df",
+            "9975f35af85244f484243509982ca587",
+            "35153dac0278416bbaf252d8e263a38f",
+            "98674a4ace764546a6921dd21ba4a3c3",
+            "5685eab42e4b4111acd291e2261034e7",
+            "d6bc53b2c7d44bd7a9762a8356d51ff7",
+            "71220716792d4cc8bb4d9b49bc8ba003",
+            "844e633e80ce4fe69c641ad396cc7943",
+            "263de23bcd1b493e901ac2b98df1e98f",
+            "4081640ebe6845b0adf30b949857702d",
+            "f63b8a6650d74309af6d207596b804dc",
+            "e46c7eebf3e34e3bbc0e5e095945c36f"
+          ],
+          "first_input_to_available_ms": 12605.242799967527,
+          "last_input_to_available_ms": 12539.966799959075,
+          "request_start_to_available_ms": 614.025299961213
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.2348999842070043,
+          "p95": 40.514099993743,
+          "p99": 40.514099993743,
+          "maximum": 40.514099993743
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 5664.480300038122,
+          "p95": 10463.316999957897,
+          "p99": 10463.316999957897,
+          "maximum": 10463.316999957897
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 178.68980002822354,
+          "p95": 367.7675999933854,
+          "p99": 367.7675999933854,
+          "maximum": 367.7675999933854
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 12551.149899954908,
+          "p95": 12605.242799967527,
+          "p99": 12605.242799967527,
+          "maximum": 12605.242799967527
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 5085.9319000155665,
+          "p95": 9930.885500041768,
+          "p99": 9930.885500041768,
+          "maximum": 9930.885500041768
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 77.84979999996722,
+          "p95": 99.81489996425807,
+          "p99": 99.81489996425807,
+          "maximum": 99.81489996425807
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 36.03239997755736,
+          "p95": 230.77049996936694,
+          "p99": 230.77049996936694,
+          "maximum": 230.77049996936694
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 55.096999974921346,
+          "p95": 250.69740001345053,
+          "p99": 250.69740001345053,
+          "maximum": 250.69740001345053
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 33.070300007238984,
+          "p95": 228.58700004871935,
+          "p99": 228.58700004871935,
+          "maximum": 228.58700004871935
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 38.49669999908656,
+          "p95": 234.03999995207414,
+          "p99": 234.03999995207414,
+          "maximum": 234.03999995207414
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 161.17199999280274,
+          "p95": 161.17199999280274,
+          "p99": 161.17199999280274,
+          "maximum": 161.17199999280274
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 572.6827000034973,
+          "p99": 572.6827000034973,
+          "maximum": 572.6827000034973
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 302.86899994825944,
+          "p95": 318.80050007021055,
+          "p99": 318.80050007021055,
+          "maximum": 318.80050007021055
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 90.0629999814555,
+          "p95": 120.08389993570745,
+          "p99": 120.08389993570745,
+          "maximum": 120.08389993570745
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 87.2768999543041,
+          "p95": 116.82910000672564,
+          "p99": 116.82910000672564,
+          "maximum": 116.82910000672564
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 459,
+        "p50": 4594.136699975934,
+        "p95": 10086.353999970015,
+        "p99": 10471.310299995821,
+        "maximum": 10608.449099992868
+      },
+      "heartbeat_delay_ms": {
+        "count": 443,
+        "p50": 1.3622000301256776,
+        "p95": 47.804799997247756,
+        "p99": 132.7617999818176,
+        "maximum": 642.4513000133447
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "756cc17fbe0a55e43cb2caff0f2bd4193f0b7fbb53da98468982b542a655bd47",
+        "components": "ae7bdec0685259f49aa1a76f463f18e891a576e365667431b0e8705b6f1647b4"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 5000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "15ae3f539b751b958d4805a9054632abea202ad28153b7914cd042256d6bbd7b",
+          "decision_at": 372479.2658321,
+          "input_ids": [
+            "5bf38722065a4d889e285d62711ec9a5",
+            "b52c9936386d4115810a0d978b9dbf12",
+            "553483522756487ebe2193b9d33d5ce1",
+            "bc12c48f0c9d42bfaebb5a0193d0d6b5",
+            "dcee8c23aafa4459b3a2112512c9f38b",
+            "1928e352146f425b97e5111e8a89ce13",
+            "1dfe8999428a45d2bab80c25c31737ce",
+            "c37beb53d7714ac29823a30bf7c59f2e",
+            "bc1cfea773294471863da335466ac670",
+            "0710ff5623ca4039992ce20e8f33d13e",
+            "22e41810fc3442dc985b8ab3e492d072",
+            "10328e163cf2407eb9bf986b49f938a5",
+            "90035a0f5a0b41f2b36ae2baa758149d",
+            "3dc01234957d482badd4430a9be23b75",
+            "4e23884845f1409eb1c4c0ac48b94e52",
+            "a73bd0ed3e4a47be80f20ade45b6062d"
+          ],
+          "first_input_to_available_ms": 12426.374999980908,
+          "last_input_to_available_ms": 12358.617299993057,
+          "request_start_to_available_ms": 612.8029000246897
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.19639998208731413,
+          "p95": 40.99869995843619,
+          "p99": 40.99869995843619,
+          "maximum": 40.99869995843619
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 5588.048700010404,
+          "p95": 10362.848899967503,
+          "p99": 10362.848899967503,
+          "maximum": 10362.848899967503
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 172.5692999898456,
+          "p95": 374.3836999638006,
+          "p99": 374.3836999638006,
+          "maximum": 374.3836999638006
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 12373.070899979211,
+          "p95": 12426.374999980908,
+          "p99": 12426.374999980908,
+          "maximum": 12426.374999980908
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 5053.975699993316,
+          "p95": 9825.939400005154,
+          "p99": 9825.939400005154,
+          "maximum": 9825.939400005154
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 70.86819998221472,
+          "p95": 100.1103000016883,
+          "p99": 100.1103000016883,
+          "maximum": 100.1103000016883
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 35.30519997002557,
+          "p95": 243.625900009647,
+          "p99": 243.625900009647,
+          "maximum": 243.625900009647
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 53.443900018464774,
+          "p95": 262.62289995793253,
+          "p99": 262.62289995793253,
+          "maximum": 262.62289995793253
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 32.34459995292127,
+          "p95": 238.5497000068426,
+          "p99": 238.5497000068426,
+          "maximum": 238.5497000068426
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 37.74409997276962,
+          "p95": 243.0498999892734,
+          "p99": 243.0498999892734,
+          "maximum": 243.0498999892734
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 155.48819996183738,
+          "p95": 155.48819996183738,
+          "p99": 155.48819996183738,
+          "maximum": 155.48819996183738
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 579.7633999609388,
+          "p99": 579.7633999609388,
+          "maximum": 579.7633999609388
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 300.42970000067726,
+          "p95": 322.0992999849841,
+          "p99": 322.0992999849841,
+          "maximum": 322.0992999849841
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 88.10499997343868,
+          "p95": 120.77919993316755,
+          "p99": 120.77919993316755,
+          "maximum": 120.77919993316755
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 85.9570000320673,
+          "p95": 109.8645000020042,
+          "p99": 109.8645000020042,
+          "maximum": 109.8645000020042
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 451,
+        "p50": 4651.079300034326,
+        "p95": 9956.219400046393,
+        "p99": 10372.044799965806,
+        "maximum": 10503.0182999908
+      },
+      "heartbeat_delay_ms": {
+        "count": 435,
+        "p50": 1.4979999582283199,
+        "p95": 52.96750001842156,
+        "p99": 167.3881000210531,
+        "maximum": 381.3803999987431
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "ecb048aeb78c6ecff3e8661be8d8a646799457588979b0b98e67d5c8e35c7b7d",
+        "components": "c8bde251ca888fb4230a4b3936a6d00e523407b4070754933f621ed92a8cf85a"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 10000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "4676bfd02cbdbce15fc3b2e07b24c1f42362c70b7ca912209f7c09fc94a3697a",
+          "decision_at": 372517.0729473,
+          "input_ids": [
+            "2c616dae76e344f7975589f55c63e5aa",
+            "56172f8da18e435484945da04d356e46",
+            "76a13b87bcec4a3db31bb11310c635c6",
+            "05f96732b8d6431cb1367763a066fa2f",
+            "b98b9da4a3464317baccb50c9503b088",
+            "fdc78d160bfa4aaea172c52357641f8e",
+            "9929457ca2b041c280bd00fb5e9db34c",
+            "87c4e389e0a04f5799c07b6dd2e02f23",
+            "077bcca8ddf347ee89e08f9e3cb85aa8",
+            "fe283e437e8242818fa04687fcc8f1bd",
+            "f16247c3837740df83ff95019941b7ef",
+            "cee014c839e541a9a371e83d3baf1aee",
+            "e27b9e890c3e425aac8a79c909fbd59b",
+            "26c47da37a864f9081a7f45a3db3015c",
+            "ca9c4a95005a495faf8198a8f653ed4e",
+            "235cd7a1c83d47c59b0a75991d61a9ee"
+          ],
+          "first_input_to_available_ms": 25068.134200002532,
+          "last_input_to_available_ms": 24977.470199984964,
+          "request_start_to_available_ms": 817.2928999993019
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.19689998589456081,
+          "p95": 68.61060002120212,
+          "p99": 68.61060002120212,
+          "maximum": 68.61060002120212
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 11228.825600002892,
+          "p95": 21388.909799978137,
+          "p99": 21388.909799978137,
+          "maximum": 21388.909799978137
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 351.29580000648275,
+          "p95": 596.5236999909393,
+          "p99": 596.5236999909393,
+          "maximum": 596.5236999909393
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 24987.424899998587,
+          "p95": 25068.134200002532,
+          "p99": 25068.134200002532,
+          "maximum": 25068.134200002532
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 10117.993700027,
+          "p95": 20240.290999994613,
+          "p99": 20240.290999994613,
+          "maximum": 20240.290999994613
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 165.9234999679029,
+          "p95": 197.50080001540482,
+          "p99": 197.50080001540482,
+          "maximum": 197.50080001540482
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 76.14009996177629,
+          "p95": 332.3242000187747,
+          "p99": 332.3242000187747,
+          "maximum": 332.3242000187747
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 93.54750002967194,
+          "p95": 348.4695000224747,
+          "p99": 348.4695000224747,
+          "maximum": 348.4695000224747
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 60.9987000352703,
+          "p95": 303.40869998326525,
+          "p99": 303.40869998326525,
+          "maximum": 303.40869998326525
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 69.0347999916412,
+          "p95": 310.73860003380105,
+          "p99": 310.73860003380105,
+          "maximum": 310.73860003380105
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 154.64510000310838,
+          "p95": 154.64510000310838,
+          "p99": 154.64510000310838,
+          "maximum": 154.64510000310838
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 1154.7249000286683,
+          "p99": 1154.7249000286683,
+          "maximum": 1154.7249000286683
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 635.0822999957018,
+          "p95": 671.4772000559606,
+          "p99": 671.4772000559606,
+          "maximum": 671.4772000559606
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 227.05199994379655,
+          "p95": 275.82099998835474,
+          "p99": 275.82099998835474,
+          "maximum": 275.82099998835474
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 174.1158000077121,
+          "p95": 222.0120999845676,
+          "p99": 222.0120999845676,
+          "maximum": 222.0120999845676
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 885,
+        "p50": 9954.06069996534,
+        "p95": 20226.34419996757,
+        "p99": 21400.17350000562,
+        "maximum": 21669.022599991877
+      },
+      "heartbeat_delay_ms": {
+        "count": 869,
+        "p50": 1.351100003812462,
+        "p95": 46.01279997266829,
+        "p99": 209.07000000122935,
+        "maximum": 920.2125999913551
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "c025bdd197bfb3f4e70df2f74e8cb864b64ccea26bad59d361242aa3c54dab89",
+        "components": "aa7b1a9713b4f539399a5dc920f824b50b95c6681c2962f249ceab810c741135"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 10000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "a41e113efaf7a35d34ce662f7bbc75bb8cca1d1db153732156b1ecf2b4e639e1",
+          "decision_at": 372557.7940184,
+          "input_ids": [
+            "67ccaaf5f737431d97094bb9ea7f66db",
+            "607c2e763dd148a5aa3b0b43631ce502",
+            "3c59232ea01248e1a6453d10ea60d249",
+            "fe84f73f1fd74594ab159ae3736fcb8a",
+            "f2e5ff45c6c543b3aa6e10323600c0aa",
+            "fc4f6b0007824c938a34fc9da5cdd187",
+            "31426cf6dbfd49fdbbb0d60b43ca8872",
+            "3259e793b1dd48eea6b251da572d8557",
+            "45642d45e8694830989a33b970759c7d",
+            "bf3f6c63dd3340a7a8f95124a8ad5e82",
+            "149093ee0bb9496c9d6c7e0dd9a3e731",
+            "110fad5ed92d46828a0d1dfcd37e66f4",
+            "365ee73c077e4303983231f8f290d713",
+            "da4b9d3992234c0883a697b54c3f278d",
+            "4d2c59644e6b460ca64846eab42f0020",
+            "94393babe74447149e0dbf8774c96c31"
+          ],
+          "first_input_to_available_ms": 27207.487600040622,
+          "last_input_to_available_ms": 27116.979300044477,
+          "request_start_to_available_ms": 733.384900027886
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.19479996990412474,
+          "p95": 68.5317000024952,
+          "p99": 68.5317000024952,
+          "maximum": 68.5317000024952
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 11848.955499997828,
+          "p95": 22816.870300041046,
+          "p99": 22816.870300041046,
+          "maximum": 22816.870300041046
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 357.02799999853596,
+          "p95": 648.4818999888375,
+          "p99": 648.4818999888375,
+          "maximum": 648.4818999888375
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 27127.129700034857,
+          "p95": 27207.487600040622,
+          "p99": 27207.487600040622,
+          "maximum": 27207.487600040622
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 10694.171099981759,
+          "p95": 21012.592800019775,
+          "p99": 21012.592800019775,
+          "maximum": 21012.592800019775
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 186.2849000026472,
+          "p95": 222.53099997760728,
+          "p99": 222.53099997760728,
+          "maximum": 222.53099997760728
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 84.58350005093962,
+          "p95": 365.27109995950013,
+          "p99": 365.27109995950013,
+          "maximum": 365.27109995950013
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 101.4689999865368,
+          "p95": 381.8318999838084,
+          "p99": 381.8318999838084,
+          "maximum": 381.8318999838084
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 64.36080002458766,
+          "p95": 359.2990000033751,
+          "p99": 359.2990000033751,
+          "maximum": 359.2990000033751
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 72.67319998936728,
+          "p95": 367.7952000289224,
+          "p99": 367.7952000289224,
+          "maximum": 367.7952000289224
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 168.58629998750985,
+          "p95": 168.58629998750985,
+          "p99": 168.58629998750985,
+          "maximum": 168.58629998750985
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 1196.1274999775924,
+          "p99": 1196.1274999775924,
+          "maximum": 1196.1274999775924
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 656.2728999415413,
+          "p95": 1146.7455999809317,
+          "p99": 1146.7455999809317,
+          "maximum": 1146.7455999809317
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 211.4244999247603,
+          "p95": 266.06870006071404,
+          "p99": 266.06870006071404,
+          "maximum": 266.06870006071404
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 181.7053999984637,
+          "p95": 285.73830000823364,
+          "p99": 285.73830000823364,
+          "maximum": 285.73830000823364
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 940,
+        "p50": 11115.457899984904,
+        "p95": 22046.247600053903,
+        "p99": 22866.36660003569,
+        "maximum": 23465.277300041635
+      },
+      "heartbeat_delay_ms": {
+        "count": 924,
+        "p50": 1.4771999744698405,
+        "p95": 48.66180000361055,
+        "p99": 225.0620000017807,
+        "maximum": 759.3148000491783
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "acfff0774f055a3505f21f46ac19572af9aaa53003af4ba86fe909f1094e06ab",
+        "components": "465eb4ab33181357404a6bf5c5090f3e4080cf0e98bec1039493f690884bb690"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 10000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "02984f33b0d0feec9ffc62f35bfed2d51c74ccc55328bb69f27c592d50e2f12f",
+          "decision_at": 372597.457361,
+          "input_ids": [
+            "723bcdee331648778bb6c5e9236c4fbc",
+            "1e46f54e4a5447d8b4ebc7cd302e66bc",
+            "4b4b042cbf6840b3988b3509a2167d7d",
+            "569511b4470a4fa385b66a686cdfcc61",
+            "ec846e7bb0a64e99acca7ccfa4da6174",
+            "66779c742cad4b09affff9d938f05244",
+            "696f22cecaec42e2baa87de7b13a00c6",
+            "f9a72fba24cb4c7885f0187f9c133095",
+            "3fe96d9d4a3d4afa9dec0fef7a97f3ee",
+            "9da901dd54074552a90bcaf23ec5531c",
+            "1667476100d1407eb6d6579ae08630b9",
+            "278d0e6c2df84209b0b4df3ad30fa6dc",
+            "d85737b88b3f4c00810fdc3dbc318a80",
+            "34f023b8a22349a1a86f6ad68833ff01",
+            "d7451c6d9e5145f88177b583aa53cfd7",
+            "3eded2f202bf4937a2773bf4577935dc"
+          ],
+          "first_input_to_available_ms": 25339.957799995318,
+          "last_input_to_available_ms": 25251.106899988372,
+          "request_start_to_available_ms": 816.6574999922886
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.18470000941306353,
+          "p95": 70.67589997313917,
+          "p99": 70.67589997313917,
+          "maximum": 70.67589997313917
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 11294.34779996518,
+          "p95": 21331.24589995714,
+          "p99": 21331.24589995714,
+          "maximum": 21331.24589995714
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 357.4227000353858,
+          "p95": 685.3880000417121,
+          "p99": 685.3880000417121,
+          "maximum": 685.3880000417121
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 25258.227000012994,
+          "p95": 25339.957799995318,
+          "p99": 25339.957799995318,
+          "maximum": 25339.957799995318
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 10120.651500008535,
+          "p95": 20201.075999997556,
+          "p99": 20201.075999997556,
+          "maximum": 20201.075999997556
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 189.18699998175725,
+          "p95": 204.1863000486046,
+          "p99": 204.1863000486046,
+          "maximum": 204.1863000486046
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 76.34770002914593,
+          "p95": 440.00910001341254,
+          "p99": 440.00910001341254,
+          "maximum": 440.00910001341254
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 92.6581000094302,
+          "p95": 453.41640000697225,
+          "p99": 453.41640000697225,
+          "maximum": 453.41640000697225
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 62.524300010409206,
+          "p95": 368.95979999098927,
+          "p99": 368.95979999098927,
+          "maximum": 368.95979999098927
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 70.70959999691695,
+          "p95": 377.40559998201206,
+          "p99": 377.40559998201206,
+          "maximum": 377.40559998201206
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 160.19699996104464,
+          "p95": 160.19699996104464,
+          "p99": 160.19699996104464,
+          "maximum": 160.19699996104464
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 1209.2107000062242,
+          "p99": 1209.2107000062242,
+          "maximum": 1209.2107000062242
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 635.7368999742903,
+          "p95": 669.9455000343733,
+          "p99": 669.9455000343733,
+          "maximum": 669.9455000343733
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 228.02850004518405,
+          "p95": 299.1590000456199,
+          "p99": 299.1590000456199,
+          "maximum": 299.1590000456199
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 183.60430002212524,
+          "p95": 242.96420003520325,
+          "p99": 242.96420003520325,
+          "maximum": 242.96420003520325
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 867,
+        "p50": 9983.058999991044,
+        "p95": 20658.839599986095,
+        "p99": 21412.912199972197,
+        "maximum": 21727.074499998707
+      },
+      "heartbeat_delay_ms": {
+        "count": 851,
+        "p50": 1.570799988694489,
+        "p95": 47.76140001602471,
+        "p99": 215.9322000411339,
+        "maximum": 1081.2240999843925
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "product_scope": {
+        "point_value_scope": true,
+        "window_visible": true,
+        "main_auto_enabled": true,
+        "card_identity_sidebets_allowed": false,
+        "sidebet_dispatches": [],
+        "old_enabled_true_sidebet_settings_preserved": true
+      },
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "151584644177ad0710c3abe797eea09c2f1fe41cbe2ff50cb942681f6fb594fe",
+        "components": "f8934f314d781e817017e50fd297dffa0b93abbd00a6c564eb679fb04ffc9130"
+      }
+    }
+  ],
+  "idle_diagnostic": {
+    "before": {
+      "source_commit": "40e239df642a6a45a4d4f278644586097c41831a",
+      "fixture_events": 10001,
+      "fixture_sha256": "157a8a27705a0123fa6abb515837725ba4c3ec155241949fb7d1e06c74e233d1",
+      "cases": [
+        {
+          "enabled": false,
+          "unchanged_refresh_calls": 100,
+          "full_prefix_capture_calls": 100,
+          "elapsed_ms": 44866.418900026474
+        },
+        {
+          "enabled": true,
+          "unchanged_refresh_calls": 100,
+          "full_prefix_capture_calls": 100,
+          "elapsed_ms": 45080.58359997813
+        }
+      ],
+      "main_auto": true,
+      "default_sidebet_enabled": true
+    },
+    "after": {
+      "base_commit": "affd4948099d07c70176212f702eb2c598117b2b",
+      "source_files": {
+        "blackjack_lab/ui/sidebet_view.py": "9821eb650aeade22d74bb495881af3389df730b8da3b3445c3fc1fa85f2478be",
+        "blackjack_lab/ui/app.py": "c44f727bac3874017a68348906d878f05c638c8c97e9da67e33356bb00ecdce2",
+        "blackjack_lab/analysis/sidebets/background.py": "62ae3c334e065961de3c264c62e31fe761d32cc4856d5438c0d8b95424b1ab3d"
+      },
+      "fixture_events": 10001,
+      "fixture_sha256": "157a8a27705a0123fa6abb515837725ba4c3ec155241949fb7d1e06c74e233d1",
+      "cases": [
+        {
+          "research_entry": false,
+          "requested_enabled": false,
+          "effective_enabled": false,
+          "unchanged_refresh_and_poll_calls": 100,
+          "full_prefix_capture_calls": 0,
+          "elapsed_ms": 6.4295000047422945,
+          "poll_scheduled": false,
+          "main_auto": true
+        },
+        {
+          "research_entry": false,
+          "requested_enabled": true,
+          "effective_enabled": false,
+          "unchanged_refresh_and_poll_calls": 100,
+          "full_prefix_capture_calls": 0,
+          "elapsed_ms": 6.350699986796826,
+          "poll_scheduled": false,
+          "main_auto": true
+        },
+        {
+          "research_entry": true,
+          "requested_enabled": false,
+          "effective_enabled": false,
+          "unchanged_refresh_and_poll_calls": 100,
+          "full_prefix_capture_calls": 0,
+          "elapsed_ms": 6.186000013258308,
+          "poll_scheduled": false,
+          "main_auto": true
+        },
+        {
+          "research_entry": true,
+          "requested_enabled": true,
+          "effective_enabled": true,
+          "unchanged_refresh_and_poll_calls": 100,
+          "full_prefix_capture_calls": 0,
+          "elapsed_ms": 6.618499988690019,
+          "poll_scheduled": true,
+          "main_auto": true
+        }
+      ]
+    },
+    "note": "Real Tk method diagnostic on the same closed 10001-event synthetic history. Timing is not end-to-end recording latency or a CPU percentage. Working-source preliminary observations retained separately."
+  },
+  "synthetic_only": true,
+  "real_time_acceptance": false,
+  "source_binding": "Measured runtime, recorder probe, stage probe, point probe and entry bytes match measured commit Git blobs. Documentation-only publication must preserve these blobs.",
+  "sample_definition": "Each mode/scale has 3 distinct AVAILABLE request/prefix batches from repeated synthetic composition, not statistically independent live games. Per-input samples (45/48) are not decision counts; p95/p99 with 3 decisions equal observed maximum.",
+  "component_note": "Replay/prefix/append stages are totals per input. Recovery includes nested validation and is executed once per batch; zero means not executed on that request. Input-to-commit contains queue wait and validation. IPC includes logging/serialization/transfer/deserialization/scheduling. Parent publication/drawing and validation overlap; do not sum them.",
+  "conditions": "Visible window; main auto kept on; PP/21+3 disabled; old enabled=true settings unchanged; actual A-9/T buttons and normal key callbacks; default spawned recorder; same frozen history scales; no math budget changes or validation shortcut.",
+  "exclusions": [
+    "native keyboard/IME certification",
+    "live-table long-run qualification",
+    "all contemporary PlayNow variants",
+    "recognition/capture",
+    "daily-version replacement",
+    "merge/release"
+  ]
+}
