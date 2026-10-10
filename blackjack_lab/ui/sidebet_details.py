@@ -4,9 +4,11 @@ import tkinter as tk
 from tkinter import ttk
 
 from ..analysis.sidebets.contracts import SidebetProfile,CATEGORIES,NAMES
+from .table_modes import MODE_LABELS
 
 CONFIRM={'自建研究':'research','赔付未核对':'unconfirmed','真实桌规已核对':'verified'}
 CONVENTION={'净赢倍数（25:1填25）':'net_profit','含本金返还（26倍填26）':'gross_return'}
+ACE_CHOICES={'待确认':None,'是':True,'否':False}
 
 
 def result_text(result):
@@ -46,7 +48,8 @@ class SidebetDetails(tk.Toplevel):
         ttk.Button(controls,text='边注历史 / 原时点复算',command=owner.show_history).pack(side=tk.LEFT,padx=4)
         ttk.Button(controls,text='重试未保存记录',command=owner.retry_saves).pack(side=tk.LEFT,padx=4)
         self.error=tk.StringVar()
-        ttk.Label(settings,text='示例只用于自建研究。修改影响新预测；已封盘原记录保留原赔付。',wraplength=700).grid(row=0,column=0,columnspan=3,sticky='w',pady=6)
+        self.profile_scope=tk.StringVar()
+        ttk.Label(settings,textvariable=self.profile_scope,wraplength=700).grid(row=0,column=0,columnspan=3,sticky='w',pady=6)
         self.status=tk.StringVar();self.convention=tk.StringVar();self.source=tk.StringVar()
         for row,label,variable,values in ((1,'确认状态',self.status,tuple(CONFIRM)),(2,'赔付口径',self.convention,tuple(CONVENTION))):
             ttk.Label(settings,text=label).grid(row=row,column=0,sticky='w')
@@ -60,11 +63,14 @@ class SidebetDetails(tk.Toplevel):
                 ttk.Label(settings,text=name+' '+NAMES[kind]).grid(row=row,column=0,sticky='w',pady=2)
                 ttk.Entry(settings,textvariable=variable,width=12).grid(row=row,column=1,sticky='w')
                 row+=1
-        self.aces={}
+        self.aces={};self.ace_controls={}
         ace_area=ttk.Frame(settings);ace_area.grid(row=row,column=0,columnspan=3,sticky='w',pady=5);row+=1
         for field in ('a23','qka','ka2'):
-            var=tk.BooleanVar();self.aces[field]=var
-            ttk.Checkbutton(ace_area,text=field.upper()+'算顺子',variable=var).pack(side=tk.LEFT,padx=4)
+            group=ttk.Frame(ace_area);group.pack(side=tk.LEFT,padx=4)
+            ttk.Label(group,text=field.upper()+'算顺子').pack(side=tk.LEFT)
+            var=tk.StringVar();self.aces[field]=var
+            control=ttk.Combobox(group,textvariable=var,values=tuple(ACE_CHOICES),state='readonly',width=7)
+            control.pack(side=tk.LEFT,padx=2);self.ace_controls[field]=control
         self.priority=[]
         ttk.Label(settings,text='21+3获奖优先顺序（从高到低）').grid(row=row,column=0,columnspan=3,sticky='w');row+=1
         priority=ttk.Frame(settings);priority.grid(row=row,column=0,columnspan=3,sticky='w');row+=1
@@ -79,16 +85,22 @@ class SidebetDetails(tk.Toplevel):
 
     def load_profile(self):
         p=self.owner.profile
+        self.loaded_profile=(self.owner._profile_mode,p.rules_digest)
+        self.profile_scope.set(MODE_LABELS.get(self.owner._profile_mode,'当前') +
+            ' · 此模式独立设置。修改影响新预测；已封盘原记录保留原赔付，未知不会自动改为是或否。')
         self.status.set(next(k for k,v in CONFIRM.items() if v==p.confirmation))
         self.convention.set(next(k for k,v in CONVENTION.items() if v==p.payout_convention))
         self.source.set(p.source)
         for name,values in (('perfect_pairs',p.perfect_pairs),('21+3',p.twenty_one_plus_three)):
             for i,kind in enumerate(CATEGORIES[name]):self.payouts[name,kind].set('' if values is None else str(values[i]))
-        for field,var in self.aces.items():var.set(getattr(p,field))
+        for field,var in self.aces.items():
+            var.set(next(label for label,value in ACE_CHOICES.items() if value is getattr(p,field)))
         for var,kind in zip(self.priority,p.three_priority):var.set(NAMES[kind])
 
     def apply(self):
         try:
+            if self.loaded_profile!=(self.owner._profile_mode,self.owner.profile.rules_digest):
+                raise ValueError('当前模式或边注配置已变更，请重新载入后再保存；未覆盖其他模式')
             confirm=CONFIRM[self.status.get()];source=self.source.get().strip()
             if confirm=='verified' and source==SidebetProfile().source:
                 raise ValueError('请填写实际已核对的桌内规则来源；研究示例不是实际确认')
@@ -101,7 +113,7 @@ class SidebetDetails(tk.Toplevel):
                 source=source,payout_convention=CONVENTION[self.convention.get()],
                 perfect_pairs=payouts[0],twenty_one_plus_three=payouts[1],
                 three_priority=tuple(by_name[v.get()] for v in self.priority),
-                **{k:v.get() for k,v in self.aces.items()})
+                **{k:ACE_CHOICES[v.get()] for k,v in self.aces.items()})
             self.owner.apply_profile(profile);self.error.set('已保存；已封盘记录及原赔付保持不变。')
         except Exception as error:self.error.set(str(error))
 
@@ -113,10 +125,14 @@ class SidebetDetails(tk.Toplevel):
         owner=self.owner;seat=owner.app.var_analysis_target.get()
         lines=['边注预测与已发生牌型分开；主注最佳/次佳不受本窗口设置影响。']
         forecast=owner.forecasts.get(seat)
-        if forecast:
+        pause=owner.app.recording_advice_pause()
+        if pause:
+            lines.extend(['',pause,'此前记录保留，当前暂停使用。保存回执与当前事件前缀核对一致后再恢复输出。',
+                          '原预测、已记录牌型和独立历史没有清空；可从下方历史入口查看原时点记录。'])
+        elif forecast:
             lines+=['\n'+('本轮发牌前记录（已封盘）' if owner.sealed else '发牌前预测'),result_text(forecast['result'])]
         else:lines.append('\n暂无当前已加载的发牌前记录；历史结果请使用下方独立入口。')
-        if owner.observed:lines+=['\n已记录牌型',result_text(owner.observed['result'])]
+        if owner.observed and not pause:lines+=['\n已记录牌型',result_text(owner.observed['result'])]
         with owner._lock:pending=len(owner.pending_saves)
         if pending:lines.append(f'\n{pending}条已计算、未保存；退出前可重试保存原请求。')
         text='\n'.join(lines)

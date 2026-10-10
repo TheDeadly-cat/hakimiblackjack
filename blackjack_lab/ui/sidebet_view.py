@@ -59,13 +59,22 @@ class SidebetView:
         self.observed=None;self.observed_request=None;self.observation_key=None;self.sealed=False;self.problem=''
         self.recording_refresh_id=None
         self.trace=app.var_analysis_target.trace_add('write',lambda *_:self.refresh())
+        self.mode_trace=app.var_table_mode.trace_add('write',lambda *_:self.refresh())
         app.ctrl.add_context_listener(self.refresh)
+        # Configuration belongs to the locked shoe even while recovery faults
+        # keep numerical publication paused. No calculation or ledger write.
+        with app._view_frame():
+            self._select_table_profile(app._current_seg())
         self.refresh();self.poll_id=app.after(60,self.poll)
 
     def apply_profile(self,profile):
         value=dict(schema=1,profile=profile.to_dict(),enabled=self.enabled.get())
         atomic_write(self.settings,canonical(value).encode('utf-8'))
-        self.profile=profile;self.profile_error='';self.key=None;self.refresh()
+        changed = profile.rules_digest != self.profile.rules_digest
+        self.profile=profile;self.profile_error='';self.key=None
+        if changed and self.details is not None and self.details.winfo_exists():
+            self.details.load_profile()
+        self.refresh()
 
     def change_enabled(self):
         try:self.apply_profile(self.profile)
@@ -118,16 +127,16 @@ class SidebetView:
 
     def refresh(self):
         if self.closed or getattr(self.app,'_closing',False):return
-        if self.app.recording_busy or self.app._recording_faults:return
+        if self.app.recording_advice_pause():
+            self.pause_recording();return
         if self.app._coalescing_recording_views:
             if self.recording_refresh_id is None:
                 self.recording_refresh_id=self.app.after(50,self._after_recording)
             return
-        key=(self.app.ctrl.context_token,self.app.var_analysis_target.get(),self.profile.rules_digest,self.enabled.get())
-        if self.key==key:return
         with self.app._view_frame():current=self.app._current_seg()
         self._select_table_profile(current)
         key=(self.app.ctrl.context_token,self.app.var_analysis_target.get(),self.profile.rules_digest,self.enabled.get())
+        if self.key==key:return
         self.key=key;self.problem=''
         identity=(self.app.ctrl.session_id,*(window(current) or (None,None)))
         if identity!=self.current_window:
@@ -158,7 +167,7 @@ class SidebetView:
         self.refresh()
 
     def _select_table_profile(self, current):
-        mode = mode_for_rules(current.rules) if current else None
+        mode = mode_for_rules(current.rules) if current else self.app.var_table_mode.get()
         mode = mode or PRAGMATIC
         if mode == self._profile_mode:
             return
@@ -185,12 +194,15 @@ class SidebetView:
             except Exception as error:
                 self.profile = replace(default, confirmation='unconfirmed')
                 self.profile_error = '边注设置需核对：' + str(error)
+        if self.details is not None and self.details.winfo_exists():
+            self.details.load_profile()
 
     def poll(self):
         if self.closed:return
         if getattr(self.app,'_closing',False):
             self.poll_id=self.app.after(60,self.poll);return
-        if self.app.recording_busy or self.app._recording_faults:
+        if self.app.recording_advice_pause():
+            self.pause_recording()
             self.poll_id=self.app.after(60,self.poll);return
         for message in self.worker.poll():
             if message['channel']=='retry':continue
@@ -218,6 +230,8 @@ class SidebetView:
         self.poll_id=self.app.after(60,self.poll)
 
     def render(self):
+        if self.app.recording_advice_pause():
+            self.pause_recording();return
         seat=self.app.var_analysis_target.get();forecast=self.forecasts.get(seat)
         for name,var in self.lines.items():
             title='Perfect Pairs' if name=='perfect_pairs' else '21+3'
@@ -246,6 +260,22 @@ class SidebetView:
         self.pending_label.set(f'{pending}条已计算、未保存' if pending else '')
         if self.details is not None and self.details.winfo_exists():self.details.render()
 
+    def pause_recording(self):
+        message = self.app.recording_advice_pause()
+        if not message:
+            return
+        seat = self.app.var_analysis_target.get()
+        for name, var in self.lines.items():
+            title = 'Perfect Pairs' if name == 'perfect_pairs' else '21+3'
+            text = f'{title} · {seat}：{message}；此前记录保留，当前暂停使用'
+            if var.get() != text:
+                var.set(text)
+        with self._lock:
+            pending = len(self.pending_saves)
+        self.pending_label.set(f'{pending}条已计算、未保存' if pending else '')
+        if self.details is not None and self.details.winfo_exists():
+            self.details.render()
+
     def show_details(self):
         from .sidebet_details import SidebetDetails
         if self.details is not None and self.details.winfo_exists():self.details.lift()
@@ -264,6 +294,7 @@ class SidebetView:
             self.recording_refresh_id=None
         self.app.ctrl.remove_context_listener(self.refresh)
         self.app.var_analysis_target.trace_remove('write',self.trace)
+        self.app.var_table_mode.trace_remove('write',self.mode_trace)
         if self.history is not None and self.history.winfo_exists():self.history.close()
         self.worker.close()
         if self.details is not None and self.details.winfo_exists():self.details.destroy()

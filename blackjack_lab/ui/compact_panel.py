@@ -321,11 +321,12 @@ class CompactPanel(tk.Frame):
             self.mode_status.set('BCLC · 手册1.1 / 8副 / 无DAS · ' +
                                  ('本靴观察已确认' if observations else '本靴观察待确认'))
 
-    def live_identity(self):
+    def recorded_card_identity(self):
+        """Recorded cards/points only; no probability, EV or decision calculation."""
         seg = self.app._current_seg()
         seat = self.app.var_analysis_target.get()
         if not seg:
-            return '庄家明牌 —    |    ' + seat + ' · 尚未录牌'
+            return None, '庄家明牌 —', seat + ' · 尚未录牌'
         dealer = seg.table.dealer.hands
         dealer_text = '庄家 · 尚未录牌'
         if dealer and dealer[0].cards:
@@ -337,6 +338,19 @@ class CompactPanel(tk.Frame):
             dealer_text = f"庄家 {' '.join(labels)} · {score}"
             if dealer_finish_message(seg.table):
                 dealer_text += ' · ' + ('已爆牌' if dealer[0].is_bust else '已自动停牌')
+        hands = seg.table.seat(seat).hands if seat in seg.table.players else []
+        selected = self.app._analysis_hand_id(seg)
+        index = next((i for i, h in enumerate(hands) if h.hand_id == selected), None)
+        hand = hands[index] if index is not None else None
+        player_text = f'{seat} · ' + (f'第{index + 1}手  {hand_text(c.rank for c in hand.cards)}'
+                + (' · 已爆牌' if hand.is_bust else '') if hand else '尚未录牌')
+        return seg, dealer_text, player_text
+
+    def live_identity(self):
+        seg, dealer_text, player_text = self.recorded_card_identity()
+        self.saved_card_identity = f'{dealer_text}    |    {player_text}'
+        if not seg:
+            return self.saved_card_identity
         from ..analysis.dealer_blackjack import evaluate_prepared, label
         snapshot=self.app.ctrl.read_prefix()
         key = snapshot.session_id, snapshot.prefix_digest
@@ -344,14 +358,9 @@ class CompactPanel(tk.Frame):
             self.dealer_bj = evaluate_prepared(key[0], snapshot.through_seq, snapshot, seg)
             self._bj_key = key
         dealer_text += ' · ' + label(self.dealer_bj)
-        hands = seg.table.seat(seat).hands if seat in seg.table.players else []
-        selected = self.app._analysis_hand_id(seg)
-        index = next((i for i, h in enumerate(hands) if h.hand_id == selected), None)
-        hand = hands[index] if index is not None else None
         if self.panel.current_input:
             return input_identity(self.panel.current_input.to_dict(), dealer_text)
-        return f'{dealer_text}    |    {seat} · ' + (f'第{index + 1}手  {hand_text(c.rank for c in hand.cards)}'
-                + (' · 已爆牌' if hand.is_bust else '') if hand else '尚未录牌')
+        return f'{dealer_text}    |    {player_text}'
 
     def pending_summary(self):
         panel, app = self.panel, self.app
@@ -402,8 +411,17 @@ class CompactPanel(tk.Frame):
     def pause_recording(self):
         """Withdraw advice without rebuilding the saved shoe or probabilities."""
         message = self.app.recording_advice_pause()
-        if self.message.get() != message or self.model.choices:
-            self.model = DecisionSummary('建议暂停', self.identity.get(), message)
+        # Pending input/faults retain the previous saved card display cheaply.
+        # After readback/correction, show current recorded cards even when the
+        # entry plan still needs review; probability/EV remains suspended.
+        if not self.app.recording_busy and not self.app._recording_faults:
+            with self.app._view_frame():
+                _, dealer_text, player_text = self.recorded_card_identity()
+            self.saved_card_identity = f'{dealer_text}    |    {player_text}'
+        identity = getattr(self, 'saved_card_identity', '已保存牌面可在记录中查看') + ' · BJ数值暂停'
+        if self.message.get() != message or self.model.choices or self.identity.get() != identity:
+            self.model = DecisionSummary('建议暂停', identity, message)
+            self.identity.set(self.model.identity)
             self.state.set(self.model.state)
             self.message.set(message)
             self.notes.set('已保存牌面仍保留；等待一致回执和最新判断。')
@@ -415,6 +433,8 @@ class CompactPanel(tk.Frame):
                 row.grid_remove()
                 rank.configure(text=''); action.configure(text='—')
                 extra.configure(text=''); profit.configure(text='净盈利 —'); ev.configure(text='EV —')
+        self.flow_message.set(message + '；保险与庄家BJ的当前数值同样暂停。')
+        self.flow_primary.state(['disabled'])
         if self.detail_window and self.detail_window.winfo_exists():
             text = self.panel.text.get('1.0', 'end-1c')
             if getattr(self, '_pause_detail_text', None) != text:
@@ -635,6 +655,7 @@ class CompactPanel(tk.Frame):
                     'next': lambda rid=flow.round_id: self.app.act_complete_and_next(rid)}
         if flow.command:
             self.flow_primary.configure(text=flow.label, command=commands[flow.command])
+            self.flow_primary.state(['!disabled'])
             self.flow_primary.grid()
         else:
             self.flow_primary.grid_remove()

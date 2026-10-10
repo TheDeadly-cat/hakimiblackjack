@@ -600,12 +600,20 @@ class BlackjackLabApp(tk.Tk):
             return '录牌待保存，当前建议暂停'
         if self._recording_faults:
             return '录牌需要核对，当前建议暂停'
+        plan = self.ctrl.entry_plan
+        if plan and plan.mode == MODE_UNALIGNED:
+            current = self._current_seg()
+            if (current and not current.closed
+                    and current.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS)):
+                return '录牌位置尚待核对，当前建议暂停'
         return None
 
     def _pause_recording_advice(self):
         self.analysis_panel.pause_recording()
         self.opening_estimate.pause_recording()
         self.compact_panel.render()
+        if hasattr(self, 'sidebets'):
+            self.sidebets.pause_recording()
 
     def recording_guard(self):
         if self.recording_busy:
