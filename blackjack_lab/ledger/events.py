@@ -11,6 +11,7 @@ import time
 import uuid
 import math
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any, Dict, Optional
 
 # ---- 事件类型 ----
@@ -51,6 +52,24 @@ _ALL_TYPES = {
     PLAYER_ACTION, PEEK_NEGATIVE, BURN_CARDS, OBSERVATION_GAP, ROUND_ENDED,
     SHOE_ENDED, UNDO, CORRECTION,
 }
+
+# Payload schemas are constant. Rebuilding every set for every historical
+# event adds allocations to each independent replay without changing validation.
+_PAYLOAD_SCHEMAS = MappingProxyType({
+    SESSION_STARTED: (frozenset(), frozenset({'note'})),
+    SHOE_CREATED: (frozenset({'shoe_id', 'n_decks', 'rules_snapshot'}), frozenset()),
+    ROUND_STARTED: (frozenset({'round_id', 'round_no', 'participants'}), frozenset()),
+    CARD_DEALT: (frozenset({'seat', 'rank', 'face_state'}), frozenset({'suit', 'track_id', 'hand_id'})),
+    CARD_REVEALED: (frozenset({'target_event_id', 'seat', 'rank'}), frozenset({'suit', 'track_id', 'hand_id'})),
+    PLAYER_ACTION: (frozenset({'seat', 'hand_id', 'action'}), frozenset({'new_hand_id'})),
+    PEEK_NEGATIVE: (frozenset(), frozenset()),
+    BURN_CARDS: (frozenset({'count'}), frozenset({'note'})),
+    OBSERVATION_GAP: (frozenset({'reason'}), frozenset()),
+    ROUND_ENDED: (frozenset(), frozenset({'settle', 'reason', 'observation_status'})),
+    SHOE_ENDED: (frozenset(), frozenset()),
+    UNDO: (frozenset({'target_event_id'}), frozenset({'reason', 'target_etype'})),
+    CORRECTION: (frozenset({'target_event_id', 'payload_fix'}), frozenset({'reason', 'target_etype'})),
+})
 
 
 def new_event_id() -> str:
@@ -98,20 +117,7 @@ class Event:
         self.validate_payload()
 
     def validate_payload(self):
-        schemas = {
-            SESSION_STARTED: (set(), {"note"}),
-            SHOE_CREATED: ({"shoe_id", "n_decks", "rules_snapshot"}, set()),
-            ROUND_STARTED: ({"round_id", "round_no", "participants"}, set()),
-            CARD_DEALT: ({"seat", "rank", "face_state"}, {"suit", "track_id", "hand_id"}),
-            CARD_REVEALED: ({"target_event_id", "seat", "rank"}, {"suit", "track_id", "hand_id"}),
-            PLAYER_ACTION: ({"seat", "hand_id", "action"}, {"new_hand_id"}),
-            PEEK_NEGATIVE: (set(), set()),
-            BURN_CARDS: ({"count"}, {"note"}), OBSERVATION_GAP: ({"reason"}, set()),
-            ROUND_ENDED: (set(), {"settle", "reason", "observation_status"}), SHOE_ENDED: (set(), set()),
-            UNDO: ({"target_event_id"}, {"reason", "target_etype"}),
-            CORRECTION: ({"target_event_id", "payload_fix"}, {"reason", "target_etype"}),
-        }
-        required, optional = schemas[self.etype]
+        required, optional = _PAYLOAD_SCHEMAS[self.etype]
         if not required <= self.payload.keys() or self.payload.keys() - required - optional:
             raise ValueError(f"{self.etype}事件负载缺少字段或含未支持字段")
         for name in ("seat", "hand_id", "new_hand_id", "track_id", "target_event_id", "shoe_id", "round_id"):
