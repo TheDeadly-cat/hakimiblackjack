@@ -1,28 +1,28 @@
 {
   "schema": "hakimi-trial-packaging-validation-v1",
-  "package_id": "T1R2-af69ddb",
-  "prepared_on": "2026-10-10",
+  "package_id": "T1R3-af69ddb",
+  "prepared_on": "2026-10-11",
   "environment": {
     "os": "Windows",
     "platform": "Windows-11-10.0.26300-SP0",
     "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
     "elevated_account": true
   },
-  "actual_test_command": "python -B -m unittest discover -s tests -v",
-  "tested_count": 28,
-  "passed_count": 28,
+  "actual_test_command": "python -X utf8 -B -m unittest discover -s tests -v",
+  "tested_count": 30,
+  "passed_count": 30,
   "failed_count": 0,
   "skipped_count": 0,
-  "elapsed_seconds": 2.0873199999914505,
+  "elapsed_seconds": 2.485249599965755,
   "log_file": "INSTALLER_TEST_LOG.txt",
-  "log_sha256": "e13faef71b771382520d3091612c55d9c837c6ee71e30fd5c5b6f75770197d8a",
+  "log_sha256": "a574adf9afab21a8f1f2ab6673eeee8f93912213b24f95c4ab315d59f2f86eb4",
   "tested_script_sha256": {
-    "install_trial.py": "59370c2441d59e4368e75dd3e154d928917e27e1790842c2a7fac1239569d698",
+    "install_trial.py": "5ce365d3b0e6fb492c54a4c946fd021b67b9e4461123557f481047c65f6b3d0b",
     "launch_trial.py": "aa05b7425a88f91cd2aa3101cd1219fd957d3c6a5b7e850a7da95303092855ff",
-    "trial_common.py": "e45ea9b335fac29dab85b33d2ecb1aa1536df0efb043084f0ef83c9a2794f856",
+    "trial_common.py": "d3ee10f226355ead78c34bc0849bacb8c80be7c86e5df5b7aabf7c4664f0d22b",
     "trial_tools.py": "46171e4254f54fd278ef867397bad8e59823a77e04dc801b2517b7ab88489b17",
-    "INSTALL_TRIAL.cmd": "a38af7e86d8635a8b851e40eef3fb2e9a41b5bbce0277ca2046cb3f9c165c95a",
-    "tests/test_installer_helpers.py": "e9a741bf6128f5141ff34793a59b6192057ea02697cb434a8bb24f35eb36fea1"
+    "INSTALL_TRIAL.cmd": "561c0ddbacd2838e1af0dfc39ee30afcedc48fec73af69b31cb1a6e4ed7a8491",
+    "tests/test_installer_helpers.py": "a9a4fdb443f92d881222b1ed191e5f943eb752ae264e7d19f1c00550105c79e6"
   },
   "scope": [
     "Windows helper suite including native instance locks",
@@ -30,18 +30,19 @@
     "Full-folder backup and source-change detection",
     "Read-only backup connection closes",
     "Path, source, receipt, non-overwrite and launcher import guards",
-    "Trial identity during construction, view changes and wm_title alias"
+    "Trial identity during construction, view changes and wm_title alias",
+    "Actual native CMD success/failure after program-directory deletion"
   ],
   "not_performed_for_this_new_artifact": [
-    "Actual T1R2 installation",
+    "Actual T1R3 installation",
     "Full installed app GUI and restore",
     "Ordinary permissions",
-    "Native hold and 7-seat complete flow",
+    "Native physical hold and complete installed fault matrix",
     "Full end-to-end performance acceptance",
     "Offline EXE construction"
   ],
   "windows_installer_validated": false,
   "offline_exe_created": false,
   "real_time_accepted": false,
-  "earlier_evidence": "Original T1 Windows helpers failed 1+3; its actual install preflight passed. T1R1 actual install and three-seat native recording passed, but its view title lost the trial marker. Frozen packages and logs retained separately."
+  "earlier_evidence": "Original T1 Windows helpers failed 1+3; its actual install preflight passed. T1R1 actual install and three-seat native recording passed, but its view title lost the trial marker. Frozen packages and logs retained separately. R2 restore/restart/3 and 7 seats/IME passed; uninstall removed program and retained24 files but returned1 after batch deletion. R3 pre-build GBK helper-read failure preserved; relevant UTF-8 files now read explicitly. Earlier identities and failures retained."
 }

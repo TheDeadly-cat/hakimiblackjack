@@ -1,4 +1,4 @@
-Hakimi Blackjack 试用版 T1R2 · af69ddb
+Hakimi Blackjack 试用版 T1R3 · af69ddb
 ====================================
 
 这是联网／源码型安装脚本包，需要已有 Python 3.14 x64（含 Tcl/Tk）
@@ -14,11 +14,11 @@ Hakimi Blackjack 试用版 T1R2 · af69ddb
 安装：
 1. 完整解压 ZIP 到本地目录。
 2. 双击 INSTALL_TRIAL.cmd，核对提示后输入 INSTALL。
-3. 安装预检通过后，用桌面“Hakimi Blackjack 试用版 T1R2”或
+3. 安装预检通过后，用桌面“Hakimi Blackjack 试用版 T1R3”或
    安装目录中的 START_TRIAL.cmd 启动。
 
-程序：%LOCALAPPDATA%\HakimiBJTrial\T1R2-af69ddb\
-资料：%LOCALAPPDATA%\HakimiBJTrialData\T1R2-af69ddb\
+程序：%LOCALAPPDATA%\HakimiBJTrial\T1R3-af69ddb\
+资料：%LOCALAPPDATA%\HakimiBJTrialData\T1R3-af69ddb\
 备份：%LOCALAPPDATA%\HakimiBJTrialBackups\
 日志：%LOCALAPPDATA%\HakimiBJTrialInstallLogs\
 
@@ -49,4 +49,8 @@ UNINSTALL_TRIAL.cmd：正常关闭后输入 UNINSTALL，只删除本版程序目
 未签名，不声明 SmartScreen 信誉。未合并仓库或发布 Release。
 
 T1R1 在切换研究工作台时会丢失窗口试用标识；其包和验收记录保留。
-T1R2 从恢复提示阶段开始，并在切换各个视图后，持续保留试用标识。
+T1R3 从恢复提示阶段开始，并在切换各个视图后，持续保留试用标识。
+
+T1R2 卸载实测：程序已删除、全部24文件资料保留，但批处理自删后返回失败。
+T1R3 先转交安装日志目录中的独立维护脚本，再删除程序；失败码仍按实际结果返回。
+维护脚本与安装日志保留，不删除数据、基础 Python 或桌面快捷方式。

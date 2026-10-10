@@ -33,4 +33,4 @@ jobs:
         working-directory: packaging/windows_trial
         run: python -B -m unittest discover -s tests -v
       - name: Reproduce frozen installer ZIP
-        run: python -B packaging/build_windows_trial.py --output "$env:RUNNER_TEMP\Hakimi_T1R2_artifacts"
+        run: python -B packaging/build_windows_trial.py --output "$env:RUNNER_TEMP\Hakimi_T1R3_artifacts"

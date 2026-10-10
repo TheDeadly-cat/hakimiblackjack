@@ -16,8 +16,8 @@ import zipfile
 REPOSITORY = 'TheDeadly-cat/hakimiblackjack'
 COMMIT = 'af69ddb3111b93e43bfbf01f4aa8c249be166b7a'
 TREE = '8b8b8142803fa4d4e4f76abcfddbb011411428b9'
-PACKAGE_ID = 'T1R2-af69ddb'
-TITLE = 'Hakimi Blackjack 试用版 T1R2'
+PACKAGE_ID = 'T1R3-af69ddb'
+TITLE = 'Hakimi Blackjack 试用版 T1R3'
 ARCHIVE_URL = f'https://codeload.github.com/{REPOSITORY}/zip/{COMMIT}'
 MAX_ARCHIVE_BYTES = 128 * 1024 * 1024
 MAX_EXPANDED_BYTES = 512 * 1024 * 1024

@@ -235,7 +235,7 @@ class InstallerHelpers(unittest.TestCase):
         self.assertEqual(common.load_install(self.root)['package_id'], common.PACKAGE_ID)
 
     def test_launcher_explicit_scope_and_trial_title(self):
-        source = (KIT / 'launch_trial.py').read_text()
+        source = (KIT / 'launch_trial.py').read_text(encoding='utf-8')
         tree = ast.parse(source)
         calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
                  and node.func.id == 'TrialApp']
@@ -278,7 +278,7 @@ class InstallerHelpers(unittest.TestCase):
         self.assertEqual(window.title(), prefix + '当前手牌')
 
     def test_manifest_does_not_claim_offline_or_windows_acceptance(self):
-        package = json.loads((KIT / 'PACKAGE.json').read_text())
+        package = json.loads((KIT / 'PACKAGE.json').read_text(encoding='utf-8'))
         self.assertFalse(package['self_contained_offline_executable'])
         self.assertFalse(package['native_windows_installer_tested'])
         self.assertFalse(package['bundled_upstream_source'])
@@ -309,6 +309,36 @@ class InstallerHelpers(unittest.TestCase):
         result = subprocess.run([sys.executable, str(KIT / 'install_trial.py'), '--help'], capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(b'--source-zip', result.stdout)
+
+    @unittest.skipUnless(os.name == 'nt', 'Requires native CMD batch execution')
+    def test_uninstall_cmd_keeps_success_after_deleting_its_own_directory(self):
+        from install_trial import uninstall_batch
+        program = self.root / 'program 中文 space'
+        program.mkdir()
+        (program / 'trial_tools.py').write_text(
+            "from pathlib import Path\nimport shutil\n"
+            "root=Path(__file__).resolve().parent\n"
+            "assert root.name=='program 中文 space'\n"
+            "shutil.rmtree(root)\n", encoding='utf-8')
+        entry = program / 'UNINSTALL_TRIAL.cmd'
+        uninstall_batch(entry, self.root / 'uninstall runner 中文.cmd', sys.executable)
+        result = subprocess.run([os.environ['COMSPEC'], '/d', '/c', str(entry)],
+                                cwd=self.root, input=b'\r\n', capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(program.exists())
+
+    @unittest.skipUnless(os.name == 'nt', 'Requires native CMD batch execution')
+    def test_uninstall_cmd_preserves_failure_and_program_directory(self):
+        from install_trial import uninstall_batch
+        program = self.root / 'program 中文 space'
+        program.mkdir()
+        (program / 'trial_tools.py').write_text('raise SystemExit(1)\n', encoding='utf-8')
+        entry = program / 'UNINSTALL_TRIAL.cmd'
+        uninstall_batch(entry, self.root / 'uninstall runner 中文.cmd', sys.executable)
+        result = subprocess.run([os.environ['COMSPEC'], '/d', '/c', str(entry)],
+                                cwd=self.root, input=b'\r\n', capture_output=True)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertTrue(entry.is_file())
 
 
 if __name__ == '__main__':

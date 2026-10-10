@@ -71,6 +71,20 @@ def batch_file(path: Path, lines: list[str]) -> None:
     path.write_bytes(('\r\n'.join(['@echo off', 'setlocal DisableDelayedExpansion', 'chcp 65001 >nul', *lines]) + '\r\n').encode('utf-8'))
 
 
+def uninstall_batch(path: Path, runner: Path, base_python: str) -> None:
+    # Transfer batch control (no CALL) before removing the program directory.
+    # The external runner remains readable and reports the Python result exactly.
+    if runner.resolve().is_relative_to(path.parent.resolve()):
+        raise ValueError('Uninstall runner must be outside the program directory')
+    if path.exists() or runner.exists():
+        raise FileExistsError('Refusing to overwrite an uninstall entry')
+    batch_file(runner, [
+        'cd /d "%TEMP%"', cmd_quote(base_python) + ' -B ' +
+        cmd_quote(str(path.parent / 'trial_tools.py')) + ' uninstall',
+        'set "CODE=%ERRORLEVEL%"', 'pause', 'exit /b %CODE%'])
+    batch_file(path, ['cd /d "%TEMP%"', cmd_quote(str(runner))])
+
+
 def create_shortcut(root: Path) -> str | None:
     """Use a user-owned unique shortcut name; never overwrite an existing link."""
     env = os.environ.copy()
@@ -175,9 +189,8 @@ def install(args) -> int:
                     environment=environment, installer_log=str(log_path),
                     main_analysis=True, sidebet_research=False, real_time_accepted=False,
                     windows_installer_validated_before_delivery=False))
-                batch_file(root / 'UNINSTALL_TRIAL.cmd', [
-                    'cd /d "%TEMP%"', cmd_quote(environment['base_python']) + ' -B "%~dp0trial_tools.py" uninstall',
-                    'set "CODE=%ERRORLEVEL%"', 'pause', 'exit /b %CODE%'])
+                uninstall_runner = logs / (PACKAGE_ID + '-uninstall-' + uuid.uuid4().hex[:8] + '.cmd')
+                uninstall_batch(root / 'UNINSTALL_TRIAL.cmd', uninstall_runner, environment['base_python'])
                 # Build at the final destination. venvs must not be moved later.
                 venv.EnvBuilder(with_pip=False, system_site_packages=False, symlinks=False).create(root / 'runtime')
                 python = root / 'runtime/Scripts/python.exe'

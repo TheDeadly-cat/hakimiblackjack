@@ -24,10 +24,12 @@ test_symlink_archive_rejected (test_installer_helpers.InstallerHelpers.test_syml
 test_tree_and_git_archive_match_real_git (test_installer_helpers.InstallerHelpers.test_tree_and_git_archive_match_real_git) ... ok
 test_trial_identity_survives_constructor_view_switch_and_wm_alias (test_installer_helpers.InstallerHelpers.test_trial_identity_survives_constructor_view_switch_and_wm_alias) ... ok
 test_unexpected_python_code_rejected (test_installer_helpers.InstallerHelpers.test_unexpected_python_code_rejected) ... ok
+test_uninstall_cmd_keeps_success_after_deleting_its_own_directory (test_installer_helpers.InstallerHelpers.test_uninstall_cmd_keeps_success_after_deleting_its_own_directory) ... ok
+test_uninstall_cmd_preserves_failure_and_program_directory (test_installer_helpers.InstallerHelpers.test_uninstall_cmd_preserves_failure_and_program_directory) ... ok
 test_wrong_tree_rejected (test_installer_helpers.InstallerHelpers.test_wrong_tree_rejected) ... ok
 test_zip_traversal_rejected (test_installer_helpers.InstallerHelpers.test_zip_traversal_rejected) ... ok
 
 ----------------------------------------------------------------------
-Ran 28 tests in 1.673s
+Ran 30 tests in 2.142s
 
 OK
