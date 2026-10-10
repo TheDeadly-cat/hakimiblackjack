@@ -20,6 +20,17 @@ sys.path.insert(0, str(ROOT))
 from scripts import recording_end_to_end as probe
 
 
+def receipt_metadata(packet):
+    """Observe wire metadata only; never reconstruct or validate in the probe."""
+    from blackjack_lab.ui.recording_owner import RecordingReceipt
+    if isinstance(packet, RecordingReceipt):
+        return packet, packet.after.through_seq
+    from blackjack_lab.ui.recording_transport import PrefixDeltaReceipt
+    if isinstance(packet, PrefixDeltaReceipt):
+        return packet.receipt, packet.after_identity[1]
+    return None, None
+
+
 def profiled_recording_process(db_path, source, inputs, outputs):
     from blackjack_lab.ui.recording_process import _InputBridge, run_recording_process
     from blackjack_lab.ui.controller import SessionController
@@ -69,9 +80,10 @@ def profiled_recording_process(db_path, source, inputs, outputs):
         return result
 
     def put(receipt, *args, **kwargs):
-        if isinstance(receipt, RecordingReceipt):
+        metadata, through_seq = receipt_metadata(receipt)
+        if metadata is not None:
             with path.open('a', encoding='utf-8') as stream:
-                stream.write(json.dumps(dict(request_id=receipt.request_id, through_seq=receipt.after.through_seq,
+                stream.write(json.dumps(dict(request_id=metadata.request_id, through_seq=through_seq,
                                              stages=dict(state['stages']))) + '\n')
         return real_put(receipt, *args, **kwargs)
 
@@ -107,11 +119,12 @@ def one_case(out, mode, scale, fixture, *, point_value=False, visible=False):
 
     def queue_get(queue, *args, **kwargs):
         result = real_get(queue, *args, **kwargs)
-        if isinstance(result, RecordingReceipt):
-            local.request_id = result.request_id
-            raw_received.append(dict(request_id=result.request_id, received_at=perf_counter(),
-                                     worker_finished_at=result.finished_at, started_at=result.started_at,
-                                     submitted_at=result.submitted_at))
+        metadata, _ = receipt_metadata(result)
+        if metadata is not None:
+            local.request_id = metadata.request_id
+            raw_received.append(dict(request_id=metadata.request_id, received_at=perf_counter(),
+                                     worker_finished_at=metadata.finished_at, started_at=metadata.started_at,
+                                     submitted_at=metadata.submitted_at))
         return result
 
     def capture(cls, ledger):

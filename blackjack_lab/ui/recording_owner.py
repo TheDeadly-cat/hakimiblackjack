@@ -150,6 +150,8 @@ class RecordingOwner:
             raise
 
     def _receive_process(self):
+        from .recording_transport import PrefixDeltaReceipt, ReceiptPrefixReceiver
+        decoder = ReceiptPrefixReceiver()
         delivered = set()
         while True:
             try:
@@ -162,20 +164,36 @@ class RecordingOwner:
             if receipt is None:
                 self._unreceived_inputs(delivered)
                 return
-            if receipt.status == 'committed':
+            packet = receipt
+            if isinstance(packet, PrefixDeltaReceipt):
+                receipt = packet.receipt
+            if not isinstance(receipt, RecordingReceipt):
+                self._unreceived_inputs(delivered)
+                return
+            with self.lock:
+                task = self.pending_tasks.get(receipt.request_id)
+            if receipt.status == 'committed' or isinstance(packet, PrefixDeltaReceipt):
                 # Verify complete transported content off Tk. The opaque token
                 # is local to this parent owner and never crosses the pipe.
                 try:
-                    if PrefixSnapshot.capture(receipt.ledger).content != receipt.after.content:
+                    receipt = decoder.decode(packet, task)
+                    if PrefixSnapshot.capture(receipt.ledger) != receipt.after:
                         raise ValueError('进程回执与完整账本内容不符')
+                    decoder.accepted(receipt, task)
                     receipt = replace(receipt, verified_token=self.verification_token)
                 except Exception as error:
-                    with self.lock:
-                        task = self.pending_tasks.get(receipt.request_id)
+                    if receipt.before is None or receipt.after is None:
+                        # Reconstruction failed. Retain the input and the last
+                        # independently known prefix; do not invent a new commit.
+                        fallback = decoder.reference(task) if task else None
+                        receipt = replace(receipt, before=fallback, after=fallback,
+                            ledger=None, state=None)
                     path, archive_error = (self._archive_failure(task, 'unknown_commit_outcome',
                         receipt.before, receipt.after, str(error)) if task else (None, str(error)))
                     receipt = replace(receipt, status='unknown_commit_outcome', error=str(error),
                                       failure_path=path, archive_error=archive_error)
+            if receipt.status != 'committed':
+                decoder.accepted(receipt, task)
             delivered.add(receipt.request_id)
             if receipt.status != 'committed':
                 with self.lock:
