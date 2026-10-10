@@ -1,0 +1,4264 @@
+{
+  "schema": "pr38-sidebet-stage-measurement-public-v1",
+  "measured_source": {
+    "commit": "2f010f47df7a5c8f6f347730f23e6a6f4a777e5c",
+    "runtime_and_probe_sha256": "9b21b3690d554150e3d7b189772315fe9a12441120902e61f5e418f0aaadc0de",
+    "files": {
+      "blackjack_lab/__init__.py": "9e18df7e8c2f8074a8ab97e98df4bcfd54789e9a3564169de46f528bcf452269",
+      "blackjack_lab/analysis/__init__.py": "5922ba9f02301767199135259b5a0f92592878f732e481b68ffb4c1c35e20c24",
+      "blackjack_lab/analysis/actions.py": "db62d08cfe4cfe7da52fd2bf2fdeb690e0b757ce6101501ec3eefeedeb160770",
+      "blackjack_lab/analysis/contracts.py": "97afa9c647822d56a58e74ab0db5bb3bcb1e06fdb6d1e9e3d3228df5fa5e1cd4",
+      "blackjack_lab/analysis/dealer_blackjack.py": "31607776aa45ad1dfe776dc066f811f9a9e0bc82162610d4ba4db525f35dc5a0",
+      "blackjack_lab/analysis/decision_summary.py": "238a7aba34fc30bd69b49c5b3a29ccc71af6358f438e17a2a6bc0d2969bce75b",
+      "blackjack_lab/analysis/environment.py": "24f2001082bf25760c951bcfbcfe84447f2eeaba6ee7737af46016d3eb5899fd",
+      "blackjack_lab/analysis/external_pw.py": "1dccbd5cd2dbe8b8c65cc9f21a64cd7ab2225ce8d39ef00df57faf6af9d27a9c",
+      "blackjack_lab/analysis/information.py": "78875b30508f2ae71c14f0dcaaf25f410e27317747780aaecc3813af82b4ab64",
+      "blackjack_lab/analysis/native/SplitEngine.cs": "ab903877633dd08765c9f7b13bc8c56154ac0a766b7ecd6d5cff128c84b63fee",
+      "blackjack_lab/analysis/native_backend.py": "a3e5beb645474398717607510ae85aec0979d247042b84e3ae52edb4048adc1e",
+      "blackjack_lab/analysis/opening.py": "24fee3cf95a27c97301f4b2c996a63e80d06f2607aa996e99bdd093c04e67c57",
+      "blackjack_lab/analysis/opening_service.py": "e0a3539e36dc67a3d4ea79dc002f84509c07be87650f2d5c1bd8c427213fde80",
+      "blackjack_lab/analysis/probability.py": "e08237a80407ae2284f4a4fc35c0d85446525080d86261b8d7724c3460c22659",
+      "blackjack_lab/analysis/seat_scenario.py": "af29fbbf4becc8ebaca12e7b9cbf61c96870336305e64684fe9cb421d6cccf45",
+      "blackjack_lab/analysis/service.py": "7b6923b79eab5e451633c57881a15bf0d5e1dcaab6c28b29ad2ea6a2bbf82ed3",
+      "blackjack_lab/analysis/sidebets/__init__.py": "b5541d9228a95bb2be9246524fea78ef1f50a4b93a6033bbe5a0511141797c03",
+      "blackjack_lab/analysis/sidebets/background.py": "f7d75d5bd5357a87aac3f3d39e20f90d7ea233c948cb9c49fdd6e45c4baf9d2b",
+      "blackjack_lab/analysis/sidebets/contracts.py": "ac01509a5034505bb61c7059239fbcc6ea079fc424e124b6dde23860f0c31eb1",
+      "blackjack_lab/analysis/sidebets/exact.py": "0de8242232efb791eba4bc33e3f2420ddd1f48a12751e30b93c530a18cd635af",
+      "blackjack_lab/analysis/sidebets/information.py": "1051eee8fc2e0ce6bb1a1ebfc0147690e99415dc045b01bedcf039e63af9fe7e",
+      "blackjack_lab/analysis/sidebets/research.py": "bf5c93d27f1f5f940544797b1389e499db0a5d361d3e55bb9a5bf260cd9d021f",
+      "blackjack_lab/analysis/split_actions.py": "3809452a3432565449a54c22761b67bec0bf5e136b65ad0b790e284f02a77b6c",
+      "blackjack_lab/analysis/split_contracts.py": "2d69e15a879dc5853658acb49fc1e71076428e2242f0392e2bfbd2842eca36f3",
+      "blackjack_lab/analysis/split_information.py": "2842b8c56aa9f3ef466fc4bc982b5af318823b4dd688ca33fb7aaa76087f22c3",
+      "blackjack_lab/analysis/split_service.py": "50acfcea25b51a729b3a8d2caff2064026389bfe2d65bfc24c9322d5e9a94c37",
+      "blackjack_lab/capture/__init__.py": "f3156222606b13cf3570d06bce289f62e3bf778a18921cb989456bfb51d5c996",
+      "blackjack_lab/core/__init__.py": "43bdc873fa77328bed637e21711f8a93a7b437bb15866c7d1b5448be0b5f24fd",
+      "blackjack_lab/core/cards.py": "a302bc9e7b814d8f6a6857acd5089fedf8610a376ae7a43769ba982d8e2a21b6",
+      "blackjack_lab/core/rules.py": "8d1588cd0e1f6d78f8618342906f8a5a9f43cbff6bc0ae74e120a5ab3015cc01",
+      "blackjack_lab/core/shoe.py": "6e4ec77ec6fc94416cc517f4de731dc353b3228cd0e45a9f5dc78417f7a4ee9e",
+      "blackjack_lab/core/table.py": "df7fb605b0b34da0eb4602e61f8ef7dc600ebc3667df42e23f67407b865768e7",
+      "blackjack_lab/experiments/__init__.py": "2b4f16d069815880abd2c7137ed7dedf71c6194f1d2dc8d3badeea26322bea8e",
+      "blackjack_lab/experiments/contracts.py": "ef93fae291547d4592947b33f656ab25d0a478cd68007ec3ffc63bcb27706de7",
+      "blackjack_lab/experiments/results.py": "c5216917a786db29dc1deab09a06d6c085e129690c0cfbe0d2524601fb5aef66",
+      "blackjack_lab/experiments/runner.py": "3459d2e6b0e7aef3003cedb39cb06c453f4b1742fdf62cc9eeacb62852887d97",
+      "blackjack_lab/experiments/scenarios.py": "ba7ff93448281d0dd970031bce3e48d88665eedf66b5b7f0365473e24f36fcb4",
+      "blackjack_lab/ledger/__init__.py": "95ac1402dab497c35c216574f98d76a9d518137025c10c4d43f3ebf6d1c34c4f",
+      "blackjack_lab/ledger/card_inventory.py": "302bbda812bd689985d333d62af21e9c4e343ed6addd3b8e2247577351c53e22",
+      "blackjack_lab/ledger/command.py": "b7a2d40495ec8e6762a4e3256c378f109d69c3483aaaca9f5f7bbb2eb0443eb7",
+      "blackjack_lab/ledger/events.py": "a4a64a553928807ecf230b2c2787d54f898ba0e4185d1d5c1b580599a3e77403",
+      "blackjack_lab/ledger/ledger.py": "17e69267ba68219e30f526770079d17570283e9caf5bd087fa6b7ee99286688b",
+      "blackjack_lab/main.py": "bd692a4f5938c04800031e8042c601a68822af179aa1b51baf50799568303f3b",
+      "blackjack_lab/simulator/__init__.py": "322b7a424ff1a4619678a074894010ab314a491eccac897c623180ce7bec3533",
+      "blackjack_lab/storage/__init__.py": "14c945eba5bb2b1401107dd27eaa5d73ca06b0434b95ea28d3d922fb0627e0a9",
+      "blackjack_lab/storage/analysis_snapshots.py": "5e8ae9317cece5e450ec5277a3a1b6102947fd7ee936b772bde232146ea61956",
+      "blackjack_lab/storage/database.py": "8d6903bfdee847863d889e2b413e09d35db4c50bfabf63fd32a689e42fbe6c68",
+      "blackjack_lab/storage/export.py": "184a4034404e8015f7939a53a53a6ab932ed718e3afb4b3d6879f1b06cd7b95b",
+      "blackjack_lab/storage/history_catalog.py": "500645e57e7dcc0329c5c0b206010f5caced6da1415e0e25741f815686534e05",
+      "blackjack_lab/storage/opening_snapshots.py": "f3edb0c6206f667b4d229adb889471829f408eaf0e473458e881effeffe690c9",
+      "blackjack_lab/storage/safe_files.py": "5632119b34007fcd7e8e274bed39fe674a8c0b083458eb6e1c7912ce7033913e",
+      "blackjack_lab/storage/sidebet_snapshots.py": "117210cbd24876c1c7edc10016239165a477bbd4ebc9034ff59d3c024866c151",
+      "blackjack_lab/ui/__init__.py": "6952597003836f4b60494daa675ab7598e11fe74c9c24ba68402aedffcb46e78",
+      "blackjack_lab/ui/analysis_history.py": "b2dbf3142a4efb1212cf201e28581012b9e73b49ba74c86f69b96dd2c9457b76",
+      "blackjack_lab/ui/analysis_panel.py": "6f34b22298f26bb6a5a793a8c3a7ebf6bca145898c8cabc7b54122a12b9ecdb4",
+      "blackjack_lab/ui/app.py": "ca8fd24b7de366c264e6c2e50647e2f0cd5e59d8dea19cb11e60df4fa951d112",
+      "blackjack_lab/ui/automatic_flow.py": "fb04d51e72570b5e8e44b109f677c84dbac8d71589714f66a3f326ba67310c12",
+      "blackjack_lab/ui/bclc_help.py": "b357eb4e1d210d9e9d0a9c8ad3b7d3c671d2725d717139dd19ff5a500e6b8197",
+      "blackjack_lab/ui/compact_panel.py": "4209a76285e2041911ec393bc664227a372d7491673801e00954c859000bb0ff",
+      "blackjack_lab/ui/controller.py": "cae80fe2c3745eb28818c2bd15693fd5fb27a7b8da9f2a02ea599ba73f0dede7",
+      "blackjack_lab/ui/daily_flow.py": "ba319c70a8c46b7bd57579b264d4de8b388cb4e586461e1e3b6d45e4e5001a7a",
+      "blackjack_lab/ui/deal_entry.py": "be2688b0fb264c926294f7121d4db5aa0df0063c9160bf6cae2ab26e48760090",
+      "blackjack_lab/ui/ev_display.py": "38adfdcfdcbb77ff6cdadd277e38b7d4485febb56d89f7142ff50f088b2c0690",
+      "blackjack_lab/ui/experiment_panel.py": "1c344520dca0304d93ffec9a87efc6ca1c07f872a4e727da936b2a2017902f3c",
+      "blackjack_lab/ui/job_reaper.py": "edb88bcb00d71c4a2acd79d0dc8bf1f45a1bcb5cb2b4e4a53d735f3b832723a2",
+      "blackjack_lab/ui/manual_keymap.py": "8989f93055a19d05b2b243e2686a2ccada040b2e0d20aaaf55669238e08c1531",
+      "blackjack_lab/ui/observation_identity.py": "b764db90415087cc2f6f9dcbf22415315ad3fc69c85e8f0c1c5d524a407d5d79",
+      "blackjack_lab/ui/opening_estimate.py": "819f9f6845bbff47bf9d493571db977018bb00708048d8b8f95998c3c1b53a71",
+      "blackjack_lab/ui/opening_history.py": "d0a82efecd92e83aa95e3bb98e90c4303c2578e4ffc3cd4f3836b9d8a143a51c",
+      "blackjack_lab/ui/read_snapshot.py": "aa8bddadd193938ca45a0763ddc52bc75c3bcca4f30e0230e1bb85cf26ea3c3d",
+      "blackjack_lab/ui/recent_entry.py": "e3df561f3ac2c5d5eb845d31f4f42f90736152e0af684306d3aadf3f83058b9e",
+      "blackjack_lab/ui/recording_commands.py": "cc88d51bb39eecca9e790244a5e7dc196f386042a3cd6ac9ea3c2da8db904cd4",
+      "blackjack_lab/ui/recording_failures.py": "e662b6f9d509ec98a4fe195e8381500c3a8bab77bc1de83bddc72703541ed4be",
+      "blackjack_lab/ui/recording_owner.py": "ffe3d160e5f38c24655d3e7e44de40967a397cd7ce0c5513367c862e57edc85a",
+      "blackjack_lab/ui/recording_process.py": "cee56f1ca7e4f585b9a4164f6c6ceb2b4a720b1ed9c4441e68eb5c093cc34eb5",
+      "blackjack_lab/ui/recording_scheduling.py": "e43498035c4b5d73e23b77999f96051f8dc56dccc9eaf4916e483f3102c6dcb6",
+      "blackjack_lab/ui/result_writer.py": "b7168eae6695ead68357452465ce6d9b6c11a79bfe2f1e768b9919fd6dc6b492",
+      "blackjack_lab/ui/round_players.py": "d48b99567fea15895a67e6958ff034960fa7255b2523bb528b3dc1a9ea3c8ab4",
+      "blackjack_lab/ui/rule_summary.py": "c16c74751b192b383766b69c2f8cbc78f5d9e83e680fe14e55555ed18f9fc5e8",
+      "blackjack_lab/ui/seat_overview.py": "316ac9666239bf5593cd03161c6f69740615cf5fb57cb8a8b07656a32f13a7c4",
+      "blackjack_lab/ui/shutdown.py": "930b18668e57f05f9355ceb28b99462e16341da87cb4a37f3a9423a6fb066716",
+      "blackjack_lab/ui/sidebet_details.py": "ac0de3a12d0a2fcf1741a5c08fe84e962a24ee3e4fccf1a2e2fd2b3fec0221d4",
+      "blackjack_lab/ui/sidebet_history.py": "817f7a1fe2a78cdea8b5022551a7709c6ac33cd879200508651a0a94e438878f",
+      "blackjack_lab/ui/sidebet_view.py": "d25b92b0e251fad803c155502974ed4ed2073375cfb773c94ee8e248f45202ee",
+      "blackjack_lab/ui/split_display.py": "d6669f7b8b394dcc97c68fb83f05dbaf640e7af26847e8dae2ab65dc38271f1b",
+      "blackjack_lab/ui/table_modes.py": "ae91f81c58fdfc5e080530f87509f4493b4e4bd17ca4679f8a19f3f338566492",
+      "blackjack_lab/ui/window_layout.py": "b10273004872c8ee882f56051f0bedbd4a08afa57b88cda4cb12f52e0eb2db02",
+      "blackjack_lab/vision/__init__.py": "2f0b2df8201e0d67fed2d9a02d686fac0e4f80f8e9f01348544bb1360e89ea54",
+      "scripts/recording_end_to_end.py": "38f8b14b44a069ad288ff5653ba97106b32fe9c90ed37512bf5afded51d32327",
+      "启动BCLC候选.cmd": "dcb8c64d64e9944dc03f6ba009acdbed1fdb3a80ea281e28256f8834c962519e"
+    },
+    "component_probe_sha256": "8ce4c653c8a5c6614528642c0790b9620e50b6df67872499ee8a305df3613338",
+    "git_blobs": {
+      "blackjack_lab/__init__.py": "644dde22edc9ee2ad656a9f9eda829fde80bbf56",
+      "blackjack_lab/analysis/__init__.py": "d118053702a3377394a97de5077d905f707b7580",
+      "blackjack_lab/analysis/actions.py": "39080b145b321c68e311098e37e2059228bb2197",
+      "blackjack_lab/analysis/contracts.py": "a302d64ede81b545847479bd08265f5965515236",
+      "blackjack_lab/analysis/dealer_blackjack.py": "1f08952df4a735c5cbdc18a7b834c3a1791665d5",
+      "blackjack_lab/analysis/decision_summary.py": "34b31f6ed56c1cb56bfe4a00141431ec1413c5f3",
+      "blackjack_lab/analysis/environment.py": "4d20d5400190ec6bf867baa99e54a629545ab556",
+      "blackjack_lab/analysis/external_pw.py": "690c125387ee58f94f66fba1f2bc24d5a57f6356",
+      "blackjack_lab/analysis/information.py": "c7266f59a8404d6a84376e3ed421de6465a259cc",
+      "blackjack_lab/analysis/native/SplitEngine.cs": "592b6dfb093810c2970317e27a1409e198946672",
+      "blackjack_lab/analysis/native_backend.py": "3cfb6e9a5b986c789b8b0a9b92258a209ed4292d",
+      "blackjack_lab/analysis/opening.py": "e72678021254df54e3fc9593a10b70c9ec4b9075",
+      "blackjack_lab/analysis/opening_service.py": "f6c0fbd7af5818c9f1bf107b565a945c1463743a",
+      "blackjack_lab/analysis/probability.py": "52c4ff942a2d26aaab075d6ef4f76b1fe903bb5f",
+      "blackjack_lab/analysis/seat_scenario.py": "25824e98c136cdaf4e0518686077a7424287eb37",
+      "blackjack_lab/analysis/service.py": "fb35c3a422cc42e8205fde9c5ca15a0621462e27",
+      "blackjack_lab/analysis/sidebets/__init__.py": "da3c6fe5e3b746ef00f5bf197d4296bfbe1da32e",
+      "blackjack_lab/analysis/sidebets/background.py": "1ce76c639808682059c0da4988f6128ce4296560",
+      "blackjack_lab/analysis/sidebets/contracts.py": "c78c4a36d3890b60aeb9546ac7026d7a555b3c06",
+      "blackjack_lab/analysis/sidebets/exact.py": "39a43d8829932098b8bee43ed9712852c517c653",
+      "blackjack_lab/analysis/sidebets/information.py": "2257ffa17ded865e659c9e86da3eab8e6c04dd18",
+      "blackjack_lab/analysis/sidebets/research.py": "80c5a8a0714298319db23eec0676ec92b259800a",
+      "blackjack_lab/analysis/split_actions.py": "83b77b66ee5bdd17f7797c253de15c27f8be6435",
+      "blackjack_lab/analysis/split_contracts.py": "cb4668fce28d1ca9fed54e95a8c1f1084d31cede",
+      "blackjack_lab/analysis/split_information.py": "e045fbdcf18d02adda7c265abe4cc22153b54efd",
+      "blackjack_lab/analysis/split_service.py": "5c334ef84ac83fffecf106a42915d2321ad0f1a1",
+      "blackjack_lab/capture/__init__.py": "ff5d893d6f53ae8e3b892643484d40ec8a06d728",
+      "blackjack_lab/core/__init__.py": "4c45c925354b788362d29754d2da56bc477b599e",
+      "blackjack_lab/core/cards.py": "a0a1a8793aea23bbb5eb59110af25a4713a97c1e",
+      "blackjack_lab/core/rules.py": "404d21f744fba53e0a1139a5df99080f9a103ede",
+      "blackjack_lab/core/shoe.py": "ea0ed909283ccb1c4b3ec1c2ad11cf08b72981fe",
+      "blackjack_lab/core/table.py": "92c074e48388495ede983176243215803845a4da",
+      "blackjack_lab/experiments/__init__.py": "302369dc61b7cca86f270bd08e001ff6be4a6fa4",
+      "blackjack_lab/experiments/contracts.py": "c8f999125151502cf00496a568de1e2d50432aa1",
+      "blackjack_lab/experiments/results.py": "1cf57eb7889cbc38e038e65c3e9c1229141af5e6",
+      "blackjack_lab/experiments/runner.py": "436463bc1a18b2c9d641cff1cbd49c7d9f2eb9d5",
+      "blackjack_lab/experiments/scenarios.py": "3159fd3c16e24776ca1b2cd2cc0c393f1cf19832",
+      "blackjack_lab/ledger/__init__.py": "5d7e8d16818e861e1b97a03233320928755f894b",
+      "blackjack_lab/ledger/card_inventory.py": "2f9e0c8722e4324a14987a45099cd2df31ef420e",
+      "blackjack_lab/ledger/command.py": "cb70a96e7acd940af70a4aa4c1f2e5e453c4a323",
+      "blackjack_lab/ledger/events.py": "6363ed2e813220c0ed17bf16552e733f67682ef4",
+      "blackjack_lab/ledger/ledger.py": "184a230b7fdbc9e00aafc6fa19afbb1364898133",
+      "blackjack_lab/main.py": "6344bc7381b0b256b75029afd432a5ce02532354",
+      "blackjack_lab/simulator/__init__.py": "cc4c37e0b0741b0e3ad9414847b787c16f487873",
+      "blackjack_lab/storage/__init__.py": "e01caca90350cd3a469bb4cbd89dfce55ba2d897",
+      "blackjack_lab/storage/analysis_snapshots.py": "ca708989624ecd994b3df3357037b0d56017ca7d",
+      "blackjack_lab/storage/database.py": "0b183ced8726cbd0611374b28aea5f7c3e0fed78",
+      "blackjack_lab/storage/export.py": "f65677e0673230b886276c49a86e4a13880f4535",
+      "blackjack_lab/storage/history_catalog.py": "6209e95c8eb4d79e88344804f9b533ed749bd516",
+      "blackjack_lab/storage/opening_snapshots.py": "24ffdaa89d63a3201fd100e908f1d49411cd902f",
+      "blackjack_lab/storage/safe_files.py": "3b1c7ce2793648224340e73e752ea7881ad12a9c",
+      "blackjack_lab/storage/sidebet_snapshots.py": "23d823f0e15b3c22a42105d2ee2311141fddfc25",
+      "blackjack_lab/ui/__init__.py": "ca33ff7b08af4738c44cf011e4ae2fa434ea86ea",
+      "blackjack_lab/ui/analysis_history.py": "c9548927b8bd68454f29f2ec8c90511e665e6b89",
+      "blackjack_lab/ui/analysis_panel.py": "104e4572b41d2b215ab473d377eed846ff1cf5bd",
+      "blackjack_lab/ui/app.py": "fd79f4647ac049e0fe7a14a20061216c5ecd3b6f",
+      "blackjack_lab/ui/automatic_flow.py": "5c8b2fe3f58b6a73a3c728a7935b09a59eb94936",
+      "blackjack_lab/ui/bclc_help.py": "cc5b564463e47f6ca5733f6d68e1decfa696bb62",
+      "blackjack_lab/ui/compact_panel.py": "a35103680cc541ae678589ef977b7978dfc037b9",
+      "blackjack_lab/ui/controller.py": "ad87518ee150fcc4d3d7296e0f36341a76ec9573",
+      "blackjack_lab/ui/daily_flow.py": "6decc13ebb2a85e9f71d6c71b7041ded1f6d63f9",
+      "blackjack_lab/ui/deal_entry.py": "576a914fb6d53a73b45984b3de8d222234e3991c",
+      "blackjack_lab/ui/ev_display.py": "c3f2e9be18c40ea44068b8047ad2c8b61fa55a27",
+      "blackjack_lab/ui/experiment_panel.py": "3a4fda02593e3a4d8bea639cc0aee5199d09bbe4",
+      "blackjack_lab/ui/job_reaper.py": "288fffae22bc7053d659523198d3c5f545e58355",
+      "blackjack_lab/ui/manual_keymap.py": "6bce191bfb12f4b01189176c6d75e0c6dc2f20b7",
+      "blackjack_lab/ui/observation_identity.py": "80fd9e809e193a86f4d95c8e264afb6b57c94b1f",
+      "blackjack_lab/ui/opening_estimate.py": "f380aae642c4b0bf8966aabd89c2454f1e05d3e9",
+      "blackjack_lab/ui/opening_history.py": "988ce1005ecc4cbfd42ce8210fbfb421188c16ec",
+      "blackjack_lab/ui/read_snapshot.py": "0f1a5657ea4d3c03fdd3517d0500c9bff4c68d20",
+      "blackjack_lab/ui/recent_entry.py": "a424149fdd5261e1d8f33b3de0aafa243e09c468",
+      "blackjack_lab/ui/recording_commands.py": "2967bfef5e63a0bd6e43cca777c17a2f6049640c",
+      "blackjack_lab/ui/recording_failures.py": "ae07436daec0f7638d139f4a75984be9e5586d51",
+      "blackjack_lab/ui/recording_owner.py": "5875af2381c44e39d34b8f7218d01aed08cda99d",
+      "blackjack_lab/ui/recording_process.py": "096688ed073fbf882dbf2bb50e57858a96d66524",
+      "blackjack_lab/ui/recording_scheduling.py": "19e8b150f2b55b8912908bebaa2481bcf8eb9f8e",
+      "blackjack_lab/ui/result_writer.py": "905598e9891b33ef0adf50bc36374e841d9d92aa",
+      "blackjack_lab/ui/round_players.py": "fdb04f71ae8ab075d17a1c0cee9278f1bd1036d9",
+      "blackjack_lab/ui/rule_summary.py": "f99e9ba10333508a046c3d9cc30bd5517374ba5e",
+      "blackjack_lab/ui/seat_overview.py": "6d69d218fa735d08a76510f694acfc1047dacac9",
+      "blackjack_lab/ui/shutdown.py": "713f0c63354d49082bfb7c815346e101d0965883",
+      "blackjack_lab/ui/sidebet_details.py": "801edea22573c4aa459f251e24b4bd7ca840bc40",
+      "blackjack_lab/ui/sidebet_history.py": "91eb77d5a1e07ba7b8e337583b96c9c3f7c37789",
+      "blackjack_lab/ui/sidebet_view.py": "932eb282c25e0f59b7e146286eec516cb14e04e0",
+      "blackjack_lab/ui/split_display.py": "3ffbd9bd339f451959b21c2654bf94296202429a",
+      "blackjack_lab/ui/table_modes.py": "17772c9b1e577eb231d21e15c58fb064ee153818",
+      "blackjack_lab/ui/window_layout.py": "deffb243701df2dc0085c9bf20ea162fa667a753",
+      "blackjack_lab/vision/__init__.py": "bed14781eb5cd08b531d28d6179d12105b761696",
+      "scripts/recording_end_to_end.py": "9cfab7fc24cbf96799c0dc35d314f8511137796f",
+      "启动BCLC候选.cmd": "98259bf9fbf2a713d0e5428ffb3179420601eb04",
+      "scripts/sidebet_closeout_measure.py": "e0388e70ed5adf04238577092aaee6598f87bc04"
+    }
+  },
+  "source_binding": "Each measured runtime/probe/entry file matches its Git blob at measured_source.commit. Later documentation-only publication must preserve these blobs.",
+  "fixture_identity": {
+    "events-1000.json": {
+      "event_count": 1001,
+      "sha256": "8059b6d898535ff7c4ecfa54f6606b67a9a47e8111be2acf2e53ebe030ee86af"
+    },
+    "events-5000.json": {
+      "event_count": 5001,
+      "sha256": "cf2679bd011303a2d8b22e887fdda0dc4c32525206c4b9f517c123795f12a898"
+    },
+    "events-10000.json": {
+      "event_count": 10001,
+      "sha256": "157a8a27705a0123fa6abb515837725ba4c3ec155241949fb7d1e06c74e233d1"
+    }
+  },
+  "input_count": 279,
+  "available_decision_batches": 18,
+  "batches_per_mode_scale": 3,
+  "synthetic_only": true,
+  "real_time_acceptance": false,
+  "groups": [
+    {
+      "mode": "pragmatic",
+      "scale": 1000,
+      "fixture_events": 1001,
+      "input_count": 45,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 45,
+          "p50": 0.12660003267228603,
+          "p95": 14.08410002477467,
+          "p99": 16.12419995944947,
+          "maximum": 16.12419995944947
+        },
+        "input_to_db_commit_ms": {
+          "count": 45,
+          "p50": 1389.8645000299439,
+          "p95": 2233.4066000184976,
+          "p99": 2296.62899998948,
+          "maximum": 2296.62899998948
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 56.41929997364059,
+          "p95": 70.98349998705089,
+          "p99": 77.28399999905378,
+          "maximum": 77.28399999905378
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 3433.766999980435,
+          "p95": 3445.926500018686,
+          "p99": 3445.926500018686,
+          "maximum": 3445.926500018686
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 3407.2226000134833,
+          "p95": 3420.2320000040345,
+          "p99": 3420.2320000040345,
+          "maximum": 3420.2320000040345
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 507.72629998391494,
+          "p95": 510.73969999561086,
+          "p99": 510.73969999561086,
+          "maximum": 510.73969999561086
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 45,
+          "p50": 1288.4730999940075,
+          "p95": 2113.0843000137247,
+          "p99": 2182.3386999894865,
+          "maximum": 2182.3386999894865
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 45,
+          "p50": 13.824100024066865,
+          "p95": 25.122600025497377,
+          "p99": 34.22679996583611,
+          "maximum": 34.22679996583611
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 45,
+          "p50": 5.575800023507327,
+          "p95": 6.37379998806864,
+          "p99": 7.955399982165545,
+          "maximum": 7.955399982165545
+        },
+        "ui_validated_publication_ms": {
+          "count": 45,
+          "p50": 6.534199987072498,
+          "p95": 13.948599982541054,
+          "p99": 15.053600014653057,
+          "maximum": 15.053600014653057
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 45,
+          "p50": 7.92949995957315,
+          "p95": 17.498300003353506,
+          "p99": 25.274999963585287,
+          "maximum": 25.274999963585287
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 157.51280001131818,
+          "p95": 163.17489999346435,
+          "p99": 163.17489999346435,
+          "maximum": 163.17489999346435
+        },
+        "recovery_including_validation_ms": {
+          "count": 45,
+          "p50": 0,
+          "p95": 113.45750000327826,
+          "p99": 117.95519996667281,
+          "maximum": 117.95519996667281,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 45,
+          "p50": 53.0989000108093,
+          "p95": 66.44199998117983,
+          "p99": 72.00909993844107,
+          "maximum": 72.00909993844107,
+          "executed_request_count": 45
+        },
+        "prefix_capture_ms": {
+          "count": 45,
+          "p50": 16.774300078395754,
+          "p95": 24.374900036491454,
+          "p99": 25.45710001140833,
+          "maximum": 25.45710001140833,
+          "executed_request_count": 45
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 45,
+          "p50": 22.16950000729412,
+          "p95": 23.38289999170229,
+          "p99": 29.554700013250113,
+          "maximum": 29.554700013250113,
+          "executed_request_count": 45
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 116.98440002510324,
+          "p95": 117.95519996667281,
+          "p99": 117.95519996667281,
+          "maximum": 117.95519996667281
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 26.632900000549853,
+          "p95": 28.032599948346615,
+          "p99": 28.844600019510835,
+          "maximum": 28.844600019510835
+        }
+      },
+      "queue_max": 15,
+      "heartbeat_delay_ms": {
+        "count": 376,
+        "p50": 1.6152999782934785,
+        "p95": 26.465200022794306,
+        "p99": 137.61739999288693,
+        "maximum": 226.84169999090955
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "real_time_acceptance": false
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 5000,
+      "fixture_events": 5001,
+      "input_count": 45,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 45,
+          "p50": 0.132200017105788,
+          "p95": 39.73620000761002,
+          "p99": 40.57529999408871,
+          "maximum": 40.57529999408871
+        },
+        "input_to_db_commit_ms": {
+          "count": 45,
+          "p50": 5432.189299957827,
+          "p95": 9576.625299989246,
+          "p99": 9633.254199987277,
+          "maximum": 9633.254199987277
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 180.4575999849476,
+          "p95": 213.65290001267567,
+          "p99": 221.19369998108596,
+          "maximum": 221.19369998108596
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 12760.607600037474,
+          "p95": 12825.754299992695,
+          "p99": 12825.754299992695,
+          "maximum": 12825.754299992695
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 12708.98739999393,
+          "p95": 12774.638899951242,
+          "p99": 12774.638899951242,
+          "maximum": 12774.638899951242
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 636.8559999973513,
+          "p95": 649.1486999439076,
+          "p99": 649.1486999439076,
+          "maximum": 649.1486999439076
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 45,
+          "p50": 4894.005300011486,
+          "p95": 8936.046399991028,
+          "p99": 8990.737100015394,
+          "maximum": 8990.737100015394
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 45,
+          "p50": 87.79429999412969,
+          "p95": 93.76489999704063,
+          "p99": 95.08599998662248,
+          "maximum": 95.08599998662248
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 45,
+          "p50": 33.274699992034584,
+          "p95": 60.905000020284206,
+          "p99": 73.28430004417896,
+          "maximum": 73.28430004417896
+        },
+        "ui_validated_publication_ms": {
+          "count": 45,
+          "p50": 30.613899987656623,
+          "p95": 66.37970003066584,
+          "p99": 109.20539998915046,
+          "maximum": 109.20539998915046
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 45,
+          "p50": 34.74199998890981,
+          "p95": 73.03349999710917,
+          "p99": 116.54179997276515,
+          "maximum": 116.54179997276515
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 161.215300031472,
+          "p95": 163.8455000356771,
+          "p99": 163.8455000356771,
+          "maximum": 163.8455000356771
+        },
+        "recovery_including_validation_ms": {
+          "count": 45,
+          "p50": 0,
+          "p95": 539.5366000011563,
+          "p99": 544.7241000365466,
+          "maximum": 544.7241000365466,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 45,
+          "p50": 291.95769992657006,
+          "p95": 371.1642000125721,
+          "p99": 377.3441999219358,
+          "maximum": 377.3441999219358,
+          "executed_request_count": 45
+        },
+        "prefix_capture_ms": {
+          "count": 45,
+          "p50": 111.59990000305697,
+          "p95": 118.00459999358281,
+          "p99": 130.97550004022196,
+          "maximum": 130.97550004022196,
+          "executed_request_count": 45
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 45,
+          "p50": 86.402699991595,
+          "p95": 110.27559998910874,
+          "p99": 115.91130000306293,
+          "maximum": 115.91130000306293,
+          "executed_request_count": 45
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 540.8339999848977,
+          "p95": 544.7241000365466,
+          "p99": 544.7241000365466,
+          "maximum": 544.7241000365466
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 51.79100000532344,
+          "p95": 81.41560002695769,
+          "p99": 91.95819997694343,
+          "maximum": 91.95819997694343
+        }
+      },
+      "queue_max": 15,
+      "heartbeat_delay_ms": {
+        "count": 1242,
+        "p50": 1.5546999825164676,
+        "p95": 46.6707000345923,
+        "p99": 227.28579999646172,
+        "maximum": 706.314099971205
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "real_time_acceptance": false
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 10000,
+      "fixture_events": 10001,
+      "input_count": 45,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 45,
+          "p50": 0.11939997784793377,
+          "p95": 65.68480003625154,
+          "p99": 69.05260001076385,
+          "maximum": 69.05260001076385
+        },
+        "input_to_db_commit_ms": {
+          "count": 45,
+          "p50": 10910.845700011123,
+          "p95": 19626.808399974834,
+          "p99": 19898.998600023333,
+          "maximum": 19898.998600023333
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 347.6500000106171,
+          "p95": 425.1883000251837,
+          "p99": 520.0359000009485,
+          "maximum": 520.0359000009485
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 26508.831300016027,
+          "p95": 26560.062500007916,
+          "p99": 26560.062500007916,
+          "maximum": 26560.062500007916
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 26431.027800019365,
+          "p95": 26480.772999988403,
+          "p99": 26480.772999988403,
+          "maximum": 26480.772999988403
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 1249.5482999947853,
+          "p95": 1300.9841999737546,
+          "p99": 1300.9841999737546,
+          "maximum": 1300.9841999737546
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 45,
+          "p50": 9831.76769997226,
+          "p95": 18239.159799995832,
+          "p99": 18557.367899979,
+          "maximum": 18557.367899979
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 45,
+          "p50": 182.91769997449592,
+          "p95": 194.75789996795356,
+          "p99": 202.75009999750182,
+          "maximum": 202.75009999750182
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 45,
+          "p50": 76.21160004055128,
+          "p95": 205.63310000579804,
+          "p99": 245.47200003871694,
+          "maximum": 245.47200003871694
+        },
+        "ui_validated_publication_ms": {
+          "count": 45,
+          "p50": 60.96769997384399,
+          "p95": 204.89519997499883,
+          "p99": 245.15830003656447,
+          "maximum": 245.15830003656447
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 45,
+          "p50": 68.98700003512204,
+          "p95": 212.5452000182122,
+          "p99": 253.19099996704608,
+          "maximum": 253.19099996704608
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 162.4561999924481,
+          "p95": 163.65500004030764,
+          "p99": 163.65500004030764,
+          "maximum": 163.65500004030764
+        },
+        "recovery_including_validation_ms": {
+          "count": 45,
+          "p50": 0,
+          "p95": 1128.728699986823,
+          "p99": 1137.261199997738,
+          "maximum": 1137.261199997738,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 45,
+          "p50": 620.4678000067361,
+          "p95": 843.8261999399401,
+          "p99": 917.8064999869093,
+          "maximum": 917.8064999869093,
+          "executed_request_count": 45
+        },
+        "prefix_capture_ms": {
+          "count": 45,
+          "p50": 221.6119000222534,
+          "p95": 258.1025000545196,
+          "p99": 294.75959995761514,
+          "maximum": 294.75959995761514,
+          "executed_request_count": 45
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 45,
+          "p50": 170.72120000375435,
+          "p95": 216.0089000244625,
+          "p99": 231.66629998013377,
+          "maximum": 231.66629998013377,
+          "executed_request_count": 45
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 1135.8845000504516,
+          "p95": 1137.261199997738,
+          "p99": 1137.261199997738,
+          "maximum": 1137.261199997738
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 45,
+          "p50": 93.46010000444949,
+          "p95": 222.57189999800175,
+          "p99": 262.68839999102056,
+          "maximum": 262.68839999102056
+        }
+      },
+      "queue_max": 15,
+      "heartbeat_delay_ms": {
+        "count": 2440,
+        "p50": 1.344900014810264,
+        "p95": 47.72699998691678,
+        "p99": 292.0603000279516,
+        "maximum": 1515.701499960851
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "real_time_acceptance": false
+    },
+    {
+      "mode": "bclc",
+      "scale": 1000,
+      "fixture_events": 1001,
+      "input_count": 48,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 48,
+          "p50": 0.12169999536126852,
+          "p95": 13.80570000037551,
+          "p99": 14.33149998774752,
+          "maximum": 14.33149998774752
+        },
+        "input_to_db_commit_ms": {
+          "count": 48,
+          "p50": 1382.588000036776,
+          "p95": 2344.3092000088654,
+          "p99": 2358.4726999979466,
+          "maximum": 2358.4726999979466
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 58.96429996937513,
+          "p95": 107.3327999911271,
+          "p99": 196.95199996931478,
+          "maximum": 196.95199996931478
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 3561.7787999799475,
+          "p95": 3589.9097999790683,
+          "p99": 3589.9097999790683,
+          "maximum": 3589.9097999790683
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 3536.546699993778,
+          "p95": 3565.151299990248,
+          "p99": 3565.151299990248,
+          "maximum": 3565.151299990248
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 509.6054999739863,
+          "p95": 553.58539998997,
+          "p99": 553.58539998997,
+          "maximum": 553.58539998997
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 48,
+          "p50": 1279.904600000009,
+          "p95": 2238.815099990461,
+          "p99": 2258.8670999975875,
+          "maximum": 2258.8670999975875
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 48,
+          "p50": 17.90350000374019,
+          "p95": 63.00640001427382,
+          "p99": 153.06090004742146,
+          "maximum": 153.06090004742146
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 48,
+          "p50": 5.572099995333701,
+          "p95": 7.521799998357892,
+          "p99": 8.61850002547726,
+          "maximum": 8.61850002547726
+        },
+        "ui_validated_publication_ms": {
+          "count": 46,
+          "p50": 6.876699975691736,
+          "p95": 16.4130000048317,
+          "p99": 149.971499980893,
+          "maximum": 149.971499980893
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 46,
+          "p50": 8.389900031033903,
+          "p95": 20.91299998573959,
+          "p99": 151.61689999513328,
+          "maximum": 151.61689999513328
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 155.83090001018718,
+          "p95": 169.6030999883078,
+          "p99": 169.6030999883078,
+          "maximum": 169.6030999883078
+        },
+        "recovery_including_validation_ms": {
+          "count": 48,
+          "p50": 0,
+          "p95": 109.133500023745,
+          "p99": 112.30489995796233,
+          "maximum": 112.30489995796233,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 48,
+          "p50": 52.61279997648671,
+          "p95": 57.175800029654056,
+          "p99": 61.96650007041171,
+          "maximum": 61.96650007041171,
+          "executed_request_count": 48
+        },
+        "prefix_capture_ms": {
+          "count": 48,
+          "p50": 20.59739996911958,
+          "p95": 23.694399977102876,
+          "p99": 24.838300014380366,
+          "maximum": 24.838300014380366,
+          "executed_request_count": 48
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 48,
+          "p50": 22.042499971576035,
+          "p95": 24.364099954254925,
+          "p99": 27.06450002733618,
+          "maximum": 27.06450002733618,
+          "executed_request_count": 48
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 110.56210001697764,
+          "p95": 112.30489995796233,
+          "p99": 112.30489995796233,
+          "maximum": 112.30489995796233
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 26.409899990539998,
+          "p95": 28.573399991728365,
+          "p99": 29.875800013542175,
+          "maximum": 29.875800013542175
+        }
+      },
+      "queue_max": 16,
+      "heartbeat_delay_ms": {
+        "count": 373,
+        "p50": 1.5948999975807965,
+        "p95": 41.93809997057542,
+        "p99": 152.81660001026466,
+        "maximum": 228.80119995214045
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "real_time_acceptance": false
+    },
+    {
+      "mode": "bclc",
+      "scale": 5000,
+      "fixture_events": 5001,
+      "input_count": 48,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 48,
+          "p50": 0.12579996837303042,
+          "p95": 40.16470001079142,
+          "p99": 42.69110003951937,
+          "maximum": 42.69110003951937
+        },
+        "input_to_db_commit_ms": {
+          "count": 48,
+          "p50": 5500.02300000051,
+          "p95": 9883.216999995057,
+          "p99": 10252.39410001086,
+          "maximum": 10252.39410001086
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 181.8142999545671,
+          "p95": 200.59570000739768,
+          "p99": 412.08259999984875,
+          "maximum": 412.08259999984875
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 13515.919299970847,
+          "p95": 13639.766899985261,
+          "p99": 13639.766899985261,
+          "maximum": 13639.766899985261
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 13464.041199942585,
+          "p95": 13588.797000003979,
+          "p99": 13588.797000003979,
+          "maximum": 13588.797000003979
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 730.929599958472,
+          "p95": 921.9456999562681,
+          "p99": 921.9456999562681,
+          "maximum": 921.9456999562681
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 48,
+          "p50": 4981.282799970359,
+          "p95": 9384.904000035021,
+          "p99": 9724.303299968597,
+          "maximum": 9724.303299968597
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 48,
+          "p50": 88.22919998783618,
+          "p95": 98.1305000022985,
+          "p99": 107.55329998210073,
+          "maximum": 107.55329998210073
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 48,
+          "p50": 34.5023000263609,
+          "p95": 43.46100002294406,
+          "p99": 245.51470001460984,
+          "maximum": 245.51470001460984
+        },
+        "ui_validated_publication_ms": {
+          "count": 48,
+          "p50": 35.199099977035075,
+          "p95": 216.00369998486713,
+          "p99": 229.0525000425987,
+          "maximum": 229.0525000425987
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 48,
+          "p50": 40.411500027403235,
+          "p95": 220.6607999978587,
+          "p99": 233.62830001860857,
+          "maximum": 233.62830001860857
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 167.16099996119738,
+          "p95": 167.28140000486746,
+          "p99": 167.28140000486746,
+          "maximum": 167.28140000486746
+        },
+        "recovery_including_validation_ms": {
+          "count": 48,
+          "p50": 0,
+          "p95": 527.0837999996729,
+          "p99": 556.391500052996,
+          "maximum": 556.391500052996,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 48,
+          "p50": 284.8749000695534,
+          "p95": 312.79639998683706,
+          "p99": 334.69430007971823,
+          "maximum": 334.69430007971823,
+          "executed_request_count": 48
+        },
+        "prefix_capture_ms": {
+          "count": 48,
+          "p50": 96.19160002330318,
+          "p95": 120.99560000933707,
+          "p99": 126.83249998372048,
+          "maximum": 126.83249998372048,
+          "executed_request_count": 48
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 48,
+          "p50": 85.30589996371418,
+          "p95": 105.22570001194254,
+          "p99": 108.00090001430362,
+          "maximum": 108.00090001430362,
+          "executed_request_count": 48
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 548.8385999924503,
+          "p95": 556.391500052996,
+          "p99": 556.391500052996,
+          "maximum": 556.391500052996
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 53.1493000453338,
+          "p95": 62.03810003353283,
+          "p99": 262.5345000415109,
+          "maximum": 262.5345000415109
+        }
+      },
+      "queue_max": 16,
+      "heartbeat_delay_ms": {
+        "count": 1231,
+        "p50": 1.4131000102497637,
+        "p95": 55.81189996562898,
+        "p99": 364.1637999867089,
+        "maximum": 1100.873399951961
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "real_time_acceptance": false
+    },
+    {
+      "mode": "bclc",
+      "scale": 10000,
+      "fixture_events": 10001,
+      "input_count": 48,
+      "available_decision_batches": 3,
+      "per_input_metrics": {
+        "input_to_accepted_ms": {
+          "count": 48,
+          "p50": 0.13100000796839595,
+          "p95": 66.32150005316362,
+          "p99": 69.75610001245514,
+          "maximum": 69.75610001245514
+        },
+        "input_to_db_commit_ms": {
+          "count": 48,
+          "p50": 11299.729700025637,
+          "p95": 20981.310900009703,
+          "p99": 21667.401599988807,
+          "maximum": 21667.401599988807
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 355.53399997297674,
+          "p95": 634.322699974291,
+          "p99": 690.3079000185244,
+          "maximum": 690.3079000185244
+        }
+      },
+      "independent_request_batch_metrics": {
+        "first_input_to_available_ms": {
+          "count": 3,
+          "p50": 28217.21820003586,
+          "p95": 28856.565799971577,
+          "p99": 28856.565799971577,
+          "maximum": 28856.565799971577
+        },
+        "last_input_to_available_ms": {
+          "count": 3,
+          "p50": 28139.615899999626,
+          "p95": 28778.496999992058,
+          "p99": 28778.496999992058,
+          "maximum": 28778.496999992058
+        },
+        "request_start_to_available_ms": {
+          "count": 3,
+          "p50": 907.4058000114746,
+          "p95": 1403.6921000224538,
+          "p99": 1403.6921000224538,
+          "maximum": 1403.6921000224538
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 48,
+          "p50": 10141.712800017558,
+          "p95": 19834.88620002754,
+          "p99": 20476.57999995863,
+          "maximum": 20476.57999995863
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 48,
+          "p50": 183.11220000032336,
+          "p95": 220.51859996281564,
+          "p99": 464.48869997402653,
+          "maximum": 464.48869997402653
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 48,
+          "p50": 77.38739997148514,
+          "p95": 343.74749998096377,
+          "p99": 438.8566999696195,
+          "maximum": 438.8566999696195
+        },
+        "ui_validated_publication_ms": {
+          "count": 48,
+          "p50": 62.98570003127679,
+          "p95": 332.72519998718053,
+          "p99": 357.60509996907786,
+          "maximum": 357.60509996907786
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 48,
+          "p50": 71.21749996440485,
+          "p95": 340.1410999940708,
+          "p99": 365.1706000091508,
+          "maximum": 365.1706000091508
+        },
+        "ev_engine_compute_ms": {
+          "count": 3,
+          "p50": 163.71509997406974,
+          "p95": 170.7454000134021,
+          "p99": 170.7454000134021,
+          "maximum": 170.7454000134021
+        },
+        "recovery_including_validation_ms": {
+          "count": 48,
+          "p50": 0,
+          "p95": 1125.4180000396445,
+          "p99": 1151.6168000525795,
+          "maximum": 1151.6168000525795,
+          "executed_request_count": 3
+        },
+        "command_replay_validation_ms": {
+          "count": 48,
+          "p50": 636.5384000819176,
+          "p95": 676.8708000308834,
+          "p99": 708.4254999645054,
+          "maximum": 708.4254999645054,
+          "executed_request_count": 48
+        },
+        "prefix_capture_ms": {
+          "count": 48,
+          "p50": 222.5237999809906,
+          "p95": 274.3502999073826,
+          "p99": 316.3718999712728,
+          "maximum": 316.3718999712728,
+          "executed_request_count": 48
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 48,
+          "p50": 184.69319998985156,
+          "p95": 221.5806000167504,
+          "p99": 248.71009995695204,
+          "maximum": 248.71009995695204,
+          "executed_request_count": 48
+        },
+        "recovery_executed_only_ms": {
+          "count": 3,
+          "p50": 1130.9827999793924,
+          "p95": 1151.6168000525795,
+          "p99": 1151.6168000525795,
+          "maximum": 1151.6168000525795
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 48,
+          "p50": 94.7242000256665,
+          "p95": 357.85909998230636,
+          "p99": 452.9736000113189,
+          "maximum": 452.9736000113189
+        }
+      },
+      "queue_max": 16,
+      "heartbeat_delay_ms": {
+        "count": 2524,
+        "p50": 1.5457999729551375,
+        "p95": 57.34959997469559,
+        "p99": 356.76979997195303,
+        "maximum": 1638.4511999972165
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "real_time_acceptance": false
+    }
+  ],
+  "cases": [
+    {
+      "mode": "pragmatic",
+      "scale": 1000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "cb0ee41274a6f97cd572faa5e3ffc4a83dec95d4b5cfd9c01a79db0045e6d081",
+          "decision_at": 361299.7891995,
+          "input_ids": [
+            "25a5dc87be184d7882b6c0e7f9cb8de9",
+            "0fdc2cc1f83d4b6ca777b914c5e980bd",
+            "5b021fc6fcaa4bc990785b8c6f804837",
+            "6de4e3a08d974f4d8a1af1a2c3bfd81e",
+            "20fa192bb92640c7a1814d74fba659a6",
+            "a8828ec06c3a4de5b1f07099aa56ec5a",
+            "9a1a2c0f8ee440ef84d425f59e901be9",
+            "e41148238117447cbc4e0e0e240f8e67",
+            "f650d4ba057546228eea0fd717f4aaf8",
+            "afa15e40e5894a80bcfb21fa055ae5de",
+            "8cd1981ff99d41c8b5a9fbf2bee9669a",
+            "906ab0161a0f48889c8ede5a7ffc2cc0",
+            "1fa2f4d796ab4d67aa18df18a42f88f4",
+            "cc6681eb0d85494c8a89c9ebf725ea1f",
+            "442fe6e9172d49c18712726a29b1a6c6"
+          ],
+          "first_input_to_available_ms": 3433.766999980435,
+          "last_input_to_available_ms": 3407.2226000134833,
+          "request_start_to_available_ms": 510.73969999561086
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.1194999786093831,
+          "p95": 16.12419995944947,
+          "p99": 16.12419995944947,
+          "maximum": 16.12419995944947
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 1389.8645000299439,
+          "p95": 2267.394900030922,
+          "p99": 2267.394900030922,
+          "maximum": 2267.394900030922
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 58.241099992301315,
+          "p95": 76.00810000440106,
+          "p99": 76.00810000440106,
+          "maximum": 76.00810000440106
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 3410.992300021462,
+          "p95": 3433.766999980435,
+          "p99": 3433.766999980435,
+          "maximum": 3433.766999980435
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 1288.4730999940075,
+          "p95": 2154.1744000278413,
+          "p99": 2154.1744000278413,
+          "maximum": 2154.1744000278413
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 16.540899989195168,
+          "p95": 33.31300005083904,
+          "p99": 33.31300005083904,
+          "maximum": 33.31300005083904
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 5.6232999777421355,
+          "p95": 6.811600003857166,
+          "p99": 6.811600003857166,
+          "maximum": 6.811600003857166
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 26.676999987103045,
+          "p95": 28.844600019510835,
+          "p99": 28.844600019510835,
+          "maximum": 28.844600019510835
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 6.66440004715696,
+          "p95": 14.852399996016175,
+          "p99": 14.852399996016175,
+          "maximum": 14.852399996016175
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 8.047799987252802,
+          "p95": 18.4472999535501,
+          "p99": 18.4472999535501,
+          "maximum": 18.4472999535501
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 157.51280001131818,
+          "p95": 157.51280001131818,
+          "p99": 157.51280001131818,
+          "maximum": 157.51280001131818
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 116.98440002510324,
+          "p99": 116.98440002510324,
+          "maximum": 116.98440002510324
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 53.93510003341362,
+          "p95": 66.44199998117983,
+          "p99": 66.44199998117983,
+          "maximum": 66.44199998117983
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 17.20409997506067,
+          "p95": 21.901899948716164,
+          "p99": 21.901899948716164,
+          "maximum": 21.901899948716164
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 21.987400017678738,
+          "p95": 22.77679997496307,
+          "p99": 22.77679997496307,
+          "maximum": 22.77679997496307
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 140,
+        "p50": 630.6198000092991,
+        "p95": 2135.486099985428,
+        "p99": 2280.3484000032768,
+        "maximum": 2302.800200006459
+      },
+      "heartbeat_delay_ms": {
+        "count": 125,
+        "p50": 1.4807000011205673,
+        "p95": 29.548499984666705,
+        "p99": 80.33809999004006,
+        "maximum": 215.6203999952413
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "2d305d8112dde581d1b298a0694574c8a5b6ddd49ebdf3bb2969c5956489f5f5",
+        "components": "32c78a6421bce6ead7fbd2917a11d74e8b30e31d742235f83e2562fc92fe7ac1"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 1000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "c2442e35dcbcdf6ae7296e60f69ddd5e62196ef6f52ea5ada6c1638cc829a346",
+          "decision_at": 361305.1728857,
+          "input_ids": [
+            "7a51e655556047d89639b7b0b4527c55",
+            "49bdb4bac69c4a7f88c3985298b3ff70",
+            "a04ab40893184cb29b7bd7f925c10d5b",
+            "0b5f3430ba014d8aae51c0bcdee82c79",
+            "cdfb00e59ca64694a18f4baabb254abc",
+            "46977a871c294f1ba1692a3afbe8871b",
+            "cae8e5b312194c9090bed13db79275cd",
+            "a437e85d5eac45229d3adf1344c2a47c",
+            "7cb6f951e428413bb7940c0c8ef5b5a7",
+            "29b92e507b764a408ee82b57f40008be",
+            "c4f397b38b0e476cb29827ed375f85dd",
+            "f31a593062794b14888af19a41bb94e2",
+            "6fd690c58edb470f868e0250ba0e9f59",
+            "9545ca6dd46e4277af9ac962051896e9",
+            "4b332a25ea7e43a49bc00d8a44499dce"
+          ],
+          "first_input_to_available_ms": 3445.926500018686,
+          "last_input_to_available_ms": 3420.2320000040345,
+          "request_start_to_available_ms": 503.4754000371322
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.1262999721802771,
+          "p95": 14.08410002477467,
+          "p99": 14.08410002477467,
+          "maximum": 14.08410002477467
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 1413.2206000504084,
+          "p95": 2296.62899998948,
+          "p99": 2296.62899998948,
+          "maximum": 2296.62899998948
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 53.71710000326857,
+          "p95": 77.28399999905378,
+          "p99": 77.28399999905378,
+          "maximum": 77.28399999905378
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 3424.3035000399686,
+          "p95": 3445.926500018686,
+          "p99": 3445.926500018686,
+          "maximum": 3445.926500018686
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 1302.543899975717,
+          "p95": 2182.3386999894865,
+          "p99": 2182.3386999894865,
+          "maximum": 2182.3386999894865
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 13.599800004158169,
+          "p95": 34.22679996583611,
+          "p99": 34.22679996583611,
+          "maximum": 34.22679996583611
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 5.703000002540648,
+          "p95": 7.955399982165545,
+          "p99": 7.955399982165545,
+          "maximum": 7.955399982165545
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 26.101899973582476,
+          "p95": 27.858200017362833,
+          "p99": 27.858200017362833,
+          "maximum": 27.858200017362833
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 6.998299970291555,
+          "p95": 13.948599982541054,
+          "p99": 13.948599982541054,
+          "maximum": 13.948599982541054
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 8.49860004382208,
+          "p95": 17.498300003353506,
+          "p99": 17.498300003353506,
+          "maximum": 17.498300003353506
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 154.20339995762333,
+          "p95": 154.20339995762333,
+          "p99": 154.20339995762333,
+          "maximum": 154.20339995762333
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 113.45750000327826,
+          "p99": 113.45750000327826,
+          "maximum": 113.45750000327826
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 53.06699994252995,
+          "p95": 67.87569995503873,
+          "p99": 67.87569995503873,
+          "maximum": 67.87569995503873
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 16.778699995484203,
+          "p95": 25.45710001140833,
+          "p99": 25.45710001140833,
+          "maximum": 25.45710001140833
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 22.465899994131178,
+          "p95": 29.554700013250113,
+          "p99": 29.554700013250113,
+          "maximum": 29.554700013250113
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 141,
+        "p50": 667.3012999817729,
+        "p95": 2146.9594000373036,
+        "p99": 2290.4379999963567,
+        "maximum": 2312.4070999911055
+      },
+      "heartbeat_delay_ms": {
+        "count": 126,
+        "p50": 1.4978999574668705,
+        "p95": 18.959899975452572,
+        "p99": 137.61739999288693,
+        "maximum": 209.9877000041306
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "ecd6091200e88e9aa38894dfcad028eff6eea3b6817a3d64e1d8e984245c15ee",
+        "components": "ce4528887d4baeb78fafa952979f5a2dc2a6a5a2a1a94e87fc003bd394734b27"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 1000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "938d6205b71e8c63289591d8a4ca34c1646220db2a703df923df565801e05be5",
+          "decision_at": 361310.5773223,
+          "input_ids": [
+            "54c007ec513b4ff28f4fe5b3841c72ec",
+            "fe46397c5a7947ceaaa2465591079cbc",
+            "05f29266b2a747d38b737407fcc4f52a",
+            "7396c62b4a5646e7bd7d24ed25352e12",
+            "61985830e3d4447b81b35987eda739a6",
+            "67163dd2a2034053bb7ac7f996ae9f30",
+            "d8806ce8f87d4f4aaa1edd4f87feb906",
+            "9248b3eff7ae4bd68de77f43587bd07d",
+            "b2fe0e046bde42dd9035ac916d0c3b98",
+            "340ec1a183204907bdafcbdfaba4ff42",
+            "73e7f1daf35e42de9537bd7fd7d87be0",
+            "fc0c07d8c6f544c4a97e6668cb370b55",
+            "542fb1b95c7a4726b76b648e89eefc66",
+            "f41936effff94dc3bd126767f3a55a14",
+            "cb8fff30acb142808b96f00475a2e2b1"
+          ],
+          "first_input_to_available_ms": 3377.2209999733604,
+          "last_input_to_available_ms": 3352.1208000020124,
+          "request_start_to_available_ms": 507.72629998391494
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.12909999350085855,
+          "p95": 14.42039996618405,
+          "p99": 14.42039996618405,
+          "maximum": 14.42039996618405
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 1363.5145999724045,
+          "p95": 2233.4066000184976,
+          "p99": 2233.4066000184976,
+          "maximum": 2233.4066000184976
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 54.97519997879863,
+          "p95": 67.20710004447028,
+          "p99": 67.20710004447028,
+          "maximum": 67.20710004447028
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 3356.1337999999523,
+          "p95": 3377.2209999733604,
+          "p99": 3377.2209999733604,
+          "maximum": 3377.2209999733604
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 1266.0082000074908,
+          "p95": 2113.0843000137247,
+          "p99": 2113.0843000137247,
+          "maximum": 2113.0843000137247
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 14.091900025960058,
+          "p95": 25.122600025497377,
+          "p99": 25.122600025497377,
+          "maximum": 25.122600025497377
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 5.558900011237711,
+          "p95": 6.300800014287233,
+          "p99": 6.300800014287233,
+          "maximum": 6.300800014287233
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 26.89100004499778,
+          "p95": 28.23920000810176,
+          "p99": 28.23920000810176,
+          "maximum": 28.23920000810176
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 6.30119995912537,
+          "p95": 15.053600014653057,
+          "p99": 15.053600014653057,
+          "maximum": 15.053600014653057
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 7.715900021139532,
+          "p95": 25.274999963585287,
+          "p99": 25.274999963585287,
+          "maximum": 25.274999963585287
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 163.17489999346435,
+          "p95": 163.17489999346435,
+          "p99": 163.17489999346435,
+          "maximum": 163.17489999346435
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 117.95519996667281,
+          "p99": 117.95519996667281,
+          "maximum": 117.95519996667281
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 52.38939996343106,
+          "p95": 72.00909993844107,
+          "p99": 72.00909993844107,
+          "maximum": 72.00909993844107
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 16.089699987787753,
+          "p95": 24.91470001405105,
+          "p99": 24.91470001405105,
+          "maximum": 24.91470001405105
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 21.704400016460568,
+          "p95": 23.38289999170229,
+          "p99": 23.38289999170229,
+          "maximum": 23.38289999170229
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 140,
+        "p50": 628.1882000039332,
+        "p95": 2103.6146999686025,
+        "p99": 2242.760199995246,
+        "maximum": 2267.165799974464
+      },
+      "heartbeat_delay_ms": {
+        "count": 125,
+        "p50": 1.8090999987907708,
+        "p95": 18.44299999764189,
+        "p99": 76.9700000132434,
+        "maximum": 226.84169999090955
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "c3211042c856e2987c8981335fddd3fe869efa315a1919f250245d352019e5ab",
+        "components": "02c6cd35d34759b75743f06ecaf7bb1ac6b40ffcd6d6e9ea2082d4c57be7366c"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 5000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "b8504b83fecceccafde0840754ec92587b96c6a796801356a40ad9636e48054b",
+          "decision_at": 361331.1498599,
+          "input_ids": [
+            "9ff23098871b410f8128e403ba7fd483",
+            "aa4ce26c4fd948d6a85ebee9b60e46af",
+            "6501e9a3a6264936a04518d5037991f9",
+            "d464841ff89541bd82aac220acfb193c",
+            "37b8e97ed31149cd90352c4c8f72f6c1",
+            "e4bc41a51e1b4da0b11b8e13fec185a8",
+            "6ec1dcdf70a2492189c058d7badea328",
+            "1d41544d1c9741b9895145f8f0dc5a1f",
+            "8f4aebc576cf4a87a4f8f5cc24e0efe6",
+            "2d15bb4d9ed94c17b5d99dcc34737af3",
+            "6a3ea77f0ccd456eacde3fea06c2c65e",
+            "d312411cb0a344fa9750ab785945e9f3",
+            "730049ffe5214831bfb109d09640f95d",
+            "40610d9eb2274614be21eef78cf91f71",
+            "d784a25cbba941ceb3e376afd82ab3e5"
+          ],
+          "first_input_to_available_ms": 12616.646700014826,
+          "last_input_to_available_ms": 12566.660600015894,
+          "request_start_to_available_ms": 636.8559999973513
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.12209999840706587,
+          "p95": 40.257600019685924,
+          "p99": 40.257600019685924,
+          "maximum": 40.257600019685924
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 5414.534499985166,
+          "p95": 9576.625299989246,
+          "p99": 9576.625299989246,
+          "maximum": 9576.625299989246
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 178.72319999150932,
+          "p95": 216.61490004044026,
+          "p99": 216.61490004044026,
+          "maximum": 216.61490004044026
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 12570.173399988562,
+          "p95": 12616.646700014826,
+          "p99": 12616.646700014826,
+          "maximum": 12616.646700014826
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 4894.005300011486,
+          "p95": 8936.046399991028,
+          "p99": 8936.046399991028,
+          "maximum": 8936.046399991028
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 86.6569000063464,
+          "p95": 90.37819999502972,
+          "p99": 90.37819999502972,
+          "maximum": 90.37819999502972
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 31.725000008009374,
+          "p95": 68.37890000315383,
+          "p99": 68.37890000315383,
+          "maximum": 68.37890000315383
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 50.52099999738857,
+          "p95": 87.63470000121742,
+          "p99": 87.63470000121742,
+          "maximum": 87.63470000121742
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 30.585700005758554,
+          "p95": 66.37970003066584,
+          "p99": 66.37970003066584,
+          "maximum": 66.37970003066584
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 34.37140001915395,
+          "p95": 73.03349999710917,
+          "p99": 73.03349999710917,
+          "maximum": 73.03349999710917
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 161.215300031472,
+          "p95": 161.215300031472,
+          "p99": 161.215300031472,
+          "maximum": 161.215300031472
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 544.7241000365466,
+          "p99": 544.7241000365466,
+          "maximum": 544.7241000365466
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 289.7528000175953,
+          "p95": 371.1642000125721,
+          "p99": 371.1642000125721,
+          "maximum": 371.1642000125721
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 110.51460000453517,
+          "p95": 115.95970002235845,
+          "p99": 115.95970002235845,
+          "maximum": 115.95970002235845
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 86.98429999640211,
+          "p95": 110.92120001558214,
+          "p99": 110.92120001558214,
+          "maximum": 110.92120001558214
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 426,
+        "p50": 4442.147900001146,
+        "p95": 9225.526200025342,
+        "p99": 9590.494300005957,
+        "maximum": 9712.29019999737
+      },
+      "heartbeat_delay_ms": {
+        "count": 411,
+        "p50": 1.6160999843850732,
+        "p95": 41.77140004001558,
+        "p99": 216.25330004142597,
+        "maximum": 684.2094999924302
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "e9fc70d85bf4c82fff8c3017993bab0acec6abf0ec782ee5c46715dfba36b4fd",
+        "components": "542051480211e5384b74aa428aab9f64b9c703d841c2bdd3857e16c6cf8e8a53"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 5000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "de0ebd5d05da18ff7b710922086d67279094b7fe53b84f3732440a284e1e9ce5",
+          "decision_at": 361352.9121917,
+          "input_ids": [
+            "09e41d108a5449e2aa2fca3199c161c0",
+            "e86e6d84e1e84a3799edd7e64784b19e",
+            "0a0069797f114bc082953359207d8c91",
+            "452ed11f5be543c8b95db48ec273f32f",
+            "893e6176326d49a38504a79dfe220bbe",
+            "e96afff304244097bdd39e45c0210668",
+            "33d040f94fdc4314a9ed669542151fed",
+            "7674d73625aa46ffa3e632cf473b6b3f",
+            "c3de32c11fc048139e637cdceeb5ee2a",
+            "0e94ba8d422840379d48392160b2c1d7",
+            "b6cbc24845ff4d8796536449388c95e4",
+            "f0379a9610a3446d81751374854ccdf6",
+            "66000083ca914e64a7e888cebf74dd68",
+            "eb2c033c57f245b2a35d55c14313b34c",
+            "ac791175251c4c19abed17d9b992fb32"
+          ],
+          "first_input_to_available_ms": 12760.607600037474,
+          "last_input_to_available_ms": 12708.98739999393,
+          "request_start_to_available_ms": 583.2450999878347
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.14779996126890182,
+          "p95": 39.73620000761002,
+          "p99": 39.73620000761002,
+          "maximum": 39.73620000761002
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 5437.1429000166245,
+          "p95": 9633.254199987277,
+          "p99": 9633.254199987277,
+          "maximum": 9633.254199987277
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 181.15409999154508,
+          "p95": 221.19369998108596,
+          "p99": 221.19369998108596,
+          "maximum": 221.19369998108596
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 12713.800900033675,
+          "p95": 12760.607600037474,
+          "p99": 12760.607600037474,
+          "maximum": 12760.607600037474
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 4898.002000001725,
+          "p95": 8990.737100015394,
+          "p99": 8990.737100015394,
+          "maximum": 8990.737100015394
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 87.97799999592826,
+          "p95": 94.71650002524257,
+          "p99": 94.71650002524257,
+          "maximum": 94.71650002524257
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 33.88289996655658,
+          "p95": 73.28430004417896,
+          "p99": 73.28430004417896,
+          "maximum": 73.28430004417896
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 52.165100001730025,
+          "p95": 91.95819997694343,
+          "p99": 91.95819997694343,
+          "maximum": 91.95819997694343
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 30.540800013113767,
+          "p95": 109.20539998915046,
+          "p99": 109.20539998915046,
+          "maximum": 109.20539998915046
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 34.71669997088611,
+          "p95": 116.54179997276515,
+          "p99": 116.54179997276515,
+          "maximum": 116.54179997276515
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 158.30289997393265,
+          "p95": 158.30289997393265,
+          "p99": 158.30289997393265,
+          "maximum": 158.30289997393265
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 539.5366000011563,
+          "p99": 539.5366000011563,
+          "maximum": 539.5366000011563
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 295.85140000563115,
+          "p95": 377.3441999219358,
+          "p99": 377.3441999219358,
+          "maximum": 377.3441999219358
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 112.02810000395402,
+          "p95": 130.97550004022196,
+          "p99": 130.97550004022196,
+          "maximum": 130.97550004022196
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 85.87399998214096,
+          "p95": 110.27559998910874,
+          "p99": 110.27559998910874,
+          "maximum": 110.27559998910874
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 432,
+        "p50": 4346.8758999952115,
+        "p95": 9267.989099957049,
+        "p99": 9634.684799995739,
+        "maximum": 9776.292599970475
+      },
+      "heartbeat_delay_ms": {
+        "count": 417,
+        "p50": 1.4962999452836812,
+        "p95": 53.022999975364655,
+        "p99": 227.28579999646172,
+        "maximum": 706.314099971205
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "238bd468e5c0e6ef1264ea2c35c02435d9b8bcabec2f4b1592813db9d1c6b4b0",
+        "components": "3b6007e1f972639b3c28bc6c399ea844c9466ec9d0543e8536b9217f80f4a18f"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 5000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "53450c17a8b74df1e1a0f2c3feae7c0e98e42315a50fd2b12936cb72d0549420",
+          "decision_at": 361375.0183809,
+          "input_ids": [
+            "e26f018f4ddc4779ac85812275c1c357",
+            "d3fcb4c1a46c48de867dd2bf63f36b89",
+            "ef4ccda9c61e44a58dfe0b93039b2824",
+            "b1a09e7021ab4a18b9d087c95fd8dbf0",
+            "aca5fac5438843c1878453b8630168b7",
+            "aaa9428d678f479fb9675cbaeedba898",
+            "6aa6ac094a3c4f9ea8cd189eb32b5234",
+            "650a307f2ee546fbae3ff5fceb0d86e5",
+            "169f0939eaa84b53803aa659a5e7cccd",
+            "c1ad0e2639924d32912f029a9a0f735a",
+            "3c062525b58348e5adffbbb2d949754b",
+            "dc2b3e9f53044bbcbec40caae1a00d7f",
+            "fe7686a245214a8aa39b49b0e20e94f8",
+            "8467ae354515421db6aef303c19b5233",
+            "eff0d03e2d11495b8458fda556039955"
+          ],
+          "first_input_to_available_ms": 12825.754299992695,
+          "last_input_to_available_ms": 12774.638899951242,
+          "request_start_to_available_ms": 649.1486999439076
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.12739998055621982,
+          "p95": 40.57529999408871,
+          "p99": 40.57529999408871,
+          "maximum": 40.57529999408871
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 5432.189299957827,
+          "p95": 9594.626099977177,
+          "p99": 9594.626099977177,
+          "maximum": 9594.626099977177
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 181.11249996582046,
+          "p95": 186.73909996869043,
+          "p99": 186.73909996869043,
+          "maximum": 186.73909996869043
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 12778.86669995496,
+          "p95": 12825.754299992695,
+          "p99": 12825.754299992695,
+          "maximum": 12825.754299992695
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 4890.105799946468,
+          "p95": 8955.543200019747,
+          "p99": 8955.543200019747,
+          "maximum": 8955.543200019747
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 88.66850001504645,
+          "p95": 95.08599998662248,
+          "p99": 95.08599998662248,
+          "maximum": 95.08599998662248
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 33.44689996447414,
+          "p95": 37.436499958857894,
+          "p99": 37.436499958857894,
+          "maximum": 37.436499958857894
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 52.4608000414446,
+          "p95": 55.448299972340465,
+          "p99": 55.448299972340465,
+          "maximum": 55.448299972340465
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 31.434100004844368,
+          "p95": 98.86470000492409,
+          "p99": 98.86470000492409,
+          "maximum": 98.86470000492409
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 35.80710000824183,
+          "p95": 103.22289995383471,
+          "p99": 103.22289995383471,
+          "maximum": 103.22289995383471
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 163.8455000356771,
+          "p95": 163.8455000356771,
+          "p99": 163.8455000356771,
+          "maximum": 163.8455000356771
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 540.8339999848977,
+          "p99": 540.8339999848977,
+          "maximum": 540.8339999848977
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 290.2561000082642,
+          "p95": 373.008799913805,
+          "p99": 373.008799913805,
+          "maximum": 373.008799913805
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 111.59990000305697,
+          "p95": 118.00459999358281,
+          "p99": 118.00459999358281,
+          "maximum": 118.00459999358281
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 85.88349999627098,
+          "p95": 115.91130000306293,
+          "p99": 115.91130000306293,
+          "maximum": 115.91130000306293
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 429,
+        "p50": 4281.313900020905,
+        "p95": 9234.078999958001,
+        "p99": 9598.3367000008,
+        "maximum": 9729.468899953645
+      },
+      "heartbeat_delay_ms": {
+        "count": 414,
+        "p50": 1.5296000242233276,
+        "p95": 45.79919997602701,
+        "p99": 211.84930003480986,
+        "maximum": 665.3280999930575
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "388ecf7c8ab184d0bcf89c20f75f0ba99eca10b3fabb536bb80305f8091be610",
+        "components": "e538fcdb2dd223cdf82ce4eb0d66245cf6064a9cf71c5fa8c56362359efacfb0"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 10000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "b5418d0dbe3c9f6b250cc8e68fe5d3b9a9427454d454ada41cd9b1e4714711ca",
+          "decision_at": 361419.750581,
+          "input_ids": [
+            "32f9804a5b9542138ce661fd9209b562",
+            "46ef15e54331466b8d7a2d881c5a3d42",
+            "d0685bda23474b8fa54567f74688941f",
+            "bd69e1acbe7f4d7f91fd03672a7209f3",
+            "4a4503152c3d4acb8af00cdd3a6a95d3",
+            "3a5352c9c90d41d19bbbf8ce6e74ac2d",
+            "7767f6517af94fcc9f4bc2ca787a8896",
+            "b5d2f015863e45c98f0fc9c8feae02ff",
+            "698f8950635441bb8ab456f708cf8421",
+            "438663c9b4bc4bdd99f4b48fa931ca07",
+            "eca3bb8ec5cd4121b9123565e01c73a7",
+            "215a3f9a834e4ca58c606ab0c45e2091",
+            "c74e74a8fe45408fa2b2472351b572f8",
+            "7ffa2ae6f8ce45089a71439f1640605f",
+            "ec0bd977835745fc9e74a0707a5c3556"
+          ],
+          "first_input_to_available_ms": 26508.831300016027,
+          "last_input_to_available_ms": 26431.027800019365,
+          "request_start_to_available_ms": 1171.5621000039391
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.12009998317807913,
+          "p95": 66.27240002853796,
+          "p99": 66.27240002853796,
+          "maximum": 66.27240002853796
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 11100.995099986903,
+          "p95": 19898.998600023333,
+          "p99": 19898.998600023333,
+          "maximum": 19898.998600023333
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 347.6768999826163,
+          "p95": 391.15049998508766,
+          "p99": 391.15049998508766,
+          "maximum": 391.15049998508766
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 26435.669899976347,
+          "p95": 26508.831300016027,
+          "p99": 26508.831300016027,
+          "maximum": 26508.831300016027
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 10020.476899982896,
+          "p95": 18557.367899979,
+          "p99": 18557.367899979,
+          "maximum": 18557.367899979
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 182.6666999841109,
+          "p95": 199.331899988465,
+          "p99": 199.331899988465,
+          "maximum": 199.331899988465
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 75.09709999430925,
+          "p95": 170.41379999136552,
+          "p99": 170.41379999136552,
+          "maximum": 170.41379999136552
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 92.64309995342046,
+          "p95": 187.38590000430122,
+          "p99": 187.38590000430122,
+          "maximum": 187.38590000430122
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 59.55000000540167,
+          "p95": 192.08850001450628,
+          "p99": 192.08850001450628,
+          "maximum": 192.08850001450628
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 66.980000003241,
+          "p95": 199.55279998248443,
+          "p99": 199.55279998248443,
+          "maximum": 199.55279998248443
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 162.4561999924481,
+          "p95": 162.4561999924481,
+          "p99": 162.4561999924481,
+          "maximum": 162.4561999924481
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 1128.728699986823,
+          "p99": 1128.728699986823,
+          "maximum": 1128.728699986823
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 627.761100011412,
+          "p95": 843.8261999399401,
+          "p99": 843.8261999399401,
+          "maximum": 843.8261999399401
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 225.81869992427528,
+          "p95": 258.1025000545196,
+          "p99": 258.1025000545196,
+          "maximum": 258.1025000545196
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 170.9880999987945,
+          "p95": 231.66629998013377,
+          "p99": 231.66629998013377,
+          "maximum": 231.66629998013377
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 841,
+        "p50": 9662.343100004364,
+        "p95": 19175.897700013593,
+        "p99": 19900.271599995904,
+        "maximum": 20289.249300025403
+      },
+      "heartbeat_delay_ms": {
+        "count": 826,
+        "p50": 1.3558999821543694,
+        "p95": 44.517299993894994,
+        "p99": 298.9637999748811,
+        "maximum": 1474.3480000365525
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "f0b40fe07eb515f7b712239c50335c682ce6e70b9262db6a8b51cbafc0934bac",
+        "components": "ca41e5a1cdc2c062f102cfc3d08ae840ac3e44e31eca6e02083e9460d09f9328"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 10000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "dd1ffe3ee7d2362b4667d6128584466da94c0d390296a34900827123b0f1d6e3",
+          "decision_at": 361466.1612791,
+          "input_ids": [
+            "32907ff7ad794d029481b57bab6ce2f9",
+            "6adc3d8288e0411196ea1a09c063b31d",
+            "48168f880fde46db808ca907370751cb",
+            "0522a1161cd149a2a317fa9b3971734c",
+            "8e85856482834e28967a7576b05ec4f3",
+            "5284a3228198460ea6b0978dfdbb01d5",
+            "ec81080c737a42ac96730b2211bf876b",
+            "2ed714a6a0f04f23a1930a2bf32bab27",
+            "c4fba8be767e4686991ca048c3a07314",
+            "9e7214e7fdd24c8593feeb7e9ed0d757",
+            "a7bb536f2e2d404f92b48fafdc5ae1d3",
+            "9698517c6fb340dc863d66cb5e773ebc",
+            "4739a73f5f284065b8f4b299c28e79ed",
+            "dab70bc7f5a54f478198936020acc8ae",
+            "b80d6843729e401a9a35247c858470b7"
+          ],
+          "first_input_to_available_ms": 26560.062500007916,
+          "last_input_to_available_ms": 26480.772999988403,
+          "request_start_to_available_ms": 1300.9841999737546
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.11610001092776656,
+          "p95": 69.05260001076385,
+          "p99": 69.05260001076385,
+          "maximum": 69.05260001076385
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 10875.09659997886,
+          "p95": 19651.202999986708,
+          "p99": 19651.202999986708,
+          "maximum": 19651.202999986708
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 348.7029999960214,
+          "p95": 482.0809999946505,
+          "p99": 482.0809999946505,
+          "maximum": 482.0809999946505
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 26484.893699991517,
+          "p95": 26560.062500007916,
+          "p99": 26560.062500007916,
+          "maximum": 26560.062500007916
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 9733.254199963994,
+          "p95": 18239.159799995832,
+          "p99": 18239.159799995832,
+          "maximum": 18239.159799995832
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 184.15420001838356,
+          "p95": 202.75009999750182,
+          "p99": 202.75009999750182,
+          "maximum": 202.75009999750182
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 78.49960000021383,
+          "p95": 218.92890002345666,
+          "p99": 218.92890002345666,
+          "maximum": 218.92890002345666
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 93.46010000444949,
+          "p95": 235.84460001438856,
+          "p99": 235.84460001438856,
+          "maximum": 235.84460001438856
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 60.374599997885525,
+          "p95": 204.89519997499883,
+          "p99": 204.89519997499883,
+          "maximum": 204.89519997499883
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 68.35459999274462,
+          "p95": 212.5452000182122,
+          "p99": 212.5452000182122,
+          "maximum": 212.5452000182122
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 163.65500004030764,
+          "p95": 163.65500004030764,
+          "p99": 163.65500004030764,
+          "maximum": 163.65500004030764
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 1137.261199997738,
+          "p99": 1137.261199997738,
+          "maximum": 1137.261199997738
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 620.4678000067361,
+          "p95": 917.8064999869093,
+          "p99": 917.8064999869093,
+          "maximum": 917.8064999869093
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 224.41580006852746,
+          "p95": 277.6970000122674,
+          "p99": 277.6970000122674,
+          "maximum": 277.6970000122674
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 168.7660000170581,
+          "p95": 216.0089000244625,
+          "p99": 216.0089000244625,
+          "maximum": 216.0089000244625
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 828,
+        "p50": 9267.831800039858,
+        "p95": 18959.54020001227,
+        "p99": 19660.25770001579,
+        "maximum": 19966.410900000483
+      },
+      "heartbeat_delay_ms": {
+        "count": 813,
+        "p50": 1.3071999605745077,
+        "p95": 62.21409999532625,
+        "p99": 283.6932999966666,
+        "maximum": 1438.3677000482567
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "66774dbd6d8515b2244f168b341a66f67521ed37e4a3cd2659df8b0c0cbab3b9",
+        "components": "49d8c1563768bdf9158fd4af69e07dd28fda1f0536b274d65d0b09b4411b98d7"
+      }
+    },
+    {
+      "mode": "pragmatic",
+      "scale": 10000,
+      "input_count": 15,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "3da5f88637fef1eee6e75c17f50852bc2a11c3625c01e45f9fc9f11c8888311c",
+          "decision_at": 361512.446082,
+          "input_ids": [
+            "efb85bf1357c4ec285cd7a3288efafa5",
+            "4e848d0f2d994ab6ad2561a52d6b1321",
+            "92261ac06b8b4516ba941d23c3413da6",
+            "268217abe4a341c785cb8a86843008c1",
+            "f7036e9ebefc4ae9966415758587727c",
+            "04498db3371349f9b350c1a7cf3d6a3f",
+            "d4f7772845e64df7bfe8bc953320a45b",
+            "c8f9e3a8d6fd498ab854f8da178c6509",
+            "0a44ae1e7e7d4862a2627b266cad80d7",
+            "c89542e7f92346da85d28d6575018db5",
+            "49015aede0eb477f9cfdae8c6f3eeab3",
+            "3a247bba7c0047d98595ff3fd6998376",
+            "84fbbf67cffb4af987a8d80fd3fd811b",
+            "e6ea2f2ac0cc4c6a96fa1aac4f8db68d",
+            "863faf1065634845b6b77ebbdb135aa4"
+          ],
+          "first_input_to_available_ms": 26326.742200006265,
+          "last_input_to_available_ms": 26251.35459995363,
+          "request_start_to_available_ms": 1249.5482999947853
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 15,
+          "p50": 0.11769996490329504,
+          "p95": 65.68480003625154,
+          "p99": 65.68480003625154,
+          "maximum": 65.68480003625154
+        },
+        "input_to_db_commit_ms": {
+          "count": 15,
+          "p50": 10910.845700011123,
+          "p95": 19626.808399974834,
+          "p99": 19626.808399974834,
+          "maximum": 19626.808399974834
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 346.31769999396056,
+          "p95": 520.0359000009485,
+          "p99": 520.0359000009485,
+          "maximum": 520.0359000009485
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 15,
+          "p50": 26254.644199972972,
+          "p95": 26326.742200006265,
+          "p99": 26326.742200006265,
+          "maximum": 26326.742200006265
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 15,
+          "p50": 9831.76769997226,
+          "p95": 18277.496099995915,
+          "p99": 18277.496099995915,
+          "maximum": 18277.496099995915
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 15,
+          "p50": 180.99399999482557,
+          "p95": 189.378899987787,
+          "p99": 189.378899987787,
+          "maximum": 189.378899987787
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 15,
+          "p50": 75.77620004303753,
+          "p95": 245.47200003871694,
+          "p99": 245.47200003871694,
+          "maximum": 245.47200003871694
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 15,
+          "p50": 93.56660000048578,
+          "p95": 262.68839999102056,
+          "p99": 262.68839999102056,
+          "maximum": 262.68839999102056
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 61.687399982474744,
+          "p95": 245.15830003656447,
+          "p99": 245.15830003656447,
+          "maximum": 245.15830003656447
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 69.87559999106452,
+          "p95": 253.19099996704608,
+          "p99": 253.19099996704608,
+          "maximum": 253.19099996704608
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 161.06850001960993,
+          "p95": 161.06850001960993,
+          "p99": 161.06850001960993,
+          "maximum": 161.06850001960993
+        },
+        "recovery_including_validation_ms": {
+          "count": 15,
+          "p50": 0,
+          "p95": 1135.8845000504516,
+          "p99": 1135.8845000504516,
+          "maximum": 1135.8845000504516
+        },
+        "command_replay_validation_ms": {
+          "count": 15,
+          "p50": 617.2049000160769,
+          "p95": 852.7835999848321,
+          "p99": 852.7835999848321,
+          "maximum": 852.7835999848321
+        },
+        "prefix_capture_ms": {
+          "count": 15,
+          "p50": 219.79710005689412,
+          "p95": 294.75959995761514,
+          "p99": 294.75959995761514,
+          "maximum": 294.75959995761514
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 15,
+          "p50": 167.32310003135353,
+          "p95": 215.25359997758642,
+          "p99": 215.25359997758642,
+          "maximum": 215.25359997758642
+        }
+      },
+      "queue_max": 15,
+      "oldest_wait_ms": {
+        "count": 816,
+        "p50": 9298.284599964973,
+        "p95": 18929.523399972823,
+        "p99": 19617.88279999746,
+        "maximum": 19918.334099987987
+      },
+      "heartbeat_delay_ms": {
+        "count": 801,
+        "p50": 1.3715999852865934,
+        "p95": 50.55900001432747,
+        "p99": 253.87769997585565,
+        "maximum": 1515.701499960851
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "e80cad34b81a26b966fc78dd120e4d6e1fa094648962f2dc9bbff122506e75ab",
+        "components": "f36ae6d5857523688204ba078d6764ad38fee942e6299933987fd346bed55fa7"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 1000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "14be5ac3198807e0edfcecffba5df6e5411f612c43adda64c40662cd408e0055",
+          "decision_at": 361519.8552281,
+          "input_ids": [
+            "dfe6148f4d91463cbed08ebb73571128",
+            "df6abc6c784341bfbe08104abe2fd9c3",
+            "267ce74e5dc94bdca4d1cfccc8ba1bca",
+            "742ad8426e974323a92f49332973b6da",
+            "5beae4798f0d49209b641426f6faf7b6",
+            "9579cbbe68f74a6abbdea150db2abb32",
+            "5ff5d4a380554745a85d670228fa4e98",
+            "2b2585c822034ebe81bda7d3f8836ea8",
+            "5669a9223acb4934bb6596a1c0652dcf",
+            "3d121cb98e8f47429702b85177091af0",
+            "15cc189f8acc446881a8a595df4749ee",
+            "333e14c60add48b090c83d7552294138",
+            "80ce9e849d5549aba6dd5eb8b2cee6d3",
+            "375ce737667a4870864fcd16076e2a9b",
+            "1278a15e8b2640b1be0c9077386b5ea8",
+            "a2a6ffd63397454199010ecb68827936"
+          ],
+          "first_input_to_available_ms": 3561.7787999799475,
+          "last_input_to_available_ms": 3536.546699993778,
+          "request_start_to_available_ms": 509.6054999739863
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.11580000864341855,
+          "p95": 14.143100008368492,
+          "p99": 14.143100008368492,
+          "maximum": 14.143100008368492
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 1365.6541000236757,
+          "p95": 2357.4682000325993,
+          "p99": 2357.4682000325993,
+          "maximum": 2357.4682000325993
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 59.488700004294515,
+          "p95": 184.48280001757666,
+          "p99": 184.48280001757666,
+          "maximum": 184.48280001757666
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 3539.9818999576382,
+          "p95": 3561.7787999799475,
+          "p99": 3561.7787999799475,
+          "maximum": 3561.7787999799475
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 1253.1197000062093,
+          "p95": 2258.8670999975875,
+          "p99": 2258.8670999975875,
+          "maximum": 2258.8670999975875
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 18.10200000181794,
+          "p95": 141.09700004337355,
+          "p99": 141.09700004337355,
+          "maximum": 141.09700004337355
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 5.572099995333701,
+          "p95": 8.61850002547726,
+          "p99": 8.61850002547726,
+          "maximum": 8.61850002547726
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 26.260300015565008,
+          "p95": 29.875800013542175,
+          "p99": 29.875800013542175,
+          "maximum": 29.875800013542175
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 6.768499966710806,
+          "p95": 15.830799995455891,
+          "p99": 15.830799995455891,
+          "maximum": 15.830799995455891
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 8.425100008025765,
+          "p95": 20.132399979047477,
+          "p99": 20.132399979047477,
+          "maximum": 20.132399979047477
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 155.83090001018718,
+          "p95": 155.83090001018718,
+          "p99": 155.83090001018718,
+          "maximum": 155.83090001018718
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 112.30489995796233,
+          "p99": 112.30489995796233,
+          "maximum": 112.30489995796233
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 52.557900082319975,
+          "p95": 61.96650007041171,
+          "p99": 61.96650007041171,
+          "maximum": 61.96650007041171
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 20.66709997598082,
+          "p95": 24.838300014380366,
+          "p99": 24.838300014380366,
+          "maximum": 24.838300014380366
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 21.973200025968254,
+          "p95": 25.14270000392571,
+          "p99": 25.14270000392571,
+          "maximum": 25.14270000392571
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 141,
+        "p50": 602.1158000221476,
+        "p95": 2103.549199993722,
+        "p99": 2365.8780000405386,
+        "maximum": 2391.762200044468
+      },
+      "heartbeat_delay_ms": {
+        "count": 125,
+        "p50": 1.4497999986633658,
+        "p95": 34.7493000049144,
+        "p99": 129.11539998138323,
+        "maximum": 228.80119995214045
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "39eef225ca695fe7a330382bc5c692e3a971ccd94046a5b0d23bd02b4c9a81aa",
+        "components": "0277cb2f9115b6e58132ad4f2ee1a770687bcbcaa6baa51312073b0d0820f66a"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 1000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "50cc1a5bd7bfaab13468592dbc2037c219fa6364853bb5f4c0aa13ef0bf09e28",
+          "decision_at": 361525.5901408,
+          "input_ids": [
+            "075a584ba0d943dc8dd61977cc0f131d",
+            "e1a980a4aa0443eaa0172fff7603ba58",
+            "8df2fa93b7b74bd3bd77774a8d8dabdd",
+            "35c95198d3fb4de890ae45a7f0582992",
+            "d34600d26f2a4bd0af1edf5d0df3164f",
+            "b65e944244c24f8bbd4bb458a7833761",
+            "c1736948e73e4e17ac2a9552cfc8d0bf",
+            "c296ad9ce025423c80e02ee9c2a2ab02",
+            "39b9e02fd83b46deafc500673e6461a9",
+            "d35b8f2fb55c407893b67eecfbc98026",
+            "0e5172704b8d4592ba6acf19d643df62",
+            "33c6127383a44ad5a0a6f7882a2dee5f",
+            "48a3843485a54fcc890942f83194f26e",
+            "91e64bb41afa493cb948830355bf9c37",
+            "8c0cbf08ebde4b5bbc755dde1c7b4ad0",
+            "add4ae48c54645ff968eedc70be7b7e8"
+          ],
+          "first_input_to_available_ms": 3589.9097999790683,
+          "last_input_to_available_ms": 3565.151299990248,
+          "request_start_to_available_ms": 553.58539998997
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.11590000940486789,
+          "p95": 14.33149998774752,
+          "p99": 14.33149998774752,
+          "maximum": 14.33149998774752
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 1382.588000036776,
+          "p95": 2358.4726999979466,
+          "p99": 2358.4726999979466,
+          "maximum": 2358.4726999979466
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 58.98740002885461,
+          "p95": 196.95199996931478,
+          "p99": 196.95199996931478,
+          "maximum": 196.95199996931478
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 3568.5882999678142,
+          "p95": 3589.9097999790683,
+          "p99": 3589.9097999790683,
+          "maximum": 3589.9097999790683
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 1279.904600000009,
+          "p95": 2255.037299997639,
+          "p99": 2255.037299997639,
+          "maximum": 2255.037299997639
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 17.726299993228167,
+          "p95": 153.06090004742146,
+          "p99": 153.06090004742146,
+          "maximum": 153.06090004742146
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 5.622100026812404,
+          "p95": 8.24669998837635,
+          "p99": 8.24669998837635,
+          "maximum": 8.24669998837635
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 26.520200015511364,
+          "p95": 28.775300015695393,
+          "p99": 28.775300015695393,
+          "maximum": 28.775300015695393
+        },
+        "ui_validated_publication_ms": {
+          "count": 15,
+          "p50": 6.868200027383864,
+          "p95": 16.4130000048317,
+          "p99": 16.4130000048317,
+          "maximum": 16.4130000048317
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 15,
+          "p50": 8.281500020530075,
+          "p95": 20.944499992765486,
+          "p99": 20.944499992765486,
+          "maximum": 20.944499992765486
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 154.70370004186407,
+          "p95": 154.70370004186407,
+          "p99": 154.70370004186407,
+          "maximum": 154.70370004186407
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 109.133500023745,
+          "p99": 109.133500023745,
+          "maximum": 109.133500023745
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 52.73499997565523,
+          "p95": 58.19479998899624,
+          "p99": 58.19479998899624,
+          "maximum": 58.19479998899624
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 20.35020006587729,
+          "p95": 24.417400010861456,
+          "p99": 24.417400010861456,
+          "maximum": 24.417400010861456
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 21.904599969275296,
+          "p95": 27.06450002733618,
+          "p99": 27.06450002733618,
+          "maximum": 27.06450002733618
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 142,
+        "p50": 573.4309999970719,
+        "p95": 2227.2842999664135,
+        "p99": 2371.7633999767713,
+        "maximum": 2400.21260001231
+      },
+      "heartbeat_delay_ms": {
+        "count": 126,
+        "p50": 1.7229999834671617,
+        "p95": 41.93809997057542,
+        "p99": 145.8478999743238,
+        "maximum": 156.77359998924658
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "86c678e802147aeb2d7a0b0cf8cc1cea4558f358898cf708ec386533923b4ab9",
+        "components": "9654d53cd6ebce5e81efcf9fb8035618f9dae042bcb021b86d71cc0bb58ce276"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 1000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 1019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "417a8767c5438053c16c7f2a1b6574bd7f6ecbb03c70bcdaea422f53ef483318",
+          "decision_at": 361531.2966886,
+          "input_ids": [
+            "ef775adf69eb47ee85db0e82398d467c",
+            "053ed2c457b54269bac3230efec94218",
+            "5f74de4912d342daaac493b47d2955b4",
+            "cd06968e8ad44c4c9a20612e6eb0cc19",
+            "dff35315832b4bd78118f4a6161a471d",
+            "e2335b8910c2499d9f8670c861e384a3",
+            "45e072c8fadd4e058c133023d45422fc",
+            "3304f0727fef4cf4ba2879749911817d",
+            "bf4548cab96f4296b84b99a0d0b12785",
+            "13ded38f86704ca89cd3f0b98705689d",
+            "d5cf0a64c7cd4421ac8bd7f6e3aab17f",
+            "60d0064bc2464ea8ad3d24834a055e80",
+            "f5aaa8c86cff445db2bca23f9a773340",
+            "b529ba4f3f3748b38dc0c489a07ce5b7",
+            "26ce329da7fc4b8d8ef496cc1d032633",
+            "76141f301d044a4a8a54633a5054bbb3"
+          ],
+          "first_input_to_available_ms": 3467.3838999588042,
+          "last_input_to_available_ms": 3442.170399997849,
+          "request_start_to_available_ms": 502.9203000012785
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.1259999698959291,
+          "p95": 13.80570000037551,
+          "p99": 13.80570000037551,
+          "maximum": 13.80570000037551
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 1367.1892999554984,
+          "p95": 2344.3092000088654,
+          "p99": 2344.3092000088654,
+          "maximum": 2344.3092000088654
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 51.314599986653775,
+          "p95": 107.3327999911271,
+          "p99": 107.3327999911271,
+          "maximum": 107.3327999911271
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 3446.325699973386,
+          "p95": 3467.3838999588042,
+          "p99": 3467.3838999588042,
+          "maximum": 3467.3838999588042
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 1262.3848000075668,
+          "p95": 2238.815099990461,
+          "p99": 2238.815099990461,
+          "maximum": 2238.815099990461
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 17.90350000374019,
+          "p95": 63.00640001427382,
+          "p99": 63.00640001427382,
+          "maximum": 63.00640001427382
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 5.530600028578192,
+          "p95": 7.521799998357892,
+          "p99": 7.521799998357892,
+          "maximum": 7.521799998357892
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 14.23090003663674,
+          "p95": 28.573399991728365,
+          "p99": 28.573399991728365,
+          "maximum": 28.573399991728365
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 6.96199998492375,
+          "p95": 149.971499980893,
+          "p99": 149.971499980893,
+          "maximum": 149.971499980893
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 8.445000043138862,
+          "p95": 151.61689999513328,
+          "p99": 151.61689999513328,
+          "maximum": 151.61689999513328
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 169.6030999883078,
+          "p95": 169.6030999883078,
+          "p99": 169.6030999883078,
+          "maximum": 169.6030999883078
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 110.56210001697764,
+          "p99": 110.56210001697764,
+          "maximum": 110.56210001697764
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 52.419899962842464,
+          "p95": 55.68950000451878,
+          "p99": 55.68950000451878,
+          "maximum": 55.68950000451878
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 16.095500031951815,
+          "p95": 23.523699957877398,
+          "p99": 23.523699957877398,
+          "maximum": 23.523699957877398
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 22.149700031150132,
+          "p95": 23.50719994865358,
+          "p99": 23.50719994865358,
+          "maximum": 23.50719994865358
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 138,
+        "p50": 588.1480000098236,
+        "p95": 2222.667299967725,
+        "p99": 2339.2300000414252,
+        "maximum": 2360.9156000311486
+      },
+      "heartbeat_delay_ms": {
+        "count": 122,
+        "p50": 1.6067000292241573,
+        "p95": 31.745800010394305,
+        "p99": 152.81660001026466,
+        "maximum": 167.1831000316888
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "1c2f30db6acbf0ff9d05c5ef9cf130b8ff081d9f3dc3889fb726cb9f7cd1a222",
+        "components": "bb0ad52b1d929b3888a9d09bcd62297785dc7ccb698235e3f4d68b95cea27496"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 5000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "86fa4215fa64f140799bee7b0e61168645903475d6a60e05f517e492e97e8194",
+          "decision_at": 361554.3474243,
+          "input_ids": [
+            "3843f17708494b8b8d2a334253cc2078",
+            "8dd0f0cff0634713a9fffc9a2f40a097",
+            "1e9012cce2924328b17fd7f3de36c1e0",
+            "2dc2c2e635a74bb385376c87a614baf7",
+            "4339905a637a4e3282d0f7d4ffdd8d97",
+            "50a5d86193514cfa873549686cff5293",
+            "b3f8c5af744d4254889c28efdabdb356",
+            "e2f8b32729544a71a62bcdf7c8da00f8",
+            "f8327931144d43c5bc55664ab311e26f",
+            "08450778471e4f528ee20283f1a52f98",
+            "1558ba88d56c479daa23af74efc5919d",
+            "b6c8690fc581496b8c4232e9f0917767",
+            "8ae68931263243fbb2f4cbc8bd919264",
+            "b5a36b2b2d444a3b8e80026b3431ab87",
+            "2e4fc83fc59c404395645ff73c2ef185",
+            "9d71fad522a34033ab2bfcaf9bb08111"
+          ],
+          "first_input_to_available_ms": 13451.986900006887,
+          "last_input_to_available_ms": 13398.06320000207,
+          "request_start_to_available_ms": 730.929599958472
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.13299996498972178,
+          "p95": 42.69110003951937,
+          "p99": 42.69110003951937,
+          "maximum": 42.69110003951937
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 5380.177800019737,
+          "p95": 10101.139300037175,
+          "p99": 10101.139300037175,
+          "maximum": 10101.139300037175
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 182.07229999825358,
+          "p95": 201.19280001381412,
+          "p99": 201.19280001381412,
+          "maximum": 201.19280001381412
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 13401.739399996586,
+          "p95": 13451.986900006887,
+          "p99": 13451.986900006887,
+          "maximum": 13451.986900006887
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 4843.542099988554,
+          "p95": 9567.923299968243,
+          "p99": 9567.923299968243,
+          "maximum": 9567.923299968243
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 91.55680000549182,
+          "p95": 98.87119999621063,
+          "p99": 98.87119999621063,
+          "maximum": 98.87119999621063
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 33.110199961811304,
+          "p95": 43.842999963089824,
+          "p99": 43.842999963089824,
+          "maximum": 43.842999963089824
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 52.01499996474013,
+          "p95": 62.03810003353283,
+          "p99": 62.03810003353283,
+          "maximum": 62.03810003353283
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 32.382600009441376,
+          "p95": 216.00369998486713,
+          "p99": 216.00369998486713,
+          "maximum": 216.00369998486713
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 37.53679996589199,
+          "p95": 220.6607999978587,
+          "p99": 220.6607999978587,
+          "maximum": 220.6607999978587
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 167.16099996119738,
+          "p95": 167.16099996119738,
+          "p99": 167.16099996119738,
+          "maximum": 167.16099996119738
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 548.8385999924503,
+          "p99": 548.8385999924503,
+          "maximum": 548.8385999924503
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 285.9868999221362,
+          "p95": 334.69430007971823,
+          "p99": 334.69430007971823,
+          "maximum": 334.69430007971823
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 112.03409999143332,
+          "p95": 118.48260002443567,
+          "p99": 118.48260002443567,
+          "maximum": 118.48260002443567
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 85.54309996543452,
+          "p95": 105.04819999914616,
+          "p99": 105.04819999914616,
+          "maximum": 105.04819999914616
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 433,
+        "p50": 4662.830099987332,
+        "p95": 9698.911499988753,
+        "p99": 10093.634200049564,
+        "maximum": 10238.478500046767
+      },
+      "heartbeat_delay_ms": {
+        "count": 417,
+        "p50": 1.2519000051543117,
+        "p95": 50.83799998508766,
+        "p99": 383.14299997407943,
+        "maximum": 573.0769999977201
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "9f30a8c0c4fac5e4c5eec7c06d888b5d98a945b00c7305b4a2f2ccb1db832d68",
+        "components": "85acfd432d1c7f1f5007eacfa75a4c53a89070d66c2c7d6e0df9bb8d09e32f5a"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 5000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "c958e628f0f17f85667887209169c3767e1fec16f777b0a943f8d3d297971c9f",
+          "decision_at": 361578.35923,
+          "input_ids": [
+            "42680888707240c3b52cb213e03e2beb",
+            "bb86eaaadc0c4b59954146c156fbd930",
+            "77132f89565d4592a17c2c1ffc00e38e",
+            "5c44c0d3ecdd41c6b5da52a895a0145b",
+            "621e3c5ff4864509970e959e1efb7fb8",
+            "d6ee6ac683ae4fb384e1031bc337a63b",
+            "e5436423606a40c19311fecd27239872",
+            "21da02f34d7c47109c14c99851d51538",
+            "f4e0816113bb4180bfa43eee9bdc3e89",
+            "f45a6a2245e8474fbb35c04a9c6d9419",
+            "5a8c17cfcbce4724abd7e83d92513276",
+            "86d3d084ff2d48e882ebe777d5a0a4f0",
+            "c3369309eb004c5e88913a2a79153ed6",
+            "0d6367a868a34d278c9369c84025da01",
+            "4534fe14fb6d46a68ce7ea6440d458bf",
+            "4ed3da3f5169436ba063b39987638b55"
+          ],
+          "first_input_to_available_ms": 13639.766899985261,
+          "last_input_to_available_ms": 13588.797000003979,
+          "request_start_to_available_ms": 656.7558000097051
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.11070002801716328,
+          "p95": 40.16470001079142,
+          "p99": 40.16470001079142,
+          "maximum": 40.16470001079142
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 5500.02300000051,
+          "p95": 10252.39410001086,
+          "p99": 10252.39410001086,
+          "maximum": 10252.39410001086
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 179.67889999272302,
+          "p95": 412.08259999984875,
+          "p99": 412.08259999984875,
+          "maximum": 412.08259999984875
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 13592.627100006212,
+          "p95": 13639.766899985261,
+          "p99": 13639.766899985261,
+          "maximum": 13639.766899985261
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 4981.282799970359,
+          "p95": 9724.303299968597,
+          "p99": 9724.303299968597,
+          "maximum": 9724.303299968597
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 80.39270003791898,
+          "p95": 107.55329998210073,
+          "p99": 107.55329998210073,
+          "maximum": 107.55329998210073
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 35.1661000167951,
+          "p95": 245.51470001460984,
+          "p99": 245.51470001460984,
+          "maximum": 245.51470001460984
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 54.11610001465306,
+          "p95": 262.5345000415109,
+          "p99": 262.5345000415109,
+          "maximum": 262.5345000415109
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 35.50949995405972,
+          "p95": 210.17169998958707,
+          "p99": 210.17169998958707,
+          "maximum": 210.17169998958707
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 40.453099994920194,
+          "p95": 215.01660003559664,
+          "p99": 215.01660003559664,
+          "maximum": 215.01660003559664
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 167.28140000486746,
+          "p95": 167.28140000486746,
+          "p99": 167.28140000486746,
+          "maximum": 167.28140000486746
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 556.391500052996,
+          "p99": 556.391500052996,
+          "maximum": 556.391500052996
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 284.48689996730536,
+          "p95": 319.72179998410866,
+          "p99": 319.72179998410866,
+          "maximum": 319.72179998410866
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 94.50989996548742,
+          "p95": 126.83249998372048,
+          "p99": 126.83249998372048,
+          "maximum": 126.83249998372048
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 86.51839999947697,
+          "p95": 108.00090001430362,
+          "p99": 108.00090001430362,
+          "maximum": 108.00090001430362
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 429,
+        "p50": 4739.80689997552,
+        "p95": 9903.761300025508,
+        "p99": 10263.678900024388,
+        "maximum": 10403.280599974096
+      },
+      "heartbeat_delay_ms": {
+        "count": 413,
+        "p50": 1.3954999926500022,
+        "p95": 55.106200005393475,
+        "p99": 286.75670003984123,
+        "maximum": 1100.873399951961
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "06d1c5a1ce0379cfa7b79885162027a17ee93015408f48b4f931d30c1ee192c5",
+        "components": "3bb1fa9cd2176748896896b5db63bc8b06caf2fd9382a35b0f4cec4336f937e2"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 5000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 5019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "91f159b5f4d02021b4d4f57478bff53f907e11dd3b49680c2f339002fb263348",
+          "decision_at": 361602.0152696,
+          "input_ids": [
+            "4d8e486d770a4ae48e9b05e4cbbeb8db",
+            "9a205421c2e64521a5fc6f893dc55645",
+            "b58ad1893bb1442ebb6c82d553d7db37",
+            "dfb7057eb59a49b48f37bed60c431ba9",
+            "27020d619e314735854ce706b5efeaaa",
+            "6ae077b331e14b51b18740b43b232852",
+            "a802aad5532d409ebb24ddb8f53b11df",
+            "42fdfbaa9b3a4771996d74823e8e8357",
+            "6d27a2a46c5f4494920728d8f487b162",
+            "22eddf52888946a6bf1e5f50212cdba9",
+            "c183fe0963cd42748c586354152fc854",
+            "cebe3218b61e4a0482c72f3b4b6a7b32",
+            "7909a7ce2a864df78d90e1ac0842b6fa",
+            "299442c52cfb47e3b70b6b97b67b2600",
+            "bc18d674e41b4293b0dbcc72c240f285",
+            "de3ff059ce1b4ccdbe1175092f08cc6a"
+          ],
+          "first_input_to_available_ms": 13515.919299970847,
+          "last_input_to_available_ms": 13464.041199942585,
+          "request_start_to_available_ms": 921.9456999562681
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.12579996837303042,
+          "p95": 40.198199974838644,
+          "p99": 40.198199974838644,
+          "maximum": 40.198199974838644
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 5299.534200050402,
+          "p95": 9883.216999995057,
+          "p99": 9883.216999995057,
+          "maximum": 9883.216999995057
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 181.1331000062637,
+          "p95": 190.6717999954708,
+          "p99": 190.6717999954708,
+          "maximum": 190.6717999954708
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 13467.69379999023,
+          "p95": 13515.919299970847,
+          "p99": 13515.919299970847,
+          "maximum": 13515.919299970847
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 4752.924699976575,
+          "p95": 9384.904000035021,
+          "p99": 9384.904000035021,
+          "maximum": 9384.904000035021
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 84.91179998964071,
+          "p95": 96.92260000156239,
+          "p99": 96.92260000156239,
+          "maximum": 96.92260000156239
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 32.39840001333505,
+          "p95": 39.76489999331534,
+          "p99": 39.76489999331534,
+          "maximum": 39.76489999331534
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 51.3671999797225,
+          "p95": 57.60770000051707,
+          "p99": 57.60770000051707,
+          "maximum": 57.60770000051707
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 36.55250003794208,
+          "p95": 229.0525000425987,
+          "p99": 229.0525000425987,
+          "maximum": 229.0525000425987
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 40.999400021974,
+          "p95": 233.62830001860857,
+          "p99": 233.62830001860857,
+          "maximum": 233.62830001860857
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 161.4378999802284,
+          "p95": 161.4378999802284,
+          "p99": 161.4378999802284,
+          "maximum": 161.4378999802284
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 527.0837999996729,
+          "p99": 527.0837999996729,
+          "maximum": 527.0837999996729
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 275.2010999247432,
+          "p95": 312.79639998683706,
+          "p99": 312.79639998683706,
+          "maximum": 312.79639998683706
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 92.55389997269958,
+          "p95": 115.89010001625866,
+          "p99": 115.89010001625866,
+          "maximum": 115.89010001625866
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 84.26020003389567,
+          "p95": 107.96150000533089,
+          "p99": 107.96150000533089,
+          "maximum": 107.96150000533089
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 417,
+        "p50": 4469.627999991644,
+        "p95": 9534.961799974553,
+        "p99": 9877.666499989573,
+        "maximum": 10023.68469996145
+      },
+      "heartbeat_delay_ms": {
+        "count": 401,
+        "p50": 1.6964000137522817,
+        "p95": 58.56639998499304,
+        "p99": 341.6885999799706,
+        "maximum": 586.508800003212
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "4af618da24f9672f489808da0d949d4c3b195d0628311f97fb83fdf52ac33c47",
+        "components": "1944adcd78a5007bb6a9e4dc584239f392c9da4692e0b7f833a7a7d229c96d6d"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 10000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "bbdfeeb74e3476382917a9336b08197ce3cdb79808899fd45559ed8d7a80c7d2",
+          "decision_at": 361650.4017703,
+          "input_ids": [
+            "99115480acf846798f326314954d527c",
+            "97acf1cc0d57445996801cb6f2d658e7",
+            "93d16124d9f940e59cce8d88bae8409a",
+            "70452f0af65542b4b47e03d5f94df7f3",
+            "263a406cef864db4ad0c4987fa5c442e",
+            "6c993fdc0ee043988ecb6458dc3bbd7f",
+            "8f050d2a7f244899be90e3a260d046d2",
+            "e51192ea15fb47ccb34bf858e20454b1",
+            "3f643830554a46258054e942854fa2c8",
+            "ec6014c8fedd483cbf253aabda0a0dbf",
+            "bc1fd6c420224a84897e467ab5722a6f",
+            "7921cd162dd947cb9feb1cde155b820e",
+            "3b6a7be35c6c48be864f817509f2163c",
+            "049df7c15a4d4525adf69ccd50c380ac",
+            "e5242c30994d44d4b4d3051fa4325db4",
+            "a8f7153e91a04a8b8b020bbeb251cedc"
+          ],
+          "first_input_to_available_ms": 28856.565799971577,
+          "last_input_to_available_ms": 28778.496999992058,
+          "request_start_to_available_ms": 907.4058000114746
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.11729996185749769,
+          "p95": 66.8356999522075,
+          "p99": 66.8356999522075,
+          "maximum": 66.8356999522075
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 11299.729700025637,
+          "p95": 21667.401599988807,
+          "p99": 21667.401599988807,
+          "maximum": 21667.401599988807
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 365.11650000466034,
+          "p95": 634.322699974291,
+          "p99": 634.322699974291,
+          "maximum": 634.322699974291
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 28782.775199972093,
+          "p95": 28856.565799971577,
+          "p99": 28856.565799971577,
+          "maximum": 28856.565799971577
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 10141.712800017558,
+          "p95": 20476.57999995863,
+          "p99": 20476.57999995863,
+          "maximum": 20476.57999995863
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 194.2519000149332,
+          "p95": 445.5583000089973,
+          "p99": 445.5583000089973,
+          "maximum": 445.5583000089973
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 76.62249996792525,
+          "p95": 331.4251999836415,
+          "p99": 331.4251999836415,
+          "maximum": 331.4251999836415
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 94.47720000753179,
+          "p95": 344.2153999931179,
+          "p99": 344.2153999931179,
+          "maximum": 344.2153999931179
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 63.57729999581352,
+          "p95": 322.1680999849923,
+          "p99": 322.1680999849923,
+          "maximum": 322.1680999849923
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 71.72710000304505,
+          "p95": 330.15789999626577,
+          "p99": 330.15789999626577,
+          "maximum": 330.15789999626577
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 170.7454000134021,
+          "p95": 170.7454000134021,
+          "p99": 170.7454000134021,
+          "maximum": 170.7454000134021
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 1130.9827999793924,
+          "p99": 1130.9827999793924,
+          "maximum": 1130.9827999793924
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 640.2053000056185,
+          "p95": 695.9347000229172,
+          "p99": 695.9347000229172,
+          "maximum": 695.9347000229172
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 193.55119997635484,
+          "p95": 316.3718999712728,
+          "p99": 316.3718999712728,
+          "maximum": 316.3718999712728
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 184.69319998985156,
+          "p95": 221.5806000167504,
+          "p99": 221.5806000167504,
+          "maximum": 221.5806000167504
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 888,
+        "p50": 10265.32559999032,
+        "p95": 20482.075300009456,
+        "p99": 21670.447800017428,
+        "maximum": 21952.89389998652
+      },
+      "heartbeat_delay_ms": {
+        "count": 872,
+        "p50": 1.402799990028143,
+        "p95": 57.34959997469559,
+        "p99": 342.36959998495877,
+        "maximum": 1340.3561000199988
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 1,
+      "artifact_sha256": {
+        "report": "f6fa1af8417eb91fe1b2debf6aaac35ec61e6a651f199b82e748c6ccf6c91863",
+        "components": "076adb2f37bd56470ffc7e55552b89e2f1605bd5c43072cd1e335e1308f1c9d9"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 10000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "41b7625db196301a43c0b343209554e5e49aad43cd5ed75d17a7c588c8374371",
+          "decision_at": 361699.5408528,
+          "input_ids": [
+            "c2fef66c9905441db733f35a0cdba635",
+            "3e982992b0e94decbd99976b3cb4e6dc",
+            "0b82d60b54f74390a72c7104fe0ce9c0",
+            "edfc5692172d486f9052da307e615b1d",
+            "1444c30da597402aa17f628e1df37568",
+            "b0b1ed67acd846a485b7337f1a9b38c7",
+            "ccc10305386d42d9bdce0fb93572b399",
+            "f2d5c5443db84f75831f9ac57dd500c7",
+            "5d66ea3b47a44951a626727ce0331fac",
+            "38a2460edab44c0393a3d07a85c6e37b",
+            "01aea6aca26a439e8fb5414c06825af8",
+            "777773e5a9d24960af5858ed59e384b1",
+            "15cc5484c15a4bc4bf373fc49bd7dca0",
+            "b785d38275604478888fab25e1e54550",
+            "18bf039f549d4d18a1992c2971c64361",
+            "d18fa1db715a4e59ac956f1cf59618b2"
+          ],
+          "first_input_to_available_ms": 28217.21820003586,
+          "last_input_to_available_ms": 28139.615899999626,
+          "request_start_to_available_ms": 1403.6921000224538
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.13489997945725918,
+          "p95": 66.32150005316362,
+          "p99": 66.32150005316362,
+          "maximum": 66.32150005316362
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 11059.162099962123,
+          "p95": 21336.476199969184,
+          "p99": 21336.476199969184,
+          "maximum": 21336.476199969184
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 348.38979999767616,
+          "p95": 690.3079000185244,
+          "p99": 690.3079000185244,
+          "maximum": 690.3079000185244
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 28143.920700007584,
+          "p95": 28217.21820003586,
+          "p99": 28217.21820003586,
+          "maximum": 28217.21820003586
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 9896.39619999798,
+          "p95": 20194.99749998795,
+          "p99": 20194.99749998795,
+          "maximum": 20194.99749998795
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 180.77849998371676,
+          "p95": 202.0259000128135,
+          "p99": 202.0259000128135,
+          "maximum": 202.0259000128135
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 77.80100003583357,
+          "p95": 438.8566999696195,
+          "p99": 438.8566999696195,
+          "maximum": 438.8566999696195
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 95.17130005406216,
+          "p95": 452.9736000113189,
+          "p99": 452.9736000113189,
+          "maximum": 452.9736000113189
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 62.70099995890632,
+          "p95": 344.11780000664294,
+          "p99": 344.11780000664294,
+          "maximum": 344.11780000664294
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 70.60589996399358,
+          "p95": 352.3210000130348,
+          "p99": 352.3210000130348,
+          "maximum": 352.3210000130348
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 163.71509997406974,
+          "p95": 163.71509997406974,
+          "p99": 163.71509997406974,
+          "maximum": 163.71509997406974
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 1125.4180000396445,
+          "p99": 1125.4180000396445,
+          "maximum": 1125.4180000396445
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 633.806899888441,
+          "p95": 708.4254999645054,
+          "p99": 708.4254999645054,
+          "maximum": 708.4254999645054
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 222.753299982287,
+          "p95": 298.62560011679307,
+          "p99": 298.62560011679307,
+          "maximum": 298.62560011679307
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 168.76870003761724,
+          "p95": 248.71009995695204,
+          "p99": 248.71009995695204,
+          "maximum": 248.71009995695204
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 846,
+        "p50": 10261.558099999093,
+        "p95": 20579.052499961108,
+        "p99": 21310.392200015485,
+        "maximum": 21612.955799966585
+      },
+      "heartbeat_delay_ms": {
+        "count": 830,
+        "p50": 1.5659999521449208,
+        "p95": 50.04269998287782,
+        "p99": 360.60129998484626,
+        "maximum": 1638.4511999972165
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 2,
+      "artifact_sha256": {
+        "report": "c8340a64d7b1fd88f7b26d6f6744687f7dc3402eb50d2f298f5b01efb003eb50",
+        "components": "26cc54b65f2f8ddad500fff0822f3a761fa8d9a2403098689865b66ba447a7ae"
+      }
+    },
+    {
+      "mode": "bclc",
+      "scale": 10000,
+      "input_count": 16,
+      "available_decision_batches": 1,
+      "decision_batches": [
+        {
+          "through_seq": 10019,
+          "status": "available",
+          "reason_code": "CALCULATED",
+          "input_digest": "3bd3a0cd91e7975786b1b19506baab885327ef8f6e4cfb7c5beee176026cf2d9",
+          "decision_at": 361748.191618,
+          "input_ids": [
+            "076479107c0f48d38950018c590fe59b",
+            "d00ad8d6d5744fe58ec9d96dfbc1f1be",
+            "acbd40a430b544d6be1181504a80b377",
+            "a38f3c8b014a4a08b7923a4cfe002ce2",
+            "ad536891807b43efb3102fffc764c72e",
+            "24d1293cd9ce4b40b74873dcf2921244",
+            "d20a940b0fa94a0a9a7fac01a38b6646",
+            "63592e0b69f946c3864f3d21c6c098e9",
+            "c9462886a08548d687fc055c6afa630d",
+            "d2f53462acbc47429a83a166619ab336",
+            "e7cd0c4252154e64999888b13bef9b27",
+            "921d82a68aa648139772cf700bcc9f79",
+            "0dfde94fb20a463684b0419b819ffadf",
+            "e2dd7e2ab4eb44d2bba37ddfb35a0a47",
+            "a893b9ace03341a5a468a0147efe5ba7",
+            "0c853768759b4d3eb83eb539edf9dabe"
+          ],
+          "first_input_to_available_ms": 27826.126699976157,
+          "last_input_to_available_ms": 27745.66600000253,
+          "request_start_to_available_ms": 860.6611999566667
+        }
+      ],
+      "decision_statuses": {
+        "available": 1
+      },
+      "metrics": {
+        "input_to_accepted_ms": {
+          "count": 16,
+          "p50": 0.1297999988310039,
+          "p95": 69.75610001245514,
+          "p99": 69.75610001245514,
+          "maximum": 69.75610001245514
+        },
+        "input_to_db_commit_ms": {
+          "count": 16,
+          "p50": 11098.14409998944,
+          "p95": 20981.310900009703,
+          "p99": 20981.310900009703,
+          "maximum": 20981.310900009703
+        },
+        "db_commit_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 351.23480000765994,
+          "p95": 670.5977999954484,
+          "p99": 670.5977999954484,
+          "maximum": 670.5977999954484
+        },
+        "input_to_latest_available_decision_ms": {
+          "count": 16,
+          "p50": 27749.703799956478,
+          "p95": 27826.126699976157,
+          "p99": 27826.126699976157,
+          "maximum": 27826.126699976157
+        }
+      },
+      "components": {
+        "queue_wait_ms": {
+          "count": 16,
+          "p50": 9938.705899985507,
+          "p95": 19834.88620002754,
+          "p99": 19834.88620002754,
+          "maximum": 19834.88620002754
+        },
+        "child_finish_to_parent_deserialized_ms": {
+          "count": 16,
+          "p50": 183.11220000032336,
+          "p95": 464.48869997402653,
+          "p99": 464.48869997402653,
+          "maximum": 464.48869997402653
+        },
+        "bridge_full_content_validation_ms": {
+          "count": 16,
+          "p50": 76.38599997153506,
+          "p95": 393.43519997783005,
+          "p99": 393.43519997783005,
+          "maximum": 393.43519997783005
+        },
+        "parent_deserialized_to_ui_receipt_ms": {
+          "count": 16,
+          "p50": 94.44060001987964,
+          "p95": 410.41320003569126,
+          "p99": 410.41320003569126,
+          "maximum": 410.41320003569126
+        },
+        "ui_validated_publication_ms": {
+          "count": 16,
+          "p50": 62.16349999886006,
+          "p95": 357.60509996907786,
+          "p99": 357.60509996907786,
+          "maximum": 357.60509996907786
+        },
+        "ui_receipt_callback_including_draw_ms": {
+          "count": 16,
+          "p50": 70.88230003137141,
+          "p95": 365.1706000091508,
+          "p99": 365.1706000091508,
+          "maximum": 365.1706000091508
+        },
+        "ev_engine_compute_ms": {
+          "count": 1,
+          "p50": 156.55159996822476,
+          "p95": 156.55159996822476,
+          "p99": 156.55159996822476,
+          "maximum": 156.55159996822476
+        },
+        "recovery_including_validation_ms": {
+          "count": 16,
+          "p50": 0,
+          "p95": 1151.6168000525795,
+          "p99": 1151.6168000525795,
+          "maximum": 1151.6168000525795
+        },
+        "command_replay_validation_ms": {
+          "count": 16,
+          "p50": 628.1918999156915,
+          "p95": 641.8148000375368,
+          "p99": 641.8148000375368,
+          "maximum": 641.8148000375368
+        },
+        "prefix_capture_ms": {
+          "count": 16,
+          "p50": 222.5237999809906,
+          "p95": 252.82930006505921,
+          "p99": 252.82930006505921,
+          "maximum": 252.82930006505921
+        },
+        "sqlite_suffix_baseline_validation_and_commit_ms": {
+          "count": 16,
+          "p50": 177.13039997033775,
+          "p95": 220.1593000208959,
+          "p99": 220.1593000208959,
+          "maximum": 220.1593000208959
+        }
+      },
+      "queue_max": 16,
+      "oldest_wait_ms": {
+        "count": 838,
+        "p50": 9901.065099984407,
+        "p95": 19824.40520002274,
+        "p99": 20982.348899997305,
+        "maximum": 21287.02470002463
+      },
+      "heartbeat_delay_ms": {
+        "count": 822,
+        "p50": 1.6109000029973686,
+        "p95": 69.04929994605482,
+        "p99": 382.10489998571575,
+        "maximum": 1329.7205000021495
+      },
+      "durable_ledger_equal": true,
+      "original_fixture_prefix_equal": true,
+      "pending_advice_hidden": true,
+      "note": "Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.",
+      "real_time_acceptance": false,
+      "batch": 3,
+      "artifact_sha256": {
+        "report": "57ea8b63347110b0663ea876ff4c2f313bf1fbf74e68ee5ec3647cf4c2b36138",
+        "components": "25cede41cd66ea22d625fc18eaab61c194ba0d6972d949774512b9ee6a9bda9d"
+      }
+    }
+  ],
+  "scope": "Normal spawned recorder with real Tk input, automatic analysis and seven seats. Same frozen histories at 1001/5001/10001 events. Complete new-shoe and zero-burn claims apply only to owned synthetic fixtures.",
+  "sample_definition": "One AVAILABLE request/prefix is one decision batch. Each group has 3 distinct request/prefix batches; repeated synthetic composition is not statistically independent live blackjack. Per-input timings have 45 or 48 samples and must not be treated as decision sample counts.",
+  "percentile_note": "Nearest-rank percentiles describe measured samples. With only 3 decision batches per group, p95/p99 equal the measured maximum, not a reliable live tail estimate.",
+  "component_note": "Worker replay/prefix/append fields total calls per input. Recovery includes nested validation; zero means no recovery on that request, with executed-only recovery separately listed. Input-to-commit includes queue wait. Append field includes suffix/baseline validation and SQLite commit. IPC combines logging, serialization, transfer, deserialization and scheduling; overlapping parent callbacks/publication are not additive.",
+  "exclusions": [
+    "native keyboard/IME qualification",
+    "long-running live-table use",
+    "all contemporary PlayNow variants",
+    "recognition or capture",
+    "daily-version replacement",
+    "merge or release"
+  ]
+}
