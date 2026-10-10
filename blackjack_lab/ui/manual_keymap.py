@@ -149,7 +149,9 @@ class ManualKeyBinder:
             self._install(child)
 
     def _on_map(self, event):
-        self._install(event.widget)
+        # ttk popdowns can be Tcl-only widgets with no Python wrapper.
+        if not isinstance(event.widget, str):
+            self._install(event.widget)
 
     def on_press(self, event):
         if not self.is_recording_surface(event):
@@ -177,8 +179,10 @@ class ManualKeyBinder:
 
     def _check_recording_focus(self):
         self._focus_check = None
-        focus = self.root.focus_get()
-        if focus is None or focus.winfo_toplevel() != self.root:
+        # focus_get() converts the Tcl path into a Python widget and raises
+        # KeyError for internal ttk popdowns. Query their toplevel in Tcl.
+        focus = self.root.tk.call("focus")
+        if not focus or str(self.root.tk.call("winfo", "toplevel", focus)) != str(self.root):
             self.guard.clear()
 
     def close(self):
