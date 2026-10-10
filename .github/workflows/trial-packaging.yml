@@ -1,0 +1,36 @@
+name: Windows trial packaging helpers
+
+on:
+  push:
+    branches: [main, 'codex/**']
+    paths: ['packaging/**', '.github/workflows/trial-packaging.yml']
+  pull_request:
+    paths: ['packaging/**', '.github/workflows/trial-packaging.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  helpers:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.14'
+      - name: Verify exact tested commit
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -c "import os,subprocess; h=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(); print('TESTED_HEAD='+h); assert h==os.environ['EXPECTED_HEAD']"
+      - name: Windows helper tests
+        working-directory: packaging/windows_trial
+        run: python -B -m unittest discover -s tests -v
+      - name: Reproduce frozen installer ZIP
+        run: python -B packaging/build_windows_trial.py --output "$env:RUNNER_TEMP\Hakimi_T1R1_artifacts"

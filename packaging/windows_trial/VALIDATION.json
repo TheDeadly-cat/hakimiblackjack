@@ -1,0 +1,46 @@
+{
+  "schema": "hakimi-trial-packaging-validation-v1",
+  "package_id": "T1R1-af69ddb",
+  "prepared_on": "2026-10-10",
+  "environment": {
+    "os": "Windows",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+    "elevated_account": true
+  },
+  "actual_test_command": "python -B -m unittest discover -s tests -v",
+  "tested_count": 27,
+  "passed_count": 27,
+  "failed_count": 0,
+  "skipped_count": 0,
+  "elapsed_seconds": 1.9589460999704897,
+  "log_file": "INSTALLER_TEST_LOG.txt",
+  "log_sha256": "2e7a5688fcc9eca7157f0493ed20e45f2b9436a2b0267d8278c168dca93b2241",
+  "tested_script_sha256": {
+    "install_trial.py": "59370c2441d59e4368e75dd3e154d928917e27e1790842c2a7fac1239569d698",
+    "launch_trial.py": "a4536ae1abe2d2786e8499ab08e63aba36720a6d3ab58a92d88857370f33a3df",
+    "trial_common.py": "8972bb9b1f7d4cdbf9e5cbc93a8e7517efc172bc589dfdadbb4f8b3afb120ec9",
+    "trial_tools.py": "46171e4254f54fd278ef867397bad8e59823a77e04dc801b2517b7ab88489b17",
+    "INSTALL_TRIAL.cmd": "01586e4b41536c8680339129f9b711ad702a6d3a4de60f0d0758212567a2e8e6",
+    "tests/test_installer_helpers.py": "887db1df5633bfbb79f2c3ecf169df20f173941600c30d03819256e3dc2ccac9"
+  },
+  "scope": [
+    "Windows helper suite including native instance locks",
+    "Real Git archive fixture with executable index mode",
+    "Full-folder backup and source-change detection",
+    "Read-only backup connection closes",
+    "Path, source, receipt, non-overwrite and launcher import guards"
+  ],
+  "not_performed_for_this_new_artifact": [
+    "Actual T1R1 installation",
+    "Full installed app GUI and restore",
+    "Ordinary permissions",
+    "Native hold and 3/7-seat complete flows",
+    "Full end-to-end performance acceptance",
+    "Offline EXE construction"
+  ],
+  "windows_installer_validated": false,
+  "offline_exe_created": false,
+  "real_time_accepted": false,
+  "original_T1_validation": "Preserved separately; original Windows helpers failed with 1 failure and 3 cleanup errors. Its actual install preflight passed."
+}
