@@ -78,8 +78,12 @@ class SidebetDetails(tk.Toplevel):
             var=tk.StringVar();self.priority.append(var)
             ttk.Combobox(priority,textvariable=var,values=[NAMES[k] for k in CATEGORIES['21+3']],state='readonly',width=9).pack(side=tk.LEFT,padx=2)
         buttons=ttk.Frame(settings);buttons.grid(row=row,column=0,columnspan=3,sticky='w',pady=8);row+=1
-        ttk.Button(buttons,text='保存配置',command=self.apply).pack(side=tk.LEFT,padx=4)
-        ttk.Button(buttons,text='采用自建研究示例',command=self.research).pack(side=tk.LEFT,padx=4)
+        self.save_button=ttk.Button(buttons,text='保存配置',command=self.apply)
+        self.save_button.pack(side=tk.LEFT,padx=4)
+        self.research_button=ttk.Button(buttons,text='采用自建研究示例',command=self.research)
+        self.research_button.pack(side=tk.LEFT,padx=4)
+        if not owner.research_allowed:
+            self.save_button.state(['disabled']);self.research_button.state(['disabled'])
         ttk.Label(settings,textvariable=self.error,wraplength=690,foreground='#AD3030').grid(row=row,column=0,columnspan=3,sticky='w')
         self.load_profile();self.last_text=None;self.render()
 
@@ -99,6 +103,8 @@ class SidebetDetails(tk.Toplevel):
 
     def apply(self):
         try:
+            if not self.owner.research_allowed:
+                raise ValueError('点值版保留原配置，只在独立研究入口修改')
             if self.loaded_profile!=(self.owner._profile_mode,self.owner.profile.rules_digest):
                 raise ValueError('当前模式或边注配置已变更，请重新载入后再保存；未覆盖其他模式')
             confirm=CONFIRM[self.status.get()];source=self.source.get().strip()
@@ -126,13 +132,18 @@ class SidebetDetails(tk.Toplevel):
         lines=['边注预测与已发生牌型分开；主注最佳/次佳不受本窗口设置影响。']
         forecast=owner.forecasts.get(seat)
         pause=owner.app.recording_advice_pause()
-        if pause:
+        if not owner.research_allowed:
+            lines.extend(['','牌型边注已停用；这里仅查看原配置和历史。',
+                          '已有预测与尚未保存结果保留，当前不派发Perfect Pairs或21+3分析。'])
+        elif pause:
             lines.extend(['',pause,'此前记录保留，当前暂停使用。保存回执与当前事件前缀核对一致后再恢复输出。',
                           '原预测、已记录牌型和独立历史没有清空；可从下方历史入口查看原时点记录。'])
+        elif not owner.live_enabled():
+            lines.extend(['','牌型边注已停用；此前记录和未保存结果保留，当前不作实时预测。'])
         elif forecast:
             lines+=['\n'+('本轮发牌前记录（已封盘）' if owner.sealed else '发牌前预测'),result_text(forecast['result'])]
         else:lines.append('\n暂无当前已加载的发牌前记录；历史结果请使用下方独立入口。')
-        if owner.observed and not pause:lines+=['\n已记录牌型',result_text(owner.observed['result'])]
+        if owner.observed and owner.live_enabled() and not pause:lines+=['\n已记录牌型',result_text(owner.observed['result'])]
         with owner._lock:pending=len(owner.pending_saves)
         if pending:lines.append(f'\n{pending}条已计算、未保存；退出前可重试保存原请求。')
         text='\n'.join(lines)

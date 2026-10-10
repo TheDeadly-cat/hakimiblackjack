@@ -21,6 +21,8 @@ def main() -> int:
     parser.add_argument("--prepare-split", action="store_true", help="离线准备当前源码对应的 Windows 分牌数值程序")
     parser.add_argument("--db", type=Path, help="指定 SQLite 文件（省略则使用项目 data 目录）")
     parser.add_argument("--table-mode", choices=('pragmatic', 'bclc'), help="选择下个牌靴的本机桌面模式")
+    parser.add_argument("--sidebet-research", action="store_true",
+                        help="明确进入可选牌型边注研究；正常点值版仅保留其历史和原配置")
     args = parser.parse_args()
     if args.check_environment:
         from .analysis.environment import format_report, inspect_environment
@@ -50,7 +52,8 @@ def main() -> int:
         return 0
 
     from .ui.app import BlackjackLabApp, DEFAULT_DB
-    app = BlackjackLabApp(args.db or DEFAULT_DB, background_recording=True)
+    app = BlackjackLabApp(args.db or DEFAULT_DB, background_recording=True,
+                          sidebet_research=args.sidebet_research)
     if args.table_mode:
         app.select_table_mode(args.table_mode)
         app.title(app.title() + ' · Pragmatic / BCLC 候选')

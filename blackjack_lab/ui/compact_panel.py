@@ -193,7 +193,7 @@ class CompactPanel(tk.Frame):
         self.simple_toggle = ttk.Checkbutton(modes, text='下轮简便暗牌', variable=app.var_simple_hole,
                                              command=app.change_simple_hole)
         self.simple_toggle.pack(side=tk.LEFT, padx=8)
-        ttk.Checkbutton(self.drawer, text='边注：可选花色录入（每张选择，用后清空）',
+        ttk.Checkbutton(self.drawer, text='可选精确牌面补录（每张选择，用后清空）',
                         variable=app.var_sidebet_suits, command=self.toggle_suit_input).pack(anchor='w')
         ttk.Button(modes, text='暂停／恢复', command=app._key_pause).pack(side=tk.RIGHT)
         cards = self.card_strip = ttk.Frame(self.quick_input)

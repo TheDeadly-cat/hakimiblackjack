@@ -95,6 +95,8 @@ class SidebetHistory(tk.Toplevel):
 
     def recompute(self):
         if self.closed or getattr(self.owner.app,'_closing',False):return
+        if not self.owner.research_allowed:
+            self.status.set('点值版仅查看原历史；复算保留在独立研究入口。');return
         saved=self.selected()
         if saved is None or self.loading or self.recomputing or self.verified!=saved['snapshot_id']:return
         self.recomputing=True;self.recompute_button.state(['disabled'])
@@ -114,6 +116,8 @@ class SidebetHistory(tk.Toplevel):
 
     def corrected(self):
         if self.closed or getattr(self.owner.app,'_closing',False):return
+        if not self.owner.research_allowed:
+            self.status.set('点值版仅查看原历史；复算保留在独立研究入口。');return
         saved=self.selected()
         if (saved is None or self.loading or self.recomputing or self.verified!=saved['snapshot_id']
                 or saved['result']['input']['purpose'] not in ('forecast','corrected_predeal')):return
@@ -170,8 +174,9 @@ class SidebetHistory(tk.Toplevel):
                     selected=value['saved'];self.entries[self.listing.curselection()[0]]=selected;self.show(selected)
                     if value['error']:
                         self.status.set('原数据库未核验：'+value['error']+self.damage_note);continue
-                    self.verified=value['snapshot_id'];self.recompute_button.state(['!disabled'])
-                    self.corrected_button.state(['!disabled'] if selected['result']['input']['purpose'] in ('forecast','corrected_predeal') else ['disabled'])
+                    self.verified=value['snapshot_id']
+                    self.recompute_button.state(['!disabled'] if self.owner.research_allowed else ['disabled'])
+                    self.corrected_button.state(['!disabled'] if self.owner.research_allowed and selected['result']['input']['purpose'] in ('forecast','corrected_predeal') else ['disabled'])
                     self.status.set('原数据库完整前缀已核对；原结果只读，复算另存。'+self.damage_note)
             elif kind=='recompute':
                 self.expected.pop('recompute',None)

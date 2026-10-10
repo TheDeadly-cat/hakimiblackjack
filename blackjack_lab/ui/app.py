@@ -114,10 +114,13 @@ class RoundObservationDialog(simpledialog.Dialog):
 
 class BlackjackLabApp(tk.Tk):
     def __init__(self, db_path: str | Path = DEFAULT_DB, recording_source=SOURCE_MANUAL, *, auto_analysis=True,
-                 background_recording=False, recording_process=True):
+                 background_recording=False, recording_process=True, sidebet_research=False):
+        if type(sidebet_research) is not bool:
+            raise ValueError('边注研究入口必须明确开启或关闭')
         super().__init__()
         self.recording_source = recording_source
         self.auto_analysis = auto_analysis
+        self.sidebet_research = sidebet_research
         self.background_recording = background_recording
         self.recording_process = recording_process
         self._recording_owner = None
@@ -138,7 +141,8 @@ class BlackjackLabApp(tk.Tk):
         self._workbench_dirty=True
         self._timeline_ids=[]
         self._timeline_text=[]
-        self.title(f"Hakimi Blackjack Lab V{__version__} 手动记录工作台（本地离线）")
+        scope_title='牌型边注研究' if sidebet_research else '点值录牌与主注分析'
+        self.title(f"Hakimi Blackjack Lab V{__version__} {scope_title}（本地离线）")
         self.geometry("720x620")
         self.minsize(660, 460)
         self.columnconfigure(0, weight=1)

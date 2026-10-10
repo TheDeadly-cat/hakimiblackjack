@@ -60,7 +60,7 @@ def total(ranks):
     return hard + 10 if 'A' in ranks and hard <= 11 else hard
 
 
-def run_case(out, mode, players, fixture=None, long_shoe=None):
+def run_case(out, mode, players, fixture=None, long_shoe=None, *, point_value=False, visible=False):
     from blackjack_lab.ui.app import BlackjackLabApp
     from blackjack_lab.ui.table_modes import default_settings
     from blackjack_lab.ledger.events import SOURCE_SIMULATOR
@@ -70,6 +70,13 @@ def run_case(out, mode, players, fixture=None, long_shoe=None):
     from scripts.tk_lifecycle import close_app
     out.mkdir(parents=True, exist_ok=False)
     db = out / 'synthetic.db'
+    old_sidebet_settings = {}
+    if point_value:
+        from blackjack_lab.analysis.sidebets.contracts import SidebetProfile
+        for suffix in ('.sidebet-profile.json', '.bclc-sidebet-profile.json'):
+            path = Path(str(db) + suffix)
+            raw = json.dumps(dict(schema=1, profile=SidebetProfile().to_dict(), enabled=True), indent=3).encode()
+            path.write_bytes(raw); old_sidebet_settings[path] = raw
     errors, inputs, receipts, decisions, heartbeat, queue_samples = [], [], [], [], [], []
     app = None
     beat_id = None
@@ -157,7 +164,19 @@ def run_case(out, mode, players, fixture=None, long_shoe=None):
              patch('blackjack_lab.ui.recording_process.run_recording_process', measured_recording_process):
             app = BlackjackLabApp(db, recording_source=SOURCE_SIMULATOR, auto_analysis=True,
                                   background_recording=True, recording_process=True)
-            app.withdraw()
+            if visible:
+                app.title(app.title() + ' · 独立合成测量')
+                app.deiconify(); app.update()
+            else:app.withdraw()
+            sidebet_dispatches = []
+            original_side_submit = app.sidebets.worker.submit
+            def side_submit(channel, *args, **kwargs):
+                sidebet_dispatches.append(channel)
+                return original_side_submit(channel, *args, **kwargs)
+            app.sidebets.worker.submit = side_submit
+            if point_value:
+                assert app.auto_analysis and app.analysis_panel.auto.get()
+                assert not app.sidebet_research and not app.sidebets.live_enabled()
             if fixture:
                 original_events = json.loads(fixture.read_text(encoding='utf-8-sig'))
                 assert original_events[0]['payload']['note'] == 'Synthetic scale fixture'
@@ -194,7 +213,9 @@ def run_case(out, mode, players, fixture=None, long_shoe=None):
             rounds = 0
             if not long_shoe:
                 batch = []
-                for index, value in enumerate(['9'] * players + ['6'] + ['2'] * players):
+                values = (['A','2','3','4','5','6','7','8','9','T','2','3','4','5','6']
+                          if point_value and players == 7 else ['9'] * players + ['6'] + ['2'] * players)
+                for index, value in enumerate(values):
                     batch.append(rank(value, index))
                 if mode == 'bclc':
                     batch.append(submit(app._key_hole, 'hole'))
@@ -250,6 +271,13 @@ def run_case(out, mode, players, fixture=None, long_shoe=None):
             assert actual.to_list() == app.ctrl.ledger.to_list()
             assert actual.to_list()[:len(original_events)] == original_events
             assert [r['request_id'] for r in receipts] == [i['request_id'] for i in inputs]
+            if point_value:
+                assert not sidebet_dispatches and app.sidebets.worker.thread is None
+                assert app.sidebets.poll_id is None
+                assert not list(app.sidebets.store.directory.glob('*.json'))
+                assert all(path.read_bytes() == raw for path, raw in old_sidebet_settings.items())
+                if visible:assert app.winfo_ismapped()
+                assert app.auto_analysis and app.analysis_panel.auto.get()
             commits = {r['through_seq']: r for r in
                        (json.loads(line) for line in Path(str(db) + '.commit-times.jsonl').read_text().splitlines())}
             by_id = {i['request_id']: i for i in inputs}
@@ -278,6 +306,11 @@ def run_case(out, mode, players, fixture=None, long_shoe=None):
                 raw_decisions=decisions, raw_heartbeat_delay_ms=heartbeat, raw_queue=queue_samples,
                 durable_ledger_equal=True, original_fixture_prefix_equal=True, pending_advice_hidden=True,
                 daily_database_accessed=False, errors=errors,
+                point_value_scope=point_value, window_visible=bool(app.winfo_ismapped()),
+                main_auto_enabled=app.analysis_panel.auto.get(),
+                card_identity_sidebets_allowed=app.sidebet_research,
+                sidebet_dispatches=sidebet_dispatches,
+                old_enabled_true_sidebet_settings_preserved=all(path.read_bytes() == raw for path, raw in old_sidebet_settings.items()),
                 measurement_note='Commit time is successful append_validated return after SQLite context exit; tiny timestamp/log wrapper overhead is included. Latest AVAILABLE latency is observed for eligible batch prefixes, not every transient input prefix.',
                 native_keyboard_or_ime_acceptance=False, universal_performance_pass=False)
             (out / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')

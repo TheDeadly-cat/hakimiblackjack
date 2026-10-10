@@ -42,10 +42,16 @@ class LatestWorker:
                 channel,(request_id,function)=self.pending.popitem(last=False)
                 self.active=request_id
                 self.active_channel=channel
+            value=None
             try:value=dict(request_id=request_id,channel=channel,result=function())
             except Exception as error:value=dict(request_id=request_id,channel=channel,error=str(error))
-            finally:self.active=None;self.active_channel=None
-            if not self.closed.is_set():self.completed.put(value)
+            # A UI may stop polling when idle. Publish completion before
+            # exposing idle, under the same lock used by the busy observation.
+            finally:
+                with self.condition:
+                    if value is not None and not self.closed.is_set():self.completed.put(value)
+                    self.active=None;self.active_channel=None
+                    self.condition.notify_all()
 
     def poll(self):
         values=[]
@@ -58,6 +64,11 @@ class LatestWorker:
         self.closed.set()
         with self.condition:
             self.pending.clear();self.condition.notify()
+
+    @property
+    def busy(self):
+        with self.condition:
+            return self.active is not None or bool(self.pending) or not self.completed.empty()
 
     @property
     def stopped(self):

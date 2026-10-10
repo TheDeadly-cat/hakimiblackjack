@@ -29,7 +29,8 @@ class RecordingBackgroundUITests(unittest.TestCase):
             context = patch('blackjack_lab.ui.app.messagebox.' + name, side_effect=effect)
             context.start(); self.addCleanup(context.stop)
         self.app = BlackjackLabApp(self.db, recording_source=SOURCE_SIMULATOR,
-                                   auto_analysis=False, background_recording=True, recording_process=self.use_process)
+                                   auto_analysis=False, background_recording=True, recording_process=self.use_process,
+                                   sidebet_research=getattr(self, 'sidebet_research', False))
         self.addCleanup(self.close)
         self.app.var_auto_next.set(False)
         self.app.act_new_shoe()

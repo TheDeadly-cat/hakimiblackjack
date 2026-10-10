@@ -23,6 +23,7 @@ from .table_modes import BCLC, PRAGMATIC, mode_for_rules
 class SidebetView:
     def __init__(self,app,parent):
         self.app=app
+        self.research_allowed=app.sidebet_research
         self.store=app.ctrl.sidebet_store
         self.worker=LatestWorker()
         self._lock=threading.Lock()
@@ -34,14 +35,14 @@ class SidebetView:
         self.profile_error=''
         self._profile_mode=PRAGMATIC
         self.settings=Path(str(app.ctrl.store.db_path)+'.sidebet-profile.json')
-        self.enabled=tk.BooleanVar(value=app.auto_analysis)
+        self.enabled=tk.BooleanVar(value=app.auto_analysis and self.research_allowed)
         if self.settings.exists():
             try:
                 data=json.loads(self.settings.read_text(encoding='utf-8'))
                 if set(data)!= {'schema','profile','enabled'} or type(data['schema']) is not int or data['schema']!=1 or type(data['enabled']) is not bool:
                     raise ValueError('设置格式无效')
                 self.profile=SidebetProfile.from_dict(data['profile'])
-                self.enabled.set(data['enabled'] and app.auto_analysis)
+                self.enabled.set(data['enabled'] and app.auto_analysis and self.research_allowed)
             except Exception as error:
                 self.profile=replace(self.profile,confirmation='unconfirmed')
                 self.profile_error='边注设置需核对：'+str(error)
@@ -51,13 +52,16 @@ class SidebetView:
         for row,(name,var) in enumerate(self.lines.items()):
             ttk.Label(self.frame,textvariable=var,wraplength=620).grid(row=row,column=0,columnspan=3,sticky='w')
         controls=ttk.Frame(self.frame);controls.grid(row=2,column=0,columnspan=3,sticky='ew')
-        ttk.Checkbutton(controls,text='边注研究',variable=self.enabled,command=self.change_enabled).pack(side=tk.LEFT)
-        ttk.Button(controls,text='奖级 / 规则 / 历史',command=self.show_details).pack(side=tk.LEFT,padx=5)
+        self.toggle=ttk.Checkbutton(controls,text='边注研究',variable=self.enabled,command=self.change_enabled)
+        self.toggle.pack(side=tk.LEFT)
+        if not self.research_allowed:self.toggle.state(['disabled'])
+        ttk.Button(controls,text='边注历史 / 原配置',command=self.show_details).pack(side=tk.LEFT,padx=5)
         self.pending_label=tk.StringVar()
         ttk.Label(controls,textvariable=self.pending_label).pack(side=tk.LEFT)
         self.key=None;self.current_window=None;self.intents={};self.forecasts={}
         self.observed=None;self.observed_request=None;self.observation_key=None;self.sealed=False;self.problem=''
         self.recording_refresh_id=None
+        self.poll_id=None;self._publication_paused=False
         self.trace=app.var_analysis_target.trace_add('write',lambda *_:self.refresh())
         self.mode_trace=app.var_table_mode.trace_add('write',lambda *_:self.refresh())
         app.ctrl.add_context_listener(self.refresh)
@@ -65,9 +69,28 @@ class SidebetView:
         # keep numerical publication paused. No calculation or ledger write.
         with app._view_frame():
             self._select_table_profile(app._current_seg())
-        self.refresh();self.poll_id=app.after(60,self.poll)
+        self.refresh()
+
+    def live_enabled(self):
+        return self.research_allowed and self.enabled.get()
+
+    def _light_key(self):
+        app=self.app;plan=app.ctrl.entry_plan
+        return (app.ctrl.context_token,app.var_table_mode.get(),app.var_analysis_target.get(),
+                self.profile.rules_digest,self.live_enabled(),app.recording_busy,bool(app._recording_faults),
+                (plan.mode,plan.ledger_seq,plan.input_paused) if plan else None)
+
+    def _arm_poll(self):
+        needed=(not self.closed and not getattr(self.app,'_closing',False)
+                and (self.live_enabled() or self.worker.busy))
+        if not needed and self.poll_id is not None:
+            self.app.after_cancel(self.poll_id);self.poll_id=None
+        elif needed and self.poll_id is None:
+            self.poll_id=self.app.after(60,self.poll)
 
     def apply_profile(self,profile):
+        if not self.research_allowed:
+            raise ValueError('点值版仅保留边注历史与原配置，请在独立研究入口修改')
         value=dict(schema=1,profile=profile.to_dict(),enabled=self.enabled.get())
         atomic_write(self.settings,canonical(value).encode('utf-8'))
         changed = profile.rules_digest != self.profile.rules_digest
@@ -77,6 +100,8 @@ class SidebetView:
         self.refresh()
 
     def change_enabled(self):
+        if not self.research_allowed:
+            self.enabled.set(False);self.key=None;self.refresh();return
         try:self.apply_profile(self.profile)
         except Exception as error:self.profile_error='显示设置未保存：'+str(error)
         self.key=None;self.refresh()
@@ -101,9 +126,10 @@ class SidebetView:
                 if self.worker.closed.is_set():break
                 self.save_record(record)
             return None
-        self.worker.submit('retry',work)
+        self.worker.submit('retry',work);self._arm_poll()
 
     def _request(self,purpose,profile,intent=None,observation_key=None):
+        if not self.live_enabled():return None
         app=self.app;frozen=app.ctrl.read_prefix();session=frozen.session_id
         seat=app.var_analysis_target.get();request_id=uuid.uuid4().hex
         captured_at=time()
@@ -123,31 +149,35 @@ class SidebetView:
             saved,error=self.save_record(record)
             return dict(meta=meta,result=result,saved_id=saved['snapshot_id'] if saved else None,save_error=error)
         self.worker.submit(purpose,work,request_id)
+        self._arm_poll()
         return meta
 
     def refresh(self):
         if self.closed or getattr(self.app,'_closing',False):return
-        if self.app.recording_advice_pause():
-            self.pause_recording();return
+        if not self.research_allowed and self.enabled.get():self.enabled.set(False)
+        key=self._light_key()
+        if self.key==key:
+            self._arm_poll();return
+        self._publication_paused=bool(self.app.recording_advice_pause())
+        if self._publication_paused:
+            self.key=key;self.pause_recording();self._arm_poll();return
         if self.app._coalescing_recording_views:
             if self.recording_refresh_id is None:
                 self.recording_refresh_id=self.app.after(50,self._after_recording)
             return
         with self.app._view_frame():current=self.app._current_seg()
         self._select_table_profile(current)
-        key=(self.app.ctrl.context_token,self.app.var_analysis_target.get(),self.profile.rules_digest,self.enabled.get())
-        if self.key==key:return
-        self.key=key;self.problem=''
+        self.key=self._light_key();self.problem=''
+        if not self.live_enabled():
+            self.problem='牌型边注已停用；历史、原配置及未保存结果保留'
+            self.render();self._arm_poll();return
         identity=(self.app.ctrl.session_id,*(window(current) or (None,None)))
         if identity!=self.current_window:
             self.current_window=identity;self.intents.clear();self.forecasts.clear();self.observed=None
         self.sealed=dealing_started(current)
-        if not self.enabled.get():
-            self.observed=None;self.observed_request=None;self.observation_key=None
-            self.problem='边注研究已关闭';self.render();return
         if window(current) is None:
             self.observed=None;self.observed_request=None;self.observation_key=None
-            self.problem='尚无进行中的牌靴';self.render();return
+            self.problem='尚无进行中的牌靴';self.render();self._arm_poll();return
         seat=self.app.var_analysis_target.get()
         if self.sealed:
             intent=self.intents.get(seat)
@@ -160,7 +190,7 @@ class SidebetView:
             self.observed=None;self.observed_request=None;self.observation_key=None
             self.forecasts.pop(seat,None)
             self.intents[seat]=self._request('forecast',self.profile)
-        self.render()
+        self.render();self._arm_poll()
 
     def _after_recording(self):
         self.recording_refresh_id=None
@@ -190,7 +220,7 @@ class SidebetView:
                         and self.profile.perfect_pairs is None and self.profile.twenty_one_plus_three is None
                         and self.profile.source == 'BCLC视频中的边注；奖级和赔付待确认，不沿用Pragmatic研究表'):
                     self.profile = default
-                self.enabled.set(data['enabled'] and self.app.auto_analysis)
+                self.enabled.set(data['enabled'] and self.app.auto_analysis and self.research_allowed)
             except Exception as error:
                 self.profile = replace(default, confirmation='unconfirmed')
                 self.profile_error = '边注设置需核对：' + str(error)
@@ -199,13 +229,20 @@ class SidebetView:
 
     def poll(self):
         if self.closed:return
+        if self.poll_id is not None:self.app.after_cancel(self.poll_id)
+        self.poll_id=None
         if getattr(self.app,'_closing',False):
-            self.poll_id=self.app.after(60,self.poll);return
-        if self.app.recording_advice_pause():
-            self.pause_recording()
-            self.poll_id=self.app.after(60,self.poll);return
-        for message in self.worker.poll():
+            return
+        self.refresh()
+        if self._publication_paused and self.live_enabled():
+            self._arm_poll();return
+        messages=self.worker.poll()
+        for message in messages:
             if message['channel']=='retry':continue
+            # Work already accepted before disabling has saved its original
+            # record (or retained it in pending_saves). No current publication
+            # or current-prefix validation is needed while this module is off.
+            if not self.live_enabled():continue
             if 'error' in message:
                 seat=self.app.var_analysis_target.get();intent=self.intents.get(seat,{})
                 if message['request_id'] in (self.observed_request,intent.get('request_id')):
@@ -226,12 +263,19 @@ class SidebetView:
                     fresh=observed_identity(self.app.ctrl.ledger,current,seat,profile) if current else None
                     if meta['observation_key']==fresh==self.observation_key:self.observed=value
                     else:self.key=None
-        self.refresh();self.render()
-        self.poll_id=self.app.after(60,self.poll)
+        self.refresh()
+        if messages:self.render()
+        self._arm_poll()
 
     def render(self):
-        if self.app.recording_advice_pause():
+        if self.research_allowed and self.app.recording_advice_pause():
             self.pause_recording();return
+        if not self.live_enabled():
+            for var in self.lines.values():var.set('牌型边注已停用；历史、原配置及未保存结果保留')
+            with self._lock:pending=len(self.pending_saves)
+            self.pending_label.set(f'{pending}条已计算、未保存' if pending else '')
+            if self.details is not None and self.details.winfo_exists():self.details.render()
+            return
         seat=self.app.var_analysis_target.get();forecast=self.forecasts.get(seat)
         for name,var in self.lines.items():
             title='Perfect Pairs' if name=='perfect_pairs' else '21+3'
@@ -261,6 +305,8 @@ class SidebetView:
         if self.details is not None and self.details.winfo_exists():self.details.render()
 
     def pause_recording(self):
+        if not self.research_allowed:
+            self.render();return
         message = self.app.recording_advice_pause()
         if not message:
             return
@@ -288,7 +334,8 @@ class SidebetView:
 
     def close(self):
         if self.closed:return
-        self.closed=True;self.app.after_cancel(self.poll_id)
+        self.closed=True
+        if self.poll_id is not None:self.app.after_cancel(self.poll_id);self.poll_id=None
         if self.recording_refresh_id is not None:
             self.app.after_cancel(self.recording_refresh_id)
             self.recording_refresh_id=None

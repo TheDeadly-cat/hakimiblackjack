@@ -28,7 +28,9 @@ def post_commit_failure_process(db_path, source, inputs, outputs):
 
 class SidebetRecordingStateTests(unittest.TestCase):
     use_process = True
-    setUp = fixture.RecordingBackgroundUITests.setUp
+    def setUp(self):
+        self.sidebet_research=True
+        fixture.RecordingBackgroundUITests.setUp(self)
     pump = fixture.RecordingBackgroundUITests.pump
     wait_saved = fixture.RecordingBackgroundUITests.wait_saved
 
@@ -193,7 +195,7 @@ class SidebetRecordingStateTests(unittest.TestCase):
         close_app(self.app, discard_fixture_results=True)
         self.app = None
         self.app = BlackjackLabApp(self.db, auto_analysis=False,
-                                   background_recording=True, recording_process=True)
+                                   background_recording=True, recording_process=True, sidebet_research=True)
         self.app.update()
 
     def test_bclc_default_unknowns_open_real_settings_window(self):
@@ -208,7 +210,7 @@ class SidebetRecordingStateTests(unittest.TestCase):
         close_app(self.app, discard_fixture_results=True); self.app = None
         self.db = Path(self.tmp.name) / 'before-shoe.db'
         self.app = BlackjackLabApp(self.db, auto_analysis=False,
-                                   background_recording=True, recording_process=True)
+                                   background_recording=True, recording_process=True, sidebet_research=True)
         self.app.select_table_mode(BCLC); view = self.app.sidebets
         self.assertEqual(view._profile_mode, BCLC)
         view.show_details()
@@ -238,7 +240,7 @@ class SidebetRecordingStateTests(unittest.TestCase):
         app.exit_flow.discard(); self.pump(lambda: app.exit_flow.phase == 'finished')
         self.app = None
         self.app = BlackjackLabApp(self.db, auto_analysis=False,
-                                   background_recording=True, recording_process=True)
+                                   background_recording=True, recording_process=True, sidebet_research=True)
         view = self.app.sidebets
         self.assertEqual(view._profile_mode, BCLC)
         self.assertIsNone(view.profile.a23)

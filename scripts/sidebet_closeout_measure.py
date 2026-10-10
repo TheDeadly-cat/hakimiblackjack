@@ -89,7 +89,7 @@ def identity():
     return value
 
 
-def one_case(out, mode, scale, fixture):
+def one_case(out, mode, scale, fixture, *, point_value=False, visible=False):
     from blackjack_lab.ui.app import BlackjackLabApp
     from blackjack_lab.ui.controller import SessionController
     from blackjack_lab.ui.read_snapshot import PrefixSnapshot
@@ -160,7 +160,7 @@ def one_case(out, mode, scale, fixture):
          patch.object(SessionController, 'publish_recording_receipts', publish), \
          patch.object(BlackjackLabApp, '_poll_recording', poll), \
          patch.object(AnalysisPanel, 'start', start), patch.object(AnalysisPanel, '_poll', analysis_poll):
-        report = probe.run_case(out, mode, 7, fixture=fixture)
+        report = probe.run_case(out, mode, 7, fixture=fixture, point_value=point_value, visible=visible)
     stages = [json.loads(line) for line in Path(str(out / 'synthetic.db') + '.stages.jsonl').read_text().splitlines()]
     assert len(stages) == len(report['raw_inputs']) == len(raw_received)
     by_id = {r['request_id']: r for r in raw_received}
@@ -202,6 +202,8 @@ def one_case(out, mode, scale, fixture):
                                 bridge_validation=bridge_validation, publication=ui_publication,
                                 ui_callbacks=ui_callbacks, analysis_requests=requests, analysis_results=results),
         note='Recovery includes its nested validation; regular replay is measured outside recovery. IPC field combines queue serialization/transport/unpickle and scheduling. Do not label queue-inclusive input-to-commit as SQLite write time or sum overlapping parent timings.',
+        product_scope={k:report[k] for k in ('point_value_scope','window_visible','main_auto_enabled',
+            'card_identity_sidebets_allowed','sidebet_dispatches','old_enabled_true_sidebet_settings_preserved')},
         real_time_acceptance=False)
     (out / 'components.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps({k: result[k] for k in ('mode', 'scale', 'input_count', 'available_decision_batches', 'components')},

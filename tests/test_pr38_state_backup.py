@@ -16,6 +16,7 @@ def hashes(root):
 
 class NewStateBackupTests(unittest.TestCase):
     use_process = True
+    sidebet_research = True
     setUp = fixture.RecordingBackgroundUITests.setUp
     pump = fixture.RecordingBackgroundUITests.pump
 
