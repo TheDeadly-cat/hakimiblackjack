@@ -1,0 +1,47 @@
+{
+  "product": "Hakimi Blackjack",
+  "edition": "试用版 / TRIAL",
+  "package_id": "T1R3-af69ddb",
+  "package_kind": "online-source-installer-kit",
+  "self_contained_offline_executable": false,
+  "upstream_repository": "TheDeadly-cat/hakimiblackjack",
+  "source_commit": "af69ddb3111b93e43bfbf01f4aa8c249be166b7a",
+  "source_tree": "8b8b8142803fa4d4e4f76abcfddbb011411428b9",
+  "target": "Windows x64",
+  "requires_existing_python": "3.14 x64 with Tcl/Tk",
+  "requires_dotnet_framework_compiler": true,
+  "bundled_python_runtime": false,
+  "bundled_upstream_source": false,
+  "main_analysis": true,
+  "sidebet_research": false,
+  "automatic_betting": false,
+  "business_source_modified_by_kit": false,
+  "github_write_performed_by_kit": false,
+  "real_time_acceptance": false,
+  "native_windows_installer_tested": false,
+  "publisher_signed": false,
+  "trial_expiration": null,
+  "prepared_on": "2026-10-11",
+  "original_package_sha256": "b196f66e54c5e13c491dac2a644a6f94774e06dcf61ae5d6fb5adb3c21d10697",
+  "original_source_commit": "ce9c8bd6c664a63fed02f51ef91ec14b45cacaa1",
+  "source_review": "https://github.com/TheDeadly-cat/hakimiblackjack/pull/39",
+  "upstream_CI": {
+    "commit": "af69ddb3111b93e43bfbf01f4aa8c249be166b7a",
+    "runs": [
+      38057539702,
+      38057537319
+    ],
+    "tests_per_run": 914,
+    "passed_per_run": 912,
+    "skipped_per_run": 2
+  },
+  "data_policy": "New trial-only data directory; no automatic migration; uninstall retains data",
+  "note": "Build-time scope only. Artifact-specific installation and UI receipts are reported separately; CI is not installer or real-time acceptance.",
+  "preceding_trial_package_sha256": "6995d26ca6249d6fb8098a2995618e16a17205948fdb2b369a1bb085a8562ac3",
+  "packaging_changes": [
+    "Close backup SQLite connections",
+    "Set synthetic Git executable mode in index on Windows",
+    "Preserve trial title during construction and view changes",
+    "External batch runner retains actual uninstall exit status after deleting program"
+  ]
+}
