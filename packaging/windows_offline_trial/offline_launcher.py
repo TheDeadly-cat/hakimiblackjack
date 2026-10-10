@@ -34,6 +34,13 @@ def preflight(receipt_path):
         result['environment'] = environment
         if not environment['ready']:
             raise RuntimeError('冻结环境检查未通过')
+        from blackjack_lab.storage.opening_snapshots import algorithm_manifest as opening_sources
+        from blackjack_lab.storage.sidebet_snapshots import algorithm_manifest as sidebet_sources
+        source = json.loads((root / '_internal/source-manifest.json').read_text(encoding='utf-8'))
+        actual_sources = dict(opening_sources(), **sidebet_sources())
+        if any(value != source['files'][name]['sha256'] for name, value in actual_sources.items()):
+            raise RuntimeError('冻结算法源码资源与固定 Git 源码不符')
+        result['frozen_snapshot_source_resources_verified'] = actual_sources
         from blackjack_lab.analysis.split_contracts import both_initial_das_rules
         from blackjack_lab.ledger.events import SOURCE_SIMULATOR
         from blackjack_lab.ui.controller import SessionController

@@ -28,6 +28,13 @@ def dump_new(path, value):
         json.dump(value, stream, ensure_ascii=False, indent=2, allow_nan=False)
 
 
+def runtime_source_data(source, manifest):
+    # Frozen module __file__ paths are below _internal/blackjack_lab. The
+    # production snapshot stores hash these real source files there.
+    return [(str(source / relative), str(Path(relative).parent).replace('\\', '/'))
+        for relative in manifest['files'] if relative.startswith('blackjack_lab/')]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, required=True)
@@ -81,6 +88,10 @@ def main():
     base = Path(sys.base_prefix)
     shutil.copy2(base / 'LICENSE.txt', licenses / 'Python-LICENSE.txt')
     shutil.copy2(base / 'tcl/tk8.6/license.terms', licenses / 'Tk-license.terms')
+    packer = importlib.metadata.distribution('pyinstaller')
+    for item in packer.files:
+        if str(item).startswith('pyinstaller-6.22.3.dist-info/licenses/'):
+            shutil.copy2(packer.locate_file(item), licenses / ('PyInstaller-' + Path(item).name))
     tcl_url = 'https://raw.githubusercontent.com/tcltk/tcl/core-8-6-15/license.terms'
     with urllib.request.urlopen(tcl_url, timeout=30) as response:
         tcl_terms = response.read(128 * 1024)
@@ -104,8 +115,8 @@ def main():
     dump_new(output / 'build-environment.json', base_info)
     datas = [(str(source / relative), 'app/' + str(Path(relative).parent).replace('\\', '/'))
         for relative in manifest['files']]
+    datas += runtime_source_data(source, manifest)
     datas += [(str(output / 'source-manifest.json'), '.'), (str(licenses), 'licenses'),
-        (str(source / 'blackjack_lab/analysis/native/SplitEngine.cs'), 'blackjack_lab/analysis/native'),
         (str(cache / 'SplitEngine.exe'), 'blackjack_lab/.local-native/' + cache.name),
         (str(cache / 'build.json'), 'blackjack_lab/.local-native/' + cache.name)]
     spec = output / 'offline_trial.spec'
@@ -121,11 +132,13 @@ def main():
     if current_wrapper != base_info['wrapper_files']:
         raise RuntimeError('构建期间包装源码改变；保留本轮，不签署产物。')
     runtime = output / 'dist' / NAME
+    shutil.copy2(output / 'compiled-module-source-origins.json',
+        runtime / '_internal/compiled-module-source-origins.json')
     batches = {
         'START_TRIAL.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe"\r\nexit /b %errorlevel%\r\n',
-        'BACKUP_DATA.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance backup\r\nexit /b %errorlevel%\r\n',
-        'VERIFY_SOURCE.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance verify\r\nexit /b %errorlevel%\r\n',
-        'UNINSTALL_TRIAL.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance prepare-uninstall\r\nif errorlevel 1 exit /b 1\r\n"%~dp0..\\..\\HakimiBJTrialInstallLogs\\' + PACKAGE_ID + '-uninstall.cmd"\r\n',
+        'BACKUP_DATA.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance backup %*\r\nexit /b %errorlevel%\r\n',
+        'VERIFY_SOURCE.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance verify %*\r\nexit /b %errorlevel%\r\n',
+        'UNINSTALL_TRIAL.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance prepare-uninstall\r\nif errorlevel 1 exit /b 1\r\n"%~dp0..\\..\\HakimiBJTrialInstallLogs\\' + PACKAGE_ID + '-uninstall.cmd" %*\r\n',
     }
     for name, body in batches.items():
         (runtime / name).write_bytes(body.encode('utf-8'))
@@ -135,6 +148,7 @@ def main():
         raise RuntimeError('冻结运行库缺少Python DLL')
     dump_new(runtime / 'BUNDLE_MANIFEST.json', dict(schema='hakimi-frozen-bundle-v1',
         package_id=PACKAGE_ID, commit=COMMIT, source_tree=TREE, files=files,
+        wrapper_commit=base_info['wrapper_commit'], wrapper_files=base_info['wrapper_files'],
         runtime_is_frozen=True, signed=False, local_preflight_passed=False,
         clean_no_python_host_test=False, network_disabled_host_test=False,
         ordinary_permissions_test=False, realtime_accepted=False))

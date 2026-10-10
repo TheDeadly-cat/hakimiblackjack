@@ -13,6 +13,7 @@ sys.path.insert(0, str(REPO / 'packaging/windows_trial'))
 sys.path.insert(0, str(REPO / 'packaging/windows_offline_trial'))
 from offline_common import COMMIT, PACKAGE_ID, installation_data
 from offline_tools import backup, snapshot_files
+from build_runtime import runtime_source_data
 from trial_common import instance_lock
 
 
@@ -30,6 +31,15 @@ class OfflinePackagingHelpersTests(unittest.TestCase):
             install_root=str(root), data_root=str(data))
         with patch.dict('os.environ', {'LOCALAPPDATA': str(self.base / 'another-shell')}):
             self.assertEqual(installation_data(root, info), data.resolve())
+
+    def test_snapshot_sources_are_available_at_frozen_module_paths(self):
+        from blackjack_lab.storage.opening_snapshots import SOURCES as opening
+        from blackjack_lab.storage.sidebet_snapshots import SOURCES as sidebet
+        manifest = dict(files={name: {} for name in (*opening, *sidebet, 'README.md')})
+        data = runtime_source_data(REPO, manifest)
+        installed = {Path(destination, Path(source).name).as_posix() for source, destination in data}
+        self.assertEqual(installed, set(opening) | set(sidebet))
+        self.assertNotIn('README.md', installed)
 
     def test_moved_root_or_foreign_data_is_rejected(self):
         root = self.base / 'HakimiBJTrial' / PACKAGE_ID

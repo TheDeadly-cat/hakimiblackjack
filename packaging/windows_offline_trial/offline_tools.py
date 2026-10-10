@@ -67,6 +67,13 @@ def _install(root):
     return info, installation_data(root, info)
 
 
+def result_path(base, action):
+    logs = base / 'HakimiBJTrialInstallLogs'
+    assert_no_links(logs)
+    logs.mkdir(parents=True, exist_ok=True)
+    return logs / (PACKAGE_ID + '-' + action + '-' + datetime.now().strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:8] + '.json')
+
+
 def maintain(action, yes=False, receipt_path=None):
     result = dict(package_id=PACKAGE_ID, commit=COMMIT, action=action, completed=False)
     try:
@@ -86,6 +93,8 @@ def maintain(action, yes=False, receipt_path=None):
             info, data = _install(target)
             if target != Path(info['install_root']).resolve() or data.is_relative_to(target):
                 raise ValueError('卸载不能处理数据目录')
+            if receipt_path is None:
+                receipt_path = result_path(base, action)
             if not yes and not confirm(f'卸载本离线试用程序？\n{target}\n\n全部资料保留：{data}'):
                 return 0
             # Revalidate the resolved target and every child before recursive
@@ -104,6 +113,8 @@ def maintain(action, yes=False, receipt_path=None):
         else:
             info, data = _install(root)
             base = root.parent.parent
+            if receipt_path is None:
+                receipt_path = result_path(base, action)
             if action == 'verify':
                 result['complete_bundle_and_source_verified'] = True
             elif action == 'backup':
@@ -126,7 +137,7 @@ def maintain(action, yes=False, receipt_path=None):
                     # one for this same verified installation namespace.
                     preserved = logs / (PACKAGE_ID + '-uninstall-' + uuid.uuid4().hex + '.cmd')
                     shutil.copy2(command, preserved)
-                body = '@echo off\r\nchcp 65001 >nul\r\nstart /wait "" "' + str(runner / 'HakimiBlackjackTrialT1O1.exe') + '" --maintenance uninstall --receipt "' + str(runner / 'UNINSTALL_RESULT.json') + '"\r\nexit /b %errorlevel%\r\n'
+                body = '@echo off\r\nchcp 65001 >nul\r\nstart /wait "" "' + str(runner / 'HakimiBlackjackTrialT1O1.exe') + '" --maintenance uninstall --receipt "' + str(runner / 'UNINSTALL_RESULT.json') + '" %*\r\nexit /b %errorlevel%\r\n'
                 command.write_bytes(body.encode('utf-8'))
                 result.update(external_runner=str(runner), dispatcher=str(command), actual_uninstall=False)
             else:
@@ -138,11 +149,17 @@ def maintain(action, yes=False, receipt_path=None):
         code = 1
     if receipt_path:
         write_json_new(Path(receipt_path), result)
-    elif code:
+    if not yes and (code or action != 'prepare-uninstall'):
         import tkinter as tk
         from tkinter import messagebox
         window = tk.Tk()
         window.withdraw()
-        messagebox.showerror(TITLE, result['error'][-1600:], parent=window)
+        if code:
+            messagebox.showerror(TITLE, result['error'][-1600:], parent=window)
+        else:
+            detail = {'verify': '完整运行库和固定源码核验通过。',
+                'backup': '完整资料复制与摘要核对通过。\n应用恢复仍须单独验收。\n' + result.get('backup_directory', ''),
+                'uninstall': '本试用程序已卸载，全部资料保留。'}.get(action, '维护完成。')
+            messagebox.showinfo(TITLE, detail + '\n\n结果记录：' + str(receipt_path), parent=window)
         window.destroy()
     return code
