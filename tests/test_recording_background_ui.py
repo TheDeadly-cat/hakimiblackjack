@@ -54,7 +54,8 @@ class RecordingBackgroundUITests(unittest.TestCase):
         if self.app:
             self.pump(lambda: not self.app.recording_busy)
             if self.app._recording_faults:
-                self.pump(lambda: self.app._recording_owner.stopped)
+                if self.app._recording_owner:
+                    self.pump(lambda: self.app._recording_owner.stopped)
                 self.app.act_reconcile_recording()
             close_app(self.app, discard_fixture_results=True)
             self.app = None
@@ -308,8 +309,20 @@ class RecordingBackgroundUITests(unittest.TestCase):
 
     def test_unreviewed_failure_is_loaded_on_restart_without_automatic_retry(self):
         app = self.app
-        app._key_rank('Z'); app._key_rank('6'); app.on_close()
-        self.pump(lambda: app.exit_flow.phase == 'needs_recording')
+        entered, release = threading.Event(), threading.Event()
+        original = SessionController.recover
+        def held(*args, **kwargs):
+            entered.set(); release.wait(5)
+            return original(*args, **kwargs)
+        try:
+            with patch.object(SessionController, 'recover', side_effect=held):
+                app._key_rank('Z'); self.assertTrue(entered.wait(2))
+                app._key_rank('6')
+                self.assertEqual(len(app._recording_inputs), 2)
+                release.set(); app.on_close()
+                self.pump(lambda: app.exit_flow.phase == 'needs_recording')
+        finally:
+            release.set()
         app.exit_flow.discard()
         self.pump(lambda: app.exit_flow.phase == 'finished')
         self.app = BlackjackLabApp(self.db, recording_source=SOURCE_SIMULATOR,

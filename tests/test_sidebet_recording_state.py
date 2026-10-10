@@ -152,8 +152,12 @@ class SidebetRecordingStateTests(unittest.TestCase):
         self.assertFalse(app._recording_faults)
         self.assertEqual(app.ctrl.ledger.to_list(), actual)
         self.assertTrue(app.ctrl.entry_plan.input_paused)
+        self.assertNotEqual(app.ctrl.entry_plan.ledger_seq, app.ctrl.ledger.events[-1].seq)
         self.assert_paused()
         self.assertEqual(app.sidebets.forecasts['玩家1']['result'], original['result'])
+        self.reopen()
+        self.app.sidebets.show_details()
+        self.assert_paused()
 
     def test_unsaved_forecast_is_retained_through_pause_and_failed_exit_save(self):
         app = self.app; view = app.sidebets

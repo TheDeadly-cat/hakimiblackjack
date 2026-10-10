@@ -601,7 +601,11 @@ class BlackjackLabApp(tk.Tk):
         if self._recording_faults:
             return '录牌需要核对，当前建议暂停'
         plan = self.ctrl.entry_plan
-        if plan and plan.mode == MODE_UNALIGNED:
+        # A verified correction may need a manually chosen next input position
+        # while still certifying the current saved prefix. Failed readback uses
+        # an uncertified replacement plan; keep current advice paused there.
+        if (plan and plan.mode == MODE_UNALIGNED and self.ctrl.ledger.events
+                and plan.ledger_seq != self.ctrl.ledger.events[-1].seq):
             current = self._current_seg()
             if (current and not current.closed
                     and current.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS)):
