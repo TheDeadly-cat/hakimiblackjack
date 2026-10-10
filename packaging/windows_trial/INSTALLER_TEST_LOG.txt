@@ -1,0 +1,35 @@
+test_archive_extracts_only_after_validation (test_installer_helpers.InstallerHelpers.test_archive_extracts_only_after_validation) ... ok
+test_backup_copies_sidecars_and_preserves_originals (test_installer_helpers.InstallerHelpers.test_backup_copies_sidecars_and_preserves_originals) ... ok
+test_backup_detects_source_change_without_false_success (test_installer_helpers.InstallerHelpers.test_backup_detects_source_change_without_false_success) ... ok
+test_backup_rejects_existing_or_nested_target (test_installer_helpers.InstallerHelpers.test_backup_rejects_existing_or_nested_target) ... ok
+test_case_collisions_rejected (test_installer_helpers.InstallerHelpers.test_case_collisions_rejected) ... ok
+test_cli_help_without_installing (test_installer_helpers.InstallerHelpers.test_cli_help_without_installing) ... ok
+test_duplicate_zip_member_rejected (test_installer_helpers.InstallerHelpers.test_duplicate_zip_member_rejected) ... ok
+test_existing_destination_never_overwritten (test_installer_helpers.InstallerHelpers.test_existing_destination_never_overwritten) ... ok
+test_expanded_size_limit_rejected (test_installer_helpers.InstallerHelpers.test_expanded_size_limit_rejected) ... ok
+test_git_blob_compatible_with_git (test_installer_helpers.InstallerHelpers.test_git_blob_compatible_with_git) ... ok
+test_install_state_requires_exact_identity_and_success (test_installer_helpers.InstallerHelpers.test_install_state_requires_exact_identity_and_success) ... ok
+test_installed_source_manifest_and_tamper_guard (test_installer_helpers.InstallerHelpers.test_installed_source_manifest_and_tamper_guard) ... ok
+test_instance_lock_blocks_concurrent_process_and_releases (test_installer_helpers.InstallerHelpers.test_instance_lock_blocks_concurrent_process_and_releases) ... ok
+test_invalid_install_success_receipt_is_rejected (test_installer_helpers.InstallerHelpers.test_invalid_install_success_receipt_is_rejected) ... ok
+test_isolated_launcher_can_import_its_own_helpers (test_installer_helpers.InstallerHelpers.test_isolated_launcher_can_import_its_own_helpers) ... ok
+test_json_receipt_never_overwrites_existing (test_installer_helpers.InstallerHelpers.test_json_receipt_never_overwrites_existing) ... ok
+test_launcher_explicit_scope_and_trial_title (test_installer_helpers.InstallerHelpers.test_launcher_explicit_scope_and_trial_title) ... ok
+test_linked_directory_rejected (test_installer_helpers.InstallerHelpers.test_linked_directory_rejected) ... ok
+test_manifest_does_not_claim_offline_or_windows_acceptance (test_installer_helpers.InstallerHelpers.test_manifest_does_not_claim_offline_or_windows_acceptance) ... ok
+test_multiple_root_directories_rejected (test_installer_helpers.InstallerHelpers.test_multiple_root_directories_rejected) ... ok
+test_python_launcher_cannot_install_on_demand_from_inherited_flags (test_installer_helpers.InstallerHelpers.test_python_launcher_cannot_install_on_demand_from_inherited_flags) ... ok
+test_source_changed_between_verify_and_extract_rejected (test_installer_helpers.InstallerHelpers.test_source_changed_between_verify_and_extract_rejected) ... ok
+test_symlink_archive_rejected (test_installer_helpers.InstallerHelpers.test_symlink_archive_rejected) ... ok
+test_tree_and_git_archive_match_real_git (test_installer_helpers.InstallerHelpers.test_tree_and_git_archive_match_real_git) ... ok
+test_trial_identity_survives_constructor_view_switch_and_wm_alias (test_installer_helpers.InstallerHelpers.test_trial_identity_survives_constructor_view_switch_and_wm_alias) ... ok
+test_unexpected_python_code_rejected (test_installer_helpers.InstallerHelpers.test_unexpected_python_code_rejected) ... ok
+test_uninstall_cmd_keeps_success_after_deleting_its_own_directory (test_installer_helpers.InstallerHelpers.test_uninstall_cmd_keeps_success_after_deleting_its_own_directory) ... ok
+test_uninstall_cmd_preserves_failure_and_program_directory (test_installer_helpers.InstallerHelpers.test_uninstall_cmd_preserves_failure_and_program_directory) ... ok
+test_wrong_tree_rejected (test_installer_helpers.InstallerHelpers.test_wrong_tree_rejected) ... ok
+test_zip_traversal_rejected (test_installer_helpers.InstallerHelpers.test_zip_traversal_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 1.833s
+
+OK
