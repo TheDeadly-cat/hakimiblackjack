@@ -35,7 +35,7 @@ class TestManualKeymapFocus(unittest.TestCase):
         self.root.update()
         self.assertEqual(str(self.root.tk.call('focus')), '.rawfield')
         with self.assertRaises(KeyError):
-            self.root.focus_get()
+            self.root.nametowidget('.rawfield')
         self.assertTrue(self.binder.guard.accept_press('0'))
 
         self.binder._check_recording_focus()
@@ -53,7 +53,7 @@ class TestManualKeymapFocus(unittest.TestCase):
         self.root.update()
         self.assertEqual(str(self.root.tk.call('focus')), '.rawpopdown.field')
         with self.assertRaises(KeyError):
-            self.root.focus_get()
+            self.root.nametowidget('.rawpopdown.field')
         self.assertTrue(self.binder.guard.accept_press('0'))
 
         self.binder._check_recording_focus()
