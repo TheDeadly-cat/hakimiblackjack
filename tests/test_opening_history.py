@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import tempfile
 import threading
@@ -114,7 +115,9 @@ class TestOpeningStorage(unittest.TestCase):
         saved = self.save()
         path = self.store.directory/(saved['snapshot_id']+'.json')
         before = path.read_bytes(),self.ctrl.ledger.to_list()
-        with patch('blackjack_lab.storage.safe_files.os.link',side_effect=OSError('disk publication fault')):
+        # Windows publishes a new file by no-replace rename; POSIX uses link.
+        operation = 'rename' if os.name == 'nt' else 'link'
+        with patch('blackjack_lab.storage.safe_files.os.' + operation,side_effect=OSError('disk publication fault')):
             with self.assertRaises(OSError):
                 self.save()
         self.assertEqual((path.read_bytes(),self.ctrl.ledger.to_list()),before)

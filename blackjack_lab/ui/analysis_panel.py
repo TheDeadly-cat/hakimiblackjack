@@ -172,6 +172,7 @@ class AnalysisPanel(ttk.Frame):
             self._auto_id = None
 
     def _invalidate_current(self):
+        self._retain_unsaved_result()
         self.request_snapshot = None
         self.request_key = self.request_digest = self.request_id = None
         self.last_result = self.saved = None
@@ -179,6 +180,25 @@ class AnalysisPanel(ttk.Frame):
         self.status.set("过期：牌面、目标或会话已变化")
         self.persistence.set("旧判断仅保留在历史分析中")
         self._set_text("旧请求与当前输入不匹配，已移除当前数值。已保存的原结果仍可在历史分析中查看。")
+
+    def _retain_unsaved_result(self):
+        if self.last_result and self.last_result['status'] == AVAILABLE and not self.saved:
+            from copy import deepcopy
+            self.app.pending_analysis.setdefault(self.last_result['request_id'], dict(
+                result=deepcopy(self.last_result), recomputed_from=self.recomputed_from,
+                store=self.app.ctrl.analysis_store))
+
+    def pause_recording(self):
+        message = self.app.recording_advice_pause()
+        if not message:
+            return
+        self._cancel_auto()
+        if self.status.get() == message:
+            return
+        self._retain_unsaved_result()
+        self.compute_button.state(['disabled'])
+        self.status.set(message)
+        self._set_text(message + '。上次结果仍保留，非当前判断；已保存历史与待保存结果不受影响。')
 
     def context_changed(self, *_args):
         """Synchronous post-commit / target notification, before any general redraw."""
@@ -205,11 +225,19 @@ class AnalysisPanel(ttk.Frame):
 
     def _run_auto(self):
         self._auto_id = None
+        writer = getattr(getattr(self.app, 'opening_estimate', None), 'writer', None)
+        if writer and writer.busy and self.auto.get() and not self._closed and not self.app._closing:
+            self._auto_id = self.after(250, self._run_auto)
+            return
         if (self.auto.get() and not self._closed and not getattr(self.app,'_closing',False) and not self.recomputed_from
+                and not self.app.recording_busy and not self.app._recording_faults
                 and self._live_key() != self._auto_suppressed_key):
             self.calculate_current()
 
     def on_context(self, segment):
+        if self.app.recording_advice_pause():
+            self.pause_recording()
+            return
         key = self._live_key()
         if key == self.context_key:
             return
@@ -235,6 +263,13 @@ class AnalysisPanel(ttk.Frame):
 
     def calculate_current(self):
         if getattr(self.app,'_closing',False):return
+        if self.app.recording_busy or self.app._recording_faults:
+            self.status.set('录牌尚在保存或需要核对；保存完成后再计算当前手牌')
+            return
+        with self.app._view_frame():
+            self._calculate_current()
+
+    def _calculate_current(self):
         self._cancel_auto()
         try:
             segment = self.app._current_seg()
@@ -271,6 +306,12 @@ class AnalysisPanel(ttk.Frame):
         if self._closed:
             return
         if getattr(self.app,'_closing',False):
+            self._poll_id=self.after(50,self._poll);return
+        if self.app.recording_busy or self.app._recording_faults:
+            self.pause_recording()
+            self._poll_id=self.after(50,self._poll);return
+        writer = getattr(getattr(self.app, 'opening_estimate', None), 'writer', None)
+        if writer and writer.busy:
             self._poll_id=self.after(50,self._poll);return
         if self._poll_id:
             self.after_cancel(self._poll_id)

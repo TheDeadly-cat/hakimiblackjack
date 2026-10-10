@@ -20,7 +20,8 @@ class TestAnalysisUI(unittest.TestCase):
             context = patch("blackjack_lab.ui.app.messagebox." + name, side_effect=effect)
             context.start()
             self.addCleanup(context.stop)
-        self.app = BlackjackLabApp(self.db, auto_analysis=False)
+        self.app = BlackjackLabApp(self.db, auto_analysis=False,
+                                   sidebet_research=getattr(self, 'sidebet_research', False))
         # Legacy manual-entry scenarios explicitly keep their original recording mode.
         self.app.var_simple_hole.set(False)
         self.app.var_auto_next.set(False)

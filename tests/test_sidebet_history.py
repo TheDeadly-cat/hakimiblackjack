@@ -117,7 +117,9 @@ class SidebetStorageTests(unittest.TestCase):
 
 
 class SidebetUITests(unittest.TestCase):
-    setUp=fixture.TestAnalysisUI.setUp
+    def setUp(self):
+        self.sidebet_research=True
+        fixture.TestAnalysisUI.setUp(self)
     close=fixture.TestAnalysisUI.close
 
     def pump(self,predicate,timeout=8):
@@ -195,7 +197,7 @@ class SidebetUITests(unittest.TestCase):
         self.assertEqual(path.read_bytes(),original)
         self.assertEqual(tuple(v.get() for v in self.view.lines.values()),before)
         self.assertEqual(self.app.ctrl.ledger.to_list(),events)
-        self.close();self.app=BlackjackLabApp(self.db,auto_analysis=False)
+        self.close();self.app=BlackjackLabApp(self.db,auto_analysis=False,sidebet_research=True)
         self.assertFalse(self.app.sidebets.forecasts)
         self.assertEqual(self.app.ctrl.ledger.to_list(),events)
         self.app.sidebets.show_history();history=self.app.sidebets.history

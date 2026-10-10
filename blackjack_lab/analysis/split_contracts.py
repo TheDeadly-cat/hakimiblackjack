@@ -13,7 +13,8 @@ SAME_VALUE_SPLIT_PROFILE = "research-s17-us-peek-two-sequential-same-value-v1"
 SAME_VALUE_DAS_PROFILE = "research-s17-us-peek-two-sequential-das-same-value-v1"
 ACE_PEEK_DAS_PROFILE = "research-s17-us-ace-peek-two-sequential-das-same-value-v1"
 BOTH_INITIAL_PROFILE = "research-s17-us-ace-peek-two-initial-das-same-value-v1"
-ALL_SPLIT_PROFILES = (SPLIT_PROFILE, DAS_PROFILE, SAME_VALUE_SPLIT_PROFILE, SAME_VALUE_DAS_PROFILE, ACE_PEEK_DAS_PROFILE, BOTH_INITIAL_PROFILE)
+BCLC_PROFILE = "bclc-playnow-classic-two-initial-v1"
+ALL_SPLIT_PROFILES = (SPLIT_PROFILE, DAS_PROFILE, SAME_VALUE_SPLIT_PROFILE, SAME_VALUE_DAS_PROFILE, ACE_PEEK_DAS_PROFILE, BOTH_INITIAL_PROFILE, BCLC_PROFILE)
 SPLIT_INPUT_SCHEMA = "hakimi-split-analysis-input-v1"
 SPLIT_RESULT_SCHEMA = "hakimi-analysis-result-v2"
 SAME_VALUE_SCOPE = "S17/3:2/US-peek/zero-burn/single-player/two-sequential/same-value/no-DAS/no-resplit"
@@ -26,6 +27,9 @@ DAS_STRATEGY = "sequential-two-hand-total-net-das-v2"
 DAS_STRATEGY_LEGACY = "sequential-two-hand-total-net-das-v1"
 BOTH_INITIAL_ENGINE = "finite-two-initial-das-1"
 BOTH_INITIAL_STRATEGY = "both-second-cards-visible-total-net-das-v1"
+NO_DAS_BOTH_INITIAL_ENGINE = "finite-two-initial-no-das-1"
+NO_DAS_BOTH_INITIAL_STRATEGY = "both-second-cards-visible-total-net-no-das-v1"
+NO_DAS_BOTH_INITIAL_SCOPE = "S17/3:2/US-ace-peek/ten-no-peek/all-bets-lost/zero-burn/single-player/both-second-cards-first/same-value/no-DAS/no-resplit"
 KNOWN_DAS_ENGINES = (DAS_ENGINE_LEGACY, DAS_ENGINE, BOTH_INITIAL_ENGINE)
 SPLIT_ORDER = "sequential_complete_first"
 BOTH_INITIAL_ORDER = "both_second_cards_first"
@@ -131,11 +135,26 @@ def both_initial_das_rules(n_decks=8, surrender='late'):
 
 
 def supported_both_initial_rules(rules):
-    return (rules.profile_id == BOTH_INITIAL_PROFILE and rules.version == 1
-            and rules.check_bj_when == 'before_player_actions_A'
+    return (rules.profile_id in (BOTH_INITIAL_PROFILE, BCLC_PROFILE) and rules.version == 1
+            and (rules.check_bj_when == 'before_player_actions_A' or
+                 rules.profile_id == BCLC_PROFILE and rules.check_bj_when == 'before_player_actions_A_T')
             and rules.max_split_hands == 2 and rules.split_deal_order == BOTH_INITIAL_ORDER
             and rules.split_match == 'same_value' and rules.double_after_split is True
             and rules.resplit_aces is False and rules.split_ace_hit_once is True)
+
+
+def supported_bclc_rules(rules):
+    return (rules.profile_id == BCLC_PROFILE and rules.version == 2
+            and rules.n_decks == 8 and rules.dealer_soft17 == 'S17'
+            and rules.check_bj_when == 'before_player_actions_A'
+            and rules.max_split_hands == 2 and rules.split_deal_order == BOTH_INITIAL_ORDER
+            and rules.split_match == 'same_value' and rules.double_after_split is False
+            and rules.resplit_aces is False and rules.split_ace_hit_once is True
+            and rules.surrender is None)
+
+
+def is_both_initial_engine(engine):
+    return engine in (BOTH_INITIAL_ENGINE, NO_DAS_BOTH_INITIAL_ENGINE)
 
 
 def pending_hands(hands, both_initial=False):
@@ -148,7 +167,8 @@ def pending_hands(hands, both_initial=False):
 
 def declared_two_hand_template(rules):
     return (supported_split_rules(rules) or supported_das_rules(rules)
-            or supported_same_value_split_rules(rules) or supported_same_value_das_rules(rules))
+            or supported_same_value_split_rules(rules) or supported_same_value_das_rules(rules)
+            or supported_bclc_rules(rules))
 
 
 def split_pair_legal(ranks, split_match):
@@ -300,11 +320,18 @@ class SplitAnalysisInput:
         if type(self.dealer_up) is not int or not 1 <= self.dealer_up <= 10:
             raise ValueError("庄家明牌点值无效")
         rules = RuleProfile.from_json(self.rules_json)
-        both_initial = supported_both_initial_rules(rules)
+        bclc_no_das = supported_bclc_rules(rules)
+        both_initial = supported_both_initial_rules(rules) or bclc_no_das
         is_das = supported_das_rules(rules) or supported_same_value_das_rules(rules)
         if self.schema != SPLIT_INPUT_SCHEMA or not declared_two_hand_template(rules):
             raise ValueError("不是已声明的两手顺序研究模板；禁止把旧四手规则截成两手")
-        if is_das:
+        if bclc_no_das:
+            if (self.engine_version != NO_DAS_BOTH_INITIAL_ENGINE
+                    or self.strategy_version != NO_DAS_BOTH_INITIAL_STRATEGY
+                    or 'both-second-cards-first' not in self.support_scope or 'no-DAS' not in self.support_scope
+                    or 'same-value' not in self.support_scope or 'DAS-non-ace' in self.support_scope):
+                raise ValueError('BCLC禁止分牌加倍，必须绑定两手先补齐的无DAS引擎和范围')
+        elif is_das:
             if both_initial != (self.engine_version == BOTH_INITIAL_ENGINE):
                 raise ValueError('两手先补齐的规则必须绑定对应引擎，不得混用旧顺序')
             if both_initial and 'both-second-cards-first' not in self.support_scope:

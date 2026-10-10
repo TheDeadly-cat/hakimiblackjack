@@ -1,7 +1,7 @@
 """Exact integer combination weights, bounded to the supported 6/7/8-deck shoe."""
 from fractions import Fraction
 from functools import lru_cache
-from itertools import combinations_with_replacement
+from itertools import combinations_with_replacement, product
 from math import comb
 
 from ...ledger.card_inventory import TYPES, TYPE_INDEX
@@ -48,6 +48,12 @@ def classify(name,cards,profile=None):
     if not k or len(cards)!=k or any(tuple(c) not in TYPE_INDEX for c in cards):
         raise ValueError('边注牌型需要完整原始牌面和花色')
     indexes=tuple(TYPE_INDEX[tuple(c)] for c in cards)
+    if k==3 and any(v is None for v in (profile.a23,profile.qka,profile.ka2)):
+        choices = [(False,True) if v is None else (v,) for v in (profile.a23,profile.qka,profile.ka2)]
+        categories = {_three_kind(*indexes,*rules,profile.three_priority) for rules in product(*choices)}
+        if len(categories) != 1:
+            raise ValueError('21+3的A顺子规则待确认')
+        return categories.pop()
     return (_pair_kind(*indexes) if k==2 else
         _three_kind(*indexes,profile.a23,profile.qka,profile.ka2,profile.three_priority))
 
@@ -55,6 +61,8 @@ def classify(name,cards,profile=None):
 def distribution(name,counts,profile=None):
     validate_counts(counts);profile=profile or SidebetProfile()
     if name not in CATEGORIES:raise ValueError('不支持的边注')
+    if name=='21+3' and any(v is None for v in (profile.a23,profile.qka,profile.ka2)):
+        raise ValueError('21+3的A顺子规则待确认，暂停概率与EV')
     k=2 if name=='perfect_pairs' else 3
     n=sum(counts)
     if n<k:raise ValueError(f'剩余不足{k}张牌')

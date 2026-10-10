@@ -7,6 +7,7 @@ from ..core.table import DEALER, PHASE_DEALING, PHASE_IN_PROGRESS
 from ..core.rules import CONFIRM_VERIFIED, requires_bj_peek
 from ..ledger.ledger import EventLedger
 from .contracts import AnalysisInput, InputUnavailable, canonical, digest, ACTION_ZH, UNSUPPORTED, INAPPLICABLE
+from ..ui.read_snapshot import event_prefix_digest
 
 
 def build_input(ledger, seat, hand_id=None, through_seq=None, *, other_players_stand=False):
@@ -101,6 +102,6 @@ def build_prepared_input(session_id, seat, hand_id, seq, prefix, current, *, oth
         "dealer_hole": "one_unknown_physical_card", "negative_peek": peek,
         "action_states": {a: asdict(state) for a, state in states.items()}}
     return with_scenario(AnalysisInput(session_id, current.shoe_id, current.round_id, seq,
-        digest(prefix), seat, hand.hand_id, rules.n_decks, canonical(json.loads(rules.to_json())),
+        event_prefix_digest(prefix), seat, hand.hand_id, rules.n_decks, canonical(json.loads(rules.to_json())),
         canonical(information), counts, shoe.physical_remaining(),
         tuple(values[c.rank] for c in hand.cards), tuple(c.rank for c in hand.cards), up, peek, legal, uncertain), scenario)

@@ -29,8 +29,9 @@ def scalar(counts, up=None, negative=False):
 
 
 def evaluate_prepared(session_id, seq, prefix, current):
+    from ..ui.read_snapshot import event_prefix_digest
     result = dict(engine_version=ENGINE, session_id=session_id, as_of_seq=seq,
-                  prefix_digest=digest(prefix), shoe_id=current.shoe_id if current else None,
+                  prefix_digest=event_prefix_digest(prefix), shoe_id=current.shoe_id if current else None,
                   round_id=current.round_id if current else None, phase='unavailable',
                   probability=None, fraction=None, known=False, forecast=False,
                   basis='', reason_code='NO_SHOE', reason='尚无牌靴')

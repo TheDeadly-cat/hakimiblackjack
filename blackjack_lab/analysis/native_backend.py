@@ -15,7 +15,7 @@ import tempfile
 from time import perf_counter
 
 from .probability import CalculationStopped, InsufficientCards
-from .split_contracts import DAS_STRATEGY, BOTH_INITIAL_STRATEGY
+from .split_contracts import DAS_STRATEGY, BOTH_INITIAL_STRATEGY, NO_DAS_BOTH_INITIAL_STRATEGY
 
 SOURCE = Path(__file__).with_name("native") / "SplitEngine.cs"
 FLAGS = ("/nologo", "/optimize+", "/r:System.Web.Extensions.dll")
@@ -226,8 +226,6 @@ def solve_native(counts, hands, dealer_up, peek_negative, *, active=0,
     if not allow_das and tuple(stakes) != (1, 1):
         raise ValueError("无DAS两手注额必须各为1")
     if both_initial:
-        if not allow_das:
-            raise ValueError('两手先补齐模型需要DAS规则')
         if ((len(hands[0]) == 1 and len(hands[1]) != 1)
                 or (len(hands[1]) == 1 and (len(hands[0]) > 2 or tuple(stakes) != (1, 1) or force_close))
                 or (active == 0 and len(hands[1]) > 2)):
@@ -270,7 +268,8 @@ def solve_native(counts, hands, dealer_up, peek_negative, *, active=0,
         data.update(backend="windows-dotnet-framework-exact", backend_source_sha256=executable.parent.name,
                     backend_binary_sha256=binary_digest,
                     method="exact_finite_shared_shoe_float64", approximation=False,
-                    strategy=(BOTH_INITIAL_STRATEGY if both_initial else DAS_STRATEGY if allow_das
+                    strategy=(BOTH_INITIAL_STRATEGY if both_initial and allow_das else
+                              NO_DAS_BOTH_INITIAL_STRATEGY if both_initial else DAS_STRATEGY if allow_das
                               else "sequential-two-hand-total-net-hit-stand-v1"),
                     decision_tolerance=1e-12,
                     elapsed_seconds=perf_counter()-start)

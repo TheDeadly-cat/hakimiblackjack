@@ -37,3 +37,10 @@ venv/
 
 # Local display preferences (never share as game rules).
 *.ui-preferences.json
+
+# Per-database recording and mode state remains local.
+*.table-modes.json
+*.table-modes.json.history/
+*.bclc-sidebet-profile.json
+*.deal_plans/
+*.recording-failures/
