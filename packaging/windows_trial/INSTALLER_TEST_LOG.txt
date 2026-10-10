@@ -22,11 +22,12 @@ test_python_launcher_cannot_install_on_demand_from_inherited_flags (test_install
 test_source_changed_between_verify_and_extract_rejected (test_installer_helpers.InstallerHelpers.test_source_changed_between_verify_and_extract_rejected) ... ok
 test_symlink_archive_rejected (test_installer_helpers.InstallerHelpers.test_symlink_archive_rejected) ... ok
 test_tree_and_git_archive_match_real_git (test_installer_helpers.InstallerHelpers.test_tree_and_git_archive_match_real_git) ... ok
+test_trial_identity_survives_constructor_view_switch_and_wm_alias (test_installer_helpers.InstallerHelpers.test_trial_identity_survives_constructor_view_switch_and_wm_alias) ... ok
 test_unexpected_python_code_rejected (test_installer_helpers.InstallerHelpers.test_unexpected_python_code_rejected) ... ok
 test_wrong_tree_rejected (test_installer_helpers.InstallerHelpers.test_wrong_tree_rejected) ... ok
 test_zip_traversal_rejected (test_installer_helpers.InstallerHelpers.test_zip_traversal_rejected) ... ok
 
 ----------------------------------------------------------------------
-Ran 27 tests in 1.547s
+Ran 28 tests in 1.673s
 
 OK

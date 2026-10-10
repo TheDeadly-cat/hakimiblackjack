@@ -16,6 +16,21 @@ sys.path.insert(0, str(ROOT / 'app'))
 from trial_common import COMMIT, PACKAGE_ID, TITLE, instance_lock, load_install, verify_installed_source
 
 
+def trial_app_class(base):
+    """Keep the trial identity during construction and every upstream view change."""
+    class TrialApp(base):
+        def title(self, string=None):
+            if string is None:
+                return super().title()
+            prefix = f'{TITLE} · {COMMIT[:7]} · '
+            caption = str(string)
+            return super().title(caption if caption.startswith(prefix) else prefix + caption)
+
+        wm_title = title
+
+    return TrialApp
+
+
 def show_error(message: str) -> None:
     try:
         import tkinter as tk
@@ -48,10 +63,9 @@ def main() -> int:
                         from blackjack_lab.analysis.native_backend import build_native
                         build_native()  # Reuse only a source/digest-verified native artifact.
                         from blackjack_lab.ui.app import BlackjackLabApp
-                        app = BlackjackLabApp(data / 'session.db', auto_analysis=True,
+                        TrialApp = trial_app_class(BlackjackLabApp)
+                        app = TrialApp(data / 'session.db', auto_analysis=True,
                             background_recording=True, recording_process=True, sidebet_research=False)
-                        upstream_title = app.title()
-                        app.title(f'{TITLE} · {COMMIT[:7]} · {upstream_title}')
                         from tkinter import messagebox
                         messagebox.showwarning(TITLE,
                             '这是点值记录与复核试用版，不是已通过实时性能验收的正式版。\n\n'

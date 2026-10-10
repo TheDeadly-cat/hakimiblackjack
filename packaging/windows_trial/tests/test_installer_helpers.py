@@ -238,7 +238,7 @@ class InstallerHelpers(unittest.TestCase):
         source = (KIT / 'launch_trial.py').read_text()
         tree = ast.parse(source)
         calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
-                 and node.func.id == 'BlackjackLabApp']
+                 and node.func.id == 'TrialApp']
         self.assertEqual(len(calls), 1)
         arguments = {kw.arg: ast.literal_eval(kw.value) for kw in calls[0].keywords}
         self.assertEqual(arguments, dict(auto_analysis=True, background_recording=True,
@@ -246,6 +246,36 @@ class InstallerHelpers(unittest.TestCase):
         self.assertIn('sys.path.insert(0, str(ROOT))', source)
         self.assertIn('试用版', common.TITLE)
         self.assertIn('freeze_support()', source)
+        factories = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                     and isinstance(node.func, ast.Name) and node.func.id == 'trial_app_class']
+        self.assertEqual(len(factories), 1)
+        self.assertEqual(ast.unparse(factories[0].args[0]), 'BlackjackLabApp')
+
+    def test_trial_identity_survives_constructor_view_switch_and_wm_alias(self):
+        from launch_trial import trial_app_class
+
+        class UpstreamWindow:
+            def __init__(self):
+                self.caption = ''
+                self.title('恢复上次记录')
+
+            def title(self, string=None):
+                if string is None:
+                    return self.caption
+                self.caption = string
+                return ''
+
+            wm_title = title
+
+        window = trial_app_class(UpstreamWindow)()
+        prefix = f'{common.TITLE} · {common.COMMIT[:7]} · '
+        self.assertEqual(window.title(), prefix + '恢复上次记录')
+        window.title('研究工作台')
+        self.assertEqual(window.title(), prefix + '研究工作台')
+        window.wm_title('当前手牌')
+        self.assertEqual(window.title(), prefix + '当前手牌')
+        window.title(window.title())
+        self.assertEqual(window.title(), prefix + '当前手牌')
 
     def test_manifest_does_not_claim_offline_or_windows_acceptance(self):
         package = json.loads((KIT / 'PACKAGE.json').read_text())

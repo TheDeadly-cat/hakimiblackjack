@@ -1,4 +1,4 @@
-Hakimi Blackjack 试用版 T1R1 · af69ddb
+Hakimi Blackjack 试用版 T1R2 · af69ddb
 ====================================
 
 这是联网／源码型安装脚本包，需要已有 Python 3.14 x64（含 Tcl/Tk）
@@ -14,11 +14,11 @@ Hakimi Blackjack 试用版 T1R1 · af69ddb
 安装：
 1. 完整解压 ZIP 到本地目录。
 2. 双击 INSTALL_TRIAL.cmd，核对提示后输入 INSTALL。
-3. 安装预检通过后，用桌面“Hakimi Blackjack 试用版 T1R1”或
+3. 安装预检通过后，用桌面“Hakimi Blackjack 试用版 T1R2”或
    安装目录中的 START_TRIAL.cmd 启动。
 
-程序：%LOCALAPPDATA%\HakimiBJTrial\T1R1-af69ddb\
-资料：%LOCALAPPDATA%\HakimiBJTrialData\T1R1-af69ddb\
+程序：%LOCALAPPDATA%\HakimiBJTrial\T1R2-af69ddb\
+资料：%LOCALAPPDATA%\HakimiBJTrialData\T1R2-af69ddb\
 备份：%LOCALAPPDATA%\HakimiBJTrialBackups\
 日志：%LOCALAPPDATA%\HakimiBJTrialInstallLogs\
 
@@ -47,3 +47,6 @@ UNINSTALL_TRIAL.cmd：正常关闭后输入 UNINSTALL，只删除本版程序目
 普通权限、原生键盘、恢复或实时性能通过。后续 Windows 操作结论
 单独保存在与 ZIP 摘要绑定的验收记录中。未制作离线 EXE/MSI；
 未签名，不声明 SmartScreen 信誉。未合并仓库或发布 Release。
+
+T1R1 在切换研究工作台时会丢失窗口试用标识；其包和验收记录保留。
+T1R2 从恢复提示阶段开始，并在切换各个视图后，持续保留试用标识。

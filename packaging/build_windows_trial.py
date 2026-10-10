@@ -24,12 +24,12 @@ def build(destination: Path) -> Path:
     if validation['package_id'] != package['package_id']:
         raise ValueError('Package and validation identities differ')
     if (validation['tested_count'], validation['passed_count'],
-            validation['failed_count'], validation['skipped_count']) != (27, 27, 0, 0):
+            validation['failed_count'], validation['skipped_count']) != (28, 28, 0, 0):
         raise ValueError('The reviewed helper suite has not passed completely')
     log = payloads['INSTALLER_TEST_LOG.txt']
     if hashlib.sha256(log).hexdigest() != validation['log_sha256']:
         raise ValueError('The frozen test log has changed')
-    if not re.search(rb'Ran 27 tests in [\d.]+s\s+OK\s*$', log):
+    if not re.search(rb'Ran 28 tests in [\d.]+s\s+OK\s*$', log):
         raise ValueError('The test log has no complete success footer')
     for name, digest in validation['tested_script_sha256'].items():
         if name not in payloads or hashlib.sha256(payloads[name]).hexdigest() != digest:
@@ -37,7 +37,7 @@ def build(destination: Path) -> Path:
     manifest = ''.join(f'{hashlib.sha256(data).hexdigest()}  {name}\n'
                        for name, data in sorted(payloads.items()))
     payloads['CONTENTS_SHA256.txt'] = manifest.encode('utf-8')
-    filename = 'Hakimi_Blackjack_T1R1_Trial_Online_Setup.zip'
+    filename = 'Hakimi_Blackjack_T1R2_Trial_Online_Setup.zip'
     destination = destination.resolve()
     destination.mkdir(parents=True, exist_ok=True)
     archive = destination / filename
@@ -46,7 +46,7 @@ def build(destination: Path) -> Path:
         raise FileExistsError('Refusing to overwrite an existing archive or checksum')
     with zipfile.ZipFile(archive, 'x', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
         for name, data in sorted(payloads.items()):
-            item = zipfile.ZipInfo('Hakimi_Blackjack_T1R1_Trial/' + name,
+            item = zipfile.ZipInfo('Hakimi_Blackjack_T1R2_Trial/' + name,
                                    date_time=(2026, 10, 10, 0, 0, 0))
             item.create_system = 3
             item.external_attr = 0o100644 << 16
@@ -56,7 +56,7 @@ def build(destination: Path) -> Path:
         if zf.testzip() is not None:
             raise ValueError('Built ZIP failed CRC verification')
         for name, data in payloads.items():
-            if zf.read('Hakimi_Blackjack_T1R1_Trial/' + name) != data:
+            if zf.read('Hakimi_Blackjack_T1R2_Trial/' + name) != data:
                 raise ValueError('Built ZIP differs from the reviewed files')
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     with checksum.open('x', encoding='utf-8', newline='\n') as stream:

@@ -1,7 +1,7 @@
 {
   "product": "Hakimi Blackjack",
   "edition": "试用版 / TRIAL",
-  "package_id": "T1R1-af69ddb",
+  "package_id": "T1R2-af69ddb",
   "package_kind": "online-source-installer-kit",
   "self_contained_offline_executable": false,
   "upstream_repository": "TheDeadly-cat/hakimiblackjack",
@@ -27,11 +27,20 @@
   "source_review": "https://github.com/TheDeadly-cat/hakimiblackjack/pull/39",
   "upstream_CI": {
     "commit": "af69ddb3111b93e43bfbf01f4aa8c249be166b7a",
-    "runs": [38057539702, 38057537319],
+    "runs": [
+      38057539702,
+      38057537319
+    ],
     "tests_per_run": 914,
     "passed_per_run": 912,
     "skipped_per_run": 2
   },
   "data_policy": "New trial-only data directory; no automatic migration; uninstall retains data",
-  "note": "Build-time scope only. Artifact-specific installation and UI receipts are reported separately; CI is not installer or real-time acceptance."
+  "note": "Build-time scope only. Artifact-specific installation and UI receipts are reported separately; CI is not installer or real-time acceptance.",
+  "preceding_trial_package_sha256": "081bfe6f300725115fd0765b5bce562eedcc276ee4a1dd4c9450fb2443baff5c",
+  "packaging_changes": [
+    "Close backup SQLite connections",
+    "Set synthetic Git executable mode in index on Windows",
+    "Preserve trial title during construction and view changes"
+  ]
 }

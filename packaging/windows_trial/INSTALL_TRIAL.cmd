@@ -2,7 +2,7 @@
 setlocal DisableDelayedExpansion
 chcp 65001 >nul
 cd /d "%~dp0"
-echo Hakimi Blackjack 试用版 T1R1 - 联网安装脚本包
+echo Hakimi Blackjack 试用版 T1R2 - 联网安装脚本包
 echo 需要现有 Windows x64 Python 3.14 / Tcl-Tk / .NET Framework。
 echo 不包含应用源码压缩包或 Python 运行库；首次安装从固定 GitHub 提交下载源码。
 echo.
