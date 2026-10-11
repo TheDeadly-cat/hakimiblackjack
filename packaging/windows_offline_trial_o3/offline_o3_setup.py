@@ -1,6 +1,7 @@
 """Self-contained per-user setup. No downloads, elevation, or data deletion."""
 import argparse
 import base64
+from contextlib import contextmanager
 from datetime import datetime
 import hashlib
 import json
@@ -13,7 +14,8 @@ import traceback
 import uuid
 import zipfile
 
-from trial_common import assert_no_links, safe_relative, write_json_new
+from trial_common import assert_no_links, instance_lock, safe_relative, write_json_new
+from offline_o3_common import installation_data
 from offline_o3_identity import COMMIT, TREE, PACKAGE_ID, TITLE, EXECUTABLE
 
 
@@ -37,8 +39,15 @@ def shortcut(root, logs):
 $item=Get-Content -LiteralPath INPUT_FILE -Raw -Encoding UTF8|ConvertFrom-Json
 $desktop=[Environment]::GetFolderPath('Desktop')
 $linkPath=Join-Path $desktop ($item.name+'.lnk')
-if(Test-Path -LiteralPath $linkPath){$linkPath=Join-Path $desktop ($item.name+'-'+[Guid]::NewGuid().ToString('N').Substring(0,8)+'.lnk')}
 $shell=New-Object -ComObject WScript.Shell
+if(Test-Path -LiteralPath $linkPath){
+    $old=$shell.CreateShortcut($linkPath)
+    if($old.TargetPath -ieq $item.executable -and $old.WorkingDirectory -ieq $item.root){
+        [IO.File]::Copy($linkPath,(Join-Path (Split-Path -Parent $item.receipt) 'previous-shortcut.lnk'),$false)
+    }else{
+        $linkPath=Join-Path $desktop ($item.name+'-'+[Guid]::NewGuid().ToString('N').Substring(0,8)+'.lnk')
+    }
+}
 $link=$shell.CreateShortcut($linkPath)
 $link.TargetPath=$item.executable
 $link.WorkingDirectory=$item.root
@@ -57,6 +66,62 @@ $link.Save()
         raise RuntimeError('桌面快捷方式创建失败；程序与日志保留。')
 
 
+def existing_install(root, data):
+    """Only an existing installation in this exact namespace can be updated."""
+    if not root.exists():
+        return False
+    assert_no_links(root)
+    info = json.loads((root / 'install.json').read_text(encoding='utf-8'))
+    if installation_data(root, info) != data:
+        raise ValueError('现有安装的资料目录不符')
+    success = json.loads((root / 'INSTALL_SUCCESS.json').read_text(encoding='utf-8'))
+    if success.get('package_id') != PACKAGE_ID or success.get('preflight_passed') is not True:
+        raise ValueError('现有目录不是已完成安装的同版本程序；保留原目录')
+    return True
+
+
+@contextmanager
+def program_replacement(root, data, logs, updating):
+    """Retain the old program, keep the data path, and roll back failed updates."""
+    local = root.parent.parent
+    if (root != local / 'HakimiBJTrial' / PACKAGE_ID
+            or data != local / 'HakimiBJTrialData' / PACKAGE_ID
+            or logs.parent != local / 'HakimiBJTrialInstallLogs'):
+        raise ValueError('更新范围不符')
+    rollback_base = local / 'HakimiBJTrialRollbacks'
+    assert_no_links(rollback_base)
+    token = PACKAGE_ID + '-' + logs.name.rsplit('-', 1)[-1]
+    previous = rollback_base / (token + '-previous')
+    failed = rollback_base / (token + '-failed')
+    if previous.exists() or failed.exists():
+        raise ValueError('回滚目录已存在；保留原目录')
+    with instance_lock(data):
+        if updating:
+            existing_install(root, data)
+            for path in root.rglob('*'):
+                assert_no_links(path)
+            rollback_base.mkdir(parents=True, exist_ok=True)
+            root.rename(previous)
+        elif root.exists():
+            raise ValueError('安装目录在预检后出现；保留原目录')
+        try:
+            yield
+        except BaseException:
+            if updating:
+                if root.exists():
+                    root.rename(failed)
+                previous.rename(root)
+                write_json_new(logs / 'UPDATE_ROLLED_BACK.json',
+                               dict(program_restored=str(root), failed_program=str(failed),
+                                    data_root=str(data), data_unchanged=True))
+            raise
+        else:
+            if updating:
+                write_json_new(logs / 'UPDATE_COMPLETED.json',
+                               dict(program_root=str(root), previous_program=str(previous),
+                                    data_root=str(data), data_reused=True))
+
+
 def install(reuse_data=False):
     if os.name != 'nt' or not getattr(sys, 'frozen', False):
         raise ValueError('需要冻结的 Windows 安装入口')
@@ -65,9 +130,8 @@ def install(reuse_data=False):
     data = local / 'HakimiBJTrialData' / PACKAGE_ID
     assert_no_links(root)
     assert_no_links(data)
-    if root.exists():
-        raise ValueError('程序目录已存在，拒绝覆盖。保留旧产物与资料。')
-    if data.exists() and (not data.is_dir() or any(data.iterdir())) and not reuse_data:
+    updating = existing_install(root, data)
+    if data.exists() and (not data.is_dir() or any(data.iterdir())) and not reuse_data and not updating:
         raise ValueError('试用资料目录非空，默认拒绝复用；保留原资料。')
     internal = Path(sys._MEIPASS)
     payload = internal / 'payload/runtime.zip'
@@ -79,6 +143,11 @@ def install(reuse_data=False):
     logs = local / 'HakimiBJTrialInstallLogs' / (PACKAGE_ID + '-' + datetime.now().strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:8])
     assert_no_links(logs)
     logs.mkdir(parents=True, exist_ok=False)
+    with program_replacement(root, data, logs, updating):
+        return install_payload(root, data, payload, info, logs)
+
+
+def install_payload(root, data, payload, info, logs):
     try:
         with zipfile.ZipFile(payload) as archive:
             members = archive.infolist()
@@ -142,9 +211,10 @@ def main():
     args = parser.parse_args()
     try:
         if not args.yes and not show('askyesno',
-                f'安装 {TITLE}？\n\n包含 Python/Tk；无需联网下载源码。\n'
+                f'安装或更新 {TITLE}？\n\n包含 Python/Tk；无需联网下载源码。\n'
                 '目标 Windows 仍须具备 .NET Framework 4 运行时，不自动安装系统组件。\n'
-                '程序未签名，实时性能验收未通过；不覆盖旧版，不导入日常资料。'):
+                '同版本更新保留原记录与程序回滚副本；请先关闭程序。\n'
+                '程序未签名，实时性能尚未通过验收。'):
             return 0
         root, logs = install(args.reuse_data)
         if not args.yes:

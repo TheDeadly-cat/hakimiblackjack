@@ -153,18 +153,18 @@ def main():
                             def title(self, string=None):
                                 if string is None:
                                     return super().title()
-                                prefix = f'{TITLE} · {COMMIT[:7]} · '
-                                caption = str(string)
+                                prefix = 'Hakimi Blackjack · 试用版 · '
+                                caption = str(string).removeprefix('Hakimi Blackjack Lab · ')
                                 return super().title(caption if caption.startswith(prefix) else prefix + caption)
                             wm_title = title
                         app = TrialApp(data / 'session.db', auto_analysis=True,
                             background_recording=True, recording_process=True, sidebet_research=False)
-                        from tkinter import messagebox
-                        messagebox.showwarning(TITLE,
-                            '这是点值记录与复核试用版，实时性能仍未通过验收。\n\n'
-                            '主注自动分析开启；日常 Perfect Pairs / 21+3 研究停用。\n'
-                            '待保存或结果未知时须核对原资料，不自动重试同一张牌。\n'
-                            f'试用资料目录：{data}', parent=app)
+                        # Routine launch needs no acknowledgement. Keep the trial
+                        # identity visible without blocking keyboard recording.
+                        from tkinter import ttk
+                        ttk.Label(app, text='试用版 · 大历史可能延迟',
+                                  anchor='e', foreground='#52616b').grid(
+                                      row=2, column=0, sticky='ew', padx=10, pady=(0, 4))
                         app.mainloop()
                     except Exception:
                         traceback.print_exc()

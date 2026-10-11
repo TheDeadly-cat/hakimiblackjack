@@ -7,7 +7,7 @@ import sys
 from trial_common import assert_no_links, git_hash, sha256_file, safe_relative, tree_hash
 from offline_o3_identity import COMMIT, TREE, SOURCE_FILE_COUNT, PACKAGE_ID, TITLE
 
-def verify_installed_source(root, manifest):
+def verify_installed_source(root, manifest, *, verified_files=None):
     """Verify this complete fixed Git tree without changing online R4's globals."""
     if (manifest.get('commit') != COMMIT or manifest.get('git_tree') != TREE
             or len(manifest.get('files', {})) != SOURCE_FILE_COUNT):
@@ -16,10 +16,17 @@ def verify_installed_source(root, manifest):
     for relative, item in manifest['files'].items():
         path = root.joinpath(*safe_relative(relative).split('/'))
         assert_no_links(path)
-        data = path.read_bytes()
-        if hashlib.sha256(data).hexdigest() != item['sha256']:
+        if verified_files is None:
+            data = path.read_bytes()
+            digest, blob = hashlib.sha256(data).hexdigest(), git_hash('blob', data)
+        else:
+            # Only the current verify_bundle call supplies these observations.
+            # No persistent cache or timestamp-based trust is involved.
+            if relative not in verified_files:
+                raise ValueError('冻结清单缺少源码文件：' + relative)
+            digest, blob = verified_files[relative]
+        if digest != item['sha256']:
             raise ValueError('源码发生变化，已停止启动：' + relative)
-        blob = git_hash('blob', data)
         if blob != item['git_blob']:
             raise ValueError('源码 Git 摘要不符：' + relative)
         entries[relative] = item['git_mode'], blob
@@ -44,10 +51,18 @@ def verify_bundle(root):
     if (manifest.get('package_id') != PACKAGE_ID or manifest.get('commit') != COMMIT
             or manifest.get('source_tree') != TREE or not manifest.get('files')):
         raise ValueError('冻结产物身份不符')
+    verified_source = {}
     for relative, expected in manifest['files'].items():
         path = root.joinpath(*safe_relative(relative).split('/'))
         assert_no_links(path)
-        if sha256_file(path) != expected:
+        if relative.startswith('_internal/app/'):
+            content = path.read_bytes()
+            actual = hashlib.sha256(content).hexdigest()
+            verified_source[relative[len('_internal/app/'):]] = (
+                actual, git_hash('blob', content))
+        else:
+            actual = sha256_file(path)
+        if actual != expected:
             raise ValueError('冻结产物发生变化：' + relative)
     for path in (root / '_internal').rglob('*'):
         assert_no_links(path)
@@ -57,7 +72,7 @@ def verify_bundle(root):
     if internal != (root / '_internal').resolve():
         raise ValueError('运行库目录不符')
     source = json.loads((internal / 'source-manifest.json').read_text(encoding='utf-8'))
-    verify_installed_source(internal / 'app', source)
+    verify_installed_source(internal / 'app', source, verified_files=verified_source)
     return manifest
 
 
