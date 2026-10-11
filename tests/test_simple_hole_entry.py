@@ -1,3 +1,4 @@
+import copy
 import json
 import unittest
 from dataclasses import replace
@@ -13,6 +14,7 @@ from blackjack_lab.analysis.probability import FiniteModel
 from blackjack_lab.ui.controller import SessionController
 from blackjack_lab.ui.app import BlackjackLabApp
 from blackjack_lab.ui.deal_entry import MODE_UNALIGNED, MODE_PEEK_WAIT, SIMPLE_HOLE_CONTRACT
+from blackjack_lab.ui.recent_entry import undo_label
 
 
 class TestSimpleHoleEntry(unittest.TestCase):
@@ -99,19 +101,162 @@ class TestSimpleHoleEntry(unittest.TestCase):
         self.assertTrue(recovered.entry_plan.simple_hole)
         self.assertEqual(len(self.hidden()), 1)
 
-    def test_undo_auto_hole_does_not_readd_on_refresh_or_restart(self):
-        self.initial()
-        hole = self.hidden()[0].event_id
+    def test_undo_last_initial_input_removes_visible_and_auto_hole_and_allows_rerecord(self):
+        self.prepare()
+        for rank in ('T', '6'):
+            self.app._key_rank(rank)
+        ctrl = self.app.ctrl
+        prior_plan = ctrl.entry_plan.to_dict()
+        prior_ledger = ctrl.ledger.to_list()
+        self.app._key_rank('6')
+        trigger, hole = ctrl.ledger.events[-2:]
         self.app.act_undo()
-        before = self.app.ctrl.ledger.to_list()
-        self.assertEqual(before[-1]['payload']['target_event_id'], hole)
+        before = ctrl.ledger.to_list()
+        self.assertEqual(before[:-2], prior_ledger + [trigger.to_dict(), hole.to_dict()])
+        self.assertEqual([event['payload']['target_event_id'] for event in before[-2:]],
+                         [hole.event_id, trigger.event_id])
+        restored_plan = ctrl.entry_plan.to_dict()
+        restored_plan['ledger_seq'] = prior_plan['ledger_seq']
+        restored_plan['ledger_digest'] = prior_plan['ledger_digest']
+        self.assertEqual(restored_plan, prior_plan)
+        self.assertEqual(ctrl.state().current.table.players['玩家1'].hands[0].ranks, ['T'])
+        self.assertEqual(ctrl.state().current.shoe.physical_remaining(), 414)
         for _ in range(5):
             self.app.refresh_all()
         recovered = self.recover()
         self.assertEqual(recovered.ledger.to_list(), before)
-        self.assertFalse(recovered.simple_hole_active())
+        self.assertTrue(recovered.simple_hole_active())
         self.assertEqual(recovered.state().current.shoe.unrevealed_out, 0)
-        self.assertEqual(self.app.ctrl.ledger.to_list(), before)
+        self.assertEqual(recovered.entry_plan.to_dict(), ctrl.entry_plan.to_dict())
+        self.app._key_rank('7')
+        self.assertEqual(ctrl.state().current.table.players['玩家1'].hands[0].ranks, ['T', '7'])
+        self.assertEqual(len(self.hidden()), 1)
+        self.assertNotEqual(self.hidden()[0].event_id, hole.event_id)
+        self.assertEqual(ctrl.ledger.to_list()[:-2], before)
+        self.assertEqual(ctrl.state().current.shoe.physical_remaining(), 412)
+        self.assertEqual(self.errors, [])
+
+    def test_legacy_auto_hole_receipt_still_rewinds_verified_input_after_restart(self):
+        self.prepare()
+        self.app._key_rank('T'); self.app._key_rank('6')
+        ctrl = self.app.ctrl
+        original_dump = json.dumps
+        def legacy_dump(data, *args, **kwargs):
+            if isinstance(data, dict) and 'automatic_hole_undo_v1' in data:
+                data = {key: value for key, value in data.items() if key != 'automatic_hole_undo_v1'}
+            return original_dump(data, *args, **kwargs)
+        with patch('blackjack_lab.ui.controller.json.dumps', side_effect=legacy_dump):
+            self.app._key_rank('6')
+        before = ctrl.ledger.to_list()
+        trigger, hole = ctrl.ledger.events[-2:]
+        self.assertNotIn('automatic_hole_undo_v1', json.loads(hole.evidence))
+        recovered = self.recover()
+        self.assertEqual(undo_label(recovered), '撤销本次录牌及自动暗牌')
+        recovered.undo_last()
+        self.assertEqual(recovered.ledger.to_list()[:-2], before)
+        self.assertEqual([event.payload['target_event_id'] for event in recovered.ledger.events[-2:]],
+                         [hole.event_id, trigger.event_id])
+        self.assertEqual(recovered.entry_plan.next_card_text(), '下一张给：玩家1，第2张')
+        self.assertFalse(recovered.entry_plan.paused)
+        self.assertEqual(recovered.state().current.table.players['玩家1'].hands[0].ranks, ['T'])
+        self.assertEqual(recovered.state().current.shoe.unrevealed_out, 0)
+        recovered.deal_shown('玩家1', '7', initial_slot_id=recovered.entry_plan.slot().slot_id)
+        self.assertEqual(recovered.state().current.table.players['玩家1'].hands[0].ranks, ['T', '7'])
+        self.assertEqual(recovered.state().current.shoe.unrevealed_out, 1)
+
+    def test_seven_seat_group_undo_changes_only_last_players_second_card(self):
+        self.prepare(players=7)
+        for rank in ['T'] * 7 + ['6'] + ['6'] * 6:
+            self.app._key_rank(rank)
+        ctrl = self.app.ctrl
+        prior_plan = ctrl.entry_plan.to_dict()
+        last_seat = ctrl.entry_plan.slot().seat
+        before_cards = {name: seat.hands[0].ranks for name, seat in ctrl.state().current.table.players.items()}
+        before_ledger = ctrl.ledger.to_list()
+        remaining = ctrl.state().current.shoe.physical_remaining()
+        self.app._key_rank('7')
+        trigger, hole = ctrl.ledger.events[-2:]
+        self.assertEqual(undo_label(ctrl), '撤销本次录牌及自动暗牌')
+        self.app.act_undo()
+        self.assertEqual(ctrl.ledger.to_list()[:-2], before_ledger + [trigger.to_dict(), hole.to_dict()])
+        self.assertEqual({name: seat.hands[0].ranks for name, seat in ctrl.state().current.table.players.items()}, before_cards)
+        restored = ctrl.entry_plan.to_dict()
+        restored['ledger_seq'], restored['ledger_digest'] = prior_plan['ledger_seq'], prior_plan['ledger_digest']
+        self.assertEqual(restored, prior_plan)
+        self.assertEqual(ctrl.state().current.shoe.physical_remaining(), remaining)
+        self.app._key_rank('8')
+        current_cards = {name: seat.hands[0].ranks for name, seat in ctrl.state().current.table.players.items()}
+        self.assertEqual(current_cards, dict(before_cards, **{last_seat: ['T', '8']}))
+        self.assertEqual(ctrl.state().current.shoe.unrevealed_out, 1)
+        self.assertEqual(self.errors, [])
+
+    def test_manual_hole_is_never_grouped_with_previous_visible_input(self):
+        self.initial(simple=False)
+        ctrl = self.app.ctrl
+        before = ctrl.ledger.to_list()
+        hole = ctrl.ledger.events[-1]
+        self.assertIsNone(ctrl._automatic_hole_undo_group())
+        self.assertEqual(undo_label(ctrl), '撤销暗牌登记')
+        self.app.act_undo()
+        self.assertEqual(ctrl.ledger.to_list()[:-1], before)
+        self.assertEqual(ctrl.ledger.events[-1].payload['target_event_id'], hole.event_id)
+        self.assertEqual(ctrl.state().current.table.players['玩家1'].hands[0].ranks, ['T', '6'])
+        self.assertEqual(ctrl.state().current.shoe.unrevealed_out, 0)
+
+    def test_unbound_auto_hole_receipt_only_undoes_hidden_event(self):
+        self.prepare()
+        self.app._key_rank('T'); self.app._key_rank('6')
+        original_dump = json.dumps
+        def unbound_dump(data, *args, **kwargs):
+            if isinstance(data, dict) and 'automatic_hole_undo_v1' in data:
+                data = copy.deepcopy(data)
+                data['automatic_hole_undo_v1']['previous_plan']['ledger_digest'] = 'wrong-prefix'
+            return original_dump(data, *args, **kwargs)
+        with patch('blackjack_lab.ui.controller.json.dumps', side_effect=unbound_dump):
+            self.app._key_rank('6')
+        ctrl = self.app.ctrl
+        before = ctrl.ledger.to_list()
+        hole = ctrl.ledger.events[-1]
+        self.assertIsNone(ctrl._automatic_hole_undo_group())
+        self.assertEqual(undo_label(ctrl), '撤销自动暗牌（关联待核对）')
+        self.app.act_undo()
+        self.assertEqual(ctrl.ledger.to_list()[:-1], before)
+        self.assertEqual(ctrl.ledger.events[-1].payload['target_event_id'], hole.event_id)
+        self.assertEqual(ctrl.state().current.table.players['玩家1'].hands[0].ranks, ['T', '6'])
+        self.assertEqual(ctrl.state().current.shoe.unrevealed_out, 0)
+
+    def test_group_undo_failure_saves_neither_undo_and_preserves_plan(self):
+        self.initial()
+        ctrl = self.app.ctrl
+        before, plan = ctrl.ledger.to_list(), ctrl.entry_plan.to_dict()
+        with patch.object(ctrl.store, '_insert', side_effect=OSError('injected undo write failure')):
+            self.app.act_undo()
+        self.assertEqual(ctrl.ledger.to_list(), before)
+        self.assertEqual(ctrl.entry_plan.to_dict(), plan)
+        self.assertEqual(ctrl.store.load_ledger(ctrl.session_id).to_list(), before)
+        self.assertEqual(len(self.errors), 1)
+        self.errors.clear()
+        self.app.act_undo()
+        self.assertEqual([event.etype for event in ctrl.ledger.events[-2:]], ['UNDO', 'UNDO'])
+        self.assertEqual(ctrl.state().current.table.players['玩家1'].hands[0].ranks, ['T'])
+        self.assertEqual(self.errors, [])
+
+    def test_group_undo_retains_explicit_pause_until_user_resumes(self):
+        self.initial()
+        self.app._key_pause()
+        self.app.act_undo()
+        ctrl = self.app.ctrl
+        self.assertTrue(ctrl.entry_plan.input_paused)
+        self.assertEqual(ctrl.entry_plan.next_card_text(), '下一张给：玩家1，第2张')
+        before = ctrl.ledger.to_list()
+        self.app._key_rank('7')
+        self.assertEqual(ctrl.ledger.to_list(), before)
+        self.errors.clear()
+        self.app._key_pause()
+        self.app._key_rank('7')
+        self.assertEqual(ctrl.state().current.table.players['玩家1'].hands[0].ranks, ['T', '7'])
+        self.assertEqual(ctrl.state().current.shoe.unrevealed_out, 1)
+        self.assertEqual(self.errors, [])
 
     def test_undo_reveal_restores_same_unknown_physical_card(self):
         self.initial()
@@ -391,7 +536,9 @@ class TestSimpleHoleEntry(unittest.TestCase):
         self.assertTrue(view.simple_toggle.winfo_ismapped())
         self.app.act_undo()
         self.app.update()
-        self.assertTrue(view.hole_button.winfo_ismapped())
+        self.assertFalse(view.hole_button.winfo_ismapped())
+        self.assertEqual(self.app.ctrl.entry_plan.next_card_text(), '下一张给：玩家1，第2张')
+        self.assertTrue(self.app.ctrl.simple_hole_active())
 
     def test_manual_and_simple_probabilities_and_state_are_identical(self):
         self.initial()

@@ -121,11 +121,13 @@ class AnalysisPanel(ttk.Frame):
             identity, textvariable=self.app.var_analysis_target, state="readonly", width=8,
             values=[player_seat_name(i) for i in range(1, 8)])
         self.cmb_analysis_target.pack(side=tk.LEFT, padx=3)
+        self.cmb_analysis_target.bind('<<ComboboxSelected>>', self.app._finish_analysis_selection)
         ttk.Label(identity, text="手牌").pack(side=tk.LEFT)
         self.cmb_analysis_hand = ttk.Combobox(
             identity, textvariable=self.app.var_analysis_hand, state="readonly", width=18,
             values=["（按顺序行动手）", "（最新一手）"])
         self.cmb_analysis_hand.pack(side=tk.LEFT, padx=3)
+        self.cmb_analysis_hand.bind('<<ComboboxSelected>>', self.app._finish_analysis_selection)
         ttk.Label(self, textvariable=self.status, wraplength=300).grid(row=2, column=0, sticky="w", padx=3)
         ttk.Label(self, textvariable=self.persistence, wraplength=300, foreground="#555").grid(row=3, column=0, sticky="w", padx=3)
         body = ttk.Frame(self)
@@ -192,6 +194,11 @@ class AnalysisPanel(ttk.Frame):
         message = self.app.recording_advice_pause()
         if not message:
             return
+        if getattr(self, '_recording_pause_state', None) is None:
+            self._recording_pause_state = dict(key=self._live_key(), context=self.context_key,
+                request_id=self.request_id, status=self.status.get(),
+                text=self.text.get('1.0', 'end-1c'), disabled=self.compute_button.instate(['disabled']),
+                auto_armed=self._auto_id is not None)
         self._cancel_auto()
         if self.status.get() == message:
             return
@@ -200,12 +207,35 @@ class AnalysisPanel(ttk.Frame):
         self.status.set(message)
         self._set_text(message + '。上次结果仍保留，非当前判断；已保存历史与待保存结果不受影响。')
 
+    def resume_recording(self):
+        """Restore advice only after the UI has proved an unchanged saved prefix."""
+        if self._closed or self.app.recording_advice_pause():
+            return
+        saved, self._recording_pause_state = getattr(self, '_recording_pause_state', None), None
+        key = self._live_key()
+        if (saved and saved['key'] == saved['context'] == self.context_key == key
+                and saved['request_id'] == self.request_id):
+            self.status.set(saved['status'])
+            self.compute_button.state(['disabled'] if saved['disabled'] else ['!disabled'])
+            self._set_text(saved['text'])
+            if (saved['auto_armed'] and self.auto.get() and not self.recomputed_from
+                    and key != self._auto_suppressed_key and self._auto_id is None):
+                self._auto_id = self.after(250, self._run_auto)
+        elif key == self._auto_suppressed_key and self.request_id is None:
+            self.status.set('已取消：可继续录入或重新计算')
+            self.compute_button.state(['!disabled'] if self.current_input else ['disabled'])
+            self._set_text('')
+        else:
+            self.context_key = None
+            self.on_context(self.app._current_seg())
+
     def context_changed(self, *_args):
         """Synchronous post-commit / target notification, before any general redraw."""
         if self._closed or self._live_key() == self.context_key:
             return
         self._updating_context = True
         try:
+            self._recording_pause_state = None
             self.current_input = None
             self.unavailable_code = None
             self._cancel_auto()
@@ -363,6 +393,7 @@ class AnalysisPanel(ttk.Frame):
     def cancel(self, cancel_opening=True):
         if cancel_opening and hasattr(self.app, 'opening_estimate'):
             self.app.opening_estimate.cancel()
+        self._recording_pause_state = None  # Explicit cancellation replaces any paused display.
         self.request_snapshot = None
         self._cancel_auto()
         self._auto_suppressed_key = self._live_key()

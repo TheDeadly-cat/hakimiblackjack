@@ -90,6 +90,31 @@ class RecordingBackgroundUITests(unittest.TestCase):
         self.assertEqual(app.var_target.get(), '玩家1')
         self.assertEqual(self.errors, [])
 
+    def test_backspace_and_replacement_card_in_same_fifo_restore_one_user_input(self):
+        app = self.app
+        app._key_rank('T'); app._key_rank('6'); app._key_rank('6')
+        self.wait_saved()
+        ctrl = app.ctrl
+        before = ctrl.ledger.to_list()
+        trigger, hole = ctrl.ledger.events[-2:]
+        app.focus_force(); app.update()
+        for key in ('BackSpace', '7'):
+            app.event_generate('<KeyPress>', keysym=key, when='tail')
+            app.event_generate('<KeyRelease>', keysym=key, when='tail')
+        app.update()
+        self.wait_saved()
+        self.assertEqual(ctrl.ledger.to_list()[:len(before)], before)
+        appended = ctrl.ledger.events[len(before):]
+        self.assertEqual([event.etype for event in appended], ['UNDO', 'UNDO', 'CARD_DEALT', 'CARD_DEALT'])
+        self.assertEqual([event.payload['target_event_id'] for event in appended[:2]],
+                         [hole.event_id, trigger.event_id])
+        self.assertEqual(ctrl.state().current.table.players['玩家1'].hands[0].ranks, ['T', '7'])
+        self.assertEqual(ctrl.state().current.shoe.physical_remaining(), 412)
+        self.assertEqual(ctrl.state().current.shoe.unrevealed_out, 1)
+        self.assertEqual(ctrl.store.load_ledger(ctrl.session_id).to_list(), ctrl.ledger.to_list())
+        self.assertFalse(app._recording_faults)
+        self.assertEqual(self.errors, [])
+
     def test_pending_write_keeps_tk_alive_and_blocks_context_changes(self):
         app = self.app
         entered, release = threading.Event(), threading.Event()

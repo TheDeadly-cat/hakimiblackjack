@@ -26,7 +26,7 @@ class ReceiptPrefixSender:
         self.chain = self.prefix = None
 
     def encode(self, receipt, task):
-        if receipt is None or receipt.status != 'committed':
+        if receipt is None or receipt.status not in ('committed', 'rejected'):
             self.chain = self.prefix = None
             return receipt
         before, after = receipt.before, receipt.after
@@ -59,7 +59,7 @@ class ReceiptPrefixReceiver:
         receipt = packet.receipt
         known = self.reference(task)
         if (receipt.request_id != task.request_id or receipt.chain_id != task.chain_id
-                or receipt.status != 'committed' or receipt.before is not None
+                or receipt.status not in ('committed', 'rejected') or receipt.before is not None
                 or receipt.after is not None or packet.before_identity != _identity(known)
                 or type(packet.suffix) is not bytes or type(packet.after_identity) is not tuple
                 or len(packet.after_identity) != 3):
@@ -75,9 +75,17 @@ class ReceiptPrefixReceiver:
 
     def accepted(self, receipt, task):
         """Call only after independent full-ledger verification in the parent."""
-        if receipt.status != 'committed':
+        if receipt.status not in ('committed', 'rejected'):
             self.chain = self.prefix = None
             return
-        if task is None or receipt.before != self.reference(task):
+        if (task is None or receipt.request_id != task.request_id
+                or receipt.chain_id != task.chain_id
+                or receipt.before != self.reference(task)):
             raise ValueError('前缀回执与已核对的完整前缀不符')
+        if receipt.status == 'rejected' and (
+                task.operation != 'record_input' or receipt.after != receipt.before
+                or receipt.event_ids != () or not isinstance(receipt.error, str)
+                or not receipt.error or receipt.failure_path is not None
+                or receipt.archive_error is not None):
+            raise ValueError('未接收回执缺少无提交的完整前缀证明')
         self.chain, self.prefix = receipt.chain_id, receipt.after

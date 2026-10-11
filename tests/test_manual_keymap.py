@@ -16,6 +16,8 @@ class TestManualKeymap(unittest.TestCase):
         self.assertEqual(resolve("KP_1").rank, "A")
         self.assertEqual(resolve("7").rank, "7")
         self.assertEqual(resolve("a").rank, "A")
+        self.assertEqual(resolve("t").rank, TEN_BUCKET)
+        self.assertEqual(resolve("T").rank, TEN_BUCKET)
         self.assertIsNone(resolve("End"))
         self.assertIsNone(resolve("Left"))
 

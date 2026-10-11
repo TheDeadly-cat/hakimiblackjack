@@ -1,9 +1,16 @@
 """Resolve queued recording input against the preceding durable result, without Tk."""
 from ..core.table import DEALER, TableError
-from ..ledger.ledger import LedgerError
 from .automatic_flow import dealer_finish_message
 from .deal_entry import (MODE_INITIAL, MODE_MANUAL, MODE_CONTINUATION,
                          MODE_DEALER, MODE_PEEK_WAIT, MODE_UNALIGNED, next_open_hand)
+
+
+class RecordingInputRejected(TableError):
+    """An explicit input-stage refusal before any persistent command is called.
+
+    The owner must still prove that the complete durable and in-memory prefixes
+    are unchanged. This type alone is never evidence of a rollback.
+    """
 
 
 def _hand_id(seg, seat, selection):
@@ -33,7 +40,7 @@ def _record_input(ctrl, intent):
     kind, selection = intent['kind'], intent['selection']
     plan, seg = ctrl.entry_plan, ctrl.state().current
     if seg is None:
-        raise LedgerError('请先新建牌靴')
+        raise RecordingInputRejected('请先新建牌靴')
     seat = selection['seat']
     hand_id = _hand_id(seg, seat, selection)
     revealing = selection['mode'] == '揭示'
@@ -47,33 +54,40 @@ def _record_input(ctrl, intent):
             hand_id = plan.continuation_hand_id if seat != DEALER else None
             if not hand_id:
                 hand_id = _hand_id(seg, seat, dict(selection, hand_id=None, hand_mode='acting'))
-    automatic_target = (ctrl.recording_dealer_route(seat, hand_id)
-                        if kind in ('rank', 'card') and not revealing else None)
+    try:
+        # This is a read-only routing query, before deal/reveal is invoked.
+        automatic_target = (ctrl.recording_dealer_route(seat, hand_id)
+                            if kind in ('rank', 'card') and not revealing else None)
+    except TableError as error:
+        raise RecordingInputRejected(str(error)) from error
     if kind not in ('peek', 'undo'):
         if plan and (plan.input_paused or kind in ('rank', 'card', 'hole') and plan.mode == MODE_UNALIGNED):
-            raise TableError('录入已暂停；请先核对已保存记录，不要重复录牌')
+            raise RecordingInputRejected('录入已暂停；请先核对已保存记录，不要重复录牌')
         if plan and plan.mode == MODE_PEEK_WAIT and not revealing and not automatic_target:
-            raise TableError('等待实际庄家检查结果，不能继续录入玩家牌')
+            raise RecordingInputRejected('等待实际庄家检查结果，不能继续录入玩家牌')
         if (plan and plan.mode == MODE_CONTINUATION and plan.initial_complete()
                 and (kind == 'action' or not revealing)):
             acting = next_open_hand(seg.table, plan.participating_seats)
             if acting and (seat, hand_id) != acting[:2]:
-                raise TableError(f'当前实际行动位置：{acting[0]}／第{acting[2]}手；导航不会提前行动')
+                raise RecordingInputRejected(f'当前实际行动位置：{acting[0]}／第{acting[2]}手；导航不会提前行动')
     slot_id = None
     if kind in ('rank', 'card') and not revealing and plan and plan.mode in (MODE_INITIAL, MODE_MANUAL):
         slot = plan.slot()
         if slot and slot.expected_face != 'shown':
-            raise TableError('当前槽位是庄家暗牌，不能用点值键代替暗牌确认')
+            raise RecordingInputRejected('当前槽位是庄家暗牌，请按“暗牌 .”确认底牌已发，再继续录入')
         if slot and slot.slot_id not in plan.filled_slots:
             if not plan.paused:
-                slot = plan.accept_shown_on_cursor()
+                try:
+                    slot = plan.accept_shown_on_cursor()
+                except ValueError as error:
+                    raise RecordingInputRejected(str(error)) from error
                 seat, hand_id, slot_id = slot.seat, None, slot.slot_id
             elif slot.seat == seat:
                 slot_id = slot.slot_id
     if kind in ('rank', 'card'):
         rank = intent['rank']
         if seat == DEALER and not revealing and dealer_finish_message(seg.table):
-            raise TableError(dealer_finish_message(seg.table) + '；请核对本轮记录，不再追加庄家牌')
+            raise RecordingInputRejected(dealer_finish_message(seg.table) + '；请核对本轮记录，不再追加庄家牌')
         if revealing or automatic_target:
             target_id = automatic_target
             if not target_id:
@@ -84,11 +98,11 @@ def _record_input(ctrl, intent):
                 if selected_id in candidates:
                     target_id = selected_id
                 elif len(candidates) > 1:
-                    raise TableError('此手有多张未知牌，请在时间线选中原发牌事件')
+                    raise RecordingInputRejected('此手有多张未知牌，请在时间线选中原发牌事件')
                 elif candidates:
                     target_id = candidates[0]
             if not target_id:
-                raise TableError('该手牌没有待揭示的暗牌/未知牌')
+                raise RecordingInputRejected('该手牌没有待揭示的暗牌/未知牌')
             ctrl.reveal(target_id, rank, selection['suit'], auto_next=intent['auto_next'])
             message = f'暗牌揭示为 {rank}（原牌不重复扣除）'
         else:
@@ -98,8 +112,11 @@ def _record_input(ctrl, intent):
     elif kind in ('hole', 'hidden', 'unknown'):
         if kind == 'hole':
             if plan is None:
-                raise TableError('尚未冻结本轮发牌计划')
-            slot = plan.accept_hole_on_cursor()
+                raise RecordingInputRejected('尚未冻结本轮发牌计划')
+            try:
+                slot = plan.accept_hole_on_cursor()
+            except ValueError as error:
+                raise RecordingInputRejected(str(error)) from error
             seat, hand_id = slot.seat, None
         if kind == 'unknown':
             ctrl.deal_unknown(seat, hand_id)
@@ -109,8 +126,14 @@ def _record_input(ctrl, intent):
             message = '已登记暗牌存在，待揭示'
     elif kind == 'action':
         if not hand_id:
-            raise TableError('目标座位还没有手牌')
-        ctrl.player_action(seat, hand_id, intent['action'])
+            raise RecordingInputRejected('目标座位还没有手牌')
+        # Check only the existing read-only legality projection. Do not catch
+        # errors from player_action, which may include a durable write.
+        states = seg.table.action_states(seat, hand_id)
+        action = intent['action']
+        if action in states and not states[action].allowed:
+            raise RecordingInputRejected(f'{action} 不被允许：{states[action].reason}')
+        ctrl.player_action(seat, hand_id, action)
         message = f'已保存动作：{intent["action"]}'
     elif kind == 'peek':
         ctrl.peek_negative()

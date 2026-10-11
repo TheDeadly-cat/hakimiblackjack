@@ -79,7 +79,8 @@ class CompactPanel(tk.Frame):
         self.seat.pack(side=tk.LEFT, padx=4)
         self.hand = ttk.Combobox(selectors, width=22, state='readonly', textvariable=app.var_analysis_hand)
         self.hand.pack(side=tk.LEFT)
-        self.seat.bind('<<ComboboxSelected>>', lambda e: app.refresh_all())
+        self.seat.bind('<<ComboboxSelected>>', app._finish_analysis_selection)
+        self.hand.bind('<<ComboboxSelected>>', app._finish_analysis_selection)
         self.compute = ttk.Button(selectors, text='计算', width=7, command=self.panel.calculate_current)
         self.compute.pack(side=tk.LEFT, padx=(12, 3))
         ttk.Button(selectors, text='取消', width=6, command=self.panel.cancel).pack(side=tk.LEFT)
@@ -658,6 +659,7 @@ class CompactPanel(tk.Frame):
                 self.flow_message.set(self.flow_message.get() + '\n' + text)
         commands = {'review': self.app.show_workbench, 'new_shoe': self.app.act_new_shoe, 'start': self.app.act_new_round,
                     'resume': self.app._key_pause, 'peek': self.app.act_peek_negative,
+                    'hole': self.app._key_hole,
                     'next': lambda rid=flow.round_id: self.app.act_complete_and_next(rid)}
         if flow.command:
             self.flow_primary.configure(text=flow.label, command=commands[flow.command])

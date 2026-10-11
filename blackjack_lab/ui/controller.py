@@ -405,13 +405,15 @@ class SessionController:
     def deal_shown(self, seat, rank, hand_id=None, suit=None, track_id=None, confirm_status=CONFIRMED,
                    *, initial_slot_id=None, auto_next=None):
         if self._should_add_initial_hole(seat, hand_id, initial_slot_id, confirm_status):
+            previous_plan = self.entry_plan.to_dict()
             candidate = self._command_candidate()
             visible = candidate.deal(seat, rank, hand_id=hand_id, suit=suit, track_id=track_id,
                                      confirm_status=confirm_status, source=self.recording_source)
             hidden = candidate.deal(DEALER, hidden=True, source=self.recording_source,
                 evidence=json.dumps({'recording_contract': SIMPLE_HOLE_CONTRACT,
                     'basis': '按已确认初始发牌流程自动登记，仅确认未知底牌存在，不表示已观察到牌面',
-                    'trigger_event_id': visible.event_id}, ensure_ascii=False))
+                    'trigger_event_id': visible.event_id,
+                    'automatic_hole_undo_v1': {'previous_plan': previous_plan}}, ensure_ascii=False))
             # Both events are appended in the existing SQLite transaction. No
             # partial hand/hole publication if either insert fails.
             self.store.append_validated(candidate)
@@ -584,6 +586,10 @@ class SessionController:
         group = self._shoe_undo_group()
         default_reason = '撤回换靴及自动结束的旧轮' if group else '撤回最后录牌及其自动结算、开轮'
         group = group or self._automatic_undo_group()
+        if not group:
+            group = self._automatic_hole_undo_group()
+            if group:
+                default_reason = '撤回本次录牌及其自动暗牌'
         if group:
             events, plan = group
             # Undo changes the recorded round, not the user's explicit input pause.
@@ -605,6 +611,98 @@ class SessionController:
             self._accept_committed(candidate, undos, restore)
             return undos[-1]
         return self._apply("undo_last", reason)
+
+    def _automatic_hole_undo_group(self):
+        """Undo one verified visible input together with its automatic hole.
+
+        Independent/manual hidden cards remain individual events. Old automatic
+        receipts can restore only the fully bound initial slots; a missing or
+        ambiguous plan never supplies an inferred next seat.
+        """
+        voided = self.ledger._voided_ids()
+        active = [e for e in self.ledger.events if e.etype != UNDO and e.event_id not in voided]
+        if len(active) < 2:
+            return None
+        trigger, hidden = active[-2:]
+        if (trigger.etype != CARD_DEALT or trigger.payload.get('face_state') != 'shown'
+                or trigger.payload.get('seat') == DEALER or hidden.etype != CARD_DEALT
+                or hidden.payload.get('face_state') != FACE_HIDDEN or hidden.payload.get('seat') != DEALER
+                or trigger.seq + 1 != hidden.seq
+                or (trigger.session_id, trigger.shoe_id, trigger.round_id) !=
+                   (hidden.session_id, hidden.shoe_id, hidden.round_id)):
+            return None
+        try:
+            receipt = json.loads(hidden.evidence or '{}')
+            plan, seg = self.entry_plan, self.state().current
+            if (receipt.get('recording_contract') != SIMPLE_HOLE_CONTRACT
+                    or receipt.get('trigger_event_id') != trigger.event_id
+                    or not plan or not seg or not plan.simple_hole or not self._simple_rules_confirmed(seg)
+                    or plan.paused or plan.unresolved_slots or not plan.initial_complete()
+                    or plan.mode not in (MODE_CONTINUATION, MODE_PEEK_WAIT, MODE_DEALER)
+                    or (plan.session_id, plan.shoe_id, plan.round_id) !=
+                       (self.session_id, hidden.shoe_id, hidden.round_id)
+                    or (seg.shoe_id, seg.round_id) != (hidden.shoe_id, hidden.round_id)
+                    or plan.ledger_seq != self.ledger.events[-1].seq
+                    or plan.ledger_digest != self.read_prefix().prefix_digest):
+                return None
+            frozen = RoundEntryPlan.freeze(session_id=plan.session_id, shoe_id=plan.shoe_id,
+                round_id=plan.round_id, selected_seats=plan.participating_seats,
+                my_seat=plan.my_seat, deal_direction=plan.deal_direction, simple_hole=True)
+            if plan.slots != frozen.slots or len(plan.slots) < 4:
+                return None
+            shown_slot, hole_slot = plan.slots[-2:]
+            live_ids = set(self.live_card_event_ids())
+            if (shown_slot.ordinal != 2 or shown_slot.seat != trigger.payload['seat']
+                    or plan.filled_slots.get(shown_slot.slot_id) != trigger.event_id
+                    or plan.filled_slots.get(hole_slot.slot_id) != hidden.event_id
+                    or set(plan.filled_slots.values()) != live_ids
+                    or set(plan.observed_card_ids) != live_ids):
+                return None
+            slot_events = [self.ledger._find(plan.filled_slots[slot.slot_id]) for slot in plan.slots]
+            if (slot_events != sorted(slot_events, key=lambda item: item.seq)
+                    or any(event.etype != CARD_DEALT or event.round_id != hidden.round_id
+                           or event.payload.get('seat') != slot.seat
+                           or event.payload.get('face_state') != slot.expected_face
+                           for slot, event in zip(plan.slots, slot_events))):
+                return None
+            prefix = [e.to_dict() for e in self.ledger.events if e.seq < trigger.seq]
+            if not prefix:
+                return None
+            prefix_digest = digest(prefix)
+            saved = receipt.get('automatic_hole_undo_v1')
+            if saved is not None:
+                previous = RoundEntryPlan.from_dict(saved['previous_plan'])
+            else:
+                # Legacy receipts have an explicit trigger but no plan snapshot.
+                # Rebuild only their verified complete initial-slot prefix.
+                previous = frozen
+                for slot, event in zip(plan.slots[:-2], slot_events[:-2]):
+                    previous.mark_filled(slot.slot_id, event.event_id, event.payload.get('rank'), slot.expected_face)
+                previous.cursor_slot_id = shown_slot.slot_id
+                previous.dealer_up_rank = plan.dealer_up_rank
+                if previous.last_saved:
+                    current_cards = [card for seat in [seg.table.dealer, *seg.table.players.values()]
+                                     for hand in seat.hands for card in hand.cards]
+                    card = next(card for card in current_cards if card.event_id == previous.last_saved.event_id)
+                    previous.last_saved.rank = card.rank
+                previous.ledger_seq, previous.ledger_digest = prefix[-1]['seq'], prefix_digest
+            expected_filled = {sid: eid for sid, eid in plan.filled_slots.items()
+                               if eid not in (trigger.event_id, hidden.event_id)}
+            if (previous.mode != MODE_INITIAL or previous.paused or previous.input_paused
+                    or not previous.simple_hole or previous.unresolved_slots
+                    or (previous.session_id, previous.shoe_id, previous.round_id) !=
+                       (plan.session_id, plan.shoe_id, plan.round_id)
+                    or previous.slots != plan.slots or previous.participating_seats != plan.participating_seats
+                    or (previous.my_seat, previous.deal_direction) != (plan.my_seat, plan.deal_direction)
+                    or previous.filled_slots != expected_filled
+                    or set(previous.observed_card_ids) != set(expected_filled.values())
+                    or previous.unfilled_ids() != (shown_slot.slot_id, hole_slot.slot_id)
+                    or previous.cursor_slot_id != shown_slot.slot_id
+                    or previous.ledger_seq != prefix[-1]['seq'] or previous.ledger_digest != prefix_digest):
+                return None
+            return (hidden, trigger), previous
+        except (ValueError, KeyError, TypeError, AttributeError, StopIteration, TableError, LedgerError):
+            return None
 
     def _shoe_undo_group(self):
         voided = self.ledger._voided_ids()

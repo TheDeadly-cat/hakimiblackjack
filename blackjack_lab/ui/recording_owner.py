@@ -172,7 +172,7 @@ class RecordingOwner:
                 return
             with self.lock:
                 task = self.pending_tasks.get(receipt.request_id)
-            if receipt.status == 'committed' or isinstance(packet, PrefixDeltaReceipt):
+            if receipt.status in ('committed', 'rejected') or isinstance(packet, PrefixDeltaReceipt):
                 # Verify complete transported content off Tk. The opaque token
                 # is local to this parent owner and never crosses the pipe.
                 try:
@@ -192,10 +192,10 @@ class RecordingOwner:
                         receipt.before, receipt.after, str(error)) if task else (None, str(error)))
                     receipt = replace(receipt, status='unknown_commit_outcome', error=str(error),
                                       failure_path=path, archive_error=archive_error)
-            if receipt.status != 'committed':
+            if receipt.status not in ('committed', 'rejected'):
                 decoder.accepted(receipt, task)
             delivered.add(receipt.request_id)
-            if receipt.status != 'committed':
+            if receipt.status not in ('committed', 'rejected'):
                 with self.lock:
                     self.failed = True
             self.results.put(receipt)
@@ -261,8 +261,6 @@ class RecordingOwner:
                                                    submitted_at=task.submitted_at, started_at=started_at, finished_at=perf_counter())
                 except Exception as error:
                     chain_failed = True
-                    with self.lock:
-                        self.failed = True
                     # An exception alone cannot prove rollback. Preserve UNKNOWN
                     # if durable history changed or a readback is unavailable.
                     status = 'failed_before_commit' if operation_started else 'not_executed'
@@ -274,13 +272,31 @@ class RecordingOwner:
                             after = PrefixSnapshot.capture(actual)
                             if operation_started and after.content != before.content:
                                 status = 'unknown_commit_outcome'
+                            else:
+                                from .recording_commands import RecordingInputRejected
+                                if (task.operation == 'record_input'
+                                        and isinstance(error, RecordingInputRejected)
+                                        and after == before
+                                        and PrefixSnapshot.capture(controller.ledger) == before):
+                                    status = 'rejected'
                         else:
                             status = 'unknown_commit_outcome' if operation_started else 'not_executed'
                     except Exception:
                         status = 'unknown_commit_outcome' if operation_started else 'not_executed'
-                    failure_path, archive_error = self._archive_failure(task, status, before, after, str(error))
+                    if status == 'rejected':
+                        # A single refused input can be corrected immediately.
+                        # The rest of this already accepted chain is *not*
+                        # executed: its targets may depend on the refused card.
+                        # Each successor is retained by the not_executed path.
+                        failure_path = archive_error = None
+                    else:
+                        with self.lock:
+                            self.failed = True
+                        failure_path, archive_error = self._archive_failure(task, status, before, after, str(error))
                     receipt = RecordingReceipt(task.request_id, task.chain_id, status, before, after,
-                                               actual, state, None, (), str(error), failure_path=failure_path,
+                                               actual, state,
+                                               copy.deepcopy(controller.entry_plan) if status == 'rejected' else None,
+                                               (), str(error), failure_path=failure_path,
                                                archive_error=archive_error, submitted_at=task.submitted_at,
                                                started_at=started_at, finished_at=perf_counter())
                 self.results.put(receipt)

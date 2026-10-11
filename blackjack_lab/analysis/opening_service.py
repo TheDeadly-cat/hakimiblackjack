@@ -105,6 +105,10 @@ def _opening_worker(connection, data, request_id, samples, budget):
 
 class OpeningService(AnalysisService):
     """Reuse the established pipe, cancellation, timeout, and process release logic."""
+    # The recording UI already detaches these jobs into its owned JobReaper;
+    # preserve the opening/native-job lifetime and history-close contract.
+    deferred_release = False
+
     def start(self, snapshot, budget_seconds=20.0):
         snapshot.validate()
         if not math.isfinite(budget_seconds) or not 2 < budget_seconds <= 30:

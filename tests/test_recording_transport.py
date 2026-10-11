@@ -75,6 +75,40 @@ class RecordingTransportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ReceiptPrefixReceiver().decode(second, pairs[1][1])
 
+    def test_rejected_noop_keeps_the_verified_committed_prefix(self):
+        sender, receiver = ReceiptPrefixSender(), ReceiptPrefixReceiver()
+        original, task = self.receipts()[0]
+        self.accept(receiver, sender.encode(original, task), task)
+        refused_task = replace(task, request_id='refused', operation='record_input')
+        refused = replace(original, request_id='refused', status='rejected',
+                          before=original.after, after=original.after, event_ids=(),
+                          error='底牌槽请按暗牌确认')
+        packet = sender.encode(refused, refused_task)
+        self.assertIsInstance(packet, PrefixDeltaReceipt)
+        self.assertEqual(packet.suffix, b'')
+        restored = self.accept(receiver, packet, refused_task)
+        self.assertEqual(restored, refused)
+        self.assertEqual(receiver.prefix, original.after)
+
+    def test_rejected_status_cannot_hide_writes_or_forged_input_identity(self):
+        original, task = self.receipts()[0]
+        refused_task = replace(task, operation='record_input')
+        base = replace(original, status='rejected', before=self.base, after=self.base,
+                       event_ids=(), error='stage refusal')
+        bad_receipts = (
+            replace(base, after=original.after),
+            replace(base, event_ids=original.event_ids),
+            replace(base, request_id='another-request'),
+            replace(base, error=None),
+            replace(base, failure_path='unreviewed-input.json'),
+        )
+        for bad in bad_receipts:
+            with self.subTest(receipt=bad):
+                receiver = ReceiptPrefixReceiver()
+                with self.assertRaises(ValueError):
+                    receiver.accepted(bad, refused_task)
+                self.assertIsNone(receiver.prefix)
+
     def test_nonappend_change_uses_original_full_receipt_and_still_fails_parent_check(self):
         original, task = self.receipts()[0]
         changed = json.loads(original.after.content)

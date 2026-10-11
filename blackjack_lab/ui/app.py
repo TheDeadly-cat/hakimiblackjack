@@ -50,6 +50,7 @@ from .deal_entry import (
 from .manual_keymap import (
     KIND_DOUBLE, KIND_HIT, KIND_HOLE, KIND_JUMP, KIND_NEXT, KIND_PAUSE, KIND_PREV,
     KIND_RANK, KIND_SPLIT, KIND_STAND, KIND_UNDO, ManualKeyBinder, TEXT_WIDGETS,
+    resolve as resolve_manual_key,
 )
 from .table_modes import (
     BCLC, PRAGMATIC, MODE_LABELS, ModeSettings, TableModeStore, mode_for_rules, pragmatic_rules,
@@ -550,10 +551,25 @@ class BlackjackLabApp(tk.Tk):
             if self.grab_current() not in (None, self):
                 return False
             if widget.winfo_class() in TEXT_WIDGETS:
+                panel = getattr(self, 'compact_panel', None)
+                analysis = getattr(self, 'analysis_panel', None)
+                selectors = (getattr(self, 'cmb_hand', None),
+                             getattr(panel, 'seat', None), getattr(panel, 'hand', None),
+                             getattr(analysis, 'cmb_analysis_target', None),
+                             getattr(analysis, 'cmb_analysis_hand', None))
+                command = resolve_manual_key(getattr(event, 'keysym', ''), getattr(event, 'state', 0))
+                if (widget in selectors and str(widget.cget('state')) == 'readonly'
+                        and command and command.kind == KIND_UNDO):
+                    return True  # Read-only seat selection has no text to delete.
                 return False
         except tk.TclError:
             return False
         return True
+
+    def _finish_analysis_selection(self, _event=None):
+        self.refresh_all()
+        if not self._closing:
+            self.focus_set()
 
     def _on_recording_seat_clicked(self) -> None:
         if self.recording_guard():
@@ -572,6 +588,7 @@ class BlackjackLabApp(tk.Tk):
     def _on_recording_hand_clicked(self) -> None:
         if self.recording_guard():
             self._restore_recording_selection()
+            self.focus_set()
             return
         plan = self.ctrl.entry_plan
         seg = self._current_seg()
@@ -586,6 +603,7 @@ class BlackjackLabApp(tk.Tk):
                 self.fail(error)
         self.refresh_actions()
         self.refresh_entry_prompt()
+        self.focus_set()
 
     def _set_recording_target(self, seat: str, hand_label: str | None = None) -> None:
         self._syncing_target = True
@@ -657,6 +675,15 @@ class BlackjackLabApp(tk.Tk):
                 self.var_recording_save.set('本次输入未接收：' + message)
                 self.set_status(message)
                 return
+        if (not self.recording_busy and kind in ('rank', 'card')
+                and plan and plan.mode == MODE_INITIAL and not plan.paused
+                and self.var_mode.get() != '揭示'):
+            slot = plan.slot()
+            if slot and slot.expected_face != 'shown':
+                message = '当前是庄家底牌位置；请确认实际已发底牌后点“底牌已发 .”或按小数点。'
+                self.var_recording_save.set('本次点值未录入：' + message)
+                self.set_status(message)
+                return
         if kind == 'stand':
             kind, value = 'action', ACTION_STAND
         value = kwargs.get('rank', kwargs.get('action', value))
@@ -697,7 +724,10 @@ class BlackjackLabApp(tk.Tk):
             return
         if self.var_sidebet_suits.get() and kind in ('rank', 'card'):
             self.var_suit.set('未知')
-        self.var_recording_save.set(f'待保存 {len(self._recording_inputs)} 条输入 · 按录入顺序处理')
+        if kind == 'undo':
+            self.var_recording_save.set(f'已接收撤回 · 按顺序处理前面输入后回到上一步（队列 {len(self._recording_inputs)} 条）')
+        else:
+            self.var_recording_save.set(f'待保存 {len(self._recording_inputs)} 条输入 · 按录入顺序处理')
         self._pause_recording_advice()
         if self._recording_after is None:
             self._recording_after = self.after(20, self._poll_recording)
@@ -718,6 +748,7 @@ class BlackjackLabApp(tk.Tk):
             return
         receipts = owner.poll()
         commits = []
+        rejected = []
         for receipt in receipts:
             expected_id = next(iter(self._recording_inputs), None)
             intent = self._recording_inputs.pop(receipt.request_id, None)
@@ -726,6 +757,25 @@ class BlackjackLabApp(tk.Tk):
                     error='回执身份或输入顺序不符；需重新读取已保存记录', failure_path=None))
             elif receipt.status == 'committed' and not self._recording_faults:
                 commits.append(receipt)
+            elif receipt.status == 'rejected' and not self._recording_faults:
+                from .read_snapshot import PrefixSnapshot
+                try:
+                    context, ledger = self._recording_expected
+                    expected = commits[-1].after if commits else PrefixSnapshot.capture(self.ctrl.ledger)
+                    trusted = (receipt.verified_token is not None
+                               and receipt.verified_token is owner.verification_token) if owner.use_process else (
+                                   receipt.ledger is not None and PrefixSnapshot.capture(receipt.ledger) == expected)
+                    valid = (self.ctrl.context_token == context and self.ctrl.ledger is ledger
+                             and receipt.before == expected and receipt.after == expected and receipt.event_ids == ()
+                             and trusted and receipt.state is not None and isinstance(receipt.error, str)
+                             and bool(receipt.error) and receipt.failure_path is None and receipt.archive_error is None)
+                except Exception:
+                    valid = False
+                if not valid:
+                    self._recording_faults.append(dict(status='unknown_commit_outcome', intent=intent,
+                        error='输入拒绝回执与已保存前缀不符；需核对保存记录', failure_path=None))
+                else:
+                    rejected.append(receipt)
             else:
                 self._recording_faults.append(dict(status=receipt.status, intent=intent, error=receipt.error,
                     request_id=receipt.request_id, failure_path=receipt.failure_path, archive_error=receipt.archive_error))
@@ -759,6 +809,13 @@ class BlackjackLabApp(tk.Tk):
             self.var_recording_save.set(f'{len(self._recording_faults)} 条输入需要核对 · 点击“处理保存异常” · 不自动重试')
         elif self.recording_busy:
             self.var_recording_save.set(f'待保存 {len(self._recording_inputs)} 条输入 · 界面显示已保存部分')
+        elif rejected:
+            self.var_recording_save.set('本次输入未录入：' + rejected[-1].error)
+            self.set_status(rejected[-1].error)
+            if not self._closing:
+                self.analysis_panel.resume_recording()
+                self.opening_estimate.resume_recording()
+                self.refresh_all()
         elif receipts:
             self.var_recording_save.set(f'录牌已保存 · 事件 #{self.ctrl.ledger.events[-1].seq}')
         if self.recording_busy:
@@ -812,6 +869,8 @@ class BlackjackLabApp(tk.Tk):
 
     def _on_manual_command(self, command) -> None:
         if hasattr(self, 'compact_panel') and self.compact_panel.editor_open:
+            self.compact_panel.edit_error.set('正在改牌；请先保存或取消改牌，再继续录牌或撤回。')
+            self.set_status('正在改牌；请先保存或取消改牌，再继续录牌或撤回。')
             return  # Consume recording keys outside the editor without invoking buttons.
         dispatch = {
             KIND_RANK: lambda: self._key_rank(command.rank),

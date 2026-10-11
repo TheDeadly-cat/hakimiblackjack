@@ -1,6 +1,7 @@
 """Request isolation, bounded workers, and content/identity-checked publication."""
 import math
 import multiprocessing as mp
+import threading
 from time import perf_counter, time
 import uuid
 
@@ -120,9 +121,14 @@ def _peak_memory():
 
 class AnalysisService:
     """One replaceable process per request: no Tk blocking, no stale worker output."""
+    deferred_release = True
+
     def __init__(self):
         self.active = None
         self.result = None
+        self._retiring = None
+        self._retiring_job = None
+        self._retirement_error = None
 
     def start(self, snapshot, budget_seconds=5.0):
         snapshot.validate()
@@ -134,17 +140,28 @@ class AnalysisService:
         process = mp.get_context("spawn").Process(target=_worker,
             args=(send, snapshot.to_dict(), request_id, budget_seconds), daemon=True)
         self.active = {"id": request_id, "snapshot": snapshot, "start": perf_counter(),
-                       "budget": budget_seconds, "process": process, "pipe": receive}
+                       "budget": budget_seconds, "process": process, "pipe": receive,
+                       "started": False, "sender": send}
         self.result = None
         try:
-            process.start()
+            self._start_pending()
         except Exception:
-            self.active = None
-            receive.close()
+            self._release()
             raise
-        finally:
-            send.close()
         return request_id
+
+    def _start_pending(self):
+        job = self.active
+        if job is None or job.get('started', True):
+            return
+        if self._retiring is not None and self._retiring.is_alive():
+            return  # Keep one worker; this wait is included in the original budget.
+        if not self._retirement_complete():
+            raise RuntimeError('旧计算进程尚未确认停止，未启动新计算：' +
+                               (self._retirement_error or '回收未完成'))
+        job['process'].start()
+        job['started'] = True
+        job.pop('sender').close()
 
     def accept_result(self, result):
         job = self.active
@@ -165,6 +182,17 @@ class AnalysisService:
             self.result = result
             self._release()
             return result
+        if not job.get('started', True):
+            try:
+                self._start_pending()
+            except Exception as error:
+                result = base_result(job['snapshot'], job['id'])
+                result.update(status=FAILED, reason_code='WORKER_START_FAILED', reason=str(error))
+                self.result = result
+                self._release()
+                return result
+            if not job['started']:
+                return None
         if job["pipe"].poll():
             try:
                 result = job["pipe"].recv()
@@ -183,15 +211,91 @@ class AnalysisService:
         return None
 
     def _release(self):
-        if self.active:
-            process = self.active["process"]
+        job, self.active = self.active, None
+        if job is None:
+            return
+        process = job['process']
+        if not job.get('started', True):
+            # No worker was launched; a handle-close error cannot strand the
+            # caller or prevent the other owned handles from being released.
+            for resource in (job.pop('sender'), job['pipe'], process):
+                try:
+                    resource.close()
+                except Exception as error:
+                    self._record_retirement_error(error)
+            return
+        if not self.deferred_release:
             if process.is_alive():
                 process.terminate()
-            process.join(timeout=0.25)
-            self.active["pipe"].close()
+            process.join(timeout=.25)
+            job['pipe'].close()
             if not process.is_alive():
                 process.close()
-            self.active = None
+            return
+
+        # Retain ownership before signalling: a signal/launch failure must not
+        # lose the old worker or make a replacement appear safe to start.
+        self._retiring_job = job
+        job['worker_stopped'] = False
+        try:
+            if process.is_alive():
+                process.terminate()  # Invalidate immediately; waiting stays off Tk.
+        except Exception as error:
+            self._record_retirement_error(error)
+
+        def reap():
+            try:
+                process.join(timeout=.25)
+                while process.is_alive():
+                    process.kill()
+                    process.join(timeout=.25)
+            except Exception as error:
+                self._record_retirement_error(error)
+            try:
+                job['worker_stopped'] = not process.is_alive()
+            except Exception as error:
+                self._record_retirement_error(error)
+            if job['worker_stopped']:
+                # Failure to close a dead worker's pipe is diagnostic, not
+                # evidence that the worker remains alive. Attempt both closes.
+                for resource in (job['pipe'], process):
+                    try:
+                        resource.close()
+                    except Exception as error:
+                        self._record_retirement_error(error)
+
+        self._retiring = threading.Thread(target=reap, name='analysis-process-reaper', daemon=False)
+        try:
+            self._retiring.start()
+        except Exception as error:
+            self._record_retirement_error(error)
+
+    def _record_retirement_error(self, error):
+        message = f'{type(error).__name__}: {error}'
+        if not self._retirement_error:
+            self._retirement_error = message
+        elif message not in self._retirement_error:
+            self._retirement_error += '; ' + message
+
+    def _retirement_complete(self):
+        if self._retiring is not None and self._retiring.is_alive():
+            return False
+        job = self._retiring_job
+        if job is None or job.get('worker_stopped'):
+            return True
+        try:
+            job['worker_stopped'] = not job['process'].is_alive()
+        except Exception as error:
+            self._record_retirement_error(error)
+        return job['worker_stopped']
+
+    @property
+    def cleanup_error(self):
+        return self._retirement_error
+
+    @property
+    def stopped(self):
+        return self.active is None and self._retirement_complete()
 
     def cancel(self, status=CANCELLED):
         if self.active:
