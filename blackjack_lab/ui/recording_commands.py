@@ -41,6 +41,11 @@ def _record_input(ctrl, intent):
     plan, seg = ctrl.entry_plan, ctrl.state().current
     if seg is None:
         raise RecordingInputRejected('请先新建牌靴')
+    if (kind in ('rank', 'card', 'action') and intent['follow_plan']
+            and selection['mode'] != '揭示' and ctrl.bclc_ace_input_ready()):
+        return ctrl.record_bclc_ace_input(kind, rank=intent.get('rank'),
+                                        suit=selection['suit'], action=intent.get('action'),
+                                        auto_next=intent['auto_next'])
     seat = selection['seat']
     hand_id = _hand_id(seg, seat, selection)
     revealing = selection['mode'] == '揭示'

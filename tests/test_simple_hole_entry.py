@@ -427,8 +427,8 @@ class TestSimpleHoleEntry(unittest.TestCase):
         self.assertEqual(recovered.entry_plan.mode, MODE_UNALIGNED)
         self.assertFalse(recovered.entry_plan.simple_hole)
 
-    def test_unknown_non_us_or_midshoe_rules_cannot_enable_simple_mode(self):
-        for change in ({'start_from_new_shoe': False}, {'american_hole_card': False},
+    def test_unknown_non_us_or_peek_rules_cannot_enable_simple_mode(self):
+        for change in ({'american_hole_card': False},
                        {'confirm_status': CONFIRM_UNKNOWN}, {'check_bj_when': None}):
             with self.subTest(change=change):
                 self.app.ctrl.new_shoe(replace(research_rules(8), **change))

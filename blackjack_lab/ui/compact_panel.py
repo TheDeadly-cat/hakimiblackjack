@@ -1,5 +1,6 @@
 """Compact view of the existing AnalysisPanel request; no worker of its own."""
 import tkinter as tk
+import math
 from dataclasses import replace
 from tkinter import ttk
 
@@ -109,7 +110,7 @@ class CompactPanel(tk.Frame):
             action.grid(row=0, column=1, sticky='w')
             extra = self._label(row, '', font=('Microsoft YaHei UI', 9), surface=True)
             extra.grid(row=1, column=1, sticky='w')
-            profit = self._label(row, '净盈利 —', font=('Microsoft YaHei UI', 14), surface=True)
+            profit = self._label(row, '净盈利概率 —', font=('Microsoft YaHei UI', 14), surface=True)
             profit.grid(row=0, column=2, sticky='e')
             ev = self._label(row, 'EV —', font=('Consolas', 10), surface=True)
             ev.grid(row=1, column=2, sticky='e')
@@ -121,7 +122,7 @@ class CompactPanel(tk.Frame):
         self.seat_table = ttk.Treeview(self.seat_table_frame, columns=columns, show='headings',
                                        height=7, selectmode='browse', style='SeatOverview.Treeview')
         for column, heading, width in zip(columns,
-                ('玩家', '牌面', 'EV第1·净盈利', 'EV第2·净盈利', '第1 EV', '状态'),
+                ('玩家', '牌面', 'EV第1·净盈率', 'EV第2·净盈率', '第1 EV', '状态'),
                 (50, 85, 120, 120, 85, 70)):
             self.seat_table.heading(column, text=heading)
             self.seat_table.column(column, width=width, minwidth=40)
@@ -414,6 +415,46 @@ class CompactPanel(tk.Frame):
             self.render_table_mode()
             self._render()
 
+    @staticmethod
+    def hit_bust_text(result, model):
+        """Use only the current main result, with its applicability status."""
+        if not model.choices or not result or result.get('status') != 'available':
+            return f'补牌爆牌率 —（{model.state}）'
+        statuses = result.get('probability_status') or {}
+        status = statuses.get('hit_bust', statuses.get('next_target_draw'))
+        if status == 'inapplicable':
+            return '补牌爆牌率 —（当前无此合法动作）'
+        value = (result.get('probabilities') or {}).get('hit_bust')
+        if (status in (None, 'available') and isinstance(value, (int, float))
+                and not isinstance(value, bool) and math.isfinite(value) and 0 <= value <= 1):
+            return f'补牌爆牌率 {value:.2%}'
+        return '补牌爆牌率 —（此结果未提供）'
+
+    def render_choices(self, model, result=None, multi=False):
+        """Keep the two EV/probability slots visible even without numbers."""
+        self.empty_result.grid_remove()
+        bust_text = self.hit_bust_text(result, model)
+        for i, (row, rank, action, extra, profit, ev) in enumerate(self.rows):
+            if multi:
+                row.grid_remove()
+            else:
+                row.grid()
+            if i >= len(model.choices):
+                rank.configure(text=f'EV第{i + 1}')
+                action.configure(text='—', fg=PALETTE['muted'])
+                extra.configure(text=('无第2个可用动作' if model.choices else model.state)
+                                + (' · ' + bust_text if i == 0 else ' · 净盈利概率按最终净额>0计算'))
+                profit.configure(text='净盈利概率 —')
+                ev.configure(text='EV —')
+                continue
+            choice = model.choices[i]
+            rank.configure(text=f'EV第{i + 1}\n{choice.rank_label}')
+            action.configure(text=choice.label, fg=PALETTE['accent' if i == 0 else 'ink'])
+            note = bust_text if i == 0 else '净盈利概率按最终净额>0计算'
+            extra.configure(text=(f'追加 {choice.additional:g} 单位 · ' if choice.additional else '') + note)
+            profit.configure(text=f'净盈利概率 {choice.profit:.2%}')
+            ev.configure(text=f'{ev_sign(choice.ev)} {choice.ev:+.6f}')
+
     def pause_recording(self):
         """Withdraw advice without rebuilding the saved shoe or probabilities."""
         message = self.app.recording_advice_pause()
@@ -431,14 +472,10 @@ class CompactPanel(tk.Frame):
             self.state.set(self.model.state)
             self.message.set(message)
             self.notes.set('已保存牌面仍保留；等待一致回执和最新判断。')
-            self.decision_evs.set('')
-            self.empty_result.grid()
+            self.decision_evs.set('各动作EV：等待录牌保存状态确认')
             self.seat_table_frame.grid_remove()
             self.compute.state(['disabled'])
-            for row, rank, action, extra, profit, ev in self.rows:
-                row.grid_remove()
-                rank.configure(text=''); action.configure(text='—')
-                extra.configure(text=''); profit.configure(text='净盈利 —'); ev.configure(text='EV —')
+            self.render_choices(self.model)
         self.flow_message.set(message + '；保险与庄家BJ的当前数值同样暂停。')
         self.flow_primary.state(['disabled'])
         if self.detail_window and self.detail_window.winfo_exists():
@@ -473,10 +510,10 @@ class CompactPanel(tk.Frame):
         self.state.set(model.state)
         self.message.set(model.message)
         self.notes.set(' '.join(model.notes))
-        self.decision_evs.set('' if pause else decision_evs(panel.last_result))
+        self.decision_evs.set('' if pause else decision_evs(panel.last_result if model.choices else None))
         multi = len(self.panel.overview.rows) > 1 and not model.historical and not pause
         if multi:
-            self.notes.set(NOTE)
+            self.notes.set('净盈率即净盈利概率：最终净额>0。' + NOTE)
             self.message.set(f'{self.app.var_analysis_target.get()}：' +
                              (model.message or '点“展开详情”查看全部动作。'))
         inactive = self.app.recording_inactive_message()
@@ -495,25 +532,10 @@ class CompactPanel(tk.Frame):
         self.remove_player.state(['disabled'] if count <= 1 else ['!disabled'])
         warning = model.partial or not model.choices
         self.status_label.configure(fg=PALETTE['caution' if warning else 'accent'])
-        (self.empty_result.grid_remove if model.choices or multi else self.empty_result.grid)()
         (self.seat_table_frame.grid if multi else self.seat_table_frame.grid_remove)()
         if multi:
             self.render_seats()
-        for i, (row, rank, action, extra, profit, ev) in enumerate(self.rows):
-            if multi or i >= len(model.choices):
-                row.grid_remove()
-                rank.configure(text='')
-                action.configure(text='—')
-                profit.configure(text='净盈利 —')
-                ev.configure(text='EV —')
-                continue
-            row.grid()
-            choice = model.choices[i]
-            rank.configure(text=choice.rank_label)
-            action.configure(text=choice.label, fg=PALETTE['accent' if i == 0 else 'ink'])
-            extra.configure(text=f'追加 {choice.additional:g} 单位' if choice.additional else '')
-            profit.configure(text=f'净盈利 {choice.profit:.2%}')
-            ev.configure(text=f'{ev_sign(choice.ev)} {choice.ev:+.6f}')
+        self.render_choices(model, panel.last_result, multi)
         self.hand.configure(values=panel.cmb_analysis_hand.cget('values'))
         self.compute.state(['disabled'] if panel.compute_button.instate(['disabled']) else ['!disabled'])
         if panel.recomputed_from:
@@ -644,6 +666,9 @@ class CompactPanel(tk.Frame):
     def render_flow(self):
         flow = self.flow = current_flow(self.app.ctrl, self.app._current_seg())
         message = flow.message if flow.stage != 'player' else self.app.var_legal.get().replace('\n', '；') or flow.message
+        ace_input = self.app.ctrl.bclc_ace_input_ready() and self.app.var_mode.get() != '揭示'
+        if ace_input:
+            message = '庄家A：0/J/Q/K记录庄家BJ；其他点值或 - / * 直接录入第一位玩家的操作。'
         if flow.stage in ('setup', 'start'):
             try:
                 rules = self.app._build_rules() if flow.stage == 'setup' else self.app._current_seg().rules
@@ -669,7 +694,7 @@ class CompactPanel(tk.Frame):
             self.flow_primary.grid_remove()
         (self.only_settle.grid if flow.stage == 'ready' else self.only_settle.grid_remove)()
         for button in self.action_buttons:
-            if flow.stage == 'player':
+            if flow.stage == 'player' or ace_input:
                 if not button.winfo_manager():
                     button.pack(side=tk.LEFT, padx=2)
             else:

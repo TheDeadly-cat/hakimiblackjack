@@ -16,6 +16,7 @@ import json
 from functools import wraps
 from contextlib import contextmanager
 from dataclasses import asdict
+from copy import deepcopy
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -900,6 +901,10 @@ class BlackjackLabApp(tk.Tk):
         if plan is None:
             return
         self.var_simple_hole.set(plan.simple_hole)
+        seg = self._current_seg()
+        if (plan.initial_complete() and seg and mode_for_rules(seg.rules) == BCLC
+                and seg.rules.version == 2 and self.table_mode_store):
+            self.var_simple_hole.set(self.table_mode_store.get(BCLC).simple_hole)
         if plan.participating_seats:
             for name, var in self.var_participants.items():
                 var.set(name in plan.participating_seats)
@@ -956,6 +961,8 @@ class BlackjackLabApp(tk.Tk):
     @tracked_operation
     def _key_rank(self, rank: str) -> None:
         try:
+            if self._try_bclc_ace_input('rank', rank):
+                return
             self._ensure_recording_enabled(key=True, card=True)
             plan = self.ctrl.entry_plan
             slot_id = None
@@ -1537,6 +1544,12 @@ class BlackjackLabApp(tk.Tk):
     def act_new_shoe(self) -> None:
         try:
             rules = self._build_rules()
+            if rules.n_decks == 8:
+                # The daily New Shoe entry follows the user's declared complete,
+                # unburned eight-deck protocol. Imported shoes keep their facts.
+                rules.start_from_new_shoe = True
+                rules.burn_cards_known = True
+                rules.initial_burn_count = 0
             expected = self.ctrl.context_token
             seg = self._current_seg()
             if seg and not seg.closed:
@@ -1546,6 +1559,7 @@ class BlackjackLabApp(tk.Tk):
                         f'旧牌靴和全部记录保留。按当前设置新建{rules.n_decks}副牌靴？', parent=self):
                     return
             self.ctrl.replace_shoe(rules, expected)
+            self._set_rule_form(rules)
             if self.table_mode_store:
                 settings = self._capture_table_mode()
                 try:
@@ -1643,9 +1657,27 @@ class BlackjackLabApp(tk.Tk):
         self.set_status('简便暗牌设置将在下一轮生效；本轮已保存记录不变。')
         self.compact_panel.render()
 
+    def _try_bclc_ace_input(self, kind, value):
+        if self.var_mode.get() == '揭示' or not self.ctrl.bclc_ace_input_ready():
+            return False
+        from .recording_commands import record_input
+        intent = dict(kind=kind, follow_plan=True, auto_next=self._automatic_next_options(),
+                      selection=dict(seat=self.var_target.get(), hand_id=None, hand_mode='acting',
+                                     mode=self.var_mode.get(), suit=self._suit()))
+        intent['action' if kind == 'action' else 'rank'] = value
+        outcome = record_input(self.ctrl, intent)
+        if outcome['round_changed']:
+            self.var_mode.set('新发牌')
+        self._sync_from_plan()
+        self.set_status(outcome['message'])
+        self.refresh_all()
+        return True
+
     @tracked_operation
     def act_card(self, rank: str) -> None:
         try:
+            if self._try_bclc_ace_input('card', rank):
+                return
             self._ensure_recording_enabled(card=True)
             finished = self.dealer_recording_finished()
             if finished:
@@ -1717,6 +1749,8 @@ class BlackjackLabApp(tk.Tk):
     @tracked_operation
     def act_action(self, action: str) -> None:
         try:
+            if self._try_bclc_ace_input('action', action):
+                return
             self._ensure_recording_enabled(action=True)
             seg = self._current_seg()
             if seg is None:
@@ -2053,12 +2087,19 @@ class BlackjackLabApp(tk.Tk):
         if seg is None:
             self.var_legal.set("尚未创建牌靴")
             return
+        action_table, action_seat = seg.table, self.var_target.get()
         hand_id = self._selected_hand_id(seg)
+        if self.ctrl.bclc_ace_input_ready() and self.var_mode.get() != '揭示':
+            action_table = deepcopy(seg.table)
+            action_table.mark_peek_negative()
+            acting = next_open_hand(action_table, self.ctrl.entry_plan.participating_seats)
+            if acting:
+                action_seat, hand_id = acting[:2]
         if not hand_id:
             self.var_legal.set("该座位尚无手牌")
             return
         try:
-            states = seg.table.action_states(self.var_target.get(), hand_id)
+            states = action_table.action_states(action_seat, hand_id)
             lines = list(dict.fromkeys(item.reason for item in states.values() if not item.allowed))[:2]
             self.var_legal.set("\n".join(lines))
             enabled = {self.btn_stand: states[ACTION_STAND].allowed,

@@ -265,7 +265,7 @@ class RoundEntryPlan:
         peek = bool(requires_peek(self.dealer_up_rank)) if requires_peek else False
         if peek:
             self.mode = MODE_PEEK_WAIT
-            self.pause_reason = "庄家明牌为A或十点，等待实际检查结果；未写入确认非BJ"
+            self.pause_reason = f"庄家明牌为{self.dealer_up_rank}，等待实际检查结果；未写入确认非BJ"
         else:
             self.enter_continuation()
 

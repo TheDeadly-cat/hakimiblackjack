@@ -18,6 +18,9 @@ class TestManualKeymap(unittest.TestCase):
         self.assertEqual(resolve("a").rank, "A")
         self.assertEqual(resolve("t").rank, TEN_BUCKET)
         self.assertEqual(resolve("T").rank, TEN_BUCKET)
+        for key in ('j', 'J', 'q', 'Q', 'k', 'K'):
+            self.assertEqual(resolve(key).rank, TEN_BUCKET)
+            self.assertIsNone(resolve(key, state=0x0004))
         self.assertIsNone(resolve("End"))
         self.assertIsNone(resolve("Left"))
 

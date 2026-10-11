@@ -79,6 +79,15 @@ def _strict_undo_label(ctrl):
         return '撤销换靴'
     if event.etype == 'ROUND_STARTED' and ctrl._automatic_undo_group():
         return '撤销录牌及自动下一局'
+    if event.etype == 'CORRECTION' and event.payload.get('target_etype') == 'SHOE_CREATED':
+        return '撤销新靴事实确认'
+    if event.etype in (CARD_DEALT, 'PLAYER_ACTION'):
+        try:
+            receipt = json.loads(event.evidence or '{}')
+        except (ValueError, TypeError):
+            receipt = {}
+        if isinstance(receipt, dict) and receipt.get('bclc_ace_input_v1') and ctrl._bclc_ace_undo_group():
+            return '撤销本次玩家输入及非BJ确认'
     if event.etype == CARD_REVEALED:
         return '撤销底牌揭示' if ctrl.ledger._find(event.payload['target_event_id']).payload.get('face_state') == 'hidden' else '撤销未知牌揭示'
     if event.etype == CARD_DEALT:

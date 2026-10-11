@@ -49,12 +49,17 @@ class SidebetView:
         self.frame=ttk.Frame(parent);self.frame.pack(fill=tk.X,pady=(3,0))
         self.frame.columnconfigure(0,weight=1)
         self.lines={name:tk.StringVar(value='') for name in CATEGORIES}
+        self.line_labels={}
         for row,(name,var) in enumerate(self.lines.items()):
-            ttk.Label(self.frame,textvariable=var,wraplength=620).grid(row=row,column=0,columnspan=3,sticky='w')
+            label=ttk.Label(self.frame,textvariable=var,wraplength=620)
+            label.grid(row=row,column=0,columnspan=3,sticky='w')
+            self.line_labels[name]=label
         controls=ttk.Frame(self.frame);controls.grid(row=2,column=0,columnspan=3,sticky='ew')
         self.toggle=ttk.Checkbutton(controls,text='边注研究',variable=self.enabled,command=self.change_enabled)
         self.toggle.pack(side=tk.LEFT)
-        if not self.research_allowed:self.toggle.state(['disabled'])
+        if not self.research_allowed:
+            self.toggle.state(['disabled'])
+            self.toggle.pack_forget()
         ttk.Button(controls,text='边注历史 / 原配置',command=self.show_details).pack(side=tk.LEFT,padx=5)
         self.pending_label=tk.StringVar()
         ttk.Label(controls,textvariable=self.pending_label).pack(side=tk.LEFT)
@@ -271,11 +276,13 @@ class SidebetView:
         if self.research_allowed and self.app.recording_advice_pause():
             self.pause_recording();return
         if not self.live_enabled():
+            for label in self.line_labels.values():label.grid_remove()
             for var in self.lines.values():var.set('牌型边注已停用；历史、原配置及未保存结果保留')
             with self._lock:pending=len(self.pending_saves)
             self.pending_label.set(f'{pending}条已计算、未保存' if pending else '')
             if self.details is not None and self.details.winfo_exists():self.details.render()
             return
+        for label in self.line_labels.values():label.grid()
         seat=self.app.var_analysis_target.get();forecast=self.forecasts.get(seat)
         for name,var in self.lines.items():
             title='Perfect Pairs' if name=='perfect_pairs' else '21+3'

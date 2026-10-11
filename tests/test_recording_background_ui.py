@@ -233,7 +233,7 @@ class RecordingBackgroundUITests(unittest.TestCase):
         app = self.app
         app.select_table_mode('bclc')
         from blackjack_lab.ui.table_modes import legacy_bclc_draft_rules
-        app._set_rule_form(legacy_bclc_draft_rules()); app.act_new_shoe()
+        app._set_rule_form(legacy_bclc_draft_rules()); app.var_simple_hole.set(False); app.act_new_shoe()
         for var in app.var_participants.values():
             var.set(True)
         app.act_new_round()
@@ -247,7 +247,7 @@ class RecordingBackgroundUITests(unittest.TestCase):
         self.assertEqual(state.shoe.physical_remaining(), 400)
         self.assertEqual(state.rules.confirm_status, CONFIRM_UNKNOWN)
         self.assertIsNone(state.rules.check_bj_when)
-        self.assertIsNone(state.rules.burn_cards_known)
+        self.assertTrue(state.rules.burn_cards_known)  # Explicit daily New Shoe facts; draft table rules remain unknown.
         self.assertFalse(state.table.dealer_hole_checked_negative)
 
     def test_split_double_dealer_reveal_and_automatic_next_share_ordered_plan(self):
@@ -279,6 +279,7 @@ class RecordingBackgroundUITests(unittest.TestCase):
         app = self.app
         from blackjack_lab.ui.table_modes import legacy_bclc_draft_rules
         app.select_table_mode('bclc'); app._set_rule_form(legacy_bclc_draft_rules())
+        app.var_simple_hole.set(False)
         app.act_new_shoe(); app.act_new_round()
         for rank in ('9', 'A', '8'):
             app._key_rank(rank)
