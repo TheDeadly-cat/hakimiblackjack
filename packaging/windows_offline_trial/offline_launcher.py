@@ -145,7 +145,7 @@ def main():
                 with contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
                     print(f'EDITION=TRIAL PACKAGE_ID={PACKAGE_ID} SOURCE={COMMIT}', flush=True)
                     try:
-                        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Hakimi.Blackjack.Trial.T1O2.dd0882c')
+                        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Hakimi.Blackjack.Trial.' + PACKAGE_ID)
                         from blackjack_lab.analysis.native_backend import build_native
                         build_native()
                         from blackjack_lab.ui.app import BlackjackLabApp
