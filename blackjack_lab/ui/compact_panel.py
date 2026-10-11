@@ -123,7 +123,7 @@ class CompactPanel(tk.Frame):
                                        height=7, selectmode='browse', style='SeatOverview.Treeview')
         for column, heading, width in zip(columns,
                 ('玩家', '牌面', 'EV第1·净盈率', 'EV第2·净盈率', '第1 EV', '状态'),
-                (50, 85, 120, 120, 85, 70)):
+                (50, 85, 150, 150, 85, 70)):
             self.seat_table.heading(column, text=heading)
             self.seat_table.column(column, width=width, minwidth=40)
         self.seat_table.pack(fill=tk.BOTH, expand=True)
@@ -282,7 +282,7 @@ class CompactPanel(tk.Frame):
                     if len(choices) <= index:
                         return '—'
                     item = choices[index]
-                    return f'{item.label}·{ev_sign(item.ev)} {item.profit:.1%}'
+                    return f'{item.label} {item.ev:+.4f} {item.profit:.1%}'
                 state = summary.state if summary else row['state']
                 if row['state'] == '保存待重试':
                     state = row['state']
