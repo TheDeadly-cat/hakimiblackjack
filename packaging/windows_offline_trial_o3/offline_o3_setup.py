@@ -16,7 +16,7 @@ import zipfile
 
 from trial_common import assert_no_links, instance_lock, safe_relative, write_json_new
 from offline_o3_common import installation_data
-from offline_o3_identity import COMMIT, TREE, PACKAGE_ID, TITLE, EXECUTABLE
+from offline_o3_identity import COMMIT, TREE, PACKAGE_ID, TITLE, EXECUTABLE, UPGRADE_FROM_COMMITS
 
 
 
@@ -72,10 +72,14 @@ def existing_install(root, data):
         return False
     assert_no_links(root)
     info = json.loads((root / 'install.json').read_text(encoding='utf-8'))
-    if installation_data(root, info) != data.resolve():
+    previous_commit = info.get('commit')
+    if previous_commit not in (COMMIT, *UPGRADE_FROM_COMMITS):
+        raise ValueError('现有安装源码不在可兼容更新范围；保留原目录')
+    if installation_data(root, info, expected_commit=previous_commit) != data.resolve():
         raise ValueError('现有安装的资料目录不符')
     success = json.loads((root / 'INSTALL_SUCCESS.json').read_text(encoding='utf-8'))
-    if success.get('package_id') != PACKAGE_ID or success.get('preflight_passed') is not True:
+    if (success.get('package_id') != PACKAGE_ID or success.get('preflight_passed') is not True
+            or success.get('commit') != previous_commit):
         raise ValueError('现有目录不是已完成安装的同版本程序；保留原目录')
     return True
 

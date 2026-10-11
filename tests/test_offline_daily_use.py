@@ -37,7 +37,7 @@ class DailyUpdateTests(unittest.TestCase):
             package_id=setup.PACKAGE_ID, commit=setup.COMMIT,
             install_root=str(self.root), data_root=str(self.data)))
         write_json(self.root / 'INSTALL_SUCCESS.json', dict(
-            package_id=setup.PACKAGE_ID, preflight_passed=True))
+            package_id=setup.PACKAGE_ID, commit=setup.COMMIT, preflight_passed=True))
         (self.root / 'program.bin').write_bytes(b'previous-program')
         (self.data / 'session.db').write_bytes(b'original-records')
         (self.data / 'session.db.table-modes.json').write_bytes(b'original-settings')
@@ -92,6 +92,26 @@ class DailyUpdateTests(unittest.TestCase):
         alias = self.data / '..' / self.data.name
         self.assertTrue(setup.existing_install(self.root, alias))
         self.assert_data_preserved()
+
+    def test_known_previous_source_can_update_but_cannot_run_as_current(self):
+        info = json.loads((self.root / 'install.json').read_text())
+        info['commit'] = setup.UPGRADE_FROM_COMMITS[0]
+        write_json(self.root / 'install.json', info)
+        write_json(self.root / 'INSTALL_SUCCESS.json', dict(
+            package_id=setup.PACKAGE_ID, commit=info['commit'], preflight_passed=True))
+        self.assertTrue(setup.existing_install(self.root, self.data))
+        with self.assertRaises(ValueError):
+            common.installation_data(self.root, info)
+        self.assert_data_preserved()
+
+    def test_unknown_source_or_mismatched_success_cannot_update(self):
+        info = json.loads((self.root / 'install.json').read_text())
+        for commit in ('0' * 40, setup.UPGRADE_FROM_COMMITS[0]):
+            with self.subTest(commit=commit):
+                write_json(self.root / 'install.json', dict(info, commit=commit))
+                with self.assertRaises(ValueError):
+                    setup.existing_install(self.root, self.data)
+                self.assert_data_preserved()
 
 
 class OnePassVerificationTests(unittest.TestCase):

@@ -76,7 +76,7 @@ def verify_bundle(root):
     return manifest
 
 
-def installation_data(root, info):
+def installation_data(root, info, *, expected_commit=COMMIT):
     """Use the stored installation namespace, including a Chinese test base.
 
     The desktop shell need not inherit an installer's process-local environment.
@@ -85,7 +85,7 @@ def installation_data(root, info):
     root = Path(root).resolve()
     expected_data = root.parent.parent / 'HakimiBJTrialData' / PACKAGE_ID
     if (root.name != PACKAGE_ID or root.parent.name != 'HakimiBJTrial'
-            or info.get('package_id') != PACKAGE_ID or info.get('commit') != COMMIT
+            or info.get('package_id') != PACKAGE_ID or info.get('commit') != expected_commit
             or Path(info['install_root']).resolve() != root
             or Path(info['data_root']).resolve() != expected_data):
         raise ValueError('离线试用安装实例身份或路径不符')
