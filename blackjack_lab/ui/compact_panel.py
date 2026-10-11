@@ -4,7 +4,8 @@ import math
 from dataclasses import replace
 from tkinter import ttk
 
-from ..analysis.decision_summary import DecisionSummary, summarize_result, hand_text, input_identity
+from ..analysis.decision_summary import (DecisionSummary, summarize_result, hand_text, input_identity,
+                                         is_ace_prepeek_result)
 from ..core.table import (DEALER, ACTION_DOUBLE, ACTION_SPLIT, ACTION_STAND, ACTION_SURRENDER,
                           PHASE_DEALING, PHASE_IN_PROGRESS)
 from ..ledger.events import FACE_HIDDEN
@@ -279,6 +280,9 @@ class CompactPanel(tk.Frame):
                 summary = summarize_result(result) if result else None
                 choices = summary.choices if summary else ()
                 def choice_text(index):
+                    if summary and summary.terminal:
+                        item = summary.terminal
+                        return f'{item.label} {item.ev:+.4f} {item.profit:.1%}' if index == 0 else '—'
                     if len(choices) <= index:
                         return '—'
                     item = choices[index]
@@ -290,9 +294,10 @@ class CompactPanel(tk.Frame):
                     state = '计算中'
                 if row.get('busted'):
                     choices, state = (), '已爆牌'
-                elif row.get('total21'):
+                elif row.get('total21') and not (summary and summary.terminal):
                     choices, state = (), '已达21点'
                 values = (seat, row['cards'], choice_text(0), choice_text(1),
+                          f'{summary.terminal.ev:+.4f}' if summary and summary.terminal else
                           f'{choices[0].ev:+.4f}' if choices else '—', state)
                 if self.seat_table.exists(seat):
                     self.seat_table.item(seat, values=values)
@@ -420,6 +425,13 @@ class CompactPanel(tk.Frame):
         """Use only the current main result, with its applicability status."""
         if not model.choices or not result or result.get('status') != 'available':
             return f'补牌爆牌率 —（{model.state}）'
+        if is_ace_prepeek_result(result):
+            draw = result.get('conditional_draw') or {}
+            value = draw.get('hit_bust')
+            if (draw.get('status') == 'available' and type(value) in (int, float)
+                    and math.isfinite(value) and 0 <= value <= 1):
+                return f'非BJ后补牌爆牌率 {value:.2%}'
+            return '非BJ后补牌爆牌率 —（当前无此合法动作）'
         statuses = result.get('probability_status') or {}
         status = statuses.get('hit_bust', statuses.get('next_target_draw'))
         if status == 'inapplicable':
@@ -435,6 +447,19 @@ class CompactPanel(tk.Frame):
         self.empty_result.grid_remove()
         bust_text = self.hit_bust_text(result, model)
         for i, (row, rank, action, extra, profit, ev) in enumerate(self.rows):
+            if model.terminal:
+                if multi or i:
+                    row.grid_remove()
+                    continue
+                row.grid()
+                item = model.terminal
+                natural = item.action == 'natural_blackjack'
+                rank.configure(text=('自然BJ' if natural else '庄家BJ') + '\n终局')
+                action.configure(text='终局结算', fg=PALETTE['accent'])
+                extra.configure(text=('含庄家BJ和局' if natural else '底牌池BJ概率为1') + ' · 没有待选玩家动作')
+                profit.configure(text=f'净盈利概率 {item.profit:.2%}')
+                ev.configure(text=f'{ev_sign(item.ev)} {item.ev:+.6f}')
+                continue
             if multi:
                 row.grid_remove()
             else:
@@ -450,8 +475,10 @@ class CompactPanel(tk.Frame):
             choice = model.choices[i]
             rank.configure(text=f'EV第{i + 1}\n{choice.rank_label}')
             action.configure(text=choice.label, fg=PALETTE['accent' if i == 0 else 'ink'])
-            note = bust_text if i == 0 else '净盈利概率按最终净额>0计算'
-            extra.configure(text=(f'追加 {choice.additional:g} 单位 · ' if choice.additional else '') + note)
+            prepeek = is_ace_prepeek_result(result)
+            note = bust_text if i == 0 else '净盈利概率含BJ分支' if prepeek else '净盈利概率按最终净额>0计算'
+            extra.configure(text=(f'{"非BJ后" if prepeek else ""}追加 {choice.additional:g} 单位 · '
+                                  if choice.additional else '') + note)
             profit.configure(text=f'净盈利概率 {choice.profit:.2%}')
             ev.configure(text=f'{ev_sign(choice.ev)} {choice.ev:+.6f}')
 
@@ -466,7 +493,7 @@ class CompactPanel(tk.Frame):
                 _, dealer_text, player_text = self.recorded_card_identity()
             self.saved_card_identity = f'{dealer_text}    |    {player_text}'
         identity = getattr(self, 'saved_card_identity', '已保存牌面可在记录中查看') + ' · BJ数值暂停'
-        if self.message.get() != message or self.model.choices or self.identity.get() != identity:
+        if self.message.get() != message or self.model.choices or self.model.terminal or self.identity.get() != identity:
             self.model = DecisionSummary('建议暂停', identity, message)
             self.identity.set(self.model.identity)
             self.state.set(self.model.state)
@@ -501,7 +528,7 @@ class CompactPanel(tk.Frame):
                     and all(h.is_bust for h in hands)):
                 self.model = replace(self.model, state='已爆牌', choices=(),
                     message=f'{seat}已爆牌，当前发牌给{self.app.var_target.get()}。')
-            elif (len(hands) == 1 and hands[0].total()[0] == 21 and not current.closed
+            elif (len(hands) == 1 and hands[0].total()[0] == 21 and not self.model.terminal and not current.closed
                     and current.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS)):
                 self.model = replace(self.model, state='已达21点', choices=(),
                     message=f'{seat}已达21点，当前发牌给{self.app.var_target.get()}。')
@@ -510,7 +537,10 @@ class CompactPanel(tk.Frame):
         self.state.set(model.state)
         self.message.set(model.message)
         self.notes.set(' '.join(model.notes))
-        self.decision_evs.set('' if pause else decision_evs(panel.last_result if model.choices else None))
+        self.decision_evs.set('' if pause else
+            f'{"自然BJ" if model.terminal.action == "natural_blackjack" else "庄家BJ"}终局：'
+            f'{ev_sign(model.terminal.ev)} {model.terminal.ev:+.4f}' if model.terminal else
+            decision_evs(panel.last_result if model.choices else None))
         multi = len(self.panel.overview.rows) > 1 and not model.historical and not pause
         if multi:
             self.notes.set('净盈率即净盈利概率：最终净额>0。' + NOTE)

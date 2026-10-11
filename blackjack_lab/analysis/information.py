@@ -63,6 +63,10 @@ def build_prepared_input(session_id, seat, hand_id, seq, prefix, current, *, oth
         raise InputUnavailable("SINGLE_PLAYER_ONLY", "当前仅支持单参与玩家的目标手牌；7座位录牌仍可使用", UNSUPPORTED)
     from .seat_scenario import scenario_for, with_scenario
     scenario = scenario_for(table, seat) if len(table.participants) > 1 else None
+    from .ace_prepeek_information import is_ace_prepeek_candidate, build_ace_prepeek_input
+    if is_ace_prepeek_candidate(current):
+        return build_ace_prepeek_input(session_id, seat, hand_id, seq, prefix, current,
+                                      other_players_stand=other_players_stand)
     from .split_contracts import ALL_SPLIT_PROFILES
     if rules.profile_id in ALL_SPLIT_PROFILES:
         from .split_information import build_split_input

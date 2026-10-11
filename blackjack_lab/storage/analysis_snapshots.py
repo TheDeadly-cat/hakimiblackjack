@@ -8,9 +8,10 @@ import uuid
 
 from ..analysis.contracts import RESULT_SCHEMA, STATUS_ZH, ACTION_ZH, canonical, digest
 from .safe_files import atomic_write
+from ..analysis.ace_prepeek_contracts import ACE_PREPEEK_RESULT_SCHEMA
 
 SNAPSHOT_SCHEMA = "hakimi-analysis-snapshot-v1"
-SUPPORTED_RESULTS = {RESULT_SCHEMA, "hakimi-analysis-result-v2"}
+SUPPORTED_RESULTS = {RESULT_SCHEMA, "hakimi-analysis-result-v2", ACE_PREPEEK_RESULT_SCHEMA}
 
 
 class SnapshotFormatError(ValueError):
@@ -63,6 +64,8 @@ def _validate_result(result):
     # Preserve accepted legacy minimal envelopes. They remain readable as metadata,
     # and the history UI does not treat them as computed EV or recomputable input.
     if is_minimal_result(result):
+        _require(result['schema'] != ACE_PREPEEK_RESULT_SCHEMA,
+                 'result', 'A检查前评估必须完整保存事实、条件分支和混合分布')
         return
     for name in ("session_id", "shoe_id", "round_id", "seat", "hand_id"):
         _text(info.get(name), "result.input." + name)
@@ -76,6 +79,13 @@ def _validate_result(result):
         _text(result.get(name), "result." + name)
     _number(result.get("elapsed_seconds"), "result.elapsed_seconds")
     _require(type(result.get("partial_comparison")) is bool, "result.partial_comparison", "必须为布尔值")
+    if result['schema'] == ACE_PREPEEK_RESULT_SCHEMA:
+        from ..analysis.ace_prepeek_service import validate_ace_prepeek_result
+        try:
+            validate_ace_prepeek_result(result)
+        except (KeyError, TypeError, ValueError, ArithmeticError, AttributeError, RecursionError) as error:
+            raise SnapshotFormatError('result：无效A检查前评估：' + str(error)) from error
+        return
     if result["schema"] != RESULT_SCHEMA:
         _validate_split_result(result)
         return

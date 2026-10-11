@@ -10,9 +10,13 @@ from .contracts import (AnalysisInput, ENGINE_VERSION, STRATEGY_VERSION, RESULT_
                         AVAILABLE, INAPPLICABLE, UNSUPPORTED, PENDING, TIMEOUT, CANCELLED, STALE, FAILED, ACTION_ZH)
 from .probability import CalculationStopped, InsufficientCards
 from .split_contracts import SplitAnalysisInput, SPLIT_INPUT_SCHEMA, SPLIT_RESULT_SCHEMA
+from .ace_prepeek_contracts import AcePrepeekInput, ACE_PREPEEK_INPUT_SCHEMA
 
 
 def base_result(snapshot, request_id):
+    if isinstance(snapshot, AcePrepeekInput):
+        from .ace_prepeek_service import result_envelope
+        return result_envelope(snapshot, request_id)
     return {"schema": SPLIT_RESULT_SCHEMA if isinstance(snapshot, SplitAnalysisInput) else RESULT_SCHEMA, "request_id": request_id,
             "input": snapshot.to_dict(), "input_digest": snapshot.input_digest,
             "rules_digest": snapshot.rules_digest, "engine_version": snapshot.engine_version,
@@ -25,6 +29,9 @@ def base_result(snapshot, request_id):
 
 def calculate(snapshot, request_id=None, budget_seconds=5.0):
     request_id = request_id or uuid.uuid4().hex
+    if isinstance(snapshot, AcePrepeekInput):
+        from .ace_prepeek_service import calculate_ace_prepeek
+        return calculate_ace_prepeek(snapshot, request_id, budget_seconds)
     if isinstance(snapshot, SplitAnalysisInput):
         from .split_service import calculate_split
         return calculate_split(snapshot, request_id, budget_seconds)
@@ -88,10 +95,23 @@ def _validate_distribution(values):
         raise ArithmeticError("计算结果分布不合法，禁止发布")
 
 
+def parse_analysis_input(data):
+    if not isinstance(data, dict):
+        raise ValueError('分析输入必须为对象')
+    schema = data.get('schema')
+    if schema == ACE_PREPEEK_INPUT_SCHEMA:
+        return AcePrepeekInput.from_dict(data)
+    if schema == SPLIT_INPUT_SCHEMA:
+        return SplitAnalysisInput.from_dict(data)
+    from .contracts import INPUT_SCHEMA
+    if schema == INPUT_SCHEMA:
+        return AnalysisInput.from_dict(data)
+    raise ValueError('不支持的分析输入格式')
+
+
 def _worker(connection, data, request_id, budget):
     try:
-        input_type = SplitAnalysisInput if data.get("schema") == SPLIT_INPUT_SCHEMA else AnalysisInput
-        result = calculate(input_type.from_dict(data), request_id, budget)
+        result = calculate(parse_analysis_input(data), request_id, budget)
         import socket
         result["worker_network_guard_active"] = bool(getattr(socket, "_hakimi_offline_guard", False))
         result["worker_peak_working_set_bytes"] = _peak_memory()

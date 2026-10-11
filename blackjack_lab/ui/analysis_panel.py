@@ -8,15 +8,51 @@ from ..analysis.service import AnalysisService
 from ..core.table import player_seat_name
 from ..storage.analysis_snapshots import is_minimal_result
 from ..analysis.split_contracts import SPLIT_RESULT_SCHEMA
+from ..analysis.ace_prepeek_contracts import ACE_PREPEEK_INPUT_SCHEMA, ACE_PREPEEK_RESULT_SCHEMA
 from ..analysis.decision_summary import summarize_result, format_summary_details
 from ..analysis.seat_scenario import note_for
 from .seat_overview import SeatOverview
 from .ev_display import ev_sign
 
-DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA}
+DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA, ACE_PREPEEK_RESULT_SCHEMA}
+
+
+def format_ace_prepeek_result(result, historical=False):
+    info = result['input']
+    lines = [('历史 · ' if historical else '') + '检查前评估 · ' +
+             f"{info['seat']} · {' '.join(info['player_ranks'])} · 庄家 A · {info['n_decks']}副"]
+    if result['status'] != AVAILABLE:
+        return lines[0] + '\n' + STATUS_ZH.get(result['status'], '需核对') + '：' + result['reason']
+    lines.append('等待庄家实际检查；未写入非BJ确认，底牌仍未揭示。')
+    lines.append(f"庄家BJ概率 {result['dealer_bj_probability']:.4%}；主注EV与净盈利概率包含此分支。")
+    lines.append('EV单位：原始1单位初始注的最终净收益。')
+    lines.append(format_summary_details(summarize_result(result, historical)).rstrip())
+    for action, item in result.get('actions', {}).items():
+        label = ACTION_ZH.get(action, item.get('label', action))
+        if item.get('status') == AVAILABLE:
+            lines.append(f"{label}（非BJ后执行）：{ev_sign(item['ev'])} {item['ev']:+.6f}")
+            lines.append('  含BJ分支的净收益分布：' + ' / '.join(
+                f'{float(net):+g}:{probability:.4%}' for net, probability in item['net_distribution'].items()))
+            if item.get('additional_investment'):
+                lines.append(f"  仅在实际非BJ后追加 {item['additional_investment']:g} 单位")
+        else:
+            lines.append(label + '：' + STATUS_ZH.get(item.get('status'), '需核对'))
+    draw = result.get('conditional_draw') or {}
+    if draw.get('status') == AVAILABLE:
+        lines.append(f"非BJ后且实际补牌的爆牌概率 {draw['hit_bust']:.4%}")
+        lines.append('非BJ后且实际补牌的下一张分布：' + ' / '.join(
+            f'{rank}:{probability:.3%}' for rank, probability in draw['next_target_draw'].items()))
+    else:
+        lines.append('补牌/爆牌指标不适用；当前没有合法补牌动作。')
+    lines.append('非BJ条件分支仅用于计算，不代表实际已检查。')
+    lines.extend([f"耗时 {result['elapsed_seconds']:.3f}s · 事件前缀 #{info['through_seq']}",
+                  f"引擎：{result['engine_version']}", f"策略：{result['strategy_version']}"])
+    return '\n'.join(lines)
 
 
 def format_result(result, historical=False):
+    if result['schema'] == ACE_PREPEEK_RESULT_SCHEMA:
+        return format_ace_prepeek_result(result, historical)
     summary_text = format_summary_details(summarize_result(result, historical))
     scenario_note = note_for(result['input'])
     if scenario_note:
@@ -293,7 +329,9 @@ class AnalysisPanel(ttk.Frame):
         else:
             self.compute_button.state(["!disabled"])
             if not self.last_result and not self.recomputed_from:
-                self.status.set("可计算：当前玩家，正常底牌仍未揭示")
+                prepeek = self.current_input.to_dict().get('schema') == ACE_PREPEEK_INPUT_SCHEMA
+                self.status.set('可计算：A检查前评估，等待庄家实际检查' if prepeek else
+                                "可计算：当前玩家，正常底牌仍未揭示")
             if self.auto.get() and not self.recomputed_from and key != self._auto_suppressed_key:
                 self._auto_id = self.after(250, self._run_auto)
         self._notify_views()
@@ -368,6 +406,8 @@ class AnalysisPanel(ttk.Frame):
             if result["status"] == AVAILABLE:
                 summary = ("部分动作比较，不给唯一推荐" if result["partial_comparison"] else
                            "已计算动作EV均为负" if result.get("all_computed_ev_negative") else "计算完成（所声明模型）")
+                if result['schema'] == ACE_PREPEEK_RESULT_SCHEMA:
+                    summary = '检查前评估，等待庄家检查；概率和EV含BJ分支'
             self.status.set(("历史复算 · " if self.recomputed_from else "") + STATUS_ZH[result["status"]] + "：" + summary)
             self._set_text(format_result(result, bool(self.recomputed_from)))
             if result["status"] == AVAILABLE:

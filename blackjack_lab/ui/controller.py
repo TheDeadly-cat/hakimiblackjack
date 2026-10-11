@@ -644,9 +644,26 @@ class SessionController:
                            track_id=track_id, confirm_status=CANDIDATE)
 
     def reveal(self, target_event_id, rank, suit=None, *, auto_next=None):
-        if auto_next is not None and self.ledger._find(target_event_id).payload.get('seat') == DEALER:
-            return self._dealer_input('reveal', target_event_id, rank, suit=suit, auto_next=auto_next)
-        return self._apply("reveal", target_event_id, rank, suit=suit)
+        from .recording_commands import RecordingInputRejected
+        with self.read_frame():
+            current = self.state().current
+            info = current.unresolved.get(target_event_id) if current else None
+            if not info or info['round_id'] != current.round_id:
+                raise RecordingInputRejected('原暗牌不在当前轮待揭示记录中；请核对录牌位置')
+            # Ordinary entry mistakes (notably A+T after a saved non-BJ check)
+            # are known before any persistent command starts. Validate only a
+            # private copy of the current table, preserving every recorded fact.
+            preview = copy.deepcopy(current.table)
+            try:
+                preview.reveal_card(info['seat'], info['hand_id'], info.get('track_id'),
+                                    rank, suit, event_id=target_event_id)
+            except (TableError, ValueError) as error:
+                raise RecordingInputRejected(str(error)) from error
+            # Independent full candidate replay and the SQL transaction remain
+            # authoritative. Never turn an exception from either into a key refusal.
+            if auto_next is not None and info['seat'] == DEALER:
+                return self._dealer_input('reveal', target_event_id, rank, suit=suit, auto_next=auto_next)
+            return self._apply("reveal", target_event_id, rank, suit=suit)
 
     def _dealer_input(self, method, *args, auto_next, **kwargs):
         """One input, one durable transaction, including any automatic round transition."""
@@ -1014,12 +1031,20 @@ class SessionController:
             self._analysis_inputs = {}
         current = self._analysis_prepared[2]
         hands = current.table.players[seat].hands if current and seat in current.table.players else []
-        if len(hands) == 1 and not hands[0].from_split and hands[0].total()[0] == 21:
-            raise InputUnavailable('TOTAL_21', '已达21点，已自动跳过玩家行动', INAPPLICABLE)
+        total_21 = len(hands) == 1 and not hands[0].from_split and hands[0].total()[0] == 21
         target = seat, hand_id
         if target not in self._analysis_inputs:
-            self._analysis_inputs[target] = build_prepared_input(
-                self.session_id, seat, hand_id, *self._analysis_prepared, other_players_stand=True)
+            try:
+                self._analysis_inputs[target] = build_prepared_input(
+                    self.session_id, seat, hand_id, *self._analysis_prepared, other_players_stand=True)
+            except InputUnavailable:
+                if total_21:
+                    raise InputUnavailable('TOTAL_21', '已达21点，已自动跳过玩家行动', INAPPLICABLE) from None
+                raise
+        if total_21:
+            from ..analysis.ace_prepeek_contracts import AcePrepeekInput
+            if not isinstance(self._analysis_inputs[target], AcePrepeekInput):
+                raise InputUnavailable('TOTAL_21', '已达21点，已自动跳过玩家行动', INAPPLICABLE)
         return self._analysis_inputs[target]
 
     def recompute_input(self, saved):
@@ -1029,8 +1054,12 @@ class SessionController:
             raise LedgerError("原分析关联的事件前缀摘要不匹配，拒绝复算")
         from ..analysis.seat_scenario import MODEL
         conditional = json.loads(original['information_json']).get('seat_scenario', {}).get('model') == MODEL
-        return build_input(ledger, original["seat"], original["hand_id"], original["through_seq"],
-                           other_players_stand=conditional)
+        rebuilt = build_input(ledger, original["seat"], original["hand_id"], original["through_seq"],
+                              other_players_stand=conditional)
+        from ..analysis.ace_prepeek_contracts import ACE_PREPEEK_INPUT_SCHEMA
+        if original.get('schema') == ACE_PREPEEK_INPUT_SCHEMA and rebuilt.schema != ACE_PREPEEK_INPUT_SCHEMA:
+            raise LedgerError('原检查前评估不能按检查后的信息身份复算')
+        return rebuilt
 
     def export_diagnostic(self, session_id, path):
         data = self.store.diagnose_session(session_id)
