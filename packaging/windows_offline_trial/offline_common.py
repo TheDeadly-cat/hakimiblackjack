@@ -1,14 +1,35 @@
 """Identity and read-only verification for the isolated frozen trial."""
 from pathlib import Path
+import hashlib
 import json
 import sys
 
-from trial_common import assert_no_links, sha256_file, safe_relative, verify_installed_source
+from trial_common import assert_no_links, git_hash, sha256_file, safe_relative, tree_hash
+from offline_identity import COMMIT, TREE, SOURCE_FILE_COUNT, PACKAGE_ID, TITLE
 
-COMMIT = '3ec2006e82c4bdbc8da01bb0e1212b64c9111d2c'
-TREE = '7fc1e8bb64c5bc4a783941fee536f394acf1fff7'
-PACKAGE_ID = 'T1O1-3ec2006'
-TITLE = 'Hakimi Blackjack 离线试用版 T1O1'
+def verify_installed_source(root, manifest):
+    """Verify O2's complete Git tree without changing online R4's fixed globals."""
+    if (manifest.get('commit') != COMMIT or manifest.get('git_tree') != TREE
+            or len(manifest.get('files', {})) != SOURCE_FILE_COUNT):
+        raise ValueError('安装清单与固定离线试用版不一致')
+    entries = {}
+    for relative, item in manifest['files'].items():
+        path = root.joinpath(*safe_relative(relative).split('/'))
+        assert_no_links(path)
+        data = path.read_bytes()
+        if hashlib.sha256(data).hexdigest() != item['sha256']:
+            raise ValueError('源码发生变化，已停止启动：' + relative)
+        blob = git_hash('blob', data)
+        if blob != item['git_blob']:
+            raise ValueError('源码 Git 摘要不符：' + relative)
+        entries[relative] = item['git_mode'], blob
+    if tree_hash(entries) != TREE:
+        raise ValueError('安装文件清单不能还原固定源码树')
+    for path in (root / 'blackjack_lab').rglob('*'):
+        assert_no_links(path)
+        if path.is_file() and path.suffix.lower() in ('.py', '.pyw', '.pyd'):
+            if path.relative_to(root).as_posix() not in manifest['files']:
+                raise ValueError('运行目录含额外代码：' + path.name)
 
 
 def program_root():

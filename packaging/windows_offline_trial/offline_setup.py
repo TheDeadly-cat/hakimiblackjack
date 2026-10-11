@@ -14,12 +14,8 @@ import uuid
 import zipfile
 
 from trial_common import assert_no_links, safe_relative, write_json_new
+from offline_identity import COMMIT, TREE, PACKAGE_ID, TITLE, EXECUTABLE
 
-PACKAGE_ID = 'T1O1-3ec2006'
-COMMIT = '3ec2006e82c4bdbc8da01bb0e1212b64c9111d2c'
-TREE = '7fc1e8bb64c5bc4a783941fee536f394acf1fff7'
-TITLE = 'Hakimi Blackjack 离线试用版 T1O1'
-EXECUTABLE = 'HakimiBlackjackTrialT1O1.exe'
 
 
 def show(kind, message):
@@ -146,7 +142,7 @@ def main():
     args = parser.parse_args()
     try:
         if not args.yes and not show('askyesno',
-                '安装独立的离线试用版 T1O1？\n\n包含 Python/Tk；无需联网下载源码。\n'
+                '安装独立的离线试用版 T1O2？\n\n包含 Python/Tk；无需联网下载源码。\n'
                 '目标 Windows 仍须具备 .NET Framework 4 运行时，不自动安装系统组件。\n'
                 '程序未签名，实时性能验收未通过；不覆盖旧版，不导入日常资料。'):
             return 0
