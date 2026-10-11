@@ -149,7 +149,11 @@ class BlackjackLabApp(tk.Tk):
         self.rowconfigure(1, weight=1)
         ttk.Style(self).configure("Card.TButton", font=("Consolas", 12), padding=2)
 
-        self._ask_recover_if_any(db_path)
+        try:
+            self._restore_latest_if_any(db_path)
+        except Exception:
+            self.destroy()
+            raise
         if self.background_recording:
             from .recording_failures import load_failures
             self._recording_faults = load_failures(db_path, self.ctrl.session_id)
@@ -237,22 +241,19 @@ class BlackjackLabApp(tk.Tk):
     # ============================================================
     # 界面构建
     # ============================================================
-    def _ask_recover_if_any(self, db_path) -> None:
+    def _restore_latest_if_any(self, db_path) -> None:
+        """Resume this database's latest recorded session without a startup question."""
         store = LocalStore(db_path)
         try:
             old = [s for s in store.list_sessions() if s["event_count"] > 1]
         finally:
             store.close()
         if old:
-            if messagebox.askyesno("恢复会话",
-                                   f"发现 {len(old)} 个本地历史会话，是否恢复最近一个？\n"
-                                   "选“否”将开始全新会话（旧记录仍保留）。"):
-                latest = old[-1]
-                try:
-                    self.ctrl = SessionController.recover(db_path, latest["session_id"])
-                    return
-                except Exception as e:  # 恢复失败不允许假装成功
-                    messagebox.showerror("恢复失败", str(e))
+            latest = old[-1]
+            # Failed recovery stops startup. Never silently create a fresh session
+            # that could hide saved input or its pending reconciliation archive.
+            self.ctrl = SessionController.recover(db_path, latest["session_id"])
+            return
         self.ctrl = SessionController(db_path, recording_source=self.recording_source)
 
     def _build_top(self) -> None:
