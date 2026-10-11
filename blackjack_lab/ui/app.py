@@ -646,7 +646,7 @@ class BlackjackLabApp(tk.Tk):
         # Reject idle/paused input before it enters the durable FIFO. Ordinary
         # setup guidance is not a persistence failure. During a batch the worker
         # owns the advancing plan, so never preflight against the stale UI plan.
-        if (not self.recording_busy and kind != 'undo'
+        if (not self.recording_busy and kind not in ('peek', 'undo')
                 and (plan is None or plan.input_paused or plan.mode == MODE_UNALIGNED)):
             with self.ctrl.read_frame():
                 message = self.recording_inactive_message()
