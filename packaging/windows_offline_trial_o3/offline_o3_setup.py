@@ -15,7 +15,7 @@ import uuid
 import zipfile
 
 from trial_common import assert_no_links, instance_lock, safe_relative, write_json_new
-from offline_o3_common import installation_data
+from offline_o3_common import installation_data, installation_layout, create_install_layout
 from offline_o3_identity import COMMIT, TREE, PACKAGE_ID, TITLE, EXECUTABLE, UPGRADE_FROM_COMMITS
 
 
@@ -31,10 +31,13 @@ def show(kind, message):
         window.destroy()
 
 
-def shortcut(root, logs):
+def shortcut(root, logs, layout=None):
+    name = TITLE
+    if layout and layout['layout'] == 'custom-folder-v1':
+        name += '（' + layout['base'].name + '）-' + layout['instance_id'][:8]
     inputs = logs / 'shortcut-input.json'
     write_json_new(inputs, dict(executable=str(root / EXECUTABLE), root=str(root),
-        name=TITLE, receipt=str(logs / 'shortcut-created.json')))
+        name=name, receipt=str(logs / 'shortcut-created.json')))
     script = '''$ErrorActionPreference='Stop'
 $item=Get-Content -LiteralPath INPUT_FILE -Raw -Encoding UTF8|ConvertFrom-Json
 $desktop=[Environment]::GetFolderPath('Desktop')
@@ -85,14 +88,15 @@ def existing_install(root, data):
 
 
 @contextmanager
-def program_replacement(root, data, logs, updating):
+def program_replacement(root, data, logs, updating, *, layout=None):
     """Retain the old program, keep the data path, and roll back failed updates."""
-    local = root.parent.parent
-    if (root != local / 'HakimiBJTrial' / PACKAGE_ID
-            or data != local / 'HakimiBJTrialData' / PACKAGE_ID
-            or logs.parent != local / 'HakimiBJTrialInstallLogs'):
+    layout = layout or create_install_layout(local=root.parent.parent)
+    if (root != layout['root'] or data != layout['data'] or logs.parent != layout['logs_root']):
         raise ValueError('更新范围不符')
-    rollback_base = local / 'HakimiBJTrialRollbacks'
+    planned = dict(package_id=PACKAGE_ID, commit=COMMIT, install_root=str(root), data_root=str(data),
+                   **layout.get('info_fields', {}))
+    installation_layout(root, planned)
+    rollback_base = layout['rollbacks_root']
     assert_no_links(rollback_base)
     token = PACKAGE_ID + '-' + logs.name.rsplit('-', 1)[-1]
     previous = rollback_base / (token + '-previous')
@@ -126,33 +130,70 @@ def program_replacement(root, data, logs, updating):
                                     data_root=str(data), data_reused=True))
 
 
-def install(reuse_data=False):
+def plan_install(destination=None, *, local=None):
+    """Plan one bound instance; an arbitrary nonempty folder is never adopted."""
+    layout = create_install_layout(destination, local=local)
+    root = layout['root']
+    if root.exists():
+        info = json.loads((root / 'install.json').read_text(encoding='utf-8'))
+        layout = installation_layout(root, info, expected_commit=info.get('commit'))
+        layout['info_fields'] = {k: info[k] for k in ('installation_layout','instance_id','container_root') if k in info}
+    elif layout['layout'] == 'custom-folder-v1' and layout['base'].exists() and any(layout['base'].iterdir()):
+        marker = layout['base'] / 'INSTALL_INSTANCE.json'
+        if not marker.is_file():
+            raise ValueError('所选文件夹已有其他内容；请选择新文件夹或空文件夹')
+        assert_no_links(marker)
+        info = json.loads(marker.read_text(encoding='utf-8'))
+        if info.get('commit') not in (COMMIT, *UPGRADE_FROM_COMMITS):
+            raise ValueError('所选文件夹的既有安装身份不符')
+        layout = installation_layout(root, info, expected_commit=info['commit'])
+        layout['info_fields'] = {k: info[k] for k in ('installation_layout','instance_id','container_root')}
+    return layout
+
+
+def install(reuse_data=False, destination=None, progress=None):
     if os.name != 'nt' or not getattr(sys, 'frozen', False):
         raise ValueError('需要冻结的 Windows 安装入口')
-    local = Path(os.environ['LOCALAPPDATA']).resolve()
-    root = local / 'HakimiBJTrial' / PACKAGE_ID
-    data = local / 'HakimiBJTrialData' / PACKAGE_ID
+    notify = progress or (lambda message: None)
+    notify('检查安装位置')
+    layout = plan_install(destination)
+    root, data = layout['root'], layout['data']
     assert_no_links(root)
     assert_no_links(data)
     updating = existing_install(root, data)
     if data.exists() and (not data.is_dir() or any(data.iterdir())) and not reuse_data and not updating:
         raise ValueError('试用资料目录非空，默认拒绝复用；保留原资料。')
     internal = Path(sys._MEIPASS)
+    notify('核验安装包')
     payload = internal / 'payload/runtime.zip'
     info = json.loads((internal / 'payload/PAYLOAD.json').read_text(encoding='utf-8'))
     if (info.get('package_id') != PACKAGE_ID or info.get('commit') != COMMIT
             or info.get('source_tree') != TREE
             or hashlib.sha256(payload.read_bytes()).hexdigest() != info.get('zip_sha256')):
         raise ValueError('内置产物身份或摘要不符')
-    logs = local / 'HakimiBJTrialInstallLogs' / (PACKAGE_ID + '-' + datetime.now().strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:8])
+    logs = layout['logs_root'] / (PACKAGE_ID + '-' + datetime.now().strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:8])
     assert_no_links(logs)
     logs.mkdir(parents=True, exist_ok=False)
-    with program_replacement(root, data, logs, updating):
-        return install_payload(root, data, payload, info, logs)
+    with program_replacement(root, data, logs, updating, layout=layout):
+        result = install_payload(root, data, payload, info, logs, layout=layout, progress=notify)
+        if layout['layout'] == 'custom-folder-v1':
+            marker = layout['base'] / 'INSTALL_INSTANCE.json'
+            binding = json.loads((root / 'install.json').read_text(encoding='utf-8'))
+            if marker.exists():
+                # Existing instance identity stays fixed across compatible updates.
+                previous = json.loads(marker.read_text(encoding='utf-8'))
+                installation_layout(root, previous, expected_commit=previous['commit'])
+                if previous['instance_id'] != layout['instance_id']:
+                    raise ValueError('已有资料的安装实例身份改变')
+            else:
+                write_json_new(marker, binding)
+        return result
 
 
-def install_payload(root, data, payload, info, logs):
+def install_payload(root, data, payload, info, logs, *, layout=None, progress=None):
+    notify = progress or (lambda message: None)
     try:
+        notify('解压程序和运行库')
         with zipfile.ZipFile(payload) as archive:
             members = archive.infolist()
             names = set()
@@ -186,14 +227,16 @@ def install_payload(root, data, payload, info, logs):
         data.mkdir(parents=True, exist_ok=True)
         write_json_new(root / 'install.json', dict(package_id=PACKAGE_ID, commit=COMMIT,
             source_tree=TREE, install_root=str(root), data_root=str(data),
-            installer_kind='offline-frozen-onedir', signed=False))
+            installer_kind='offline-frozen-onedir', signed=False, **(layout or {}).get('info_fields', {})))
         receipt = logs / 'frozen-preflight.json'
+        notify('检查运行环境与程序')
         run = subprocess.run([str(root / EXECUTABLE), '--preflight', '--receipt', str(receipt)],
             timeout=90, creationflags=0x08000000)
         result = json.loads(receipt.read_text(encoding='utf-8')) if receipt.is_file() else {}
         if run.returncode or result.get('preflight_passed') is not True or result.get('package_id') != PACKAGE_ID:
             raise RuntimeError('冻结程序目标机预检未通过；不能生成成功标记。')
-        shortcut(root, logs)
+        notify('创建桌面快捷方式')
+        shortcut(root, logs, layout)
         success = dict(package_id=PACKAGE_ID, commit=COMMIT, preflight_passed=True,
             installed_at=datetime.now().astimezone().isoformat(), logs=str(logs),
             native_UI_acceptance=False, ordinary_permissions_acceptance=False,
@@ -212,18 +255,13 @@ def main():
     parser = argparse.ArgumentParser(description=TITLE)
     parser.add_argument('--yes', action='store_true')
     parser.add_argument('--reuse-data', action='store_true')
+    parser.add_argument('--install-dir', type=Path, help='自定义安装文件夹；各文件夹使用独立资料')
     args = parser.parse_args()
     try:
-        if not args.yes and not show('askyesno',
-                f'安装或更新 {TITLE}？\n\n包含 Python/Tk；无需联网下载源码。\n'
-                '目标 Windows 仍须具备 .NET Framework 4 运行时，不自动安装系统组件。\n'
-                '同版本更新保留原记录与程序回滚副本；请先关闭程序。\n'
-                '程序未签名，实时性能尚未通过验收。'):
-            return 0
-        root, logs = install(args.reuse_data)
         if not args.yes:
-            show('showinfo', f'安装预检完成：{root}\n\n日志：{logs}\n'
-                '这不是完整应用、普通权限或实时性能验收通过。')
+            from offline_o3_setup_ui import run_installer
+            return run_installer(install, initial=args.install_dir, reuse_data=args.reuse_data)
+        install(args.reuse_data, args.install_dir)
         return 0
     except Exception:
         if not args.yes:

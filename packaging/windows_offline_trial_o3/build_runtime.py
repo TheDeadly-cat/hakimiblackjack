@@ -37,6 +37,16 @@ def runtime_source_data(source, manifest):
         for relative in manifest['files'] if relative.startswith('blackjack_lab/')]
 
 
+def runtime_batch_files():
+    """The runtime owns instance paths and dispatches uninstall once externally."""
+    return {
+        'START_TRIAL.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe"\r\nexit /b %errorlevel%\r\n',
+        'BACKUP_DATA.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance backup %*\r\nexit /b %errorlevel%\r\n',
+        'VERIFY_SOURCE.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance verify %*\r\nexit /b %errorlevel%\r\n',
+        'UNINSTALL_TRIAL.cmd': '@echo off\r\nsetlocal\r\ncd /d "%TEMP%"\r\nif errorlevel 1 exit /b 1\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance prepare-uninstall %*\r\nexit /b %errorlevel%\r\n',
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, required=True)
@@ -136,13 +146,7 @@ def main():
     runtime = output / 'dist' / NAME
     shutil.copy2(output / 'compiled-module-source-origins.json',
         runtime / '_internal/compiled-module-source-origins.json')
-    batches = {
-        'START_TRIAL.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe"\r\nexit /b %errorlevel%\r\n',
-        'BACKUP_DATA.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance backup %*\r\nexit /b %errorlevel%\r\n',
-        'VERIFY_SOURCE.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance verify %*\r\nexit /b %errorlevel%\r\n',
-        'UNINSTALL_TRIAL.cmd': '@echo off\r\nstart /wait "" "%~dp0' + NAME + '.exe" --maintenance prepare-uninstall\r\nif errorlevel 1 exit /b 1\r\n"%~dp0..\\..\\HakimiBJTrialInstallLogs\\' + PACKAGE_ID + '-uninstall.cmd" %*\r\n',
-    }
-    for name, body in batches.items():
+    for name, body in runtime_batch_files().items():
         (runtime / name).write_bytes(body.encode('utf-8'))
     files = {path.relative_to(runtime).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in sorted(runtime.rglob('*')) if path.is_file()}
