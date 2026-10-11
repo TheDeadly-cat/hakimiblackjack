@@ -8,7 +8,7 @@ from trial_common import assert_no_links, git_hash, sha256_file, safe_relative, 
 from offline_identity import COMMIT, TREE, SOURCE_FILE_COUNT, PACKAGE_ID, TITLE
 
 def verify_installed_source(root, manifest):
-    """Verify this complete fixed Git tree without changing online R4's globals."""
+    """Verify O2's complete Git tree without changing online R4's fixed globals."""
     if (manifest.get('commit') != COMMIT or manifest.get('git_tree') != TREE
             or len(manifest.get('files', {})) != SOURCE_FILE_COUNT):
         raise ValueError('安装清单与固定离线试用版不一致')

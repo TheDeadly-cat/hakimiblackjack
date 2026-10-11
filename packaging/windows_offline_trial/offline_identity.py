@@ -1,9 +1,9 @@
-"""Fixed O3 startup-resume identity, separate from preserved O2 and online R4."""
-COMMIT = '184828365f020deb2a055fd88b69e599a2cc6147'
-TREE = '6809b2a816f229e438783ad8fa40aeb4864ba89d'
-SOURCE_FILE_COUNT = 1547
-PACKAGE_ID = 'T1O3-1848283'
-TITLE = 'Hakimi Blackjack 离线试用版 T1O3'
-RUNTIME_NAME = 'HakimiBlackjackTrialT1O3'
+"""Fixed O2 application identity, separate from the preserved online R4 wrapper."""
+COMMIT = 'dd0882c69cd89cc07f1d5b5365796fdfa9f1a719'
+TREE = '3d904c38600bc366bc2662a6f5c0b2c069466cf0'
+SOURCE_FILE_COUNT = 1545
+PACKAGE_ID = 'T1O2-dd0882c'
+TITLE = 'Hakimi Blackjack 离线试用版 T1O2'
+RUNTIME_NAME = 'HakimiBlackjackTrialT1O2'
 EXECUTABLE = RUNTIME_NAME + '.exe'
-SETUP_NAME = 'Hakimi_Blackjack_T1O3_Offline_Setup'
+SETUP_NAME = 'Hakimi_Blackjack_T1O2_Offline_Setup'

@@ -142,7 +142,7 @@ def main():
     args = parser.parse_args()
     try:
         if not args.yes and not show('askyesno',
-                f'安装 {TITLE}？\n\n包含 Python/Tk；无需联网下载源码。\n'
+                '安装独立的离线试用版 T1O2？\n\n包含 Python/Tk；无需联网下载源码。\n'
                 '目标 Windows 仍须具备 .NET Framework 4 运行时，不自动安装系统组件。\n'
                 '程序未签名，实时性能验收未通过；不覆盖旧版，不导入日常资料。'):
             return 0
