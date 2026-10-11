@@ -137,7 +137,7 @@ def maintain(action, yes=False, receipt_path=None):
                     # one for this same verified installation namespace.
                     preserved = logs / (PACKAGE_ID + '-uninstall-' + uuid.uuid4().hex + '.cmd')
                     shutil.copy2(command, preserved)
-                body = '@echo off\r\nchcp 65001 >nul\r\nstart /wait "" "' + str(runner / 'HakimiBlackjackTrialT1O1.exe') + '" --maintenance uninstall --receipt "' + str(runner / 'UNINSTALL_RESULT.json') + '" %*\r\nexit /b %errorlevel%\r\n'
+                body = '@echo off\r\nchcp 65001 >nul\r\ncd /d "%~dp0"\r\nif errorlevel 1 exit /b 1\r\nstart /wait "" "' + str(runner / 'HakimiBlackjackTrialT1O1.exe') + '" --maintenance uninstall --receipt "' + str(runner / 'UNINSTALL_RESULT.json') + '" %*\r\nexit /b %errorlevel%\r\n'
                 command.write_bytes(body.encode('utf-8'))
                 result.update(external_runner=str(runner), dispatcher=str(command), actual_uninstall=False)
             else:
