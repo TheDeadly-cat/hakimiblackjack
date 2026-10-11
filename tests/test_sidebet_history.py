@@ -155,9 +155,12 @@ class SidebetUITests(unittest.TestCase):
         self.assertEqual(self.errors,[])
 
     def test_save_failure_retry_uses_original_input_after_first_card(self):
-        self.start()
-        with patch.object(self.view.store,'save',side_effect=OSError('explicit save fault')):
+        # Starting the round submits work immediately. Inject the fault before
+        # submission so a fast worker cannot save before the test patches it.
+        with patch.object(self.app.sidebets.store,'save',side_effect=OSError('explicit save fault')) as failed_save:
+            self.start()
             value=self.forecast();self.assertIsNone(value['saved_id'])
+            failed_save.assert_called()
         self.assertIn('未保存',self.view.pending_label.get())
         original=copy.deepcopy(value['result']);self.app._key_rank('8')
         self.view.retry_saves()
