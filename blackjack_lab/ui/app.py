@@ -183,7 +183,7 @@ class BlackjackLabApp(tk.Tk):
         self.var_status = tk.StringVar(value="就绪：请先选择牌副数并新建牌靴")
         self.var_recording_save = tk.StringVar()
         if self._recording_faults:
-            self.var_recording_save.set(f'恢复发现 {len(self._recording_faults)} 条待核对输入 · 点击“核对录牌”')
+            self.var_recording_save.set(f'恢复发现 {len(self._recording_faults)} 条待核对输入 · 点击“处理保存异常”')
         self.var_opening_ev = tk.StringVar(value='下轮EV：尚无可用牌盒')
         self.var_table_mode = tk.StringVar(value=PRAGMATIC)
         self.var_table_mode_summary = tk.StringVar()
@@ -629,7 +629,7 @@ class BlackjackLabApp(tk.Tk):
             self.set_status('正在按顺序保存录牌；请等保存完成后再切换位置、模式、牌靴或修改记录。')
             return True
         if self._recording_faults:
-            self.set_status('录牌保存需要核对。请点击“核对录牌”，读取已保存记录；未执行输入不会自动重试。')
+            self.set_status('录牌保存需要核对。请点击“处理保存异常”，读取已保存记录；未执行输入不会自动重试。')
             return True
         return False
 
@@ -642,6 +642,21 @@ class BlackjackLabApp(tk.Tk):
         if self._recording_faults:
             self.recording_guard()
             return
+        plan = self.ctrl.entry_plan
+        # Reject idle/paused input before it enters the durable FIFO. Ordinary
+        # setup guidance is not a persistence failure. During a batch the worker
+        # owns the advancing plan, so never preflight against the stale UI plan.
+        if (not self.recording_busy and kind != 'undo'
+                and (plan is None or plan.input_paused or plan.mode == MODE_UNALIGNED)):
+            with self.ctrl.read_frame():
+                message = self.recording_inactive_message()
+            if not message and plan:
+                message = ('录牌位置尚未对齐；请在“研究工作台”核对位置后继续。'
+                           if plan.mode == MODE_UNALIGNED else '录入已暂停；请先恢复录入。')
+            if message:
+                self.var_recording_save.set('本次输入未接收：' + message)
+                self.set_status(message)
+                return
         if kind == 'stand':
             kind, value = 'action', ACTION_STAND
         value = kwargs.get('rank', kwargs.get('action', value))
@@ -741,7 +756,7 @@ class BlackjackLabApp(tk.Tk):
                     intent=[r.request_id for r in commits], error=f'后台已提交，界面回执需核对：{error}', failure_path=None))
         if self._recording_faults:
             owner.close()
-            self.var_recording_save.set(f'{len(self._recording_faults)} 条输入需要核对 · 点击“核对录牌” · 不自动重试')
+            self.var_recording_save.set(f'{len(self._recording_faults)} 条输入需要核对 · 点击“处理保存异常” · 不自动重试')
         elif self.recording_busy:
             self.var_recording_save.set(f'待保存 {len(self._recording_inputs)} 条输入 · 界面显示已保存部分')
         elif receipts:
@@ -1833,7 +1848,7 @@ class BlackjackLabApp(tk.Tk):
         if seg.closed:
             return "牌靴已结束；请新建牌靴后再录牌。"
         if seg.table.phase == PHASE_NO_ROUND:
-            return "尚未开轮；确认参与座位后点击“新开一轮”。"
+            return "尚未开轮；确认参与座位后点击“开始本轮”。"
         if seg.table.phase not in (PHASE_DEALING, PHASE_IN_PROGRESS):
             return f"本轮{seg.table.phase}；点击“新开一轮”继续同一牌靴。"
         return None

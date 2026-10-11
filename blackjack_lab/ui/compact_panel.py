@@ -61,9 +61,11 @@ class CompactPanel(tk.Frame):
         ttk.Button(mode_bar, text='BCLC说明', width=8, command=lambda: show_bclc_help(app)).pack(side=tk.LEFT)
         save_bar = ttk.Frame(top)
         save_bar.grid(row=3, column=0, columnspan=5, sticky='ew')
+        top.rowconfigure(3, minsize=28)
         ttk.Label(save_bar, textvariable=app.var_recording_save, wraplength=530,
                   foreground=PALETTE['caution']).pack(side=tk.LEFT)
-        ttk.Button(save_bar, text='核对录牌', width=9, command=app.act_reconcile_recording).pack(side=tk.RIGHT)
+        self.recording_review = ttk.Button(save_bar, text='处理保存异常', width=13,
+                                          command=app.act_reconcile_recording)
         self.opening_label = self._label(top, variable=app.var_opening_ev,
                                         font=('Microsoft YaHei UI', 9, 'bold'), wrap=640, height=2, cursor='hand2')
         self.opening_label.grid(row=2, column=0, columnspan=5, sticky='w', pady=(4, 0))
@@ -401,6 +403,10 @@ class CompactPanel(tk.Frame):
     def render(self):
         if self.app._coalescing_recording_views:
             return  # Post-commit notifications invalidate immediately; paint once after all updates.
+        if self.app._recording_faults:
+            self.recording_review.pack(side=tk.RIGHT)
+        else:
+            self.recording_review.pack_forget()
         if self.app.recording_advice_pause():
             self.pause_recording()
             return
@@ -530,9 +536,10 @@ class CompactPanel(tk.Frame):
         self.peek_button.pack_forget()  # The fixed phase action owns this command.
         self.render_flow()
         self.render_recent()
-        stopped = bool(self.app.dealer_recording_finished())
+        stopped = bool(inactive or self.app.dealer_recording_finished())
         for button in self.card_buttons:
             button.state(['disabled'] if stopped else ['!disabled'])
+        self.hole_button.state(['disabled'] if inactive else ['!disabled'])
         if self.editor_open:
             self.editor.lift()
         self.recording_hint.set(inactive or
