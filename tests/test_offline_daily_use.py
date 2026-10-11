@@ -88,6 +88,11 @@ class DailyUpdateTests(unittest.TestCase):
         self.assertEqual((self.root / 'program.bin').read_bytes(), b'previous-program')
         self.assert_data_preserved()
 
+    def test_equivalent_data_path_is_recognized(self):
+        alias = self.data / '..' / self.data.name
+        self.assertTrue(setup.existing_install(self.root, alias))
+        self.assert_data_preserved()
+
 
 class OnePassVerificationTests(unittest.TestCase):
     def setUp(self):

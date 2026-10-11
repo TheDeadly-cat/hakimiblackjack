@@ -72,7 +72,7 @@ def existing_install(root, data):
         return False
     assert_no_links(root)
     info = json.loads((root / 'install.json').read_text(encoding='utf-8'))
-    if installation_data(root, info) != data:
+    if installation_data(root, info) != data.resolve():
         raise ValueError('现有安装的资料目录不符')
     success = json.loads((root / 'INSTALL_SUCCESS.json').read_text(encoding='utf-8'))
     if success.get('package_id') != PACKAGE_ID or success.get('preflight_passed') is not True:
