@@ -1,6 +1,6 @@
 """Fixed O3 source; retain the installed O3 namespace across compatible repairs."""
-COMMIT = '4659d0578796e556b6fe70f9a2ce3944798cedbb'
-TREE = '1c8af0fc01b4dc98c249eb55500241cbeded410c'
+COMMIT = '13716e8255c2d44efb71ccc2064f759fa41fada6'
+TREE = '6cabbc593bb7c6dccd8087ea960cbc2936a09ab3'
 SOURCE_FILE_COUNT = 1555
 # Compatible recording repairs retain the database format and original O3 namespace.
 UPGRADE_FROM_COMMITS = ('184828365f020deb2a055fd88b69e599a2cc6147',
