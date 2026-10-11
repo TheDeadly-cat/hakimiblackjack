@@ -61,7 +61,6 @@ class CompactPanel(tk.Frame):
         ttk.Button(mode_bar, text='BCLC说明', width=8, command=lambda: show_bclc_help(app)).pack(side=tk.LEFT)
         save_bar = ttk.Frame(top)
         save_bar.grid(row=3, column=0, columnspan=5, sticky='ew')
-        top.rowconfigure(3, minsize=28)
         ttk.Label(save_bar, textvariable=app.var_recording_save, wraplength=530,
                   foreground=PALETTE['caution']).pack(side=tk.LEFT)
         self.recording_review = ttk.Button(save_bar, text='处理保存异常', width=13,
@@ -71,7 +70,7 @@ class CompactPanel(tk.Frame):
         self.opening_label.grid(row=2, column=0, columnspan=5, sticky='w', pady=(4, 0))
         self.opening_label.bind('<Button-1>', lambda event: app.opening_estimate.show_details())
         self.identity_label = self._label(self, variable=self.identity, font=('Microsoft YaHei UI', 12, 'bold'), wrap=640, height=2)
-        self.identity_label.grid(row=1, column=0, sticky='ew', pady=(4, 4))
+        self.identity_label.grid(row=1, column=0, sticky='ew', pady=(1, 1))
         selectors = ttk.Frame(self)
         selectors.grid(row=5, column=0, sticky='ew')
         ttk.Label(selectors, text='分析').pack(side=tk.LEFT)
