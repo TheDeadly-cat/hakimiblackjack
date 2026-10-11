@@ -1,6 +1,7 @@
 """Known Ace/peek input conflicts never masquerade as storage failures."""
 import sqlite3
 import unittest
+from functools import partial
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,6 +15,23 @@ from tests import test_recording_owner as owner_fixture
 from tests import test_recording_background_ui as ui_fixture
 
 
+def storage_failure_patch(*, after_write=False):
+    original = LocalStore.append_validated
+    def failing(store, candidate):
+        if after_write:
+            original(store, candidate)
+            raise OSError('synthetic receipt interruption')
+        raise sqlite3.OperationalError('synthetic disk failure')
+    return patch.object(LocalStore, 'append_validated', failing)
+
+
+def storage_failure_process(db_path, source, inputs, outputs, *, after_write=False):
+    """Inject inside the spawned worker; parent mocks cannot cross spawn."""
+    from blackjack_lab.ui.recording_process import run_recording_process
+    with storage_failure_patch(after_write=after_write):
+        run_recording_process(db_path, source, inputs, outputs)
+
+
 class BclcAceRevealRejectionTests(unittest.TestCase):
     use_process = False
     setUp = ace_fixture.BclcAceRecordingTests.setUp
@@ -21,6 +39,12 @@ class BclcAceRevealRejectionTests(unittest.TestCase):
     next_options = staticmethod(ace_fixture.BclcAceRecordingTests.next_options)
     results = owner_fixture.TestRecordingOwner.results
     close_owner = owner_fixture.TestRecordingOwner.close_owner
+
+    def storage_failure(self, *, after_write=False):
+        if self.use_process:
+            worker = partial(storage_failure_process, after_write=after_write)
+            return patch('blackjack_lab.ui.recording_process.run_recording_process', worker)
+        return storage_failure_patch(after_write=after_write)
 
     def dealer_after_negative(self):
         ctrl = self.prepare(cards={'玩家1': ('9', '4')})
@@ -83,10 +107,11 @@ class BclcAceRevealRejectionTests(unittest.TestCase):
     def test_valid_reveal_storage_failure_is_not_downgraded_to_rejected_input(self):
         ctrl = self.dealer_after_negative()
         before = PrefixSnapshot.capture(ctrl.ledger)
-        with patch.object(LocalStore, 'append_validated', side_effect=sqlite3.OperationalError('synthetic disk failure')):
+        with self.storage_failure():
             self.owner.submit(before, 'record_input', self.intent(ctrl, '6'))
             receipt = self.results(1)[0]
         self.assertEqual(receipt.status, 'failed_before_commit')
+        self.assertIn('synthetic disk failure', receipt.error)
         self.assertIsNotNone(receipt.failure_path)
         self.assertTrue(self.owner.failed)
         self.assertEqual(receipt.after, before)
@@ -94,14 +119,11 @@ class BclcAceRevealRejectionTests(unittest.TestCase):
     def test_exception_after_valid_reveal_commit_remains_unknown(self):
         ctrl = self.dealer_after_negative()
         before = PrefixSnapshot.capture(ctrl.ledger)
-        original = LocalStore.append_validated
-        def after_write(store, candidate):
-            original(store, candidate)
-            raise OSError('synthetic receipt interruption')
-        with patch.object(LocalStore, 'append_validated', side_effect=after_write, autospec=True):
+        with self.storage_failure(after_write=True):
             self.owner.submit(before, 'record_input', self.intent(ctrl, '6'))
             receipt = self.results(1)[0]
         self.assertEqual(receipt.status, 'unknown_commit_outcome')
+        self.assertIn('synthetic receipt interruption', receipt.error)
         self.assertIsNotNone(receipt.failure_path)
         self.assertNotEqual(receipt.after, before)
         self.assertTrue(self.owner.failed)
