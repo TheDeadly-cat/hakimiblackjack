@@ -9,9 +9,8 @@ import sys
 import zipfile
 
 HERE = Path(__file__).resolve().parent
-COMMIT = '3ec2006e82c4bdbc8da01bb0e1212b64c9111d2c'
-TREE = '7fc1e8bb64c5bc4a783941fee536f394acf1fff7'
-PACKAGE_ID = 'T1O1-3ec2006'
+sys.path.insert(0, str(HERE))
+from offline_identity import COMMIT, TREE, PACKAGE_ID, SETUP_NAME
 
 
 def wrapper_identity():
@@ -65,7 +64,7 @@ def main():
         disconnected_host_acceptance=False, realtime_accepted=False)
     (payload / 'PAYLOAD.json').write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding='utf-8')
     command = [sys.executable, '-I', '-B', '-m', 'PyInstaller', '--noconfirm', '--onefile',
-        '--windowed', '--noupx', '--name', 'Hakimi_Blackjack_T1O1_Offline_Setup',
+        '--windowed', '--noupx', '--name', SETUP_NAME,
         '--paths', str(HERE.parent / 'windows_trial'), '--add-data', str(payload) + ':payload',
         '--workpath', str(output / 'pyi-work'), '--distpath', str(output / 'dist'),
         '--specpath', str(output), str(HERE / 'offline_setup.py')]
@@ -75,7 +74,7 @@ def main():
         raise RuntimeError('安装器冻结失败；保留日志')
     if wrapper_identity() != wrapper_before:
         raise RuntimeError('安装器构建期间包装源码改变；保留本轮，不签署产物')
-    executable = output / 'dist/Hakimi_Blackjack_T1O1_Offline_Setup.exe'
+    executable = output / 'dist' / (SETUP_NAME + '.exe')
     receipt = dict(package_id=PACKAGE_ID, application_commit=COMMIT, source_tree=TREE,
         wrapper=wrapper_before, runtime_wrapper_commit=manifest.get('wrapper_commit'),
         runtime_manifest_sha256=hashlib.sha256((runtime / 'BUNDLE_MANIFEST.json').read_bytes()).hexdigest(),

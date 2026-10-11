@@ -13,10 +13,12 @@ import urllib.request
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 sys.path.insert(0, str(HERE.parent / 'windows_trial'))
-from trial_common import COMMIT, TREE, safe_relative, tree_hash, verify_installed_source
+sys.path.insert(0, str(HERE))
+from trial_common import safe_relative, tree_hash
+from offline_common import verify_installed_source
+from offline_identity import COMMIT, TREE, SOURCE_FILE_COUNT, PACKAGE_ID, RUNTIME_NAME
 
-PACKAGE_ID = 'T1O1-3ec2006'
-NAME = 'HakimiBlackjackTrialT1O1'
+NAME = RUNTIME_NAME
 
 
 def git(*args):
@@ -70,7 +72,7 @@ def main():
         manifest['files'][relative] = dict(git_mode=mode, git_blob=blob,
             sha256=hashlib.sha256(data).hexdigest(), size=len(data))
         tree_entries[relative] = (mode, blob)
-    if len(tree_entries) != 1539 or tree_hash(tree_entries) != TREE:
+    if len(tree_entries) != SOURCE_FILE_COUNT or tree_hash(tree_entries) != TREE:
         raise ValueError('完整固定源码树不符')
     verify_installed_source(source, manifest)
     dump_new(output / 'source-manifest.json', manifest)
