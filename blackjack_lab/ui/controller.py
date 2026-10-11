@@ -126,7 +126,48 @@ class SessionController:
 
     def _command_candidate(self):
         from ..ledger.command import CommandCandidate
+        pending = getattr(self, '_recording_candidate', None)
+        if pending is not None:
+            # Consume exactly once. This candidate independently replayed the
+            # complete baseline before queued-input planning began.
+            self._recording_candidate = None
+            candidate, ledger, context = pending
+            from ..analysis.contracts import canonical
+            if (self.ledger is not ledger or self.context_token != context
+                    or canonical([event.to_dict() for event in self.ledger.events]).encode('utf-8')
+                    != candidate._baseline.content):
+                raise LedgerError('录牌输入规划期间基线已变化，请重新核对')
+            return candidate
         return CommandCandidate(self.ledger, self.read_prefix())
+
+    @contextmanager
+    def _recording_command_frame(self):
+        """Plan one queued input from its fresh independently validated candidate.
+
+        Do not reuse externally exposed view state or any earlier command's
+        replay. Every appended prefix and the SQL baseline remain validated.
+        """
+        if getattr(self, '_recording_command_active', False):
+            raise RuntimeError('不能嵌套规划后台录牌输入')
+        with self.read_frame():
+            candidate = self._command_candidate()
+            ledger, context = self.ledger, self.context_token
+            previous = (getattr(self, '_read_key', None), getattr(self, '_read_snapshot', None),
+                        getattr(self, '_read_prefix_key', None), getattr(self, '_read_prefix', None))
+            self._recording_command_active = True
+            self._recording_candidate = candidate, ledger, context
+            try:
+                self._read_snapshot = candidate.replay()
+                self._read_key = id(ledger), context
+                yield
+            finally:
+                self._recording_candidate = None
+                self._recording_command_active = False
+                # Failed or unused preparation cannot leak its private view.
+                # A successful durable commit already published its new view.
+                if self.ledger is ledger and self.context_token == context:
+                    (self._read_key, self._read_snapshot,
+                     self._read_prefix_key, self._read_prefix) = previous
 
     def _accept_committed_frame(self, candidate, events, entry_update=None):
         from ..ledger.command import CommandCandidate
