@@ -472,7 +472,7 @@ class CompactPanel(tk.Frame):
             self.state.set(self.model.state)
             self.message.set(message)
             self.notes.set('已保存牌面仍保留；等待一致回执和最新判断。')
-            self.decision_evs.set('各动作EV：等待录牌保存状态确认')
+            self.decision_evs.set('')
             self.seat_table_frame.grid_remove()
             self.compute.state(['disabled'])
             self.render_choices(self.model)

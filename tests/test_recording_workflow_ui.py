@@ -10,6 +10,7 @@ from unittest.mock import patch
 from blackjack_lab.ledger.events import CARD_DEALT
 from blackjack_lab.ui.deal_entry import MODE_PEEK_WAIT
 from blackjack_lab.ui.read_snapshot import PrefixSnapshot
+from blackjack_lab.ui.table_modes import bclc_rules
 from tests import test_recording_background_ui as fixture
 
 
@@ -102,7 +103,13 @@ class RecordingWorkflowUITests(unittest.TestCase):
 
     def test_bclc_hole_phase_guides_point_mispress_and_accepts_explicit_confirmation(self):
         app = self.app
-        app.select_table_mode('bclc'); app.act_new_shoe(); app.act_new_round()
+        app.select_table_mode('bclc')
+        # This owned legacy fixture leaves shoe observations unknown and
+        # explicitly uses manual hole confirmation, rather than the daily
+        # New Shoe entry's declared complete-shoe protocol.
+        app.ctrl.replace_shoe(bclc_rules(), app.ctrl.context_token)
+        app.var_simple_hole.set(False)
+        app.act_new_round()
         app.var_auto_next.set(False)
         self.record('8', '6', '7')
         before = PrefixSnapshot.capture(app.ctrl.ledger)

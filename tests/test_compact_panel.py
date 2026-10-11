@@ -244,9 +244,25 @@ class TestCompactPanel(unittest.TestCase):
             self.assertEqual(row[5].cget('text'), f'{ev_sign(choice.ev)} {choice.ev:+.6f}')
         self.assertIn(f"补牌爆牌率 {result['probabilities']['hit_bust']:.2%}", view.rows[0][3].cget('text'))
         self.assertIn('最终净额>0', view.rows[1][3].cget('text'))
-        for widget in (view.rows[0][0], view.rows[1][0], view.details_button, view.undo_button):
-            self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(), app.winfo_rooty() + app.winfo_height())
-            self.assertLessEqual(widget.winfo_rootx() + widget.winfo_width(), app.winfo_rootx() + app.winfo_width())
+        # Use the existing compact layout budget. Default geometry may be
+        # clamped by a small monitor's work area, where scrolling is supported.
+        for size in ('720x740', '700x740'):
+            app.geometry(size)
+            app.update()
+            for widget in (view.rows[0][0], view.rows[1][0], view.details_button, view.undo_button):
+                self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(), app.winfo_rooty() + app.winfo_height())
+                self.assertLessEqual(widget.winfo_rootx() + widget.winfo_width(), app.winfo_rootx() + app.winfo_width())
+        app.geometry('660x460')
+        app.update()
+        app.compact_canvas.yview_moveto(1)
+        app.update()
+        self.assertLessEqual(view.details_button.winfo_rooty() + view.details_button.winfo_height(),
+                             app.winfo_rooty() + app.winfo_height())
+        app.compact_canvas.yview_moveto(0)
+        app.update()
+        self.assertGreaterEqual(view.undo_button.winfo_rooty(), app.winfo_rooty())
+        self.assertLessEqual(view.undo_button.winfo_rooty() + view.undo_button.winfo_height(),
+                             app.winfo_rooty() + app.winfo_height())
         self.assertEqual(self.errors, [])
 
     def test_save_pause_keeps_named_empty_slots_without_previous_numbers(self):
@@ -263,7 +279,7 @@ class TestCompactPanel(unittest.TestCase):
             self.assertEqual(row[4].cget('text'), '净盈利概率 —')
             self.assertEqual(row[5].cget('text'), 'EV —')
             self.assertNotIn('%', row[3].cget('text'))
-        self.assertNotIn('%', view.decision_evs.get())
+        self.assertEqual(view.decision_evs.get(), '')
 
     def deal_practice_round(self):
         app = self.app
