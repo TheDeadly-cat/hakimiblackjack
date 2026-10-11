@@ -1,6 +1,7 @@
 """Request isolation, bounded workers, and content/identity-checked publication."""
 import math
 import multiprocessing as mp
+import threading
 from time import perf_counter, time
 import uuid
 
@@ -9,9 +10,13 @@ from .contracts import (AnalysisInput, ENGINE_VERSION, STRATEGY_VERSION, RESULT_
                         AVAILABLE, INAPPLICABLE, UNSUPPORTED, PENDING, TIMEOUT, CANCELLED, STALE, FAILED, ACTION_ZH)
 from .probability import CalculationStopped, InsufficientCards
 from .split_contracts import SplitAnalysisInput, SPLIT_INPUT_SCHEMA, SPLIT_RESULT_SCHEMA
+from .ace_prepeek_contracts import AcePrepeekInput, ACE_PREPEEK_INPUT_SCHEMA
 
 
 def base_result(snapshot, request_id):
+    if isinstance(snapshot, AcePrepeekInput):
+        from .ace_prepeek_service import result_envelope
+        return result_envelope(snapshot, request_id)
     return {"schema": SPLIT_RESULT_SCHEMA if isinstance(snapshot, SplitAnalysisInput) else RESULT_SCHEMA, "request_id": request_id,
             "input": snapshot.to_dict(), "input_digest": snapshot.input_digest,
             "rules_digest": snapshot.rules_digest, "engine_version": snapshot.engine_version,
@@ -24,6 +29,9 @@ def base_result(snapshot, request_id):
 
 def calculate(snapshot, request_id=None, budget_seconds=5.0):
     request_id = request_id or uuid.uuid4().hex
+    if isinstance(snapshot, AcePrepeekInput):
+        from .ace_prepeek_service import calculate_ace_prepeek
+        return calculate_ace_prepeek(snapshot, request_id, budget_seconds)
     if isinstance(snapshot, SplitAnalysisInput):
         from .split_service import calculate_split
         return calculate_split(snapshot, request_id, budget_seconds)
@@ -87,10 +95,23 @@ def _validate_distribution(values):
         raise ArithmeticError("计算结果分布不合法，禁止发布")
 
 
+def parse_analysis_input(data):
+    if not isinstance(data, dict):
+        raise ValueError('分析输入必须为对象')
+    schema = data.get('schema')
+    if schema == ACE_PREPEEK_INPUT_SCHEMA:
+        return AcePrepeekInput.from_dict(data)
+    if schema == SPLIT_INPUT_SCHEMA:
+        return SplitAnalysisInput.from_dict(data)
+    from .contracts import INPUT_SCHEMA
+    if schema == INPUT_SCHEMA:
+        return AnalysisInput.from_dict(data)
+    raise ValueError('不支持的分析输入格式')
+
+
 def _worker(connection, data, request_id, budget):
     try:
-        input_type = SplitAnalysisInput if data.get("schema") == SPLIT_INPUT_SCHEMA else AnalysisInput
-        result = calculate(input_type.from_dict(data), request_id, budget)
+        result = calculate(parse_analysis_input(data), request_id, budget)
         import socket
         result["worker_network_guard_active"] = bool(getattr(socket, "_hakimi_offline_guard", False))
         result["worker_peak_working_set_bytes"] = _peak_memory()
@@ -120,9 +141,14 @@ def _peak_memory():
 
 class AnalysisService:
     """One replaceable process per request: no Tk blocking, no stale worker output."""
+    deferred_release = True
+
     def __init__(self):
         self.active = None
         self.result = None
+        self._retiring = None
+        self._retiring_job = None
+        self._retirement_error = None
 
     def start(self, snapshot, budget_seconds=5.0):
         snapshot.validate()
@@ -134,17 +160,29 @@ class AnalysisService:
         process = mp.get_context("spawn").Process(target=_worker,
             args=(send, snapshot.to_dict(), request_id, budget_seconds), daemon=True)
         self.active = {"id": request_id, "snapshot": snapshot, "start": perf_counter(),
-                       "budget": budget_seconds, "process": process, "pipe": receive}
+                       "budget": budget_seconds, "process": process, "pipe": receive,
+                       "started": False, "sender": send}
         self.result = None
         try:
-            process.start()
+            self._start_pending()
         except Exception:
-            self.active = None
-            receive.close()
+            self._release()
             raise
-        finally:
-            send.close()
         return request_id
+
+    def _start_pending(self):
+        job = self.active
+        if job is None or job.get('started', True):
+            return
+        if self._retiring is not None and self._retiring.is_alive():
+            return  # Keep one worker; this wait is included in the original budget.
+        if not self._retirement_complete():
+            raise RuntimeError('旧计算进程尚未确认停止，未启动新计算：' +
+                               (self._retirement_error or '回收未完成'))
+        job['start_attempted'] = True
+        job['process'].start()
+        job['started'] = True
+        job.pop('sender').close()
 
     def accept_result(self, result):
         job = self.active
@@ -165,6 +203,17 @@ class AnalysisService:
             self.result = result
             self._release()
             return result
+        if not job.get('started', True):
+            try:
+                self._start_pending()
+            except Exception as error:
+                result = base_result(job['snapshot'], job['id'])
+                result.update(status=FAILED, reason_code='WORKER_START_FAILED', reason=str(error))
+                self.result = result
+                self._release()
+                return result
+            if not job['started']:
+                return None
         if job["pipe"].poll():
             try:
                 result = job["pipe"].recv()
@@ -183,15 +232,94 @@ class AnalysisService:
         return None
 
     def _release(self):
-        if self.active:
-            process = self.active["process"]
+        job, self.active = self.active, None
+        if job is None:
+            return
+        process = job['process']
+        if not job.get('started', True) and not job.get('start_attempted'):
+            # No worker was launched; a handle-close error cannot strand the
+            # caller or prevent the other owned handles from being released.
+            for resource in (job.pop('sender'), job['pipe'], process):
+                try:
+                    resource.close()
+                except Exception as error:
+                    self._record_retirement_error(error)
+            return
+        if not self.deferred_release:
             if process.is_alive():
                 process.terminate()
-            process.join(timeout=0.25)
-            self.active["pipe"].close()
+            process.join(timeout=.25)
+            job['pipe'].close()
             if not process.is_alive():
                 process.close()
-            self.active = None
+            return
+
+        # Retain ownership before signalling: a signal/launch failure must not
+        # lose the old worker or make a replacement appear safe to start.
+        self._retiring_job = job
+        job['worker_stopped'] = False
+        try:
+            if process.is_alive():
+                process.terminate()  # Invalidate immediately; waiting stays off Tk.
+        except Exception as error:
+            self._record_retirement_error(error)
+
+        def reap():
+            try:
+                # A failed start may have no child, or may have created one
+                # before raising. Retain the job and inspect its real state.
+                if job.get('started', True) or process.is_alive():
+                    process.join(timeout=.25)
+                    while process.is_alive():
+                        process.kill()
+                        process.join(timeout=.25)
+            except Exception as error:
+                self._record_retirement_error(error)
+            try:
+                job['worker_stopped'] = not process.is_alive()
+            except Exception as error:
+                self._record_retirement_error(error)
+            if job['worker_stopped']:
+                # Failure to close a dead worker's pipe is diagnostic, not
+                # evidence that the worker remains alive. Attempt both closes.
+                for resource in (job['pipe'], process):
+                    try:
+                        resource.close()
+                    except Exception as error:
+                        self._record_retirement_error(error)
+
+        self._retiring = threading.Thread(target=reap, name='analysis-process-reaper', daemon=False)
+        try:
+            self._retiring.start()
+        except Exception as error:
+            self._record_retirement_error(error)
+
+    def _record_retirement_error(self, error):
+        message = f'{type(error).__name__}: {error}'
+        if not self._retirement_error:
+            self._retirement_error = message
+        elif message not in self._retirement_error:
+            self._retirement_error += '; ' + message
+
+    def _retirement_complete(self):
+        if self._retiring is not None and self._retiring.is_alive():
+            return False
+        job = self._retiring_job
+        if job is None or job.get('worker_stopped'):
+            return True
+        try:
+            job['worker_stopped'] = not job['process'].is_alive()
+        except Exception as error:
+            self._record_retirement_error(error)
+        return job['worker_stopped']
+
+    @property
+    def cleanup_error(self):
+        return self._retirement_error
+
+    @property
+    def stopped(self):
+        return self.active is None and self._retirement_complete()
 
     def cancel(self, status=CANCELLED):
         if self.active:

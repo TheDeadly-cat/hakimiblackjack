@@ -4,6 +4,7 @@ import math
 
 from .contracts import ACTION_ZH, AVAILABLE, STATUS_ZH
 from .split_contracts import DAS_ENGINE_LEGACY
+from .ace_prepeek_contracts import ACE_PREPEEK_RESULT_SCHEMA, ACE_PREPEEK_STAGE
 from ..core.cards import hand_total
 
 
@@ -31,6 +32,12 @@ class DecisionSummary:
     tied: bool = False
     historical: bool = False
     notes: tuple[str, ...] = ()
+    terminal: Choice | None = None
+
+
+def is_ace_prepeek_result(result):
+    return bool(result and result.get('schema') == ACE_PREPEEK_RESULT_SCHEMA
+                and result.get('evaluation_stage') == ACE_PREPEEK_STAGE)
 
 
 def hand_text(ranks):
@@ -98,6 +105,24 @@ def summarize_result(result, historical=False):
     if result.get('engine_version') == DAS_ENGINE_LEGACY:
         return DecisionSummary("历史 · 需核对", identity, "旧算法结果保留在详情，请按原时点另存复算。",
                                historical=True, notes=notes)
+    prepeek = is_ace_prepeek_result(result)
+    if prepeek:
+        notes += ('检查前评估；EV和净盈利概率包含庄家BJ分支，玩家动作仅在实际非BJ后执行。',)
+    terminal = result.get('terminal_evaluation') if prepeek else None
+    if terminal is not None:
+        try:
+            natural = terminal.get('reason_code') == 'PLAYER_NATURAL_BJ'
+            if terminal.get('status') != AVAILABLE or terminal.get('reason_code') not in (
+                    'PLAYER_NATURAL_BJ', 'DEALER_BJ_CERTAIN'):
+                raise ValueError('BJ终局结果尚未完成')
+            value = _choice('natural_blackjack' if natural else 'dealer_blackjack',
+                            dict(terminal, label='自然BJ结算' if natural else '庄家BJ结算'), '终局')
+        except (ValueError, KeyError, TypeError, OverflowError, AttributeError) as error:
+            return DecisionSummary(prefix + '需核对', identity, str(error), historical=historical, notes=notes)
+        return DecisionSummary(prefix + ('自然BJ' if natural else 'BJ确定') + ' · 检查前评估', identity,
+            ('等待庄家检查；仅显示自然BJ终局结算，概率和EV已包含庄家BJ时和局。' if natural else
+             '等待庄家实际检查；底牌池的BJ概率为1，仅显示终局评估，没有玩家动作。'),
+            historical=historical, notes=notes, terminal=value)
     legal = tuple(result['input'].get('legal_actions', ()))
     if legal == ('deal',):
         return DecisionSummary(prefix + "等待补牌", identity, "已选动作，只需录入确定要发的一张牌。",
@@ -140,8 +165,10 @@ def summarize_result(result, historical=False):
         else:
             rank_label = f'第{i + 1}'
         ranked.append(Choice(**{**choice.__dict__, 'rank_label': rank_label}))
-    state = '部分比较' if partial else '并列／差距不可区分' if tied else '已更新'
+    state = '检查前评估' if prepeek else '部分比较' if partial else '并列／差距不可区分' if tied else '已更新'
     reasons = []
+    if prepeek:
+        reasons.append('等待庄家检查；EV和净盈利概率含BJ分支，动作仅在非BJ后执行。')
     if partial:
         names = [ACTION_ZH.get(a, a) for a in dict.fromkeys([*missing, *uncertain])]
         reasons.append('仅比较已计算动作；' + ('、'.join(names) + '未完成或待核对。' if names else '不能标为全局最佳。'))
@@ -155,6 +182,11 @@ def summarize_result(result, historical=False):
 
 
 def format_summary_details(summary):
+    if summary.terminal:
+        c = summary.terminal
+        return (f'{c.label}终局EV {c.ev:+.6f}；净盈利 {c.profit:.4%} / '
+                f'不盈不亏 {c.push:.4%} / 净亏损 {c.loss:.4%}\n'
+                '按原始主注计算终局结算，不是玩家动作建议。\n\n')
     if not summary.all_choices:
         return ''
     lines = ['净盈利概率 = 本次原始投注最终合计净收益 > 0（分牌后合并两手）',

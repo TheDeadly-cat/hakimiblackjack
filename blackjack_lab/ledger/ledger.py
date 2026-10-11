@@ -12,7 +12,8 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields
+import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..core.cards import UNKNOWN, RANKS, TEN_BUCKET
@@ -35,6 +36,7 @@ class LedgerError(Exception):
 
 
 CORRECTABLE_FIELDS = {
+    SHOE_CREATED: {"rules_snapshot"},
     CARD_DEALT: {"rank", "suit", "face_state"},
     CARD_REVEALED: {"rank", "suit"},
     BURN_CARDS: {"count", "note"},
@@ -42,6 +44,51 @@ CORRECTABLE_FIELDS = {
     PEEK_NEGATIVE: {"invalidated"},
     ROUND_ENDED: {"observation_status"},
 }
+
+SHOE_OBSERVATION_CONFIRMATION = {
+    'start_from_new_shoe': True,
+    'burn_cards_known': True,
+    'initial_burn_count': 0,
+}
+
+
+def _validate_shoe_observation_confirmation(target, snapshot, previous_snapshot, reason):
+    """Confirm only missing observations of this eight-deck, zero-burn shoe.
+
+    Every table-rule field remains locked; this is not a rule-editing branch.
+    Both imported and directly appended corrections traverse this validation.
+    """
+    if not isinstance(reason, str) or not reason.strip():
+        raise LedgerError('确认牌靴观察必须记录实际确认依据')
+    if type(target.payload['n_decks']) is not int or target.payload['n_decks'] != 8:
+        raise LedgerError('本次观察确认仅适用于原已登记的8副牌靴，不能更改牌副数')
+    names = {item.name for item in fields(RuleProfile)}
+    try:
+        if type(snapshot) is not str or type(previous_snapshot) is not str:
+            raise ValueError('规则快照必须为原格式JSON文本')
+        before_data, after_data = json.loads(previous_snapshot), json.loads(snapshot)
+        if (not isinstance(before_data, dict) or not isinstance(after_data, dict)
+                or set(before_data) != names or set(after_data) != names):
+            raise ValueError('规则快照必须包含完整RuleProfile字段')
+        before = asdict(RuleProfile(**before_data))
+        after = asdict(RuleProfile(**after_data))
+    except (TypeError, ValueError) as error:
+        raise LedgerError('牌靴观察确认的规则快照无效：' + str(error)) from error
+    if before['n_decks'] != 8:
+        raise LedgerError('原规则快照与8副建靴记录不一致')
+    for name in names - SHOE_OBSERVATION_CONFIRMATION.keys():
+        if after[name] != before[name]:
+            raise LedgerError('观察确认不能修改牌副数或已锁定桌规：' + name)
+    missing = False
+    for name, value in SHOE_OBSERVATION_CONFIRMATION.items():
+        if type(after[name]) is not type(value) or after[name] != value:
+            raise LedgerError('本次仅能确认完整新靴、烧牌数量已知且初始烧牌为0')
+        if before[name] is None:
+            missing = True
+        elif type(before[name]) is not type(value) or before[name] != value:
+            raise LedgerError('观察确认不能覆盖已有观察事实：' + name)
+    if not missing:
+        raise LedgerError('本牌靴的完整新靴与零烧牌观察已确认，不重复追加确认')
 
 
 @dataclass
@@ -277,7 +324,7 @@ class EventLedger:
         target = self._find(target_event_id)
         allowed = CORRECTABLE_FIELDS
         if target.etype not in allowed or not payload_fix or set(payload_fix) - allowed[target.etype]:
-            raise LedgerError("仅允许纠正牌面/花色/未知状态、烧牌、缺口或检查结果；规则修改请新建牌靴")
+            raise LedgerError("仅允许纠正牌面/花色/未知状态、烧牌、缺口、检查结果或补确认8副完整零烧牌新靴；桌规修改请新建牌靴")
         if self.is_voided(target_event_id):
             raise LedgerError("已撤销事件不可纠错")
         return self.append(Event(CORRECTION, {
@@ -330,6 +377,20 @@ class EventLedger:
                         raise LedgerError("只能逆序撤销最后有效事件，不能跳过后续记录")
                     past_voided.add(target)
                     undoable.pop()
+            if ev.etype == CORRECTION and seen[ev.payload['target_event_id']].etype == SHOE_CREATED:
+                original = seen[ev.payload['target_event_id']]
+                fix = ev.payload.get('payload_fix')
+                if not isinstance(fix, dict) or set(fix) != {'rules_snapshot'}:
+                    raise LedgerError('建靴观察确认仅允许补充rules_snapshot，不能更改建靴身份或牌副数')
+                active_shoe = next((item for item in reversed(undoable)
+                                    if item.etype in (SHOE_CREATED, SHOE_ENDED)), None)
+                if (active_shoe is None or active_shoe.etype != SHOE_CREATED
+                        or active_shoe.event_id != original.event_id or ev.shoe_id != original.shoe_id):
+                    raise LedgerError('只能确认当前仍有效的牌靴观察，不能补改其他牌靴')
+                previous = corrections.get(original.event_id, {}).get(
+                    'rules_snapshot', original.payload['rules_snapshot'])
+                _validate_shoe_observation_confirmation(original, fix['rules_snapshot'], previous,
+                                                        ev.payload.get('reason'))
             if ev.etype == CORRECTION and ev.event_id not in voided:
                 original = seen[ev.payload["target_event_id"]]
                 fix = ev.payload.get("payload_fix")

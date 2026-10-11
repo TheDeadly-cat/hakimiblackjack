@@ -90,6 +90,31 @@ class RecordingBackgroundUITests(unittest.TestCase):
         self.assertEqual(app.var_target.get(), '玩家1')
         self.assertEqual(self.errors, [])
 
+    def test_backspace_and_replacement_card_in_same_fifo_restore_one_user_input(self):
+        app = self.app
+        app._key_rank('T'); app._key_rank('6'); app._key_rank('6')
+        self.wait_saved()
+        ctrl = app.ctrl
+        before = ctrl.ledger.to_list()
+        trigger, hole = ctrl.ledger.events[-2:]
+        app.focus_force(); app.update()
+        for key in ('BackSpace', '7'):
+            app.event_generate('<KeyPress>', keysym=key, when='tail')
+            app.event_generate('<KeyRelease>', keysym=key, when='tail')
+        app.update()
+        self.wait_saved()
+        self.assertEqual(ctrl.ledger.to_list()[:len(before)], before)
+        appended = ctrl.ledger.events[len(before):]
+        self.assertEqual([event.etype for event in appended], ['UNDO', 'UNDO', 'CARD_DEALT', 'CARD_DEALT'])
+        self.assertEqual([event.payload['target_event_id'] for event in appended[:2]],
+                         [hole.event_id, trigger.event_id])
+        self.assertEqual(ctrl.state().current.table.players['玩家1'].hands[0].ranks, ['T', '7'])
+        self.assertEqual(ctrl.state().current.shoe.physical_remaining(), 412)
+        self.assertEqual(ctrl.state().current.shoe.unrevealed_out, 1)
+        self.assertEqual(ctrl.store.load_ledger(ctrl.session_id).to_list(), ctrl.ledger.to_list())
+        self.assertFalse(app._recording_faults)
+        self.assertEqual(self.errors, [])
+
     def test_pending_write_keeps_tk_alive_and_blocks_context_changes(self):
         app = self.app
         entered, release = threading.Event(), threading.Event()
@@ -127,12 +152,14 @@ class RecordingBackgroundUITests(unittest.TestCase):
         self.pump(lambda: not app.recording_busy and app._recording_owner.stopped)
         faults = list(app._recording_faults)
         self.assertEqual([f['status'] for f in faults], ['failed_before_commit', 'not_executed'])
+        self.assertEqual(app.compact_panel.recording_review.winfo_manager(), 'pack')
         self.assertEqual(self.deals(), [('玩家1', '8')])
         self.assertTrue(all(Path(f['failure_path']).is_file() for f in faults))
         app._key_rank('9')
         self.assertFalse(app.recording_busy)
         app.act_reconcile_recording()
         self.assertFalse(app._recording_faults)
+        self.assertFalse(app.compact_panel.recording_review.winfo_manager())
         self.assertEqual(self.deals(), [('玩家1', '8')])
         self.assertEqual(len(app._recording_fault_history), 2)
         app._key_rank('6'); self.wait_saved()
@@ -206,7 +233,7 @@ class RecordingBackgroundUITests(unittest.TestCase):
         app = self.app
         app.select_table_mode('bclc')
         from blackjack_lab.ui.table_modes import legacy_bclc_draft_rules
-        app._set_rule_form(legacy_bclc_draft_rules()); app.act_new_shoe()
+        app._set_rule_form(legacy_bclc_draft_rules()); app.var_simple_hole.set(False); app.act_new_shoe()
         for var in app.var_participants.values():
             var.set(True)
         app.act_new_round()
@@ -220,7 +247,7 @@ class RecordingBackgroundUITests(unittest.TestCase):
         self.assertEqual(state.shoe.physical_remaining(), 400)
         self.assertEqual(state.rules.confirm_status, CONFIRM_UNKNOWN)
         self.assertIsNone(state.rules.check_bj_when)
-        self.assertIsNone(state.rules.burn_cards_known)
+        self.assertTrue(state.rules.burn_cards_known)  # Explicit daily New Shoe facts; draft table rules remain unknown.
         self.assertFalse(state.table.dealer_hole_checked_negative)
 
     def test_split_double_dealer_reveal_and_automatic_next_share_ordered_plan(self):
@@ -252,6 +279,7 @@ class RecordingBackgroundUITests(unittest.TestCase):
         app = self.app
         from blackjack_lab.ui.table_modes import legacy_bclc_draft_rules
         app.select_table_mode('bclc'); app._set_rule_form(legacy_bclc_draft_rules())
+        app.var_simple_hole.set(False)
         app.act_new_shoe(); app.act_new_round()
         for rank in ('9', 'A', '8'):
             app._key_rank(rank)

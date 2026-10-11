@@ -5,7 +5,7 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path
 from ..core.rules import RuleProfile, CONFIRM_VERIFIED
-from ..core.cards import is_natural_blackjack
+from ..core.cards import is_natural_blackjack, is_ten_value
 from ..ledger.events import (CANDIDATE, CONFIRMED, SOURCE_MANUAL, CARD_DEALT,
                              PLAYER_ACTION, PEEK_NEGATIVE, UNDO, CORRECTION, SHOE_CREATED,
                              CARD_REVEALED, ROUND_STARTED, ROUND_ENDED, SHOE_ENDED, FACE_HIDDEN)
@@ -281,7 +281,7 @@ class SessionController:
         if type(simple_hole) is not bool:
             raise ValueError('简便暗牌设置必须明确启用或关闭')
         if simple_hole and not self._simple_rules_confirmed(seg):
-            raise TableError('简便暗牌需要已确认的美式底牌、决策前检查规则和完整新牌靴；请先核对桌规或使用手动方式')
+            raise TableError('简便暗牌需要已确认的美式底牌及对应检查流程；请先核对桌规或使用手动方式')
         if deal_direction not in ('forward', 'reverse'):
             raise ValueError('未知发牌方向')
         ordered = participating_in_order(participants if participants is not None else seg.table.players, deal_direction)
@@ -405,13 +405,15 @@ class SessionController:
     def deal_shown(self, seat, rank, hand_id=None, suit=None, track_id=None, confirm_status=CONFIRMED,
                    *, initial_slot_id=None, auto_next=None):
         if self._should_add_initial_hole(seat, hand_id, initial_slot_id, confirm_status):
+            previous_plan = self.entry_plan.to_dict()
             candidate = self._command_candidate()
             visible = candidate.deal(seat, rank, hand_id=hand_id, suit=suit, track_id=track_id,
                                      confirm_status=confirm_status, source=self.recording_source)
             hidden = candidate.deal(DEALER, hidden=True, source=self.recording_source,
                 evidence=json.dumps({'recording_contract': SIMPLE_HOLE_CONTRACT,
                     'basis': '按已确认初始发牌流程自动登记，仅确认未知底牌存在，不表示已观察到牌面',
-                    'trigger_event_id': visible.event_id}, ensure_ascii=False))
+                    'trigger_event_id': visible.event_id,
+                    'automatic_hole_undo_v1': {'previous_plan': previous_plan}}, ensure_ascii=False))
             # Both events are appended in the existing SQLite transaction. No
             # partial hand/hole publication if either insert fails.
             self.store.append_validated(candidate)
@@ -425,8 +427,10 @@ class SessionController:
 
     @staticmethod
     def _simple_rules_confirmed(seg):
+        # This certifies the physical initial-deal protocol, not the unseen
+        # shoe composition. Complete-shoe/burn observations gate EV separately.
         return (seg is not None and seg.rules.confirm_status == CONFIRM_VERIFIED
-                and seg.rules.american_hole_card is True and seg.rules.start_from_new_shoe is True
+                and seg.rules.american_hole_card is True
                 and seg.rules.check_bj_when in ('before_player_actions_A_T', 'before_player_actions_A'))
 
     def simple_hole_active(self):
@@ -519,6 +523,119 @@ class SessionController:
             raise TableError('初始暗牌身份不唯一；请在工作台明确选择要揭示的原事件')
         return holes[0][0]
 
+    def _bclc_ace_bound_hole(self, plan, seg, prefix_seq, prefix_digest):
+        """Read-only binding of the user's Ace-result protocol to this round."""
+        from ..analysis.split_contracts import BCLC_PROFILE
+        if (not plan or not seg or seg.closed or seg.rules.profile_id != BCLC_PROFILE
+                or seg.rules.version != 2 or seg.rules.confirm_status != CONFIRM_VERIFIED
+                or seg.rules.american_hole_card is not True
+                or seg.rules.check_bj_when != 'before_player_actions_A'
+                or seg.table.phase not in (PHASE_DEALING, PHASE_IN_PROGRESS)
+                or plan.mode != MODE_PEEK_WAIT or plan.dealer_up_rank != 'A'
+                or plan.paused or plan.input_paused or plan.unresolved_slots
+                or not plan.initial_complete() or seg.table.dealer_hole_checked_negative
+                or (plan.session_id, plan.shoe_id, plan.round_id) !=
+                   (self.session_id, seg.shoe_id, seg.round_id)
+                or plan.ledger_seq != prefix_seq or plan.ledger_digest != prefix_digest
+                or seg.shoe.gap or seg.shoe.pending_candidates):
+            return None
+        try:
+            frozen = RoundEntryPlan.freeze(session_id=plan.session_id, shoe_id=plan.shoe_id,
+                round_id=plan.round_id, selected_seats=plan.participating_seats,
+                my_seat=plan.my_seat, deal_direction=plan.deal_direction, simple_hole=plan.simple_hole)
+            if (plan.slots != frozen.slots or plan.participating_seats != tuple(seg.table.participants)
+                    or len(seg.table.dealer.hands) != 1):
+                return None
+            cards = seg.table.dealer.hands[0].cards
+            hole_slot = plan.hole_slot()
+            if (len(cards) != 2 or cards[0].rank != 'A' or not cards[1].is_unknown or not hole_slot
+                    or plan.filled_slots.get(hole_slot.slot_id) != cards[1].event_id):
+                return None
+            unresolved = [(eid, info) for eid, info in seg.unresolved.items() if info['round_id'] == seg.round_id]
+            if (len(unresolved) != 1 or unresolved[0][0] != cards[1].event_id
+                    or unresolved[0][1]['seat'] != DEALER or unresolved[0][1]['face_state'] != FACE_HIDDEN):
+                return None
+            live_ids = {card.event_id for seat in [seg.table.dealer, *seg.table.players.values()]
+                        for hand in seat.hands for card in hand.cards}
+            if set(plan.filled_slots.values()) != live_ids or set(plan.observed_card_ids) != live_ids:
+                return None
+            events = [self.ledger._find(plan.filled_slots[slot.slot_id]) for slot in plan.slots]
+            if (events != sorted(events, key=lambda event: event.seq)
+                    or any(event.etype != CARD_DEALT or event.seq > prefix_seq
+                           or (event.session_id, event.shoe_id, event.round_id) !=
+                              (self.session_id, seg.shoe_id, seg.round_id)
+                           or event.payload.get('seat') != slot.seat
+                           or event.payload.get('face_state') != slot.expected_face
+                           for slot, event in zip(plan.slots, events))):
+                return None
+            return cards[1].event_id
+        except (ValueError, KeyError, TypeError, AttributeError, TableError, LedgerError):
+            return None
+
+    def bclc_ace_input_ready(self):
+        with self.read_frame():
+            prefix = self.read_prefix()
+            return bool(self._bclc_ace_bound_hole(self.entry_plan, self.state().current,
+                                               prefix.through_seq, prefix.prefix_digest))
+
+    def record_bclc_ace_input(self, kind, rank=None, suit=None, action=None, auto_next=None):
+        """Save the user's observed Ace result and first player input atomically.
+
+        Per the explicitly chosen recording convention, a ten-valued rank is
+        the actually revealed dealer BJ. Other ranks/actions report an actual
+        non-BJ notification and belong to the first unfinished player hand.
+        """
+        from .recording_commands import RecordingInputRejected
+        with self.read_frame():
+            prefix, seg, plan = self.read_prefix(), self.state().current, self.entry_plan
+            hole = self._bclc_ace_bound_hole(plan, seg, prefix.through_seq, prefix.prefix_digest)
+            if not hole:
+                raise RecordingInputRejected('庄家A录牌位置尚未对齐；请核对已保存的原底牌')
+            if kind in ('rank', 'card') and is_ten_value(rank):
+                self.reveal(hole, rank, suit, auto_next=auto_next)
+                return dict(message=f'已保存实际庄家Blackjack：A＋{rank}（揭示原底牌）',
+                            round_changed=self.state().current.round_id != seg.round_id,
+                            seat=DEALER, hand_id=seg.table.dealer.hands[0].hand_id)
+            if kind not in ('rank', 'card', 'action'):
+                raise RecordingInputRejected('庄家A等待实际结果；请录入实际牌或玩家动作')
+            if kind in ('rank', 'card') and rank not in ('A', '2', '3', '4', '5', '6', '7', '8', '9'):
+                raise RecordingInputRejected('请输入实际已见的点值；不能用未知牌确认非BJ')
+            previous_plan = copy.deepcopy(plan.to_dict())
+            candidate = self._command_candidate()
+            peek = candidate.peek_negative()
+            peek.source = self.recording_source
+            peek.evidence = json.dumps(dict(recording_contract='bclc-ace-first-player-v1',
+                acknowledgement='用户明确录法：此输入表示已实际收到庄家非BJ通知，并录入第一有效玩家操作'), ensure_ascii=False)
+            current = candidate.replay().current
+            acting = next_open_hand(current.table, plan.participating_seats)
+            if not acting or not acting[1]:
+                raise RecordingInputRejected('实际非BJ后没有待操作的玩家手；请核对本轮结果')
+            seat, hand_id, _ordinal = acting
+            if kind == 'action':
+                states = current.table.action_states(seat, hand_id)
+                if action not in states or not states[action].allowed:
+                    reason = states[action].reason if action in states else '未知玩家动作'
+                    raise RecordingInputRejected(f'{action} 不被允许：{reason}')
+                try:
+                    event = candidate.player_action(seat, hand_id, action)
+                except TableError as error:
+                    raise RecordingInputRejected(str(error)) from error
+                message = f'已保存实际非BJ通知及{seat}动作：{action}'
+            else:
+                event = candidate.deal(seat, rank, hand_id=hand_id, suit=suit, source=self.recording_source)
+                message = f'已保存实际非BJ通知及{seat} ← {rank}'
+            peek, event = [candidate._find(item.event_id) for item in (peek, event)]
+            peek.source = event.source = self.recording_source
+            event.evidence = json.dumps(dict(bclc_ace_input_v1=dict(
+                peek_event_id=peek.event_id, previous_plan=previous_plan, kind=kind,
+                rank=rank if kind in ('rank', 'card') else None,
+                action=action if kind == 'action' else None)), ensure_ascii=False)
+            # No storage error is an ordinary rejected key. Publish both facts
+            # only after the single SQL transaction has durably succeeded.
+            self.store.append_validated(candidate)
+            self._accept_committed(candidate, [peek, event])
+            return dict(message=message, round_changed=False, seat=seat, hand_id=hand_id)
+
     def deal_hidden(self, seat, hand_id=None, track_id=None):
         return self._apply("deal", seat, None, hidden=True, hand_id=hand_id, track_id=track_id)
 
@@ -527,9 +644,26 @@ class SessionController:
                            track_id=track_id, confirm_status=CANDIDATE)
 
     def reveal(self, target_event_id, rank, suit=None, *, auto_next=None):
-        if auto_next is not None and self.ledger._find(target_event_id).payload.get('seat') == DEALER:
-            return self._dealer_input('reveal', target_event_id, rank, suit=suit, auto_next=auto_next)
-        return self._apply("reveal", target_event_id, rank, suit=suit)
+        from .recording_commands import RecordingInputRejected
+        with self.read_frame():
+            current = self.state().current
+            info = current.unresolved.get(target_event_id) if current else None
+            if not info or info['round_id'] != current.round_id:
+                raise RecordingInputRejected('原暗牌不在当前轮待揭示记录中；请核对录牌位置')
+            # Ordinary entry mistakes (notably A+T after a saved non-BJ check)
+            # are known before any persistent command starts. Validate only a
+            # private copy of the current table, preserving every recorded fact.
+            preview = copy.deepcopy(current.table)
+            try:
+                preview.reveal_card(info['seat'], info['hand_id'], info.get('track_id'),
+                                    rank, suit, event_id=target_event_id)
+            except (TableError, ValueError) as error:
+                raise RecordingInputRejected(str(error)) from error
+            # Independent full candidate replay and the SQL transaction remain
+            # authoritative. Never turn an exception from either into a key refusal.
+            if auto_next is not None and info['seat'] == DEALER:
+                return self._dealer_input('reveal', target_event_id, rank, suit=suit, auto_next=auto_next)
+            return self._apply("reveal", target_event_id, rank, suit=suit)
 
     def _dealer_input(self, method, *args, auto_next, **kwargs):
         """One input, one durable transaction, including any automatic round transition."""
@@ -584,6 +718,14 @@ class SessionController:
         group = self._shoe_undo_group()
         default_reason = '撤回换靴及自动结束的旧轮' if group else '撤回最后录牌及其自动结算、开轮'
         group = group or self._automatic_undo_group()
+        if not group:
+            group = self._bclc_ace_undo_group()
+            if group:
+                default_reason = '撤回本次玩家输入及实际非BJ确认'
+        if not group:
+            group = self._automatic_hole_undo_group()
+            if group:
+                default_reason = '撤回本次录牌及其自动暗牌'
         if group:
             events, plan = group
             # Undo changes the recorded round, not the user's explicit input pause.
@@ -605,6 +747,155 @@ class SessionController:
             self._accept_committed(candidate, undos, restore)
             return undos[-1]
         return self._apply("undo_last", reason)
+
+    def _bclc_ace_undo_group(self):
+        """Verify a complete observed non-BJ/player input before grouped undo."""
+        voided = self.ledger._voided_ids()
+        active = [event for event in self.ledger.events if event.etype != UNDO and event.event_id not in voided]
+        if len(active) < 2:
+            return None
+        peek, event = active[-2:]
+        if (peek.etype != PEEK_NEGATIVE or event.etype not in (CARD_DEALT, PLAYER_ACTION)
+                or event.payload.get('seat') == DEALER or peek.seq + 1 != event.seq
+                or (peek.session_id, peek.shoe_id, peek.round_id) !=
+                   (event.session_id, event.shoe_id, event.round_id)):
+            return None
+        try:
+            receipt = json.loads(event.evidence or '{}')['bclc_ace_input_v1']
+            previous = RoundEntryPlan.from_dict(receipt['previous_plan'])
+            prefix = [item.to_dict() for item in self.ledger.events if item.seq < peek.seq]
+            if (not prefix or receipt['peek_event_id'] != peek.event_id
+                    or json.loads(peek.evidence or '{}').get('recording_contract') != 'bclc-ace-first-player-v1'
+                    or peek.source != event.source):
+                return None
+            before = self.ledger.replay(through_seq=prefix[-1]['seq']).current
+            if not self._bclc_ace_bound_hole(previous, before, prefix[-1]['seq'], digest(prefix)):
+                return None
+            plan, current = self.entry_plan, self.state().current
+            if (not plan or not current
+                    or (plan.session_id, plan.shoe_id, plan.round_id) !=
+                       (self.session_id, event.shoe_id, event.round_id)
+                    or (current.shoe_id, current.round_id) != (event.shoe_id, event.round_id)
+                    or plan.ledger_seq != self.ledger.events[-1].seq
+                    or plan.ledger_digest != self.read_prefix().prefix_digest
+                    or plan.slots != previous.slots or plan.filled_slots != previous.filled_slots
+                    or current.table.dealer_hole_checked_negative is not True):
+                return None
+            # Find the same first effective player after the observed check,
+            # before the operation changes the hand or its legal actions.
+            before.table.mark_peek_negative()
+            acting = next_open_hand(before.table, previous.participating_seats)
+            if not acting or (event.payload.get('seat'), event.payload.get('hand_id')) != acting[:2]:
+                return None
+            if event.etype == CARD_DEALT:
+                if (receipt['kind'] not in ('rank', 'card') or event.payload.get('face_state') != 'shown'
+                        or receipt['rank'] != event.payload.get('rank') or is_ten_value(receipt['rank'])
+                        or receipt['rank'] not in ('A', '2', '3', '4', '5', '6', '7', '8', '9')
+                        or receipt['action'] is not None):
+                    return None
+                expected_ids = set(previous.observed_card_ids) | {event.event_id}
+            else:
+                if (receipt['kind'] != 'action' or receipt['rank'] is not None
+                        or receipt['action'] != event.payload.get('action')):
+                    return None
+                expected_ids = set(previous.observed_card_ids)
+            if (set(plan.observed_card_ids) != expected_ids or set(self.live_card_event_ids()) != expected_ids):
+                return None
+            return (event, peek), previous
+        except (ValueError, KeyError, TypeError, AttributeError, TableError, LedgerError):
+            return None
+
+    def _automatic_hole_undo_group(self):
+        """Undo one verified visible input together with its automatic hole.
+
+        Independent/manual hidden cards remain individual events. Old automatic
+        receipts can restore only the fully bound initial slots; a missing or
+        ambiguous plan never supplies an inferred next seat.
+        """
+        voided = self.ledger._voided_ids()
+        active = [e for e in self.ledger.events if e.etype != UNDO and e.event_id not in voided]
+        if len(active) < 2:
+            return None
+        trigger, hidden = active[-2:]
+        if (trigger.etype != CARD_DEALT or trigger.payload.get('face_state') != 'shown'
+                or trigger.payload.get('seat') == DEALER or hidden.etype != CARD_DEALT
+                or hidden.payload.get('face_state') != FACE_HIDDEN or hidden.payload.get('seat') != DEALER
+                or trigger.seq + 1 != hidden.seq
+                or (trigger.session_id, trigger.shoe_id, trigger.round_id) !=
+                   (hidden.session_id, hidden.shoe_id, hidden.round_id)):
+            return None
+        try:
+            receipt = json.loads(hidden.evidence or '{}')
+            plan, seg = self.entry_plan, self.state().current
+            if (receipt.get('recording_contract') != SIMPLE_HOLE_CONTRACT
+                    or receipt.get('trigger_event_id') != trigger.event_id
+                    or not plan or not seg or not plan.simple_hole or not self._simple_rules_confirmed(seg)
+                    or plan.paused or plan.unresolved_slots or not plan.initial_complete()
+                    or plan.mode not in (MODE_CONTINUATION, MODE_PEEK_WAIT, MODE_DEALER)
+                    or (plan.session_id, plan.shoe_id, plan.round_id) !=
+                       (self.session_id, hidden.shoe_id, hidden.round_id)
+                    or (seg.shoe_id, seg.round_id) != (hidden.shoe_id, hidden.round_id)
+                    or plan.ledger_seq != self.ledger.events[-1].seq
+                    or plan.ledger_digest != self.read_prefix().prefix_digest):
+                return None
+            frozen = RoundEntryPlan.freeze(session_id=plan.session_id, shoe_id=plan.shoe_id,
+                round_id=plan.round_id, selected_seats=plan.participating_seats,
+                my_seat=plan.my_seat, deal_direction=plan.deal_direction, simple_hole=True)
+            if plan.slots != frozen.slots or len(plan.slots) < 4:
+                return None
+            shown_slot, hole_slot = plan.slots[-2:]
+            live_ids = set(self.live_card_event_ids())
+            if (shown_slot.ordinal != 2 or shown_slot.seat != trigger.payload['seat']
+                    or plan.filled_slots.get(shown_slot.slot_id) != trigger.event_id
+                    or plan.filled_slots.get(hole_slot.slot_id) != hidden.event_id
+                    or set(plan.filled_slots.values()) != live_ids
+                    or set(plan.observed_card_ids) != live_ids):
+                return None
+            slot_events = [self.ledger._find(plan.filled_slots[slot.slot_id]) for slot in plan.slots]
+            if (slot_events != sorted(slot_events, key=lambda item: item.seq)
+                    or any(event.etype != CARD_DEALT or event.round_id != hidden.round_id
+                           or event.payload.get('seat') != slot.seat
+                           or event.payload.get('face_state') != slot.expected_face
+                           for slot, event in zip(plan.slots, slot_events))):
+                return None
+            prefix = [e.to_dict() for e in self.ledger.events if e.seq < trigger.seq]
+            if not prefix:
+                return None
+            prefix_digest = digest(prefix)
+            saved = receipt.get('automatic_hole_undo_v1')
+            if saved is not None:
+                previous = RoundEntryPlan.from_dict(saved['previous_plan'])
+            else:
+                # Legacy receipts have an explicit trigger but no plan snapshot.
+                # Rebuild only their verified complete initial-slot prefix.
+                previous = frozen
+                for slot, event in zip(plan.slots[:-2], slot_events[:-2]):
+                    previous.mark_filled(slot.slot_id, event.event_id, event.payload.get('rank'), slot.expected_face)
+                previous.cursor_slot_id = shown_slot.slot_id
+                previous.dealer_up_rank = plan.dealer_up_rank
+                if previous.last_saved:
+                    current_cards = [card for seat in [seg.table.dealer, *seg.table.players.values()]
+                                     for hand in seat.hands for card in hand.cards]
+                    card = next(card for card in current_cards if card.event_id == previous.last_saved.event_id)
+                    previous.last_saved.rank = card.rank
+                previous.ledger_seq, previous.ledger_digest = prefix[-1]['seq'], prefix_digest
+            expected_filled = {sid: eid for sid, eid in plan.filled_slots.items()
+                               if eid not in (trigger.event_id, hidden.event_id)}
+            if (previous.mode != MODE_INITIAL or previous.paused or previous.input_paused
+                    or not previous.simple_hole or previous.unresolved_slots
+                    or (previous.session_id, previous.shoe_id, previous.round_id) !=
+                       (plan.session_id, plan.shoe_id, plan.round_id)
+                    or previous.slots != plan.slots or previous.participating_seats != plan.participating_seats
+                    or (previous.my_seat, previous.deal_direction) != (plan.my_seat, plan.deal_direction)
+                    or previous.filled_slots != expected_filled
+                    or set(previous.observed_card_ids) != set(expected_filled.values())
+                    or previous.unfilled_ids() != (shown_slot.slot_id, hole_slot.slot_id)
+                    or previous.cursor_slot_id != shown_slot.slot_id
+                    or previous.ledger_seq != prefix[-1]['seq'] or previous.ledger_digest != prefix_digest):
+                return None
+            return (hidden, trigger), previous
+        except (ValueError, KeyError, TypeError, AttributeError, StopIteration, TableError, LedgerError):
+            return None
 
     def _shoe_undo_group(self):
         voided = self.ledger._voided_ids()
@@ -666,6 +957,39 @@ class SessionController:
             raise ValueError("纠错必须填写依据或原因")
         return self._apply("correct", event_id, payload_fix, reason)
 
+    def confirm_complete_unburned_shoe(self, reason, expected_context):
+        """Append the user's missing shoe observations without shifting cards."""
+        if not isinstance(reason, str) or not reason.strip():
+            raise ValueError('请记录完整新靴与零烧牌的实际确认依据')
+        with self.read_frame():
+            if self.context_token != expected_context:
+                raise LedgerError('确认期间记录已变化，请核对当前牌靴')
+            seg, plan, prefix = self.state().current, self.entry_plan, self.read_prefix()
+            if seg is None or seg.closed or seg.rules.n_decks != 8:
+                raise LedgerError('仅能确认当前有效的8副牌靴')
+            event = next(e for e in self.ledger.events
+                         if e.etype == SHOE_CREATED and e.shoe_id == seg.shoe_id)
+            rules = copy.deepcopy(seg.rules)
+            rules.start_from_new_shoe = True
+            rules.burn_cards_known = True
+            rules.initial_burn_count = 0
+            trusted = bool(plan and not plan.paused and not plan.input_paused
+                           and not plan.unresolved_slots and plan.mode not in (MODE_UNALIGNED, MODE_MANUAL)
+                           and (plan.session_id, plan.shoe_id, plan.round_id) ==
+                               (self.session_id, seg.shoe_id, seg.round_id)
+                           and (plan.ledger_seq, plan.ledger_digest) ==
+                               (prefix.through_seq, prefix.prefix_digest)
+                           and set(plan.observed_card_ids) == set(self.live_card_event_ids()))
+            saved_plan = copy.deepcopy(plan) if trusted else None
+            def updated(correction):
+                if saved_plan is None:
+                    self._sync_entry_event(correction)
+                else:
+                    self.entry_plan = saved_plan
+            return self._apply('correct', event.event_id,
+                               {'rules_snapshot': rules.to_json()}, reason,
+                               _entry_update=updated)
+
     def import_file(self, path):
         candidate = import_csv(path) if Path(path).suffix.lower() == ".csv" else import_json(path)
         self.store.save_ledger(candidate)  # 全部验证后原子写入；不覆盖同ID不同内容
@@ -707,12 +1031,20 @@ class SessionController:
             self._analysis_inputs = {}
         current = self._analysis_prepared[2]
         hands = current.table.players[seat].hands if current and seat in current.table.players else []
-        if len(hands) == 1 and not hands[0].from_split and hands[0].total()[0] == 21:
-            raise InputUnavailable('TOTAL_21', '已达21点，已自动跳过玩家行动', INAPPLICABLE)
+        total_21 = len(hands) == 1 and not hands[0].from_split and hands[0].total()[0] == 21
         target = seat, hand_id
         if target not in self._analysis_inputs:
-            self._analysis_inputs[target] = build_prepared_input(
-                self.session_id, seat, hand_id, *self._analysis_prepared, other_players_stand=True)
+            try:
+                self._analysis_inputs[target] = build_prepared_input(
+                    self.session_id, seat, hand_id, *self._analysis_prepared, other_players_stand=True)
+            except InputUnavailable:
+                if total_21:
+                    raise InputUnavailable('TOTAL_21', '已达21点，已自动跳过玩家行动', INAPPLICABLE) from None
+                raise
+        if total_21:
+            from ..analysis.ace_prepeek_contracts import AcePrepeekInput
+            if not isinstance(self._analysis_inputs[target], AcePrepeekInput):
+                raise InputUnavailable('TOTAL_21', '已达21点，已自动跳过玩家行动', INAPPLICABLE)
         return self._analysis_inputs[target]
 
     def recompute_input(self, saved):
@@ -722,8 +1054,12 @@ class SessionController:
             raise LedgerError("原分析关联的事件前缀摘要不匹配，拒绝复算")
         from ..analysis.seat_scenario import MODEL
         conditional = json.loads(original['information_json']).get('seat_scenario', {}).get('model') == MODEL
-        return build_input(ledger, original["seat"], original["hand_id"], original["through_seq"],
-                           other_players_stand=conditional)
+        rebuilt = build_input(ledger, original["seat"], original["hand_id"], original["through_seq"],
+                              other_players_stand=conditional)
+        from ..analysis.ace_prepeek_contracts import ACE_PREPEEK_INPUT_SCHEMA
+        if original.get('schema') == ACE_PREPEEK_INPUT_SCHEMA and rebuilt.schema != ACE_PREPEEK_INPUT_SCHEMA:
+            raise LedgerError('原检查前评估不能按检查后的信息身份复算')
+        return rebuilt
 
     def export_diagnostic(self, session_id, path):
         data = self.store.diagnose_session(session_id)
@@ -891,7 +1227,9 @@ class SessionController:
                 self._advance_entry_hand()
             elif reopened is None and plan.mode == "dealer_phase":
                 self._advance_entry_hand()
-            if (plan.simple_hole and plan.initial_complete()
+            from ..analysis.split_contracts import BCLC_PROFILE
+            restores_bclc_peek = seg.rules.profile_id == BCLC_PROFILE and seg.rules.version == 2
+            if ((plan.simple_hole or restores_bclc_peek) and plan.initial_complete()
                     and dealer_up_requires_peek(seg.rules, plan.dealer_up_rank)
                     and not seg.table.dealer_hole_checked_negative and not seg.table._dealer_revealed()):
                 plan.mode = MODE_PEEK_WAIT

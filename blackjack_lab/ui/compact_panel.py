@@ -1,9 +1,11 @@
 """Compact view of the existing AnalysisPanel request; no worker of its own."""
 import tkinter as tk
+import math
 from dataclasses import replace
 from tkinter import ttk
 
-from ..analysis.decision_summary import DecisionSummary, summarize_result, hand_text, input_identity
+from ..analysis.decision_summary import (DecisionSummary, summarize_result, hand_text, input_identity,
+                                         is_ace_prepeek_result)
 from ..core.table import (DEALER, ACTION_DOUBLE, ACTION_SPLIT, ACTION_STAND, ACTION_SURRENDER,
                           PHASE_DEALING, PHASE_IN_PROGRESS)
 from ..ledger.events import FACE_HIDDEN
@@ -63,13 +65,14 @@ class CompactPanel(tk.Frame):
         save_bar.grid(row=3, column=0, columnspan=5, sticky='ew')
         ttk.Label(save_bar, textvariable=app.var_recording_save, wraplength=530,
                   foreground=PALETTE['caution']).pack(side=tk.LEFT)
-        ttk.Button(save_bar, text='核对录牌', width=9, command=app.act_reconcile_recording).pack(side=tk.RIGHT)
+        self.recording_review = ttk.Button(save_bar, text='处理保存异常', width=13,
+                                          command=app.act_reconcile_recording)
         self.opening_label = self._label(top, variable=app.var_opening_ev,
                                         font=('Microsoft YaHei UI', 9, 'bold'), wrap=640, height=2, cursor='hand2')
         self.opening_label.grid(row=2, column=0, columnspan=5, sticky='w', pady=(4, 0))
         self.opening_label.bind('<Button-1>', lambda event: app.opening_estimate.show_details())
         self.identity_label = self._label(self, variable=self.identity, font=('Microsoft YaHei UI', 12, 'bold'), wrap=640, height=2)
-        self.identity_label.grid(row=1, column=0, sticky='ew', pady=(4, 4))
+        self.identity_label.grid(row=1, column=0, sticky='ew', pady=(1, 1))
         selectors = ttk.Frame(self)
         selectors.grid(row=5, column=0, sticky='ew')
         ttk.Label(selectors, text='分析').pack(side=tk.LEFT)
@@ -78,7 +81,8 @@ class CompactPanel(tk.Frame):
         self.seat.pack(side=tk.LEFT, padx=4)
         self.hand = ttk.Combobox(selectors, width=22, state='readonly', textvariable=app.var_analysis_hand)
         self.hand.pack(side=tk.LEFT)
-        self.seat.bind('<<ComboboxSelected>>', lambda e: app.refresh_all())
+        self.seat.bind('<<ComboboxSelected>>', app._finish_analysis_selection)
+        self.hand.bind('<<ComboboxSelected>>', app._finish_analysis_selection)
         self.compute = ttk.Button(selectors, text='计算', width=7, command=self.panel.calculate_current)
         self.compute.pack(side=tk.LEFT, padx=(12, 3))
         ttk.Button(selectors, text='取消', width=6, command=self.panel.cancel).pack(side=tk.LEFT)
@@ -107,7 +111,7 @@ class CompactPanel(tk.Frame):
             action.grid(row=0, column=1, sticky='w')
             extra = self._label(row, '', font=('Microsoft YaHei UI', 9), surface=True)
             extra.grid(row=1, column=1, sticky='w')
-            profit = self._label(row, '净盈利 —', font=('Microsoft YaHei UI', 14), surface=True)
+            profit = self._label(row, '净盈利概率 —', font=('Microsoft YaHei UI', 14), surface=True)
             profit.grid(row=0, column=2, sticky='e')
             ev = self._label(row, 'EV —', font=('Consolas', 10), surface=True)
             ev.grid(row=1, column=2, sticky='e')
@@ -119,8 +123,8 @@ class CompactPanel(tk.Frame):
         self.seat_table = ttk.Treeview(self.seat_table_frame, columns=columns, show='headings',
                                        height=7, selectmode='browse', style='SeatOverview.Treeview')
         for column, heading, width in zip(columns,
-                ('玩家', '牌面', 'EV第1·净盈利', 'EV第2·净盈利', '第1 EV', '状态'),
-                (50, 85, 120, 120, 85, 70)):
+                ('玩家', '牌面', 'EV第1·净盈率', 'EV第2·净盈率', '第1 EV', '状态'),
+                (50, 85, 150, 150, 85, 70)):
             self.seat_table.heading(column, text=heading)
             self.seat_table.column(column, width=width, minwidth=40)
         self.seat_table.pack(fill=tk.BOTH, expand=True)
@@ -276,10 +280,13 @@ class CompactPanel(tk.Frame):
                 summary = summarize_result(result) if result else None
                 choices = summary.choices if summary else ()
                 def choice_text(index):
+                    if summary and summary.terminal:
+                        item = summary.terminal
+                        return f'{item.label} {item.ev:+.4f} {item.profit:.1%}' if index == 0 else '—'
                     if len(choices) <= index:
                         return '—'
                     item = choices[index]
-                    return f'{item.label}·{ev_sign(item.ev)} {item.profit:.1%}'
+                    return f'{item.label} {item.ev:+.4f} {item.profit:.1%}'
                 state = summary.state if summary else row['state']
                 if row['state'] == '保存待重试':
                     state = row['state']
@@ -287,9 +294,10 @@ class CompactPanel(tk.Frame):
                     state = '计算中'
                 if row.get('busted'):
                     choices, state = (), '已爆牌'
-                elif row.get('total21'):
+                elif row.get('total21') and not (summary and summary.terminal):
                     choices, state = (), '已达21点'
                 values = (seat, row['cards'], choice_text(0), choice_text(1),
+                          f'{summary.terminal.ev:+.4f}' if summary and summary.terminal else
                           f'{choices[0].ev:+.4f}' if choices else '—', state)
                 if self.seat_table.exists(seat):
                     self.seat_table.item(seat, values=values)
@@ -401,12 +409,78 @@ class CompactPanel(tk.Frame):
     def render(self):
         if self.app._coalescing_recording_views:
             return  # Post-commit notifications invalidate immediately; paint once after all updates.
+        if self.app._recording_faults:
+            self.recording_review.pack(side=tk.RIGHT)
+        else:
+            self.recording_review.pack_forget()
         if self.app.recording_advice_pause():
             self.pause_recording()
             return
         with self.app._view_frame():
             self.render_table_mode()
             self._render()
+
+    @staticmethod
+    def hit_bust_text(result, model):
+        """Use only the current main result, with its applicability status."""
+        if not model.choices or not result or result.get('status') != 'available':
+            return f'补牌爆牌率 —（{model.state}）'
+        if is_ace_prepeek_result(result):
+            draw = result.get('conditional_draw') or {}
+            value = draw.get('hit_bust')
+            if (draw.get('status') == 'available' and type(value) in (int, float)
+                    and math.isfinite(value) and 0 <= value <= 1):
+                return f'非BJ后补牌爆牌率 {value:.2%}'
+            return '非BJ后补牌爆牌率 —（当前无此合法动作）'
+        statuses = result.get('probability_status') or {}
+        status = statuses.get('hit_bust', statuses.get('next_target_draw'))
+        if status == 'inapplicable':
+            return '补牌爆牌率 —（当前无此合法动作）'
+        value = (result.get('probabilities') or {}).get('hit_bust')
+        if (status in (None, 'available') and isinstance(value, (int, float))
+                and not isinstance(value, bool) and math.isfinite(value) and 0 <= value <= 1):
+            return f'补牌爆牌率 {value:.2%}'
+        return '补牌爆牌率 —（此结果未提供）'
+
+    def render_choices(self, model, result=None, multi=False):
+        """Keep the two EV/probability slots visible even without numbers."""
+        self.empty_result.grid_remove()
+        bust_text = self.hit_bust_text(result, model)
+        for i, (row, rank, action, extra, profit, ev) in enumerate(self.rows):
+            if model.terminal:
+                if multi or i:
+                    row.grid_remove()
+                    continue
+                row.grid()
+                item = model.terminal
+                natural = item.action == 'natural_blackjack'
+                rank.configure(text=('自然BJ' if natural else '庄家BJ') + '\n终局')
+                action.configure(text='终局结算', fg=PALETTE['accent'])
+                extra.configure(text=('含庄家BJ和局' if natural else '底牌池BJ概率为1') + ' · 没有待选玩家动作')
+                profit.configure(text=f'净盈利概率 {item.profit:.2%}')
+                ev.configure(text=f'{ev_sign(item.ev)} {item.ev:+.6f}')
+                continue
+            if multi:
+                row.grid_remove()
+            else:
+                row.grid()
+            if i >= len(model.choices):
+                rank.configure(text=f'EV第{i + 1}')
+                action.configure(text='—', fg=PALETTE['muted'])
+                extra.configure(text=('无第2个可用动作' if model.choices else model.state)
+                                + (' · ' + bust_text if i == 0 else ' · 净盈利概率按最终净额>0计算'))
+                profit.configure(text='净盈利概率 —')
+                ev.configure(text='EV —')
+                continue
+            choice = model.choices[i]
+            rank.configure(text=f'EV第{i + 1}\n{choice.rank_label}')
+            action.configure(text=choice.label, fg=PALETTE['accent' if i == 0 else 'ink'])
+            prepeek = is_ace_prepeek_result(result)
+            note = bust_text if i == 0 else '净盈利概率含BJ分支' if prepeek else '净盈利概率按最终净额>0计算'
+            extra.configure(text=(f'{"非BJ后" if prepeek else ""}追加 {choice.additional:g} 单位 · '
+                                  if choice.additional else '') + note)
+            profit.configure(text=f'净盈利概率 {choice.profit:.2%}')
+            ev.configure(text=f'{ev_sign(choice.ev)} {choice.ev:+.6f}')
 
     def pause_recording(self):
         """Withdraw advice without rebuilding the saved shoe or probabilities."""
@@ -419,20 +493,16 @@ class CompactPanel(tk.Frame):
                 _, dealer_text, player_text = self.recorded_card_identity()
             self.saved_card_identity = f'{dealer_text}    |    {player_text}'
         identity = getattr(self, 'saved_card_identity', '已保存牌面可在记录中查看') + ' · BJ数值暂停'
-        if self.message.get() != message or self.model.choices or self.identity.get() != identity:
+        if self.message.get() != message or self.model.choices or self.model.terminal or self.identity.get() != identity:
             self.model = DecisionSummary('建议暂停', identity, message)
             self.identity.set(self.model.identity)
             self.state.set(self.model.state)
             self.message.set(message)
             self.notes.set('已保存牌面仍保留；等待一致回执和最新判断。')
             self.decision_evs.set('')
-            self.empty_result.grid()
             self.seat_table_frame.grid_remove()
             self.compute.state(['disabled'])
-            for row, rank, action, extra, profit, ev in self.rows:
-                row.grid_remove()
-                rank.configure(text=''); action.configure(text='—')
-                extra.configure(text=''); profit.configure(text='净盈利 —'); ev.configure(text='EV —')
+            self.render_choices(self.model)
         self.flow_message.set(message + '；保险与庄家BJ的当前数值同样暂停。')
         self.flow_primary.state(['disabled'])
         if self.detail_window and self.detail_window.winfo_exists():
@@ -458,7 +528,7 @@ class CompactPanel(tk.Frame):
                     and all(h.is_bust for h in hands)):
                 self.model = replace(self.model, state='已爆牌', choices=(),
                     message=f'{seat}已爆牌，当前发牌给{self.app.var_target.get()}。')
-            elif (len(hands) == 1 and hands[0].total()[0] == 21 and not current.closed
+            elif (len(hands) == 1 and hands[0].total()[0] == 21 and not self.model.terminal and not current.closed
                     and current.table.phase in (PHASE_DEALING, PHASE_IN_PROGRESS)):
                 self.model = replace(self.model, state='已达21点', choices=(),
                     message=f'{seat}已达21点，当前发牌给{self.app.var_target.get()}。')
@@ -467,10 +537,13 @@ class CompactPanel(tk.Frame):
         self.state.set(model.state)
         self.message.set(model.message)
         self.notes.set(' '.join(model.notes))
-        self.decision_evs.set('' if pause else decision_evs(panel.last_result))
+        self.decision_evs.set('' if pause else
+            f'{"自然BJ" if model.terminal.action == "natural_blackjack" else "庄家BJ"}终局：'
+            f'{ev_sign(model.terminal.ev)} {model.terminal.ev:+.4f}' if model.terminal else
+            decision_evs(panel.last_result if model.choices else None))
         multi = len(self.panel.overview.rows) > 1 and not model.historical and not pause
         if multi:
-            self.notes.set(NOTE)
+            self.notes.set('净盈率即净盈利概率：最终净额>0。' + NOTE)
             self.message.set(f'{self.app.var_analysis_target.get()}：' +
                              (model.message or '点“展开详情”查看全部动作。'))
         inactive = self.app.recording_inactive_message()
@@ -489,25 +562,10 @@ class CompactPanel(tk.Frame):
         self.remove_player.state(['disabled'] if count <= 1 else ['!disabled'])
         warning = model.partial or not model.choices
         self.status_label.configure(fg=PALETTE['caution' if warning else 'accent'])
-        (self.empty_result.grid_remove if model.choices or multi else self.empty_result.grid)()
         (self.seat_table_frame.grid if multi else self.seat_table_frame.grid_remove)()
         if multi:
             self.render_seats()
-        for i, (row, rank, action, extra, profit, ev) in enumerate(self.rows):
-            if multi or i >= len(model.choices):
-                row.grid_remove()
-                rank.configure(text='')
-                action.configure(text='—')
-                profit.configure(text='净盈利 —')
-                ev.configure(text='EV —')
-                continue
-            row.grid()
-            choice = model.choices[i]
-            rank.configure(text=choice.rank_label)
-            action.configure(text=choice.label, fg=PALETTE['accent' if i == 0 else 'ink'])
-            extra.configure(text=f'追加 {choice.additional:g} 单位' if choice.additional else '')
-            profit.configure(text=f'净盈利 {choice.profit:.2%}')
-            ev.configure(text=f'{ev_sign(choice.ev)} {choice.ev:+.6f}')
+        self.render_choices(model, panel.last_result, multi)
         self.hand.configure(values=panel.cmb_analysis_hand.cget('values'))
         self.compute.state(['disabled'] if panel.compute_button.instate(['disabled']) else ['!disabled'])
         if panel.recomputed_from:
@@ -530,9 +588,10 @@ class CompactPanel(tk.Frame):
         self.peek_button.pack_forget()  # The fixed phase action owns this command.
         self.render_flow()
         self.render_recent()
-        stopped = bool(self.app.dealer_recording_finished())
+        stopped = bool(inactive or self.app.dealer_recording_finished())
         for button in self.card_buttons:
             button.state(['disabled'] if stopped else ['!disabled'])
+        self.hole_button.state(['disabled'] if inactive else ['!disabled'])
         if self.editor_open:
             self.editor.lift()
         self.recording_hint.set(inactive or
@@ -637,6 +696,9 @@ class CompactPanel(tk.Frame):
     def render_flow(self):
         flow = self.flow = current_flow(self.app.ctrl, self.app._current_seg())
         message = flow.message if flow.stage != 'player' else self.app.var_legal.get().replace('\n', '；') or flow.message
+        ace_input = self.app.ctrl.bclc_ace_input_ready() and self.app.var_mode.get() != '揭示'
+        if ace_input:
+            message = '庄家A：0/J/Q/K记录庄家BJ；其他点值或 - / * 直接录入第一位玩家的操作。'
         if flow.stage in ('setup', 'start'):
             try:
                 rules = self.app._build_rules() if flow.stage == 'setup' else self.app._current_seg().rules
@@ -652,6 +714,7 @@ class CompactPanel(tk.Frame):
                 self.flow_message.set(self.flow_message.get() + '\n' + text)
         commands = {'review': self.app.show_workbench, 'new_shoe': self.app.act_new_shoe, 'start': self.app.act_new_round,
                     'resume': self.app._key_pause, 'peek': self.app.act_peek_negative,
+                    'hole': self.app._key_hole,
                     'next': lambda rid=flow.round_id: self.app.act_complete_and_next(rid)}
         if flow.command:
             self.flow_primary.configure(text=flow.label, command=commands[flow.command])
@@ -661,7 +724,7 @@ class CompactPanel(tk.Frame):
             self.flow_primary.grid_remove()
         (self.only_settle.grid if flow.stage == 'ready' else self.only_settle.grid_remove)()
         for button in self.action_buttons:
-            if flow.stage == 'player':
+            if flow.stage == 'player' or ace_input:
                 if not button.winfo_manager():
                     button.pack(side=tk.LEFT, padx=2)
             else:

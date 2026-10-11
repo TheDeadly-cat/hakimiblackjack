@@ -8,15 +8,51 @@ from ..analysis.service import AnalysisService
 from ..core.table import player_seat_name
 from ..storage.analysis_snapshots import is_minimal_result
 from ..analysis.split_contracts import SPLIT_RESULT_SCHEMA
+from ..analysis.ace_prepeek_contracts import ACE_PREPEEK_INPUT_SCHEMA, ACE_PREPEEK_RESULT_SCHEMA
 from ..analysis.decision_summary import summarize_result, format_summary_details
 from ..analysis.seat_scenario import note_for
 from .seat_overview import SeatOverview
 from .ev_display import ev_sign
 
-DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA}
+DISPLAY_RESULT_SCHEMAS = {RESULT_SCHEMA, SPLIT_RESULT_SCHEMA, ACE_PREPEEK_RESULT_SCHEMA}
+
+
+def format_ace_prepeek_result(result, historical=False):
+    info = result['input']
+    lines = [('历史 · ' if historical else '') + '检查前评估 · ' +
+             f"{info['seat']} · {' '.join(info['player_ranks'])} · 庄家 A · {info['n_decks']}副"]
+    if result['status'] != AVAILABLE:
+        return lines[0] + '\n' + STATUS_ZH.get(result['status'], '需核对') + '：' + result['reason']
+    lines.append('等待庄家实际检查；未写入非BJ确认，底牌仍未揭示。')
+    lines.append(f"庄家BJ概率 {result['dealer_bj_probability']:.4%}；主注EV与净盈利概率包含此分支。")
+    lines.append('EV单位：原始1单位初始注的最终净收益。')
+    lines.append(format_summary_details(summarize_result(result, historical)).rstrip())
+    for action, item in result.get('actions', {}).items():
+        label = ACTION_ZH.get(action, item.get('label', action))
+        if item.get('status') == AVAILABLE:
+            lines.append(f"{label}（非BJ后执行）：{ev_sign(item['ev'])} {item['ev']:+.6f}")
+            lines.append('  含BJ分支的净收益分布：' + ' / '.join(
+                f'{float(net):+g}:{probability:.4%}' for net, probability in item['net_distribution'].items()))
+            if item.get('additional_investment'):
+                lines.append(f"  仅在实际非BJ后追加 {item['additional_investment']:g} 单位")
+        else:
+            lines.append(label + '：' + STATUS_ZH.get(item.get('status'), '需核对'))
+    draw = result.get('conditional_draw') or {}
+    if draw.get('status') == AVAILABLE:
+        lines.append(f"非BJ后且实际补牌的爆牌概率 {draw['hit_bust']:.4%}")
+        lines.append('非BJ后且实际补牌的下一张分布：' + ' / '.join(
+            f'{rank}:{probability:.3%}' for rank, probability in draw['next_target_draw'].items()))
+    else:
+        lines.append('补牌/爆牌指标不适用；当前没有合法补牌动作。')
+    lines.append('非BJ条件分支仅用于计算，不代表实际已检查。')
+    lines.extend([f"耗时 {result['elapsed_seconds']:.3f}s · 事件前缀 #{info['through_seq']}",
+                  f"引擎：{result['engine_version']}", f"策略：{result['strategy_version']}"])
+    return '\n'.join(lines)
 
 
 def format_result(result, historical=False):
+    if result['schema'] == ACE_PREPEEK_RESULT_SCHEMA:
+        return format_ace_prepeek_result(result, historical)
     summary_text = format_summary_details(summarize_result(result, historical))
     scenario_note = note_for(result['input'])
     if scenario_note:
@@ -121,11 +157,13 @@ class AnalysisPanel(ttk.Frame):
             identity, textvariable=self.app.var_analysis_target, state="readonly", width=8,
             values=[player_seat_name(i) for i in range(1, 8)])
         self.cmb_analysis_target.pack(side=tk.LEFT, padx=3)
+        self.cmb_analysis_target.bind('<<ComboboxSelected>>', self.app._finish_analysis_selection)
         ttk.Label(identity, text="手牌").pack(side=tk.LEFT)
         self.cmb_analysis_hand = ttk.Combobox(
             identity, textvariable=self.app.var_analysis_hand, state="readonly", width=18,
             values=["（按顺序行动手）", "（最新一手）"])
         self.cmb_analysis_hand.pack(side=tk.LEFT, padx=3)
+        self.cmb_analysis_hand.bind('<<ComboboxSelected>>', self.app._finish_analysis_selection)
         ttk.Label(self, textvariable=self.status, wraplength=300).grid(row=2, column=0, sticky="w", padx=3)
         ttk.Label(self, textvariable=self.persistence, wraplength=300, foreground="#555").grid(row=3, column=0, sticky="w", padx=3)
         body = ttk.Frame(self)
@@ -192,6 +230,11 @@ class AnalysisPanel(ttk.Frame):
         message = self.app.recording_advice_pause()
         if not message:
             return
+        if getattr(self, '_recording_pause_state', None) is None:
+            self._recording_pause_state = dict(key=self._live_key(), context=self.context_key,
+                request_id=self.request_id, status=self.status.get(),
+                text=self.text.get('1.0', 'end-1c'), disabled=self.compute_button.instate(['disabled']),
+                auto_armed=self._auto_id is not None)
         self._cancel_auto()
         if self.status.get() == message:
             return
@@ -200,12 +243,42 @@ class AnalysisPanel(ttk.Frame):
         self.status.set(message)
         self._set_text(message + '。上次结果仍保留，非当前判断；已保存历史与待保存结果不受影响。')
 
+    def resume_recording(self):
+        """Restore advice only after the UI has proved an unchanged saved prefix."""
+        if self._closed or self.app.recording_advice_pause():
+            return
+        saved, self._recording_pause_state = getattr(self, '_recording_pause_state', None), None
+        key = self._live_key()
+        if (key == getattr(self, '_recording_cancelled_key', None) == self._auto_suppressed_key
+                and self.request_id is None):
+            self._recording_cancelled_key = None
+            self.status.set('已取消：可继续录入或重新计算')
+            self.compute_button.state(['!disabled'] if self.current_input else ['disabled'])
+            self._set_text('')
+        elif (saved and saved['key'] == saved['context'] == self.context_key == key
+                and saved['request_id'] == self.request_id):
+            self.status.set(saved['status'])
+            self.compute_button.state(['disabled'] if saved['disabled'] else ['!disabled'])
+            self._set_text(saved['text'])
+            if (saved['auto_armed'] and self.auto.get() and not self.recomputed_from
+                    and key != self._auto_suppressed_key and self._auto_id is None):
+                self._auto_id = self.after(250, self._run_auto)
+        elif key == self._auto_suppressed_key and self.request_id is None:
+            self.status.set('已取消：可继续录入或重新计算')
+            self.compute_button.state(['!disabled'] if self.current_input else ['disabled'])
+            self._set_text('')
+        else:
+            self.context_key = None
+            self.on_context(self.app._current_seg())
+
     def context_changed(self, *_args):
         """Synchronous post-commit / target notification, before any general redraw."""
         if self._closed or self._live_key() == self.context_key:
             return
         self._updating_context = True
         try:
+            self._recording_pause_state = None
+            self._recording_cancelled_key = None
             self.current_input = None
             self.unavailable_code = None
             self._cancel_auto()
@@ -256,7 +329,9 @@ class AnalysisPanel(ttk.Frame):
         else:
             self.compute_button.state(["!disabled"])
             if not self.last_result and not self.recomputed_from:
-                self.status.set("可计算：当前玩家，正常底牌仍未揭示")
+                prepeek = self.current_input.to_dict().get('schema') == ACE_PREPEEK_INPUT_SCHEMA
+                self.status.set('可计算：A检查前评估，等待庄家实际检查' if prepeek else
+                                "可计算：当前玩家，正常底牌仍未揭示")
             if self.auto.get() and not self.recomputed_from and key != self._auto_suppressed_key:
                 self._auto_id = self.after(250, self._run_auto)
         self._notify_views()
@@ -331,6 +406,8 @@ class AnalysisPanel(ttk.Frame):
             if result["status"] == AVAILABLE:
                 summary = ("部分动作比较，不给唯一推荐" if result["partial_comparison"] else
                            "已计算动作EV均为负" if result.get("all_computed_ev_negative") else "计算完成（所声明模型）")
+                if result['schema'] == ACE_PREPEEK_RESULT_SCHEMA:
+                    summary = '检查前评估，等待庄家检查；概率和EV含BJ分支'
             self.status.set(("历史复算 · " if self.recomputed_from else "") + STATUS_ZH[result["status"]] + "：" + summary)
             self._set_text(format_result(result, bool(self.recomputed_from)))
             if result["status"] == AVAILABLE:
@@ -363,6 +440,8 @@ class AnalysisPanel(ttk.Frame):
     def cancel(self, cancel_opening=True):
         if cancel_opening and hasattr(self.app, 'opening_estimate'):
             self.app.opening_estimate.cancel()
+        self._recording_pause_state = None  # Explicit cancellation replaces any paused display.
+        self._recording_cancelled_key = self._live_key() if self.app.recording_advice_pause() else None
         self.request_snapshot = None
         self._cancel_auto()
         self._auto_suppressed_key = self._live_key()

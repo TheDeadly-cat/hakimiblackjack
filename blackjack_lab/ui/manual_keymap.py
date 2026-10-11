@@ -21,7 +21,7 @@ NAV_KEYSYMS = {
 RANK_KEYSYMS = {
     "1": "A", "2": "2", "3": "3", "4": "4", "5": "5",
     "6": "6", "7": "7", "8": "8", "9": "9", "0": TEN_BUCKET,
-    "a": "A",
+    "a": "A", "t": TEN_BUCKET, "j": TEN_BUCKET, "q": TEN_BUCKET, "k": TEN_BUCKET,
     "kp_1": "A", "kp_2": "2", "kp_3": "3", "kp_4": "4", "kp_5": "5",
     "kp_6": "6", "kp_7": "7", "kp_8": "8", "kp_9": "9", "kp_0": TEN_BUCKET,
 }

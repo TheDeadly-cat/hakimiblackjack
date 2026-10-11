@@ -16,6 +16,7 @@ import json
 from functools import wraps
 from contextlib import contextmanager
 from dataclasses import asdict
+from copy import deepcopy
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -50,6 +51,7 @@ from .deal_entry import (
 from .manual_keymap import (
     KIND_DOUBLE, KIND_HIT, KIND_HOLE, KIND_JUMP, KIND_NEXT, KIND_PAUSE, KIND_PREV,
     KIND_RANK, KIND_SPLIT, KIND_STAND, KIND_UNDO, ManualKeyBinder, TEXT_WIDGETS,
+    resolve as resolve_manual_key,
 )
 from .table_modes import (
     BCLC, PRAGMATIC, MODE_LABELS, ModeSettings, TableModeStore, mode_for_rules, pragmatic_rules,
@@ -149,7 +151,11 @@ class BlackjackLabApp(tk.Tk):
         self.rowconfigure(1, weight=1)
         ttk.Style(self).configure("Card.TButton", font=("Consolas", 12), padding=2)
 
-        self._ask_recover_if_any(db_path)
+        try:
+            self._restore_latest_if_any(db_path)
+        except Exception:
+            self.destroy()
+            raise
         if self.background_recording:
             from .recording_failures import load_failures
             self._recording_faults = load_failures(db_path, self.ctrl.session_id)
@@ -179,7 +185,7 @@ class BlackjackLabApp(tk.Tk):
         self.var_status = tk.StringVar(value="就绪：请先选择牌副数并新建牌靴")
         self.var_recording_save = tk.StringVar()
         if self._recording_faults:
-            self.var_recording_save.set(f'恢复发现 {len(self._recording_faults)} 条待核对输入 · 点击“核对录牌”')
+            self.var_recording_save.set(f'恢复发现 {len(self._recording_faults)} 条待核对输入 · 点击“处理保存异常”')
         self.var_opening_ev = tk.StringVar(value='下轮EV：尚无可用牌盒')
         self.var_table_mode = tk.StringVar(value=PRAGMATIC)
         self.var_table_mode_summary = tk.StringVar()
@@ -237,22 +243,19 @@ class BlackjackLabApp(tk.Tk):
     # ============================================================
     # 界面构建
     # ============================================================
-    def _ask_recover_if_any(self, db_path) -> None:
+    def _restore_latest_if_any(self, db_path) -> None:
+        """Resume this database's latest recorded session without a startup question."""
         store = LocalStore(db_path)
         try:
             old = [s for s in store.list_sessions() if s["event_count"] > 1]
         finally:
             store.close()
         if old:
-            if messagebox.askyesno("恢复会话",
-                                   f"发现 {len(old)} 个本地历史会话，是否恢复最近一个？\n"
-                                   "选“否”将开始全新会话（旧记录仍保留）。"):
-                latest = old[-1]
-                try:
-                    self.ctrl = SessionController.recover(db_path, latest["session_id"])
-                    return
-                except Exception as e:  # 恢复失败不允许假装成功
-                    messagebox.showerror("恢复失败", str(e))
+            latest = old[-1]
+            # Failed recovery stops startup. Never silently create a fresh session
+            # that could hide saved input or its pending reconciliation archive.
+            self.ctrl = SessionController.recover(db_path, latest["session_id"])
+            return
         self.ctrl = SessionController(db_path, recording_source=self.recording_source)
 
     def _build_top(self) -> None:
@@ -549,10 +552,25 @@ class BlackjackLabApp(tk.Tk):
             if self.grab_current() not in (None, self):
                 return False
             if widget.winfo_class() in TEXT_WIDGETS:
+                panel = getattr(self, 'compact_panel', None)
+                analysis = getattr(self, 'analysis_panel', None)
+                selectors = (getattr(self, 'cmb_hand', None),
+                             getattr(panel, 'seat', None), getattr(panel, 'hand', None),
+                             getattr(analysis, 'cmb_analysis_target', None),
+                             getattr(analysis, 'cmb_analysis_hand', None))
+                command = resolve_manual_key(getattr(event, 'keysym', ''), getattr(event, 'state', 0))
+                if (widget in selectors and str(widget.cget('state')) == 'readonly'
+                        and command and command.kind == KIND_UNDO):
+                    return True  # Read-only seat selection has no text to delete.
                 return False
         except tk.TclError:
             return False
         return True
+
+    def _finish_analysis_selection(self, _event=None):
+        self.refresh_all()
+        if not self._closing:
+            self.focus_set()
 
     def _on_recording_seat_clicked(self) -> None:
         if self.recording_guard():
@@ -571,6 +589,7 @@ class BlackjackLabApp(tk.Tk):
     def _on_recording_hand_clicked(self) -> None:
         if self.recording_guard():
             self._restore_recording_selection()
+            self.focus_set()
             return
         plan = self.ctrl.entry_plan
         seg = self._current_seg()
@@ -585,6 +604,7 @@ class BlackjackLabApp(tk.Tk):
                 self.fail(error)
         self.refresh_actions()
         self.refresh_entry_prompt()
+        self.focus_set()
 
     def _set_recording_target(self, seat: str, hand_label: str | None = None) -> None:
         self._syncing_target = True
@@ -628,7 +648,7 @@ class BlackjackLabApp(tk.Tk):
             self.set_status('正在按顺序保存录牌；请等保存完成后再切换位置、模式、牌靴或修改记录。')
             return True
         if self._recording_faults:
-            self.set_status('录牌保存需要核对。请点击“核对录牌”，读取已保存记录；未执行输入不会自动重试。')
+            self.set_status('录牌保存需要核对。请点击“处理保存异常”，读取已保存记录；未执行输入不会自动重试。')
             return True
         return False
 
@@ -641,6 +661,30 @@ class BlackjackLabApp(tk.Tk):
         if self._recording_faults:
             self.recording_guard()
             return
+        plan = self.ctrl.entry_plan
+        # Reject idle/paused input before it enters the durable FIFO. Ordinary
+        # setup guidance is not a persistence failure. During a batch the worker
+        # owns the advancing plan, so never preflight against the stale UI plan.
+        if (not self.recording_busy and kind not in ('peek', 'undo')
+                and (plan is None or plan.input_paused or plan.mode == MODE_UNALIGNED)):
+            with self.ctrl.read_frame():
+                message = self.recording_inactive_message()
+            if not message and plan:
+                message = ('录牌位置尚未对齐；请在“研究工作台”核对位置后继续。'
+                           if plan.mode == MODE_UNALIGNED else '录入已暂停；请先恢复录入。')
+            if message:
+                self.var_recording_save.set('本次输入未接收：' + message)
+                self.set_status(message)
+                return
+        if (not self.recording_busy and kind in ('rank', 'card')
+                and plan and plan.mode == MODE_INITIAL and not plan.paused
+                and self.var_mode.get() != '揭示'):
+            slot = plan.slot()
+            if slot and slot.expected_face != 'shown':
+                message = '当前是庄家底牌位置；请确认实际已发底牌后点“底牌已发 .”或按小数点。'
+                self.var_recording_save.set('本次点值未录入：' + message)
+                self.set_status(message)
+                return
         if kind == 'stand':
             kind, value = 'action', ACTION_STAND
         value = kwargs.get('rank', kwargs.get('action', value))
@@ -681,7 +725,10 @@ class BlackjackLabApp(tk.Tk):
             return
         if self.var_sidebet_suits.get() and kind in ('rank', 'card'):
             self.var_suit.set('未知')
-        self.var_recording_save.set(f'待保存 {len(self._recording_inputs)} 条输入 · 按录入顺序处理')
+        if kind == 'undo':
+            self.var_recording_save.set(f'已接收撤回 · 按顺序处理前面输入后回到上一步（队列 {len(self._recording_inputs)} 条）')
+        else:
+            self.var_recording_save.set(f'待保存 {len(self._recording_inputs)} 条输入 · 按录入顺序处理')
         self._pause_recording_advice()
         if self._recording_after is None:
             self._recording_after = self.after(20, self._poll_recording)
@@ -702,6 +749,7 @@ class BlackjackLabApp(tk.Tk):
             return
         receipts = owner.poll()
         commits = []
+        rejected = []
         for receipt in receipts:
             expected_id = next(iter(self._recording_inputs), None)
             intent = self._recording_inputs.pop(receipt.request_id, None)
@@ -710,6 +758,25 @@ class BlackjackLabApp(tk.Tk):
                     error='回执身份或输入顺序不符；需重新读取已保存记录', failure_path=None))
             elif receipt.status == 'committed' and not self._recording_faults:
                 commits.append(receipt)
+            elif receipt.status == 'rejected' and not self._recording_faults:
+                from .read_snapshot import PrefixSnapshot
+                try:
+                    context, ledger = self._recording_expected
+                    expected = commits[-1].after if commits else PrefixSnapshot.capture(self.ctrl.ledger)
+                    trusted = (receipt.verified_token is not None
+                               and receipt.verified_token is owner.verification_token) if owner.use_process else (
+                                   receipt.ledger is not None and PrefixSnapshot.capture(receipt.ledger) == expected)
+                    valid = (self.ctrl.context_token == context and self.ctrl.ledger is ledger
+                             and receipt.before == expected and receipt.after == expected and receipt.event_ids == ()
+                             and trusted and receipt.state is not None and isinstance(receipt.error, str)
+                             and bool(receipt.error) and receipt.failure_path is None and receipt.archive_error is None)
+                except Exception:
+                    valid = False
+                if not valid:
+                    self._recording_faults.append(dict(status='unknown_commit_outcome', intent=intent,
+                        error='输入拒绝回执与已保存前缀不符；需核对保存记录', failure_path=None))
+                else:
+                    rejected.append(receipt)
             else:
                 self._recording_faults.append(dict(status=receipt.status, intent=intent, error=receipt.error,
                     request_id=receipt.request_id, failure_path=receipt.failure_path, archive_error=receipt.archive_error))
@@ -740,9 +807,16 @@ class BlackjackLabApp(tk.Tk):
                     intent=[r.request_id for r in commits], error=f'后台已提交，界面回执需核对：{error}', failure_path=None))
         if self._recording_faults:
             owner.close()
-            self.var_recording_save.set(f'{len(self._recording_faults)} 条输入需要核对 · 点击“核对录牌” · 不自动重试')
+            self.var_recording_save.set(f'{len(self._recording_faults)} 条输入需要核对 · 点击“处理保存异常” · 不自动重试')
         elif self.recording_busy:
             self.var_recording_save.set(f'待保存 {len(self._recording_inputs)} 条输入 · 界面显示已保存部分')
+        elif rejected:
+            self.var_recording_save.set('本次输入未录入：' + rejected[-1].error)
+            self.set_status(rejected[-1].error)
+            if not self._closing:
+                self.analysis_panel.resume_recording()
+                self.opening_estimate.resume_recording()
+                self.refresh_all()
         elif receipts:
             self.var_recording_save.set(f'录牌已保存 · 事件 #{self.ctrl.ledger.events[-1].seq}')
         if self.recording_busy:
@@ -796,6 +870,8 @@ class BlackjackLabApp(tk.Tk):
 
     def _on_manual_command(self, command) -> None:
         if hasattr(self, 'compact_panel') and self.compact_panel.editor_open:
+            self.compact_panel.edit_error.set('正在改牌；请先保存或取消改牌，再继续录牌或撤回。')
+            self.set_status('正在改牌；请先保存或取消改牌，再继续录牌或撤回。')
             return  # Consume recording keys outside the editor without invoking buttons.
         dispatch = {
             KIND_RANK: lambda: self._key_rank(command.rank),
@@ -825,6 +901,10 @@ class BlackjackLabApp(tk.Tk):
         if plan is None:
             return
         self.var_simple_hole.set(plan.simple_hole)
+        seg = self._current_seg()
+        if (plan.initial_complete() and seg and mode_for_rules(seg.rules) == BCLC
+                and seg.rules.version == 2 and self.table_mode_store):
+            self.var_simple_hole.set(self.table_mode_store.get(BCLC).simple_hole)
         if plan.participating_seats:
             for name, var in self.var_participants.items():
                 var.set(name in plan.participating_seats)
@@ -881,6 +961,8 @@ class BlackjackLabApp(tk.Tk):
     @tracked_operation
     def _key_rank(self, rank: str) -> None:
         try:
+            if self._try_bclc_ace_input('rank', rank):
+                return
             self._ensure_recording_enabled(key=True, card=True)
             plan = self.ctrl.entry_plan
             slot_id = None
@@ -1462,6 +1544,12 @@ class BlackjackLabApp(tk.Tk):
     def act_new_shoe(self) -> None:
         try:
             rules = self._build_rules()
+            if rules.n_decks == 8:
+                # The daily New Shoe entry follows the user's declared complete,
+                # unburned eight-deck protocol. Imported shoes keep their facts.
+                rules.start_from_new_shoe = True
+                rules.burn_cards_known = True
+                rules.initial_burn_count = 0
             expected = self.ctrl.context_token
             seg = self._current_seg()
             if seg and not seg.closed:
@@ -1471,6 +1559,7 @@ class BlackjackLabApp(tk.Tk):
                         f'旧牌靴和全部记录保留。按当前设置新建{rules.n_decks}副牌靴？', parent=self):
                     return
             self.ctrl.replace_shoe(rules, expected)
+            self._set_rule_form(rules)
             if self.table_mode_store:
                 settings = self._capture_table_mode()
                 try:
@@ -1568,9 +1657,27 @@ class BlackjackLabApp(tk.Tk):
         self.set_status('简便暗牌设置将在下一轮生效；本轮已保存记录不变。')
         self.compact_panel.render()
 
+    def _try_bclc_ace_input(self, kind, value):
+        if self.var_mode.get() == '揭示' or not self.ctrl.bclc_ace_input_ready():
+            return False
+        from .recording_commands import record_input
+        intent = dict(kind=kind, follow_plan=True, auto_next=self._automatic_next_options(),
+                      selection=dict(seat=self.var_target.get(), hand_id=None, hand_mode='acting',
+                                     mode=self.var_mode.get(), suit=self._suit()))
+        intent['action' if kind == 'action' else 'rank'] = value
+        outcome = record_input(self.ctrl, intent)
+        if outcome['round_changed']:
+            self.var_mode.set('新发牌')
+        self._sync_from_plan()
+        self.set_status(outcome['message'])
+        self.refresh_all()
+        return True
+
     @tracked_operation
     def act_card(self, rank: str) -> None:
         try:
+            if self._try_bclc_ace_input('card', rank):
+                return
             self._ensure_recording_enabled(card=True)
             finished = self.dealer_recording_finished()
             if finished:
@@ -1642,6 +1749,8 @@ class BlackjackLabApp(tk.Tk):
     @tracked_operation
     def act_action(self, action: str) -> None:
         try:
+            if self._try_bclc_ace_input('action', action):
+                return
             self._ensure_recording_enabled(action=True)
             seg = self._current_seg()
             if seg is None:
@@ -1832,7 +1941,7 @@ class BlackjackLabApp(tk.Tk):
         if seg.closed:
             return "牌靴已结束；请新建牌靴后再录牌。"
         if seg.table.phase == PHASE_NO_ROUND:
-            return "尚未开轮；确认参与座位后点击“新开一轮”。"
+            return "尚未开轮；确认参与座位后点击“开始本轮”。"
         if seg.table.phase not in (PHASE_DEALING, PHASE_IN_PROGRESS):
             return f"本轮{seg.table.phase}；点击“新开一轮”继续同一牌靴。"
         return None
@@ -1978,12 +2087,19 @@ class BlackjackLabApp(tk.Tk):
         if seg is None:
             self.var_legal.set("尚未创建牌靴")
             return
+        action_table, action_seat = seg.table, self.var_target.get()
         hand_id = self._selected_hand_id(seg)
+        if self.ctrl.bclc_ace_input_ready() and self.var_mode.get() != '揭示':
+            action_table = deepcopy(seg.table)
+            action_table.mark_peek_negative()
+            acting = next_open_hand(action_table, self.ctrl.entry_plan.participating_seats)
+            if acting:
+                action_seat, hand_id = acting[:2]
         if not hand_id:
             self.var_legal.set("该座位尚无手牌")
             return
         try:
-            states = seg.table.action_states(self.var_target.get(), hand_id)
+            states = action_table.action_states(action_seat, hand_id)
             lines = list(dict.fromkeys(item.reason for item in states.values() if not item.allowed))[:2]
             self.var_legal.set("\n".join(lines))
             enabled = {self.btn_stand: states[ACTION_STAND].allowed,

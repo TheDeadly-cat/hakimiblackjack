@@ -301,6 +301,9 @@ class SidebetRecordingStateTests(unittest.TestCase):
         self.assertIn('研究EV', app.compact_panel.flow_message.get())
         self.assertIn('%', app.compact_panel.identity.get())
         app.sidebets.show_details()
+        # This input explicitly reveals the original dealer hole; the daily
+        # non-ten A shortcut instead denotes the first player's actual input.
+        app.var_mode.set('揭示')
         blocker = sqlite3.connect(self.db); blocker.execute('BEGIN IMMEDIATE')
         try:
             self.click('6'); self.assert_paused()

@@ -23,6 +23,7 @@ class ExitFlow:
         self.main_history=None
         self.recording_acknowledged=False
         self.result_writers=[]
+        self._logged_cleanup_errors=set()
 
     def show(self):
         if self.window is not None and self.window.winfo_exists():self.window.lift()
@@ -73,6 +74,10 @@ class ExitFlow:
             if record:cancellations.append(record)
         self.processes=[service.active['process'] for service in services
                         if service.active is not None and service.active.get('process') is not None]
+        # A cancelled hand/seat request is detached immediately; its process
+        # still belongs to the service until background reaping completes.
+        self.result_writers.extend(service for service in services
+                                   if getattr(service, 'deferred_release', False))
         for worker in self.workers:
             # User-requested writes/recomputations are drained, not latest-wins work.
             if (worker.active_channel in ('history_recompute','retry')
@@ -108,9 +113,18 @@ class ExitFlow:
               or bool(self.app._recording_owner and not self.app._recording_owner.stopped))
         if busy:
             self.app.after(25,self.poll);return
+        for owner in self.result_writers:
+            error=getattr(owner,'cleanup_error',None)
+            if error and error not in self.errors:self.errors.append(error)
         for process in self.processes:
             try:process.close()
             except ValueError:pass
+            except Exception as error:
+                if str(error) not in self.errors:self.errors.append(str(error))
+        for error in self.errors:
+            if error not in self._logged_cleanup_errors:
+                print('BACKGROUND_CLEANUP_ERROR='+error)  # The installed launcher retains stdout in its log.
+                self._logged_cleanup_errors.add(error)
         if self.return_requested:self.resume();return
         if self.app._recording_faults and not self.recording_acknowledged:
             self.phase='needs_recording'
@@ -129,8 +143,8 @@ class ExitFlow:
                          +'牌面数据库已提交；可以重试、返回继续处理，或明确放弃这些结果。'
                          +(' 后台结束需核对：'+'；'.join(self.errors) if self.errors else ''))
         self.retry_button.state(['!disabled'])
-        self.discard_button.configure(text='放弃未保存结果并退出')
-        if not self.errors:self.discard_button.state(['!disabled'])
+        self.discard_button.configure(text='保留诊断并退出' if self.errors and not total else '放弃未保存结果并退出')
+        self.discard_button.state(['!disabled'])  # Every owned worker is confirmed stopped above.
 
     def retry(self):
         if self.phase!='needs_save':return
@@ -198,9 +212,12 @@ class ExitFlow:
                 self.discard_button.state(['disabled'])
                 self.poll()
             return
-        if self.phase!='needs_save' or self.errors:return
+        if self.phase!='needs_save':return
         total=sum(self.pending().values())
-        if messagebox.askyesno('明确放弃未保存结果',f'放弃这 {total} 条尚未保存的分析结果并退出？\n已提交的牌面记录及已有历史文件不会删除。',parent=self.window):
+        message=(f'放弃这 {total} 条尚未保存的分析结果并退出？\n已提交的牌面记录及已有历史文件不会删除。' if total else
+                 '后台任务已确认停止。保留清理错误诊断并退出？\n已提交的牌面记录及已有历史文件不会删除。')
+        if self.errors:message+='\n\n清理诊断：'+'；'.join(self.errors)
+        if messagebox.askyesno('明确放弃未保存结果' if total else '保留诊断并退出',message,parent=self.window):
             self.finish()
 
     def finish(self):

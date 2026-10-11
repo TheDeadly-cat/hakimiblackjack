@@ -62,6 +62,14 @@ class TestAutoSeatsUI(unittest.TestCase):
         self.assertEqual(len(view.seat_table.get_children()), 3)
         self.assertTrue(view.seat_table.winfo_ismapped())
         self.assertIn('其他玩家之后不再补牌', view.notes.get())
+        from blackjack_lab.analysis.decision_summary import summarize_result
+        for seat, row in rows.items():
+            choices = summarize_result(row['result']).choices
+            shown = view.seat_table.item(seat, 'values')
+            self.assertGreaterEqual(len(choices), 2)
+            for index in (0, 1):
+                self.assertIn(f'{choices[index].ev:+.4f}', shown[2 + index])
+                self.assertIn(f'{choices[index].profit:.1%}', shown[2 + index])
         old = {seat: row['result']['input_digest'] for seat, row in rows.items()}
         self.app._key_rank('2')
         self.assertTrue(all(row['result'] is None for row in self.app.analysis_panel.overview.rows.values()))

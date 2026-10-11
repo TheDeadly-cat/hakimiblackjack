@@ -72,6 +72,8 @@ class RecordingCloseoutTests(unittest.TestCase):
     def test_reverse_seven_seats_and_split_both_initial_use_mouse(self):
         app = self.app
         app.select_table_mode(BCLC); app.act_new_shoe()
+        # This scenario intentionally exercises explicit legacy hole input.
+        app.var_simple_hole.set(False)
         for var in app.var_participants.values():
             var.set(True)
         app.act_new_round()
@@ -81,6 +83,7 @@ class RecordingCloseoutTests(unittest.TestCase):
         expected = [f'玩家{i}' for i in range(7, 0, -1)] + ['庄家']
         self.assertEqual([seat for seat, _ in self.deals()], expected * 2)
         app.act_new_shoe()
+        app.var_simple_hole.set(False)
         for seat, var in app.var_participants.items():
             var.set(seat == '玩家1')
         app.act_new_round()

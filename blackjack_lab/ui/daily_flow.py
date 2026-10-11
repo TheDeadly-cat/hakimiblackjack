@@ -29,6 +29,10 @@ def current_flow(ctrl, seg=None):
     if plan.input_paused:
         return FlowState('paused', '录入已暂停，恢复后继续原来的位置。', '恢复录入', 'resume')
     if plan.mode == MODE_INITIAL:
+        slot = plan.slot()
+        if slot and slot.expected_face != 'shown':
+            return FlowState('initial', '确认庄家底牌实际已发后，点击“底牌已发 .”或按小数点，再继续玩家行动。',
+                             '底牌已发 .', 'hole')
         return FlowState('initial', plan.prompt('', '').splitlines()[0])
     if plan.mode == MODE_PEEK_WAIT:
         return FlowState('peek', '按实际情况确认非BJ，或选择庄家录入实际开出的底牌。', '已检查，确认非BJ', 'peek')

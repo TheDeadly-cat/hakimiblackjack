@@ -119,11 +119,14 @@ class BclcRulebookUITests(unittest.TestCase):
         app.select_table_mode(BCLC); app.var_auto_next.set(False)
         app.act_new_shoe(); app.act_new_round()
         for rank in (first, up, second): app._key_rank(rank)
-        app._key_hole()
         return app
 
     def test_unknown_observations_remain_recordable_and_visible(self):
-        app = self.start()
+        app = self.app
+        app.select_table_mode(BCLC); app.var_auto_next.set(False)
+        app.ctrl.new_shoe(bclc_rules())  # Imported/unknown observations are not a UI New Shoe declaration.
+        app.act_new_round()
+        for rank in ('8', '6', '8'): app._key_rank(rank)
         self.assertIn('本靴观察待确认', app.compact_panel.mode_status.get())
         self.assertIn('分牌后禁止加倍', app.compact_panel.flow_message.get() +
                       rule_summary(app.ctrl.current_rules()))
@@ -189,7 +192,6 @@ class BclcRulebookUITests(unittest.TestCase):
         self.assertEqual(len(seg.table.dealer.hands[0].cards), 2)
         app.act_new_shoe(); app.act_new_round()
         for rank in ('9', 'T', '8'): app._key_rank(rank)
-        app._key_hole()
         self.assertEqual(app.ctrl.entry_plan.mode, 'player_continuation')
         self.assertFalse(app.ctrl.state().current.table.dealer_hole_checked_negative)
         self.assertEqual(self.errors, [])
@@ -197,6 +199,7 @@ class BclcRulebookUITests(unittest.TestCase):
     def test_current_v1_shoe_does_not_change_and_new_version_requires_new_shoe(self):
         app = self.app
         app.select_table_mode(BCLC); app._set_rule_form(legacy_bclc_draft_rules())
+        app.var_simple_hole.set(False)  # Keep the unconfirmed v1 recording protocol manual.
         app.act_new_shoe(); app.act_new_round(); app._key_rank('8')
         before = app.ctrl.ledger.to_list(); plan = app.ctrl.entry_plan.to_dict()
         app._apply_table_mode(BCLC, ModeSettings(bclc_rules(), 'reverse', False))

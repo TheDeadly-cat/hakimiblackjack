@@ -62,13 +62,30 @@ class OpeningEstimateView:
             self.update_details()
 
     def pause_recording(self):
+        if getattr(self, '_recording_pause_state', None) is None:
+            self._recording_pause_state = (self.live_key(), self.key, self.app.var_opening_ev.get())
         text = '下轮EV：' + self.app.recording_advice_pause()
         if self.app.var_opening_ev.get() != text:
             self.set_text(text)
 
+    def resume_recording(self):
+        """A proved no-op keeps the prior opening result and explicit cancellation."""
+        if self._closed or self.app.recording_advice_pause():
+            return
+        saved, self._recording_pause_state = getattr(self, '_recording_pause_state', None), None
+        key = self.live_key()
+        if key == self.cancelled_key:
+            self.set_text('下轮EV：已取消，点击重新计算')
+        elif saved and saved[0] == saved[1] == self.key == key:
+            self.set_text(saved[2])
+        else:
+            self.key = None
+            self.refresh()
+
     def context_changed(self, *_):
         if self._closed or getattr(self.app,'_closing',False) or self.live_key() == self.key:
             return
+        self._recording_pause_state = None
         self.stop_request('stale')
         self.key = self.snapshot = self.result = self.saved = None
         self.cancelled_key = None

@@ -140,7 +140,7 @@ def default_settings(mode):
     if mode == PRAGMATIC:
         return ModeSettings(pragmatic_rules())
     if mode == BCLC:
-        return ModeSettings(bclc_rules(), deal_direction='reverse', simple_hole=False)
+        return ModeSettings(bclc_rules(), deal_direction='reverse', simple_hole=True)
     raise ValueError('未知桌面模式')
 
 
@@ -177,7 +177,8 @@ class TableModeStore:
         modes[selected] = copy.deepcopy(next_settings)
         old_bclc, new_bclc = self.modes.get(BCLC), modes.get(BCLC)
         if (self._original is not None and old_bclc and new_bclc
-                and old_bclc.rules.version < 2 <= new_bclc.rules.version):
+                and (old_bclc.rules.version < 2 <= new_bclc.rules.version
+                     or not old_bclc.simple_hole and new_bclc.simple_hole)):
             # Preserve the entire original settings file, including byte order
             # and all Pragmatic preferences, before publishing the upgrade.
             original_hash = hashlib.sha256(self._original).hexdigest()

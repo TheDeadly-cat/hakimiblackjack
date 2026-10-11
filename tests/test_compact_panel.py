@@ -62,7 +62,11 @@ class TestCompactPanel(unittest.TestCase):
         self.assertIsNone(panel.last_result)
         self.assertFalse(view.model.choices)
         self.assertNotIn('净盈利 ', view.detail_text.get('1.0', 'end'))
-        self.assertFalse(view.rows[0][0].winfo_ismapped())
+        self.app.update()
+        self.assertTrue(view.rows[0][0].winfo_ismapped())
+        self.assertEqual(view.rows[0][1].cget('text'), 'EV第1')
+        self.assertEqual(view.rows[0][4].cget('text'), '净盈利概率 —')
+        self.assertEqual(view.rows[0][5].cget('text'), 'EV —')
 
     def test_cancel_timeout_and_switch_hand_do_not_reuse_recommendation(self):
         self.calculated()
@@ -180,12 +184,102 @@ class TestCompactPanel(unittest.TestCase):
         panel.last_result = result({'stand': {-1: .5, 1: .5}, 'hit': {-1: .5, 1: .5}})
         view.render()
         self.app.update()
-        self.assertEqual([row[1].cget('text') for row in view.rows], ['并列', '并列'])
+        self.assertEqual([row[1].cget('text') for row in view.rows], ['EV第1\n并列', 'EV第2\n并列'])
         panel.last_result = result({'stand': {1: 1}})
         view.render()
         self.app.update()
-        self.assertEqual(view.rows[0][1].cget('text'), '唯一合法动作')
-        self.assertFalse(view.rows[1][0].winfo_ismapped())
+        self.assertEqual(view.rows[0][1].cget('text'), 'EV第1\n唯一合法动作')
+        self.assertTrue(view.rows[1][0].winfo_ismapped())
+        self.assertIn('无第2个可用动作', view.rows[1][3].cget('text'))
+        self.assertEqual(view.rows[1][4].cget('text'), '净盈利概率 —')
+
+    def test_bclc_unknown_then_confirmed_shoe_keeps_slots_and_real_probabilities(self):
+        from blackjack_lab.ui.table_modes import BCLC, bclc_rules
+        from blackjack_lab.ui.ev_display import ev_sign
+
+        app, view = self.app, self.app.compact_panel
+        app.select_table_mode(BCLC)
+        app.ctrl.new_shoe(bclc_rules())  # Imported unknown shoe; UI New Shoe is an explicit declaration.
+        app.act_new_round()
+        for card in ('T', '6', '6'):
+            app._key_rank(card)
+        if app.ctrl.entry_plan.mode == 'initial_auto':
+            app._key_hole()
+        app.update()
+        self.assertEqual(app.ctrl.state().current.shoe.unrevealed_out, 1)
+        self.assertEqual(app.analysis_panel.unavailable_code, 'START_UNKNOWN')
+        self.assertIn('完整新牌靴', view.message.get())
+        self.assertFalse(view.model.choices)
+        for i, row in enumerate(view.rows):
+            self.assertTrue(row[0].winfo_ismapped())
+            self.assertEqual(row[1].cget('text'), f'EV第{i + 1}')
+            self.assertEqual(row[4].cget('text'), '净盈利概率 —')
+            self.assertEqual(row[5].cget('text'), 'EV —')
+        self.assertIn('补牌爆牌率 —', view.rows[0][3].cget('text'))
+        before = app.ctrl.ledger.to_list()
+
+        # The owned fixture explicitly observes a complete eight-deck new shoe
+        # with zero burn. This does not change the unknown preset or old events.
+        rules = bclc_rules()
+        rules.start_from_new_shoe = True
+        rules.burn_cards_known = True
+        rules.initial_burn_count = 0
+        with patch.object(app, '_build_rules', return_value=rules):
+            app.act_new_shoe()
+        app.act_new_round()
+        for card in ('T', '6', '6'):
+            app._key_rank(card)
+        if app.ctrl.entry_plan.mode == 'initial_auto':
+            app._key_hole()
+        self.assertEqual(app.ctrl.ledger.to_list()[:len(before)], before)
+        app.analysis_panel.calculate_current()
+        result = self.wait_result()
+        self.assertEqual(result['status'], 'available')
+        self.assertEqual(len(view.model.choices), 2)
+        for i, row in enumerate(view.rows):
+            choice = view.model.choices[i]
+            self.assertTrue(row[0].winfo_ismapped())
+            self.assertTrue(row[1].cget('text').startswith(f'EV第{i + 1}\n'))
+            self.assertEqual(row[4].cget('text'), f'净盈利概率 {choice.profit:.2%}')
+            self.assertEqual(row[5].cget('text'), f'{ev_sign(choice.ev)} {choice.ev:+.6f}')
+        self.assertIn(f"补牌爆牌率 {result['probabilities']['hit_bust']:.2%}", view.rows[0][3].cget('text'))
+        self.assertIn('最终净额>0', view.rows[1][3].cget('text'))
+        # Use the existing compact layout budget. Default geometry may be
+        # clamped by a small monitor's work area, where scrolling is supported.
+        for size in ('720x740', '700x740'):
+            app.geometry(size)
+            app.update()
+            for widget in (view.rows[0][0], view.rows[1][0], view.details_button, view.undo_button):
+                self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(), app.winfo_rooty() + app.winfo_height())
+                self.assertLessEqual(widget.winfo_rootx() + widget.winfo_width(), app.winfo_rootx() + app.winfo_width())
+        app.geometry('660x460')
+        app.update()
+        app.compact_canvas.yview_moveto(1)
+        app.update()
+        self.assertLessEqual(view.details_button.winfo_rooty() + view.details_button.winfo_height(),
+                             app.winfo_rooty() + app.winfo_height())
+        app.compact_canvas.yview_moveto(0)
+        app.update()
+        self.assertGreaterEqual(view.undo_button.winfo_rooty(), app.winfo_rooty())
+        self.assertLessEqual(view.undo_button.winfo_rooty() + view.undo_button.winfo_height(),
+                             app.winfo_rooty() + app.winfo_height())
+        self.assertEqual(self.errors, [])
+
+    def test_save_pause_keeps_named_empty_slots_without_previous_numbers(self):
+        self.calculated()
+        view = self.app.compact_panel
+        with patch.object(self.app, 'recording_advice_pause', return_value='等待保存回执'):
+            view.render()
+            self.app.update()
+        self.assertFalse(view.model.choices)
+        self.assertEqual(view.message.get(), '等待保存回执')
+        for i, row in enumerate(view.rows):
+            self.assertTrue(row[0].winfo_ismapped())
+            self.assertEqual(row[1].cget('text'), f'EV第{i + 1}')
+            self.assertEqual(row[4].cget('text'), '净盈利概率 —')
+            self.assertEqual(row[5].cget('text'), 'EV —')
+            self.assertNotIn('%', row[3].cget('text'))
+        self.assertEqual(view.decision_evs.get(), '')
 
     def deal_practice_round(self):
         app = self.app

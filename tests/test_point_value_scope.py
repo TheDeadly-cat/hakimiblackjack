@@ -191,8 +191,11 @@ class PointValueScopeTests(unittest.TestCase):
         state=seg.table.action_states('玩家1',hand.hand_id)[ACTION_SPLIT]
         self.assertFalse(state.allowed);self.assertEqual(state.reason_code,'PAIR_UNKNOWN')
         before=app.ctrl.ledger.to_list();app.act_action(ACTION_SPLIT)
-        self.pump(lambda:not app.recording_busy and app._recording_owner.stopped)
-        self.assertEqual(app._recording_faults[0]['status'],'failed_before_commit')
+        self.saved()
+        self.assertFalse(app._recording_faults)
+        self.assertFalse(app._recording_owner.failed)
+        self.assertFalse(app._recording_owner.stopped)
+        self.assertIn(state.reason, app.var_recording_save.get())
         self.assertEqual(app.ctrl.ledger.to_list(),before)
         self.assertEqual(app.ctrl.store.load_ledger(app.ctrl.session_id).to_list(),before)
 

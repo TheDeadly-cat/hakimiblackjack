@@ -1,4 +1,5 @@
 import copy
+import json
 import unittest
 from unittest.mock import patch
 
@@ -23,13 +24,67 @@ class TestRecentCorrection(unittest.TestCase):
         recent = recent_visible(ctrl)
         return ctrl.correct_recent_visible(recent.event_id, rank, '误按牌面', ctrl.context_token)
 
+    def test_undo_label_reuses_only_certified_prefix_and_plan_presentation(self):
+        self.initial()
+        ctrl = self.app.ctrl
+        ctrl.__dict__.pop('_undo_label_cache', None)
+        with patch.object(ctrl, '_automatic_hole_undo_group', wraps=ctrl._automatic_hole_undo_group) as group:
+            for _ in range(3):
+                with self.app._view_frame():
+                    self.assertEqual(undo_label(ctrl), '撤销本次录牌及自动暗牌')
+                    self.assertEqual(undo_label(ctrl), '撤销本次录牌及自动暗牌')
+            self.assertEqual(group.call_count, 1)
+            self.assertIsInstance(ctrl._undo_label_cache[1], str)
+            # Ordinary controller reads are never authorized by a cached UI label.
+            self.assertEqual(undo_label(ctrl), '撤销本次录牌及自动暗牌')
+            self.assertEqual(group.call_count, 2)
+            ctrl.undo_last()
+            self.assertEqual(group.call_count, 3)
+        self.assertEqual(ctrl.state().current.table.players['玩家1'].hands[0].ranks, ['T'])
+
+    def test_undo_label_cache_invalidates_on_complete_plan_change(self):
+        self.initial()
+        ctrl = self.app.ctrl
+        ctrl.__dict__.pop('_undo_label_cache', None)
+        with patch.object(ctrl, '_automatic_hole_undo_group', wraps=ctrl._automatic_hole_undo_group) as group:
+            with self.app._view_frame():
+                self.assertEqual(undo_label(ctrl), '撤销本次录牌及自动暗牌')
+            # Even a field that does not change the undo route belongs to the key.
+            ctrl.entry_plan.input_pause_reason = 'synthetic presentation change'
+            with self.app._view_frame():
+                self.assertEqual(undo_label(ctrl), '撤销本次录牌及自动暗牌')
+            self.assertEqual(group.call_count, 2)
+            ctrl.entry_plan.paused = True
+            with self.app._view_frame():
+                self.assertEqual(undo_label(ctrl), '撤销自动暗牌（关联待核对）')
+            self.assertEqual(group.call_count, 3)
+
+    def test_undo_label_cache_invalidates_on_in_place_evidence_change_in_new_frame(self):
+        self.initial()
+        ctrl = self.app.ctrl
+        ctrl.__dict__.pop('_undo_label_cache', None)
+        hidden = ctrl.ledger.events[-1]
+        original = hidden.evidence
+        with patch.object(ctrl, '_automatic_hole_undo_group', wraps=ctrl._automatic_hole_undo_group) as group:
+            with self.app._view_frame():
+                self.assertEqual(undo_label(ctrl), '撤销本次录牌及自动暗牌')
+            receipt = json.loads(original)
+            receipt['trigger_event_id'] = 'synthetic-wrong-trigger'
+            hidden.evidence = json.dumps(receipt, ensure_ascii=False)
+            try:
+                with self.app._view_frame():
+                    self.assertEqual(undo_label(ctrl), '撤销自动暗牌（关联待核对）')
+                self.assertEqual(group.call_count, 2)
+            finally:
+                hidden.evidence = original
+
     def test_inline_edits_visible_trigger_not_auto_hole_and_keeps_history(self):
         self.initial()
         ctrl, view = self.app.ctrl, self.app.compact_panel
         before = ctrl.ledger.to_list()
         snapshot = ctrl.analysis_input('玩家1')
         self.assertEqual(recent_visible(ctrl).event_id, ctrl.ledger.events[-2].event_id)
-        self.assertEqual(undo_label(ctrl), '撤销自动暗牌')
+        self.assertEqual(undo_label(ctrl), '撤销本次录牌及自动暗牌')
         view.edit_button.invoke()
         view.edit_rank.set('5')
         with patch('blackjack_lab.ui.app.simpledialog.askstring') as dialog:
@@ -145,9 +200,10 @@ class TestRecentCorrection(unittest.TestCase):
         self.initial()
         self.app.act_undo()
         self.assertEqual(recent_visible(self.app.ctrl).rank, '6')
-        self.assertIn('玩家1', undo_label(self.app.ctrl))
-        self.app.act_undo()
         self.assertEqual(recent_visible(self.app.ctrl).seat, '庄家')
+        self.assertIn('庄家', undo_label(self.app.ctrl))
+        self.app.act_undo()
+        self.assertEqual(recent_visible(self.app.ctrl).seat, '玩家1')
         self.assertEqual(recent_visible(self.app.ctrl).ordinal, 1)
 
     def test_inline_and_timeline_correction_have_same_probability_and_ev(self):
