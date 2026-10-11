@@ -19,6 +19,12 @@ def _hand_id(seg, seat, selection):
 
 
 def record_input(ctrl, intent):
+    """Resolve a queued input from its freshly validated private command."""
+    with ctrl._recording_command_frame():
+        return _record_input(ctrl, intent)
+
+
+def _record_input(ctrl, intent):
     """Use the same controller commands/validation as direct recording.
 
     Automatic button/key input follows the worker's *current* frozen plan. A
