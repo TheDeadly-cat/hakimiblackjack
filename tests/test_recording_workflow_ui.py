@@ -303,12 +303,17 @@ class RecordingWorkflowUITests(unittest.TestCase):
         self.assertNotIn('待保存', self.app.analysis_panel.status.get())
 
     def test_explicit_cancel_during_refusal_stays_cancelled_without_auto_restart(self):
-        self.refusal_while_changing_analysis(lambda panel: panel.cancel())
+        def cancel_then_poll_again(panel):
+            panel.cancel()
+            panel.pause_recording()  # A poll may repaint while the refused input is still pending.
+        self.refusal_while_changing_analysis(cancel_then_poll_again)
         self.assertTrue(self.app.analysis_panel.auto.get())
         self.assertEqual(self.app.analysis_panel._auto_suppressed_key,
                          self.app.analysis_panel._live_key())
         self.assertIn('已取消', self.app.analysis_panel.status.get())
         self.assertIn('已取消', self.app.var_opening_ev.get())
+        self.assertFalse(self.app.analysis_panel.compute_button.instate(['disabled']))
+        self.assertFalse(self.app.compact_panel.compute.instate(['disabled']))
 
 
 class ProcessRecordingWorkflowUITests(unittest.TestCase):

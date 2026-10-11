@@ -213,7 +213,13 @@ class AnalysisPanel(ttk.Frame):
             return
         saved, self._recording_pause_state = getattr(self, '_recording_pause_state', None), None
         key = self._live_key()
-        if (saved and saved['key'] == saved['context'] == self.context_key == key
+        if (key == getattr(self, '_recording_cancelled_key', None) == self._auto_suppressed_key
+                and self.request_id is None):
+            self._recording_cancelled_key = None
+            self.status.set('已取消：可继续录入或重新计算')
+            self.compute_button.state(['!disabled'] if self.current_input else ['disabled'])
+            self._set_text('')
+        elif (saved and saved['key'] == saved['context'] == self.context_key == key
                 and saved['request_id'] == self.request_id):
             self.status.set(saved['status'])
             self.compute_button.state(['disabled'] if saved['disabled'] else ['!disabled'])
@@ -236,6 +242,7 @@ class AnalysisPanel(ttk.Frame):
         self._updating_context = True
         try:
             self._recording_pause_state = None
+            self._recording_cancelled_key = None
             self.current_input = None
             self.unavailable_code = None
             self._cancel_auto()
@@ -394,6 +401,7 @@ class AnalysisPanel(ttk.Frame):
         if cancel_opening and hasattr(self.app, 'opening_estimate'):
             self.app.opening_estimate.cancel()
         self._recording_pause_state = None  # Explicit cancellation replaces any paused display.
+        self._recording_cancelled_key = self._live_key() if self.app.recording_advice_pause() else None
         self.request_snapshot = None
         self._cancel_auto()
         self._auto_suppressed_key = self._live_key()

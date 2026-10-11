@@ -159,6 +159,7 @@ class AnalysisService:
         if not self._retirement_complete():
             raise RuntimeError('旧计算进程尚未确认停止，未启动新计算：' +
                                (self._retirement_error or '回收未完成'))
+        job['start_attempted'] = True
         job['process'].start()
         job['started'] = True
         job.pop('sender').close()
@@ -215,7 +216,7 @@ class AnalysisService:
         if job is None:
             return
         process = job['process']
-        if not job.get('started', True):
+        if not job.get('started', True) and not job.get('start_attempted'):
             # No worker was launched; a handle-close error cannot strand the
             # caller or prevent the other owned handles from being released.
             for resource in (job.pop('sender'), job['pipe'], process):
@@ -245,10 +246,13 @@ class AnalysisService:
 
         def reap():
             try:
-                process.join(timeout=.25)
-                while process.is_alive():
-                    process.kill()
+                # A failed start may have no child, or may have created one
+                # before raising. Retain the job and inspect its real state.
+                if job.get('started', True) or process.is_alive():
                     process.join(timeout=.25)
+                    while process.is_alive():
+                        process.kill()
+                        process.join(timeout=.25)
             except Exception as error:
                 self._record_retirement_error(error)
             try:
