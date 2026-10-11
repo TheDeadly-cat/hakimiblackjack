@@ -53,6 +53,10 @@ _ALL_TYPES = {
     SHOE_ENDED, UNDO, CORRECTION,
 }
 
+# Keep the same JSON validation for every payload. JSONEncoder creates its
+# circular-reference markers per encode call; its fixed options can be reused.
+_PAYLOAD_JSON_ENCODER = json.JSONEncoder(allow_nan=False)
+
 # Payload schemas are constant. Rebuilding every set for every historical
 # event adds allocations to each independent replay without changing validation.
 _PAYLOAD_SCHEMAS = MappingProxyType({
@@ -113,7 +117,7 @@ class Event:
         for name in ("session_id", "shoe_id", "round_id", "evidence", "rule_version"):
             if getattr(self, name) is not None and not isinstance(getattr(self, name), str):
                 raise ValueError(f"事件{name}必须为文本或空")
-        json.dumps(self.payload, allow_nan=False)
+        _PAYLOAD_JSON_ENCODER.encode(self.payload)
         self.validate_payload()
 
     def validate_payload(self):
