@@ -90,6 +90,11 @@ def existing_install(root, data):
 @contextmanager
 def program_replacement(root, data, logs, updating, *, layout=None):
     """Retain the old program, keep the data path, and roll back failed updates."""
+    # Keep link rejection on the supplied paths before canonicalizing aliases.
+    # Windows temporary paths can also use an equivalent 8.3 spelling.
+    for path in (root, data, logs):
+        assert_no_links(Path(path))
+    root, data, logs = (Path(path).resolve() for path in (root, data, logs))
     layout = layout or create_install_layout(local=root.parent.parent)
     if (root != layout['root'] or data != layout['data'] or logs.parent != layout['logs_root']):
         raise ValueError('更新范围不符')
